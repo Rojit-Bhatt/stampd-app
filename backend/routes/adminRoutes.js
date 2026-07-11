@@ -1,0 +1,11 @@
+const express = require("express");
+const { generateAdminQRToken } = require("../controllers/stampController");
+const { redeemAdminVoucher } = require("../controllers/voucherController");
+const { verifyToken, isAdmin } = require("../middleware/authMiddleware");
+
+const router = express.Router();
+
+router.post("/generate-qr", verifyToken, isAdmin, generateAdminQRToken);
+router.post("/redeem-voucher", verifyToken, isAdmin, redeemAdminVoucher);
+
+module.exports = router;
