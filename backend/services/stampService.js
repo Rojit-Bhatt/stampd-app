@@ -4,6 +4,7 @@ const mongoose = require("mongoose");
 const DynamicQRToken = require("../models/DynamicQRToken");
 const StampCard = require("../models/StampCard");
 const Voucher = require("../models/Voucher");
+const StampClaimEvent = require("../models/StampClaimEvent");
 
 const TOKEN_TTL_SECONDS = 30;
 const STAMP_COOLDOWN_HOURS = 18;
@@ -71,34 +72,25 @@ const claimStamp = async ({ token, userId, role }) => {
       const now = new Date();
       const tokenExpiryCutoff = new Date(now.getTime() - TOKEN_TTL_SECONDS * 1000);
 
-      const consumedToken = await DynamicQRToken.findOneAndUpdate(
-        {
-          token,
-          isUsed: false,
-          createdAt: { $gt: tokenExpiryCutoff }
-        },
-        {
-          $set: { isUsed: true }
-        },
-        {
-          new: true,
-          session
-        }
-      );
+      // Check if already used first (absolute first check)
+      const usedToken = await DynamicQRToken.findOne({ token, isUsed: true }).session(session);
+      if (usedToken) {
+        throw createHttpError("QR Code has already been used.", 400);
+      }
 
-      if (!consumedToken) {
-        const usedToken = await DynamicQRToken.findOne({ token, isUsed: true }).session(session);
-        if (usedToken) {
-          throw createHttpError("This QR token has already been used.", 400);
-        }
-
-        const existingToken = await DynamicQRToken.findOne({ token }).session(session);
-        if (existingToken) {
-          throw createHttpError("This QR token has expired.", 400);
-        }
-
+      // Check if exists
+      const existingToken = await DynamicQRToken.findOne({ token }).session(session);
+      if (!existingToken) {
         throw createHttpError("Invalid QR token.", 400);
       }
+
+      // Check if expired
+      if (existingToken.createdAt <= tokenExpiryCutoff) {
+        throw createHttpError("This QR token has expired.", 400);
+      }
+
+      // Atomically mark it as used
+      await DynamicQRToken.updateOne({ _id: existingToken._id }, { $set: { isUsed: true } }, { session });
 
       const cooldownCutoff = new Date(now.getTime() - STAMP_COOLDOWN_HOURS * 60 * 60 * 1000);
       const updatedCard = await StampCard.findOneAndUpdate(
@@ -131,6 +123,17 @@ const claimStamp = async ({ token, userId, role }) => {
             { session }
           );
 
+          await StampClaimEvent.create(
+            [
+              {
+                userId,
+                token,
+                createdAt: now
+              }
+            ],
+            { session }
+          );
+
           responsePayload = {
             success: true,
             message: "Stamp successfully added to your card.",
@@ -144,6 +147,18 @@ const claimStamp = async ({ token, userId, role }) => {
 
         throw createHttpError("You can only claim one stamp every 18 hours.", 400);
       }
+
+      // Log scan event
+      await StampClaimEvent.create(
+        [
+          {
+            userId,
+            token,
+            createdAt: now
+          }
+        ],
+        { session }
+      );
 
       if (updatedCard.stampsEarned >= 5) {
         const voucherCode = await generateVoucherCode(session);
@@ -192,7 +207,32 @@ const claimStamp = async ({ token, userId, role }) => {
   }
 };
 
+const getStampBalanceByUserId = async (userId) => {
+  if (!userId) {
+    throw createHttpError("Authenticated user context is required.", 401);
+  }
+
+  let card = await StampCard.findOne({ userId });
+
+  if (!card) {
+    card = await StampCard.create({
+      userId,
+      stampsEarned: 0,
+      lastStampedAt: null
+    });
+  }
+
+  return {
+    success: true,
+    data: {
+      stampsEarned: card.stampsEarned,
+      lastStampedAt: card.lastStampedAt
+    }
+  };
+};
+
 module.exports = {
   generateQRToken,
-  claimStamp
+  claimStamp,
+  getStampBalanceByUserId
 };

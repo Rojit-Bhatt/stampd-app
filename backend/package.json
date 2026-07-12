@@ -1,5 +1,5 @@
 {
-  "name": "cafe-loyalty-backend",
+  "name": "backend",
   "version": "1.0.0",
   "description": "Backend API for the cafe loyalty app",
   "main": "server.js",

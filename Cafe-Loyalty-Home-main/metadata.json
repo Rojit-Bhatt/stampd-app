@@ -1,0 +1,6 @@
+{
+  "name": "Minimal Hero Section",
+  "description": "A beautiful, minimalist fullscreen single-page hero section with precise typography and layout design.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

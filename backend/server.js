@@ -1,17 +1,16 @@
+require("dotenv").config();
+console.log("JWT_SECRET loaded:", !!process.env.JWT_SECRET);
 const express = require("express");
 const cors = require("cors");
-const dotenv = require("dotenv");
 const connectDB = require("./config/db");
 const authRoutes = require("./routes/authRoutes");
 const adminRoutes = require("./routes/adminRoutes");
 const stampRoutes = require("./routes/stampRoutes");
 const voucherRoutes = require("./routes/voucherRoutes");
 
-dotenv.config();
-
 const app = express();
 const PORT = process.env.PORT;
-const CLIENT_URL = process.env.CLIENT_URL || "http://localhost:3000";
+const ALLOWED_ORIGINS = ["http://localhost:3000", "http://localhost:3001"];
 
 if (!PORT) {
   throw new Error("PORT is not defined in environment variables.");
@@ -19,7 +18,7 @@ if (!PORT) {
 
 app.use(
   cors({
-    origin: CLIENT_URL,
+    origin: ALLOWED_ORIGINS,
     credentials: true
   })
 );

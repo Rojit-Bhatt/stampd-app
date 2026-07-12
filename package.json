@@ -1,0 +1,16 @@
+{
+  "name": "cafe-loyalty-monorepo",
+  "version": "1.0.0",
+  "private": true,
+  "workspaces": [
+    "backend",
+    "admin-frontend",
+    "customer-frontend"
+  ],
+  "scripts": {
+    "dev": "concurrently \"npm run dev -w backend\" \"npm run dev -w admin-frontend\" \"npm run dev -w customer-frontend\""
+  },
+  "devDependencies": {
+    "concurrently": "^8.2.2"
+  }
+}
