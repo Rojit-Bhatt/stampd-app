@@ -77,17 +77,17 @@ export function VoucherVerify() {
   return (
     <section
       aria-label="Verify free coffee voucher"
-      className="border border-[#2D2D2D] bg-[#1A1A1A] p-6 lg:p-8 rounded-[48px] overflow-hidden shadow-none text-[#EBE6DF]"
+      className="border border-[#2D2D2D] bg-[#1A1A1A] p-5 sm:p-6 lg:p-8 rounded-[32px] sm:rounded-[48px] overflow-hidden shadow-none text-[#EBE6DF]"
     >
       <div className="mb-6 flex items-center gap-3">
-        <div className="flex size-10 items-center justify-center border border-[#2D2D2D] bg-[#121212] rounded-[16px]">
-          <Ticket className="size-5 text-[#EBE6DF]" aria-hidden="true" />
+        <div className="flex size-9 sm:size-10 items-center justify-center border border-[#2D2D2D] bg-[#121212] rounded-[12px] sm:rounded-[16px]">
+          <Ticket className="size-4 sm:size-5 text-[#EBE6DF]" aria-hidden="true" />
         </div>
         <div>
-          <h2 className="font-serif text-xl font-normal text-[#EBE6DF]">
+          <h2 className="font-serif text-lg sm:text-xl font-normal text-[#EBE6DF]">
             Verify Free Coffee Voucher
           </h2>
-          <p className="mt-0.5 text-sm leading-relaxed text-[#A3A3A3]">
+          <p className="mt-0.5 text-xs sm:text-sm leading-relaxed text-[#A3A3A3]">
             Enter the customer&apos;s voucher code to confirm and redeem.
           </p>
         </div>
@@ -96,7 +96,7 @@ export function VoucherVerify() {
       <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col gap-3 sm:flex-row">
         <div className="relative flex-1">
           <Search
-            className="pointer-events-none absolute left-4 top-1/2 size-5 -translate-y-1/2 text-[#A3A3A3]/55"
+            className="pointer-events-none absolute left-4 top-1/2 size-4 sm:size-5 -translate-y-1/2 text-[#A3A3A3]/55"
             aria-hidden="true"
           />
           <label htmlFor="voucher-code" className="sr-only">
@@ -110,13 +110,13 @@ export function VoucherVerify() {
             disabled={isLoading}
             placeholder="e.g. CAFE-8H2K9Q"
             {...register('voucherCode')}
-            className="h-14 w-full rounded-[32px] border border-[#2D2D2D] bg-[#121212] pl-12 pr-4 font-mono text-base uppercase tracking-wider text-[#EBE6DF] placeholder:normal-case placeholder:font-sans placeholder:tracking-normal placeholder:text-[#A3A3A3]/40 focus:outline-none focus:border-[#EBE6DF] disabled:opacity-50 disabled:cursor-not-allowed"
+            className="h-12 sm:h-14 w-full rounded-[24px] sm:rounded-[32px] border border-[#2D2D2D] bg-[#121212] pl-10 sm:pl-12 pr-4 font-mono text-xs xs:text-sm sm:text-base uppercase tracking-wider text-[#EBE6DF] placeholder:normal-case placeholder:font-sans placeholder:tracking-normal placeholder:text-[#A3A3A3]/40 focus:outline-none focus:border-[#EBE6DF] disabled:opacity-50 disabled:cursor-not-allowed"
           />
         </div>
         <button
           type="submit"
           disabled={isLoading}
-          className="h-14 rounded-full bg-[#EBE6DF] px-8 text-base font-bold text-black uppercase tracking-widest border border-[#EBE6DF] hover:opacity-90 transition-opacity disabled:cursor-not-allowed disabled:opacity-50"
+          className="h-12 sm:h-14 rounded-full bg-[#EBE6DF] px-6 sm:px-8 text-xs xs:text-sm sm:text-base font-bold text-black uppercase tracking-widest border border-[#EBE6DF] hover:opacity-90 transition-opacity disabled:cursor-not-allowed disabled:opacity-50"
         >
           {isLoading ? 'Redeeming…' : 'Redeem Reward'}
         </button>

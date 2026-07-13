@@ -1,0 +1,6 @@
+{
+  "name": "Cafe Loyalty",
+  "description": "A secure, mobile-responsive digital loyalty platform for a café consisting of a Customer Web App and a Barista Admin Console.",
+  "requestFramePermissions": ["camera"],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

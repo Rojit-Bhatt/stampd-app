@@ -8,6 +8,21 @@ export default defineConfig({
     server: { entry: "server" },
   },
   vite: {
+    server: {
+      host: "0.0.0.0",
+      port: 3000,
+      proxy: {
+        "/api": {
+          target: "http://localhost:5001",
+          changeOrigin: true,
+        },
+        "/admin": {
+          target: "http://localhost:3001",
+          changeOrigin: true,
+          ws: true,
+        },
+      },
+    },
     plugins: [
       VitePWA({
         registerType: "autoUpdate",
@@ -21,16 +36,16 @@ export default defineConfig({
             {
               src: "/pwa-192x192.png",
               sizes: "192x192",
-              type: "image/png"
+              type: "image/png",
             },
             {
               src: "/pwa-512x512.png",
               sizes: "512x512",
-              type: "image/png"
-            }
-          ]
-        }
-      })
-    ]
-  }
+              type: "image/png",
+            },
+          ],
+        },
+      }),
+    ],
+  },
 });

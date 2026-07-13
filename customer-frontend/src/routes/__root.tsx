@@ -78,7 +78,10 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
       { title: "Cafe Coffesarowar — Loyalty" },
-      { name: "description", content: "Cafe Coffesarowar loyalty platform — earn stamps, unlock rewards." },
+      {
+        name: "description",
+        content: "Cafe Coffesarowar loyalty platform — earn stamps, unlock rewards.",
+      },
       { name: "author", content: "Cafe Coffesarowar" },
       { property: "og:title", content: "Cafe Coffesarowar — Loyalty" },
       { property: "og:description", content: "Earn stamps, unlock rewards at Cafe Coffesarowar." },
@@ -90,7 +93,10 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { rel: "icon", href: "/favicon.ico", type: "image/x-icon" },
       { rel: "preconnect", href: "https://fonts.googleapis.com" },
       { rel: "preconnect", href: "https://fonts.gstatic.com", crossOrigin: "anonymous" },
-      { rel: "stylesheet", href: "https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,500;0,600;1,500&family=Inter:wght@400;500;600&display=swap" },
+      {
+        rel: "stylesheet",
+        href: "https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap",
+      },
     ],
   }),
   shellComponent: RootShell,

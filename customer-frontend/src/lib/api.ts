@@ -1,14 +1,19 @@
-const API_URL = (import.meta.env.VITE_API_URL as string) || "http://localhost:5001";
+const API_URL =
+  (import.meta.env.VITE_API_URL as string) ||
+  (typeof window !== "undefined" ? "" : "http://localhost:5001");
 
 interface RequestOptions extends RequestInit {
-  body?: any;
+  body?: unknown;
 }
 
-export async function apiRequest<T = any>(path: string, options: RequestOptions = {}): Promise<T> {
+export async function apiRequest<T = unknown>(
+  path: string,
+  options: RequestOptions = {},
+): Promise<T> {
   const url = `${API_URL}${path}`;
 
   const headers = new Headers(options.headers || {});
-  
+
   if (!headers.has("Content-Type") && !(options.body instanceof FormData)) {
     headers.set("Content-Type", "application/json");
   }
@@ -43,7 +48,7 @@ export async function apiRequest<T = any>(path: string, options: RequestOptions 
   }
 
   try {
-    return await response.json() as T;
+    return (await response.json()) as T;
   } catch (_) {
     return {} as T;
   }

@@ -27,7 +27,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     if (typeof window !== "undefined") {
       const storedToken = localStorage.getItem("auth_token");
       const storedUser = localStorage.getItem("auth_user");
-      
+
       if (storedToken && storedUser) {
         try {
           setToken(storedToken);
@@ -49,7 +49,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         {
           method: "POST",
           body: { email, password },
-        }
+        },
       );
 
       if (res.success && res.token && res.user) {
@@ -68,13 +68,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const registerUser = async (name: string, email: string, password: string) => {
     setIsLoading(true);
     try {
-      const res = await apiRequest<{ success: boolean; message: string }>(
-        "/api/auth/register",
-        {
-          method: "POST",
-          body: { name, email, password },
-        }
-      );
+      const res = await apiRequest<{ success: boolean; message: string }>("/api/auth/register", {
+        method: "POST",
+        body: { name, email, password },
+      });
 
       if (!res.success) {
         throw new Error(res.message || "Failed to register.");

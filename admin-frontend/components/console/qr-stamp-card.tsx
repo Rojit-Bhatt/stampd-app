@@ -78,20 +78,20 @@ export function QrStampCard({ onSessionStart }: QrStampCardProps) {
   return (
     <section
       aria-label="Stamp QR generator"
-      className="flex h-full flex-col border border-[#2D2D2D] bg-[#1A1A1A] p-6 lg:p-8 rounded-[48px] overflow-hidden shadow-none"
+      className="flex h-full flex-col border border-[#2D2D2D] bg-[#1A1A1A] p-5 sm:p-6 lg:p-8 rounded-[32px] sm:rounded-[48px] overflow-hidden shadow-none"
     >
-      <div className="mb-6 flex items-center justify-between">
+      <div className="mb-6 flex items-center justify-between gap-3">
         <div>
-          <h2 className="font-serif text-xl font-normal text-[#EBE6DF]">
+          <h2 className="font-serif text-lg sm:text-xl font-normal text-[#EBE6DF]">
             Loyalty Stamp Session
           </h2>
-          <p className="mt-1 text-sm leading-relaxed text-[#A3A3A3]">
+          <p className="mt-1 text-xs sm:text-sm leading-relaxed text-[#A3A3A3]">
             Generate a one-time QR for the customer at the counter.
           </p>
         </div>
         {isActive && (
-          <div className="relative flex size-16 shrink-0 items-center justify-center" aria-live="polite">
-            <svg viewBox="0 0 64 64" className="size-16 -rotate-90" aria-hidden="true">
+          <div className="relative flex size-12 sm:size-16 shrink-0 items-center justify-center" aria-live="polite">
+            <svg viewBox="0 0 64 64" className="size-12 sm:size-16 -rotate-90" aria-hidden="true">
               <circle cx="32" cy="32" r={radius} fill="none" strokeWidth="5" className="stroke-neutral-800" />
               <circle
                 cx="32"
@@ -105,7 +105,7 @@ export function QrStampCard({ onSessionStart }: QrStampCardProps) {
                 className="stroke-[#EBE6DF] transition-all duration-1000 ease-linear"
               />
             </svg>
-            <span className="absolute text-sm font-bold tabular-nums text-[#EBE6DF]">
+            <span className="absolute text-xs sm:text-sm font-bold tabular-nums text-[#EBE6DF]">
               {secondsLeft}s
             </span>
             <span className="sr-only">{secondsLeft} seconds remaining before QR code expires</span>
@@ -113,24 +113,26 @@ export function QrStampCard({ onSessionStart }: QrStampCardProps) {
         )}
       </div>
 
-      <div className="flex flex-1 flex-col items-center justify-center gap-6">
+      <div className="flex flex-1 flex-col items-center justify-center gap-5 sm:gap-6">
         <div
-          className={`flex size-56 items-center justify-center border border-[#2D2D2D] bg-white rounded-[32px] overflow-hidden`}
+          className="flex size-44 xs:size-56 items-center justify-center border border-[#2D2D2D] bg-white rounded-[24px] xs:rounded-[32px] overflow-hidden p-4 sm:p-6 shrink-0"
         >
           {isActive && token ? (
-            <QRCodeSVG value={token} size={192} bgColor="#ffffff" fgColor="#000000" level="M" title="Loyalty stamp QR code" />
+            <div className="w-full h-full max-w-[192px] max-h-[192px]">
+              <QRCodeSVG value={token} size={undefined} className="w-full h-full" bgColor="#ffffff" fgColor="#000000" level="M" title="Loyalty stamp QR code" />
+            </div>
           ) : isExpired ? (
-            <div className="flex flex-col items-center gap-2 px-6 text-center">
-              <RefreshCw className="size-8 text-[#EBE6DF]" aria-hidden="true" />
-              <p className="text-sm font-bold uppercase tracking-wider text-[#EBE6DF]">QR expired</p>
-              <p className="text-xs text-[#A3A3A3]">
-                Generate a fresh code to continue stamping.
+            <div className="flex flex-col items-center gap-2 px-4 sm:px-6 text-center">
+              <RefreshCw className="size-6 sm:size-8 text-[#A3A3A3]" aria-hidden="true" />
+              <p className="text-xs sm:text-sm font-bold uppercase tracking-wider text-[#A3A3A3]">QR expired</p>
+              <p className="text-[10px] sm:text-xs text-[#A3A3A3]/70">
+                Generate a fresh code to continue.
               </p>
             </div>
           ) : (
-            <div className="flex flex-col items-center gap-2 px-6 text-center">
-              <QrCode className="size-8 text-[#A3A3A3]/25" aria-hidden="true" />
-              <p className="text-sm text-[#A3A3A3]">
+            <div className="flex flex-col items-center gap-2 px-4 sm:px-6 text-center">
+              <QrCode className="size-6 sm:size-8 text-[#A3A3A3]/25" aria-hidden="true" />
+              <p className="text-xs sm:text-sm text-[#A3A3A3]">
                 Your stamp QR will appear here
               </p>
             </div>
@@ -141,13 +143,13 @@ export function QrStampCard({ onSessionStart }: QrStampCardProps) {
           type="button"
           onClick={startSession}
           disabled={isLoading || isActive}
-          className="w-full max-w-sm bg-[#EBE6DF] px-8 py-5 text-lg font-bold tracking-wide text-black uppercase transition-opacity hover:opacity-90 disabled:opacity-50 disabled:pointer-events-none rounded-full border border-[#EBE6DF]"
+          className="w-full max-w-sm bg-[#EBE6DF] px-4 sm:px-8 py-3.5 sm:py-5 text-xs xs:text-sm sm:text-base md:text-lg font-bold tracking-wider text-black uppercase transition-opacity hover:opacity-90 disabled:opacity-50 disabled:pointer-events-none rounded-full border border-[#EBE6DF] truncate"
         >
           {isLoading ? 'Generating...' : isActive ? 'Token Active' : 'Generate New Stamp Token'}
         </button>
 
         {isActive && token && (
-          <p className="text-xs text-[#A3A3A3]">
+          <p className="text-[10px] sm:text-xs text-[#A3A3A3] text-center truncate w-full max-w-xs">
             Session token:{' '}
             <span className="font-mono font-medium text-[#EBE6DF]">
               {token}

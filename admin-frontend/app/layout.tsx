@@ -1,19 +1,6 @@
 import { Analytics } from '@vercel/analytics/next'
 import type { Metadata, Viewport } from 'next'
-import { Inter, Instrument_Serif } from 'next/font/google'
 import './globals.css'
-
-const inter = Inter({
-  subsets: ['latin'],
-  variable: '--font-inter',
-})
-
-const instrumentSerif = Instrument_Serif({
-  subsets: ['latin'],
-  weight: ['400'],
-  style: ['normal', 'italic'],
-  variable: '--font-instrument-serif',
-})
 
 export const metadata: Metadata = {
   title: 'Mansarowar Cafe — Staff System Portal',
@@ -55,7 +42,7 @@ export default function RootLayout({
   return (
     <html
       lang="en"
-      className={`light bg-background ${inter.variable} ${instrumentSerif.variable}`}
+      className="light bg-background"
     >
       <body className="font-sans antialiased">
         <AuthProvider>

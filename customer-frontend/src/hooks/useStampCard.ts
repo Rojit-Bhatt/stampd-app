@@ -11,7 +11,7 @@ export function useStampCard() {
     queryKey: ["stampCard"],
     queryFn: async () => {
       const response = await apiRequest<{ success: boolean; data: StampCardData }>(
-        "/api/stamps/balance"
+        "/api/stamps/balance",
       );
       return response.data;
     },

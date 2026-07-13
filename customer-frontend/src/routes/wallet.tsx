@@ -21,7 +21,7 @@ function WalletPage() {
   const { user, isLoading } = useAuth();
   const { data: vouchers = [], isLoading: vouchersLoading, error } = useVouchers();
   const navigate = useNavigate();
-  
+
   const [scanOpen, setScanOpen] = useState(false);
 
   useEffect(() => {
@@ -33,35 +33,34 @@ function WalletPage() {
   if (isLoading || vouchersLoading || !user || user.role !== "customer") {
     return (
       <div className="flex min-h-screen items-center justify-center bg-[#121212]">
-        <div className="h-8 w-8 animate-spin rounded-none border border-[#EBE6DF] border-t-transparent" />
+        <div className="h-8 w-8 animate-spin rounded-full border border-[#EBE6DF] border-t-transparent" />
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen w-full bg-[#121212] font-sans text-[#EBE6DF]">
-      <div className="mx-auto flex min-h-screen w-full max-w-[420px] flex-col bg-[#121212] text-[#EBE6DF] border-x border-[#2D2D2D] rounded-[48px] overflow-hidden">
+    <div className="min-h-screen w-full bg-[#121212] font-sans text-[#EBE6DF] flex items-center justify-center">
+      {/* Mobile-constrained frame, scales beautifully to tablet/desktop */}
+      <div className="mx-auto flex min-h-screen sm:min-h-[85vh] w-full max-w-full sm:max-w-md md:max-w-lg flex-col bg-[#121212] text-[#EBE6DF] border-x-0 sm:border border-[#2D2D2D] rounded-none sm:rounded-[40px] overflow-hidden shadow-2xl">
         <ScannerModal open={scanOpen} onClose={() => setScanOpen(false)} />
 
         {/* Header */}
-        <header className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3 border-b border-[#2D2D2D] bg-[#121212] px-5 py-4">
-          <div>
-            <p className="text-[10px] font-bold uppercase tracking-[0.22em] text-[#A3A3A3]">
+        <header className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-2 xs:gap-3 border-b border-[#2D2D2D] bg-[#121212] px-4 xs:px-5 py-3 xs:py-4">
+          <div className="min-w-0">
+            <p className="text-[9px] xs:text-[10px] font-bold uppercase tracking-[0.18em] xs:tracking-[0.22em] text-[#A3A3A3] truncate">
               Your Rewards
             </p>
-            <h1
-              className="text-base text-[#EBE6DF] font-serif font-normal"
-            >
+            <h1 className="text-sm xs:text-base text-[#EBE6DF] font-serif font-normal truncate">
               Voucher Wallet
             </h1>
           </div>
-          <span className="grid h-8 w-8 place-items-center rounded-[12px] border border-[#2D2D2D] bg-[#1A1A1A] text-xs font-bold text-[#EBE6DF]">
+          <span className="grid h-7 w-7 xs:h-8 xs:w-8 place-items-center rounded-[10px] xs:rounded-[12px] border border-[#2D2D2D] bg-[#1A1A1A] text-xs font-bold text-[#EBE6DF]">
             {vouchers.length}
           </span>
         </header>
 
         {/* Main List */}
-        <main className="flex-1 space-y-5 px-4 py-6 overflow-y-auto">
+        <main className="flex-1 space-y-5 px-4 xs:px-5 py-5 xs:py-6 overflow-y-auto">
           {error ? (
             <div className="flex flex-col items-center gap-2 py-10 text-center text-red-500">
               <AlertCircle className="h-8 w-8" />
@@ -82,7 +81,8 @@ function WalletPage() {
           ) : (
             <>
               <p className="text-center text-xs text-[#A3A3A3] font-medium">
-                {vouchers.length} active {vouchers.length === 1 ? "reward" : "rewards"} · Tap code to copy
+                {vouchers.length} active {vouchers.length === 1 ? "reward" : "rewards"} · Tap code
+                to copy
               </p>
 
               {vouchers.map((v) => (
@@ -105,7 +105,11 @@ function WalletPage() {
   );
 }
 
-function VoucherTicket({ voucher }: { voucher: { voucherCode: string; isValid: boolean; earnedAt: string } }) {
+function VoucherTicket({
+  voucher,
+}: {
+  voucher: { voucherCode: string; isValid: boolean; earnedAt: string };
+}) {
   const [copied, setCopied] = useState(false);
 
   const copy = async () => {
@@ -146,10 +150,8 @@ function VoucherTicket({ voucher }: { voucher: { voucherCode: string; isValid: b
                 {isRedeemed ? "Redeemed Voucher" : "Free Coffee Voucher"}
               </span>
             </div>
-            
-            <h2
-              className="mt-3 truncate text-lg text-[#EBE6DF] font-serif font-normal"
-            >
+
+            <h2 className="mt-3 truncate text-lg text-[#EBE6DF] font-serif font-normal">
               1 Free Coffee
             </h2>
             <p className="mt-0.5 truncate text-xs text-[#A3A3A3]">
@@ -180,10 +182,7 @@ function VoucherTicket({ voucher }: { voucher: { voucherCode: string; isValid: b
 
           {/* Divider */}
           <div className="relative flex items-center">
-            <div
-              className="h-[85%] border-l border-dashed border-[#2D2D2D]"
-              aria-hidden
-            />
+            <div className="h-[85%] border-l border-dashed border-[#2D2D2D]" aria-hidden />
           </div>
 
           {/* Right stub */}

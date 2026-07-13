@@ -6,13 +6,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "../lib/api";
 import { useNavigate } from "@tanstack/react-router";
 
-export function ScannerModal({
-  open,
-  onClose,
-}: {
-  open: boolean;
-  onClose: () => void;
-}) {
+export function ScannerModal({ open, onClose }: { open: boolean; onClose: () => void }) {
   const scannerRef = useRef<Html5Qrcode | null>(null);
   const queryClient = useQueryClient();
   const navigate = useNavigate();
@@ -40,64 +34,69 @@ export function ScannerModal({
         qrScanner = new Html5Qrcode("qr-reader-viewport");
         scannerRef.current = qrScanner;
 
-        qrScanner.start(
-          { facingMode: "environment" },
-          {
-            fps: 10,
-            qrbox: (width, height) => {
-              const size = Math.min(width, height) * 0.75;
-              return { width: size, height: size };
+        qrScanner
+          .start(
+            { facingMode: "environment" },
+            {
+              fps: 10,
+              qrbox: (width, height) => {
+                const size = Math.min(width, height) * 0.75;
+                return { width: size, height: size };
+              },
             },
-          },
-          async (decodedText) => {
-            if (!isMounted) return;
+            async (decodedText) => {
+              if (!isMounted) return;
 
-            if (qrScanner && qrScanner.isScanning) {
+              if (qrScanner && qrScanner.isScanning) {
+                try {
+                  await qrScanner.stop();
+                } catch (stopErr) {
+                  console.error("Error stopping scanner:", stopErr);
+                }
+              }
+
+              const toastId = toast.loading("Claiming your loyalty stamp...");
               try {
-                await qrScanner.stop();
-              } catch (stopErr) {
-                console.error("Error stopping scanner:", stopErr);
-              }
-            }
-
-            const toastId = toast.loading("Claiming your loyalty stamp...");
-            try {
-              const response = await apiRequest<{ success: boolean; message: string; data?: { stampsEarned: number; rewardTriggered: boolean; voucherCode?: string } }>(
-                "/api/stamps/claim",
-                {
+                const response = await apiRequest<{
+                  success: boolean;
+                  message: string;
+                  data?: { stampsEarned: number; rewardTriggered: boolean; voucherCode?: string };
+                }>("/api/stamps/claim", {
                   method: "POST",
-                  body: { token: decodedText }
-                }
-              );
+                  body: { token: decodedText },
+                });
 
-              if (response.success) {
-                queryClient.invalidateQueries({ queryKey: ["stampCard"] });
-                queryClient.invalidateQueries({ queryKey: ["vouchers"] });
+                if (response.success) {
+                  queryClient.invalidateQueries({ queryKey: ["stampCard"] });
+                  queryClient.invalidateQueries({ queryKey: ["vouchers"] });
 
-                if (response.data && response.data.rewardTriggered === true) {
-                  toast.success("Card completed!", { id: toastId });
-                  setEarnedVoucher(response.data.voucherCode || "CAFE-REWARD");
+                  if (response.data && response.data.rewardTriggered === true) {
+                    toast.success("Card completed!", { id: toastId });
+                    setEarnedVoucher(response.data.voucherCode || "CAFE-REWARD");
+                  } else {
+                    toast.success(response.message || "Stamp successfully claimed!", {
+                      id: toastId,
+                    });
+                    onClose();
+                  }
                 } else {
-                  toast.success(response.message || "Stamp successfully claimed!", { id: toastId });
-                  onClose();
+                  throw new Error(response.message || "Failed to claim stamp.");
                 }
-              } else {
-                throw new Error(response.message || "Failed to claim stamp.");
+              } catch (err) {
+                toast.error((err as Error).message || "Failed to claim stamp.", { id: toastId });
+                onClose();
               }
-            } catch (err: any) {
-              toast.error(err.message || "Failed to claim stamp.", { id: toastId });
-              onClose();
-            }
-          },
-          () => {
-            // Silent failure
-          }
-        ).catch((err) => {
-          if (!isMounted) return;
-          console.error("Camera access failed:", err);
-          toast.error("Camera access blocked. Please enable camera permission in settings.");
-          onClose();
-        });
+            },
+            () => {
+              // Silent failure
+            },
+          )
+          .catch((err) => {
+            if (!isMounted) return;
+            console.error("Camera access failed:", err);
+            toast.error("Camera access blocked. Please enable camera permission in settings.");
+            onClose();
+          });
       } catch (err) {
         console.error("Failed to initialize scanner:", err);
         toast.error("Failed to initialize camera scanner.");
@@ -161,11 +160,7 @@ export function ScannerModal({
             <span className="absolute -top-1 -right-1 text-[#EBE6DF] text-lg animate-ping">✦</span>
           </div>
 
-          <h2 
-            className="mt-6 text-3xl font-normal text-[#EBE6DF] font-serif"
-          >
-            Congratulations!
-          </h2>
+          <h2 className="mt-6 text-3xl font-normal text-[#EBE6DF] font-serif">Congratulations!</h2>
           <p className="mt-2 text-sm text-[#A3A3A3]">
             You completed your punch card and earned a free coffee voucher!
           </p>
@@ -202,7 +197,7 @@ export function ScannerModal({
           <div className="mt-10 flex flex-col gap-3">
             <button
               onClick={handleGoToWallet}
-              className="flex w-full items-center justify-center gap-2 bg-[#EBE6DF] py-4 text-sm font-bold uppercase tracking-wider text-black border border-[#EBE6DF] hover:opacity-90 active:scale-98 transition-all"
+              className="flex w-full items-center justify-center gap-2 bg-[#EBE6DF] py-4 text-sm font-bold uppercase tracking-wider text-black border border-[#EBE6DF] hover:opacity-90 active:scale-98 transition-all rounded-[24px]"
             >
               Go to Wallet
               <ArrowRight className="h-4 w-4" />
@@ -222,16 +217,15 @@ export function ScannerModal({
             <p className="text-[10px] uppercase tracking-[0.28em] text-[#A3A3A3] font-bold">
               Cafe Coffesarowar
             </p>
-            <h2
-              className="mt-1 text-2xl font-normal text-[#EBE6DF] font-serif"
-            >
-              Scan Counter QR
-            </h2>
+            <h2 className="mt-1 text-2xl font-normal text-[#EBE6DF] font-serif">Scan Counter QR</h2>
           </div>
 
           {/* Viewport Frame */}
           <div className="relative aspect-square w-full max-w-[300px] overflow-hidden border border-[#2D2D2D] bg-[#1A1A1A] rounded-[40px]">
-            <div id="qr-reader-viewport" className="absolute inset-0 h-full w-full overflow-hidden [&>video]:h-full [&>video]:w-full [&>video]:object-cover" />
+            <div
+              id="qr-reader-viewport"
+              className="absolute inset-0 h-full w-full overflow-hidden [&>video]:h-full [&>video]:w-full [&>video]:object-cover"
+            />
 
             <div className="pointer-events-none absolute inset-6 overflow-hidden z-10">
               <div

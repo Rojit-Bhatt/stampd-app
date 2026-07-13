@@ -1,3 +1,4 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap');
 @import 'tailwindcss';
 @import 'tw-animate-css';
 @import 'shadcn/tailwind.css';
@@ -45,8 +46,8 @@
   --radius-4xl: calc(var(--radius) * 2.6);
   --color-success: var(--success);
   --color-success-foreground: var(--success-foreground);
-  --font-sans: var(--font-inter), sans-serif;
-  --font-serif: var(--font-instrument-serif), serif;
+  --font-sans: 'Inter', sans-serif;
+  --font-serif: 'Inter', sans-serif;
 }
 
 :root {
@@ -165,5 +166,8 @@
   }
   body {
     @apply bg-background text-foreground;
+    font-family: 'Inter', sans-serif;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
   }
 }

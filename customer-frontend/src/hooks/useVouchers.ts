@@ -12,7 +12,7 @@ export function useVouchers() {
     queryKey: ["vouchers"],
     queryFn: async () => {
       const response = await apiRequest<{ success: boolean; vouchers: Voucher[] }>(
-        "/api/vouchers/my-wallet"
+        "/api/vouchers/my-wallet",
       );
       return response.vouchers || [];
     },

@@ -8,7 +8,9 @@
     "customer-frontend"
   ],
   "scripts": {
-    "dev": "concurrently \"npm run dev -w backend\" \"npm run dev -w admin-frontend\" \"npm run dev -w customer-frontend\""
+    "dev": "concurrently \"npm run dev -w backend\" \"npm run dev -w admin-frontend\" \"npm run dev -w customer-frontend\"",
+    "build": "npm run build -w customer-frontend && npm run build -w admin-frontend",
+    "lint": "npm run lint -w customer-frontend && npm run lint -w admin-frontend"
   },
   "devDependencies": {
     "concurrently": "^8.2.2"

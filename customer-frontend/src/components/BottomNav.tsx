@@ -14,8 +14,9 @@ export function BottomNav({ activeTab, onScanClick }: BottomNavProps) {
         {/* Left: Stamp Card Link */}
         <Link
           to="/dashboard"
-          className={`flex flex-col items-center gap-1 transition-colors ${activeTab === "dashboard" ? "text-[#EBE6DF]" : "text-[#A3A3A3] hover:text-[#EBE6DF]"
-            }`}
+          className={`flex min-h-[44px] min-w-[44px] flex-col items-center justify-center gap-1 p-2 transition-colors ${
+            activeTab === "dashboard" ? "text-[#EBE6DF]" : "text-[#A3A3A3] hover:text-[#EBE6DF]"
+          }`}
           aria-label="Stamp Card"
         >
           <Coffee className="h-5 w-5" strokeWidth={activeTab === "dashboard" ? 2.5 : 2} />
@@ -40,8 +41,9 @@ export function BottomNav({ activeTab, onScanClick }: BottomNavProps) {
         {/* Right: Wallet Link */}
         <Link
           to="/wallet"
-          className={`flex flex-col items-center gap-1 transition-colors ${activeTab === "wallet" ? "text-[#EBE6DF]" : "text-[#A3A3A3] hover:text-[#EBE6DF]"
-            }`}
+          className={`flex min-h-[44px] min-w-[44px] flex-col items-center justify-center gap-1 p-2 transition-colors ${
+            activeTab === "wallet" ? "text-[#EBE6DF]" : "text-[#A3A3A3] hover:text-[#EBE6DF]"
+          }`}
           aria-label="Voucher Wallet"
         >
           <Ticket className="h-5 w-5" strokeWidth={activeTab === "wallet" ? 2.5 : 2} />
