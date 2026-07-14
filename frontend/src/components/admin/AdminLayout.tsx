@@ -1,4 +1,5 @@
-import { NavLink, Outlet, useNavigate, useParams } from "react-router-dom";
+import { NavLink, Outlet, useLocation, useNavigate, useParams } from "react-router-dom";
+import { useEffect, useState } from "react";
 import {
   LayoutDashboard,
   QrCode,
@@ -10,12 +11,28 @@ import {
   FileSpreadsheet,
   Phone,
   Calendar,
+  ChevronDown,
   LogOut,
 } from "lucide-react";
 import { useAdminAuth } from "../../context/AdminAuthContext";
 import { useAdminSettings } from "../../hooks/useAdminSettings";
 
-const NAV = [
+interface NavLeaf {
+  to: string;
+  end?: boolean;
+  label: string;
+  Icon: typeof LayoutDashboard;
+}
+
+interface NavGroup {
+  label: string;
+  Icon: typeof LayoutDashboard;
+  children: { to: string; label: string }[];
+}
+
+const isGroup = (item: NavLeaf | NavGroup): item is NavGroup => "children" in item;
+
+const NAV: (NavLeaf | NavGroup)[] = [
   { to: "", end: true, label: "Overview", Icon: LayoutDashboard },
   { to: "generate", label: "Generate stamp", Icon: QrCode },
   { to: "redeem", label: "Redeem voucher", Icon: TicketCheck },
@@ -25,21 +42,58 @@ const NAV = [
   { to: "contact", label: "Contact", Icon: Phone },
   { to: "menu", label: "Menu", Icon: UtensilsCrossed },
   { to: "events", label: "Events", Icon: Calendar },
-  { to: "reports/summary", label: "Summary report", Icon: FileSpreadsheet },
-  { to: "reports/customers", label: "Customer report", Icon: FileSpreadsheet },
+  {
+    label: "Reports",
+    Icon: FileSpreadsheet,
+    children: [
+      { to: "reports/summary", label: "Summary report" },
+      { to: "reports/customers", label: "Customer report" },
+    ],
+  },
 ];
 
 // Desktop business-admin console shell. Sidebar recolors from the tenant's
 // brand; content routes render in <Outlet/>.
+// A group is open if the admin toggled it open, or if one of its children
+// is the currently active route (so deep-linking to a sub-report doesn't
+// hide the nav item that reveals it).
+function groupsWithActiveChild(pathname: string): Set<string> {
+  const open = new Set<string>();
+  for (const item of NAV) {
+    if (isGroup(item) && item.children.some((c) => pathname.includes(c.to))) {
+      open.add(item.label);
+    }
+  }
+  return open;
+}
+
 export function AdminLayout() {
   const { slug } = useParams();
   const navigate = useNavigate();
+  const location = useLocation();
   const { user, logout } = useAdminAuth();
   const { data: settings } = useAdminSettings();
 
   const name = settings?.name || "Business";
   const initial = name.charAt(0).toUpperCase();
   const brand = settings?.branding?.primaryColor || "#B5533C";
+
+  const [openGroups, setOpenGroups] = useState<Set<string>>(() => groupsWithActiveChild(location.pathname));
+
+  useEffect(() => {
+    const active = groupsWithActiveChild(location.pathname);
+    if (active.size === 0) return;
+    setOpenGroups((prev) => new Set([...prev, ...active]));
+  }, [location.pathname]);
+
+  const toggleGroup = (label: string) => {
+    setOpenGroups((prev) => {
+      const next = new Set(prev);
+      if (next.has(label)) next.delete(label);
+      else next.add(label);
+      return next;
+    });
+  };
 
   const handleLogout = () => {
     logout();
@@ -63,24 +117,59 @@ export function AdminLayout() {
         </div>
 
         <nav className="flex flex-col gap-0.5">
-          {NAV.map(({ to, end, label, Icon }) => (
-            <NavLink
-              key={to || "overview"}
-              to={to}
-              end={end}
-              className={({ isActive }) =>
-                `flex items-center gap-3 rounded-[11px] px-3.5 py-2.5 text-[13.5px] font-semibold transition-colors ${
-                  isActive
-                    ? "text-white"
-                    : "text-[var(--ink)] hover:bg-[var(--bg)]"
-                }`
-              }
-              style={({ isActive }) => (isActive ? { background: "var(--brand)" } : undefined)}
-            >
-              <Icon className="h-4 w-4" />
-              {label}
-            </NavLink>
-          ))}
+          {NAV.map((item) =>
+            isGroup(item) ? (
+              <div key={item.label}>
+                <button
+                  onClick={() => toggleGroup(item.label)}
+                  className="flex w-full items-center gap-3 rounded-[11px] px-3.5 py-2.5 text-[13.5px] font-semibold text-[var(--ink)] transition-colors hover:bg-[var(--bg)]"
+                  aria-expanded={openGroups.has(item.label)}
+                >
+                  <item.Icon className="h-4 w-4" />
+                  <span className="flex-1 text-left">{item.label}</span>
+                  <ChevronDown
+                    className="h-3.5 w-3.5 flex-shrink-0 transition-transform"
+                    style={{ transform: openGroups.has(item.label) ? "rotate(180deg)" : undefined }}
+                  />
+                </button>
+                {openGroups.has(item.label) && (
+                  <div className="ml-4 flex flex-col gap-0.5 border-l border-[var(--line)] pl-3">
+                    {item.children.map((child) => (
+                      <NavLink
+                        key={child.to}
+                        to={child.to}
+                        className={({ isActive }) =>
+                          `rounded-[9px] px-3 py-2 text-[13px] font-semibold transition-colors ${
+                            isActive ? "text-white" : "text-[var(--ink)] hover:bg-[var(--bg)]"
+                          }`
+                        }
+                        style={({ isActive }) => (isActive ? { background: "var(--brand)" } : undefined)}
+                      >
+                        {child.label}
+                      </NavLink>
+                    ))}
+                  </div>
+                )}
+              </div>
+            ) : (
+              <NavLink
+                key={item.to || "overview"}
+                to={item.to}
+                end={item.end}
+                className={({ isActive }) =>
+                  `flex items-center gap-3 rounded-[11px] px-3.5 py-2.5 text-[13.5px] font-semibold transition-colors ${
+                    isActive
+                      ? "text-white"
+                      : "text-[var(--ink)] hover:bg-[var(--bg)]"
+                  }`
+                }
+                style={({ isActive }) => (isActive ? { background: "var(--brand)" } : undefined)}
+              >
+                <item.Icon className="h-4 w-4" />
+                {item.label}
+              </NavLink>
+            )
+          )}
         </nav>
 
         <div className="mt-auto border-t border-[var(--line)] pt-3">
