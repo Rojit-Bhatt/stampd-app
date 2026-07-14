@@ -37,6 +37,7 @@ const RedeemVoucher = lazy(() => import('./routes/admin/RedeemVoucher'));
 const AdminCustomers = lazy(() => import('./routes/admin/AdminCustomers'));
 const StampProgram = lazy(() => import('./routes/admin/StampProgram'));
 const Branding = lazy(() => import('./routes/admin/Branding'));
+const AdminContact = lazy(() => import('./routes/admin/AdminContact'));
 const MenuManagement = lazy(() => import('./routes/admin/MenuManagement'));
 const AdminReportsSummary = lazy(() => import('./routes/admin/AdminReportsSummary'));
 const AdminReportsCustomers = lazy(() => import('./routes/admin/AdminReportsCustomers'));
@@ -115,6 +116,7 @@ export default function App() {
                       <Route path="customers" element={<AdminCustomers />} />
                       <Route path="program" element={<StampProgram />} />
                       <Route path="branding" element={<Branding />} />
+                      <Route path="contact" element={<AdminContact />} />
                       <Route path="menu" element={<MenuManagement />} />
                       <Route path="reports/summary" element={<AdminReportsSummary />} />
                       <Route path="reports/customers" element={<AdminReportsCustomers />} />

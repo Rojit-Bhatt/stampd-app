@@ -1,10 +1,16 @@
-import { Coffee, MailWarning } from "lucide-react";
+import { Coffee, MailWarning, MapPin, Phone as PhoneIcon, Mail, Clock, Instagram, Facebook, Twitter } from "lucide-react";
 import toast from "react-hot-toast";
 import { useCustomerAuth } from "../context/CustomerAuthContext";
 import { useTenant } from "../context/TenantContext";
 import { useStampCard } from "../hooks/useStampCard";
 import { apiRequest } from "../lib/api";
 import { PunchCard } from "../components/customer/PunchCard";
+
+function osmEmbedUrl(lat: number, lon: number): string {
+  const delta = 0.01;
+  const bbox = `${lon - delta},${lat - delta},${lon + delta},${lat + delta}`;
+  return `https://www.openstreetmap.org/export/embed.html?bbox=${bbox}&marker=${lat},${lon}`;
+}
 
 // Rendered inside CustomerLayout (phone shell + bottom nav). Content only.
 export default function CustomerDashboard() {
@@ -19,6 +25,21 @@ export default function CustomerDashboard() {
   const stampsEarned = stampData?.stampsEarned ?? 0;
   const remaining = Math.max(0, required - stampsEarned);
   const initial = (tenant?.name || "?").charAt(0).toUpperCase();
+
+  const contact = tenant?.contact;
+  const hasLatLong = contact?.latitude != null && contact?.longitude != null;
+  const hasContact = Boolean(
+    contact &&
+      (contact.phone ||
+        contact.email ||
+        contact.address ||
+        contact.hours ||
+        contact.aboutUs ||
+        hasLatLong ||
+        contact.socials.instagram ||
+        contact.socials.facebook ||
+        contact.socials.x)
+  );
 
   const awayText =
     remaining > 0
@@ -112,6 +133,98 @@ export default function CustomerDashboard() {
         </span>
         <span className="text-sm font-semibold text-[var(--ink)]">{awayText}</span>
       </div>
+
+      {hasContact && contact && (
+        <div className="mt-4 rounded-[20px] border border-[var(--line)] bg-[var(--surface)] p-5">
+          <div className="mb-3 text-xs font-bold uppercase tracking-wider text-[var(--soft)]">
+            Visit us
+          </div>
+
+          {hasLatLong && (
+            <iframe
+              title="Location"
+              src={osmEmbedUrl(contact.latitude as number, contact.longitude as number)}
+              className="mb-3 h-[160px] w-full rounded-[14px] border-0"
+            />
+          )}
+
+          {contact.address && (
+            <div className="mb-2 flex items-start gap-2 text-sm text-[var(--ink)]">
+              <MapPin className="mt-0.5 h-4 w-4 flex-shrink-0 text-[var(--muted)]" />
+              <a
+                href={
+                  hasLatLong
+                    ? `https://www.openstreetmap.org/?mlat=${contact.latitude}&mlon=${contact.longitude}`
+                    : undefined
+                }
+                target="_blank"
+                rel="noreferrer"
+              >
+                {contact.address}
+              </a>
+            </div>
+          )}
+          {contact.phone && (
+            <a href={`tel:${contact.phone}`} className="mb-2 flex items-center gap-2 text-sm text-[var(--ink)]">
+              <PhoneIcon className="h-4 w-4 flex-shrink-0 text-[var(--muted)]" />
+              {contact.phone}
+            </a>
+          )}
+          {contact.email && (
+            <a href={`mailto:${contact.email}`} className="mb-2 flex items-center gap-2 text-sm text-[var(--ink)]">
+              <Mail className="h-4 w-4 flex-shrink-0 text-[var(--muted)]" />
+              {contact.email}
+            </a>
+          )}
+          {contact.hours && (
+            <div className="mb-2 flex items-start gap-2 whitespace-pre-line text-sm text-[var(--ink)]">
+              <Clock className="mt-0.5 h-4 w-4 flex-shrink-0 text-[var(--muted)]" />
+              {contact.hours}
+            </div>
+          )}
+          {contact.aboutUs && (
+            <p className="mb-3 text-sm text-[var(--muted)]">{contact.aboutUs}</p>
+          )}
+
+          {(contact.socials.instagram || contact.socials.facebook || contact.socials.x) && (
+            <div className="flex gap-2">
+              {contact.socials.instagram && (
+                <a
+                  href={contact.socials.instagram}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="flex h-9 w-9 items-center justify-center rounded-full bg-[var(--bg)] text-[var(--muted)] hover:text-[var(--brand)]"
+                  aria-label="Instagram"
+                >
+                  <Instagram className="h-4 w-4" />
+                </a>
+              )}
+              {contact.socials.facebook && (
+                <a
+                  href={contact.socials.facebook}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="flex h-9 w-9 items-center justify-center rounded-full bg-[var(--bg)] text-[var(--muted)] hover:text-[var(--brand)]"
+                  aria-label="Facebook"
+                >
+                  <Facebook className="h-4 w-4" />
+                </a>
+              )}
+              {contact.socials.x && (
+                <a
+                  href={contact.socials.x}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="flex h-9 w-9 items-center justify-center rounded-full bg-[var(--bg)] text-[var(--muted)] hover:text-[var(--brand)]"
+                  aria-label="X (Twitter)"
+                >
+                  <Twitter className="h-4 w-4" />
+                </a>
+              )}
+            </div>
+          )}
+        </div>
+      )}
 
       <p className="mt-4 text-center text-xs text-[var(--muted)]">
         {unverified

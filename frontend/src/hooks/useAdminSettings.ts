@@ -8,6 +8,21 @@ export interface AdminBranding {
   primaryColor: string;
 }
 
+export interface AdminContact {
+  phone: string;
+  email: string;
+  address: string;
+  latitude: number | null;
+  longitude: number | null;
+  hours: string;
+  aboutUs: string;
+  socials: {
+    instagram: string;
+    facebook: string;
+    x: string;
+  };
+}
+
 export interface AdminProgram {
   stampsRequired: number;
   rewardTitle: string;
@@ -21,6 +36,7 @@ export interface AdminSettings {
   slug: string;
   status: "active" | "suspended";
   branding: AdminBranding;
+  contact: AdminContact;
   program: AdminProgram;
   menuEnabled: boolean;
 }
@@ -28,6 +44,7 @@ export interface AdminSettings {
 export interface AdminSettingsPatch {
   name?: string;
   branding?: Partial<AdminBranding>;
+  contact?: Partial<AdminContact>;
   program?: Partial<AdminProgram>;
   menuEnabled?: boolean;
 }

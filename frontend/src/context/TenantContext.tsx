@@ -9,6 +9,21 @@ export interface TenantBranding {
   primaryColor: string;
 }
 
+export interface TenantContact {
+  phone: string;
+  email: string;
+  address: string;
+  latitude: number | null;
+  longitude: number | null;
+  hours: string;
+  aboutUs: string;
+  socials: {
+    instagram: string;
+    facebook: string;
+    x: string;
+  };
+}
+
 export interface TenantProgram {
   stampsRequired: number;
   rewardTitle: string;
@@ -20,6 +35,7 @@ export interface Tenant {
   slug: string;
   name: string;
   branding: TenantBranding;
+  contact: TenantContact;
   program: TenantProgram;
   menuEnabled: boolean;
 }
