@@ -6,6 +6,7 @@ import { useStampCard } from "../hooks/useStampCard";
 import { useCustomerMenu } from "../hooks/useCustomerMenu";
 import { apiRequest } from "../lib/api";
 import { PunchCard } from "../components/customer/PunchCard";
+import { AccountMenu } from "../components/shared/AccountMenu";
 
 function osmEmbedUrl(lat: number, lon: number): string {
   const delta = 0.01;
@@ -73,12 +74,13 @@ export default function CustomerDashboard() {
             {tenant?.name}
           </div>
         </div>
-        <button
-          onClick={logout}
-          className="rounded-full border border-[var(--line)] bg-[var(--bg)] px-3 py-1.5 text-xs font-bold text-[var(--muted)] transition-colors hover:text-[var(--ink)]"
-        >
-          Logout
-        </button>
+        <AccountMenu
+          initial={(user?.name || "?").charAt(0).toUpperCase()}
+          name={user?.name || ""}
+          email={user?.email}
+          settingsPath="settings"
+          onLogout={logout}
+        />
       </div>
 
       {/* Unverified-email prompt. Scanning is blocked by the backend (403)
