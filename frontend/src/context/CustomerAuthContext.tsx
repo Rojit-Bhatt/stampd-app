@@ -4,7 +4,7 @@ import { apiRequest } from "../lib/api";
 export interface User {
   id: string;
   name: string;
-  role: "admin" | "customer";
+  role: "customer" | "business_admin" | "platform";
 }
 
 interface CustomerAuthContextType {

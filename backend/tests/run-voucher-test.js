@@ -5,6 +5,7 @@ const http = require("http");
 
 const PORT = 5003;
 const BASE_URL = `http://localhost:${PORT}`;
+const TENANT_SLUG = "coffesarowar";
 
 // Helper for making JSON requests and capturing raw HTTP interactions
 function makeRequest(method, urlPath, headers = {}, body = null) {
@@ -87,7 +88,7 @@ function makeRequest(method, urlPath, headers = {}, body = null) {
 }
 
 async function run() {
-  console.log("Preparing E2E test server on port 5002...");
+  console.log(`Preparing E2E test server on port ${PORT}...`);
 
   // 1. Read existing server.js
   const serverJsPath = path.resolve(__dirname, "../server.js");
@@ -124,6 +125,11 @@ app.post("/api/test/reset-cooldown", async (req, res) => {
   // 3. Start the test server
   const testEnv = { ...process.env };
   delete testEnv.MONGODB_URI;
+  // server.js reads `process.env.PORT || 5001`, so drive the port via env.
+  // (The old code tried to string-replace `const PORT = 5001;`, which no
+  // longer matches `const PORT = process.env.PORT || 5001;` — leaving the
+  // test server on 5001 while requests hit 5003 → ECONNREFUSED.)
+  testEnv.PORT = String(PORT);
   const serverProcess = spawn("node", [testServerPath], {
     env: testEnv,
     cwd: path.resolve(__dirname, "..")
@@ -145,7 +151,7 @@ app.post("/api/test/reset-cooldown", async (req, res) => {
   try {
     // A. LOGIN ADMIN
     console.log("--- TEST A: LOGIN ADMIN ---");
-    const adminLoginRes = await makeRequest("POST", "/api/auth/login", {}, {
+    const adminLoginRes = await makeRequest("POST", "/api/auth/login", { "X-Tenant-Slug": TENANT_SLUG }, {
       email: "barista@mansarowar.cafe",
       password: "password"
     });
@@ -156,7 +162,7 @@ app.post("/api/test/reset-cooldown", async (req, res) => {
 
     // B. LOGIN CUSTOMER
     console.log("--- TEST B: LOGIN CUSTOMER ---");
-    const customerLoginRes = await makeRequest("POST", "/api/auth/login", {}, {
+    const customerLoginRes = await makeRequest("POST", "/api/auth/login", { "X-Tenant-Slug": TENANT_SLUG }, {
       email: "customer@mansarowar.cafe",
       password: "password"
     });
@@ -211,6 +217,12 @@ app.post("/api/test/reset-cooldown", async (req, res) => {
       currentStamps = claimRes.body.data.stampsEarned;
     }
 
+    if (!earnedVoucherCode) {
+      throw new Error("No voucher generated after reaching the 5-stamp milestone.");
+    }
+    if (!earnedVoucherCode.startsWith("COFF-")) {
+      throw new Error(`Voucher ${earnedVoucherCode} does not use coffesarowar's COFF- prefix.`);
+    }
     console.log(`Successfully reached milestone! Generated Voucher Code: ${earnedVoucherCode}`);
 
     // E. FETCH CUSTOMER WALLET
@@ -239,8 +251,12 @@ app.post("/api/test/reset-cooldown", async (req, res) => {
     console.log(finalWalletRes.rawRequestLog);
     console.log("\n" + finalWalletRes.rawResponseLog + "\n");
 
+    if (redeemRes.statusCode !== 200) {
+      throw new Error(`Voucher redemption failed with status ${redeemRes.statusCode}.`);
+    }
   } catch (err) {
     console.error("Test execution failed:", err);
+    process.exitCode = 1;
   } finally {
     console.log("Cleaning up test server process...");
     serverProcess.kill();

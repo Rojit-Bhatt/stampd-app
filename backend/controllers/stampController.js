@@ -6,7 +6,7 @@ const Voucher = require("../models/Voucher");
 
 const generateAdminQRToken = async (req, res, next) => {
   try {
-    const result = await generateQRToken(req.user.id);
+    const result = await generateQRToken(req.user.id, req.user.organizationId);
     res.status(201).json(result);
   } catch (error) {
     next(error);
@@ -18,7 +18,8 @@ const claimCustomerStamp = async (req, res, next) => {
     const result = await claimStamp({
       token: req.body.token,
       userId: req.user.id,
-      role: req.user.role
+      role: req.user.role,
+      organizationId: req.user.organizationId
     });
 
     res.status(200).json(result);
@@ -29,7 +30,7 @@ const claimCustomerStamp = async (req, res, next) => {
 
 const getStampBalance = async (req, res, next) => {
   try {
-    const result = await getStampBalanceByUserId(req.user.id);
+    const result = await getStampBalanceByUserId(req.user.id, req.user.organizationId);
     res.status(200).json(result);
   } catch (error) {
     next(error);
@@ -38,7 +39,7 @@ const getStampBalance = async (req, res, next) => {
 
 const getRecentScans = async (req, res, next) => {
   try {
-    const events = await StampClaimEvent.find()
+    const events = await StampClaimEvent.find({ organizationId: req.user.organizationId })
       .populate("userId", "name")
       .sort({ createdAt: -1 })
       .limit(50);
@@ -60,20 +61,24 @@ const getRecentScans = async (req, res, next) => {
 
 const getCustomersList = async (req, res, next) => {
   try {
-    const customers = await User.find({ role: "customer" }).sort({ name: 1 });
+    const organizationId = req.user.organizationId;
+    const customers = await User.find({ role: "customer", organizationId }).sort({ name: 1 });
 
     const data = await Promise.all(
       customers.map(async (customer) => {
-        const stampCard = await StampCard.findOne({ userId: customer._id });
+        const stampCard = await StampCard.findOne({ userId: customer._id, organizationId });
         const stampsEarned = stampCard ? stampCard.stampsEarned : 0;
         const lastStampedAt = stampCard ? stampCard.lastStampedAt : null;
 
-        const validVoucherCount = await Voucher.countDocuments({
-          userId: customer._id,
-          isValid: true,
-        });
+        const validVoucherCount = (
+          await Voucher.find({
+            userId: customer._id,
+            organizationId,
+            isValid: true,
+          })
+        ).length;
 
-        const events = await StampClaimEvent.find({ userId: customer._id })
+        const events = await StampClaimEvent.find({ userId: customer._id, organizationId })
           .sort({ createdAt: -1 })
           .limit(10);
 

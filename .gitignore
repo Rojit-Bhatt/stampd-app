@@ -10,3 +10,6 @@ node_modules/
 # Python
 __pycache__/
 *.pyc
+
+# SDD scratch (briefs, reports, review packages, ledger)
+.superpowers/

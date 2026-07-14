@@ -1,10 +1,11 @@
 import { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { Coffee, Mail, Lock, User, Eye, EyeOff } from "lucide-react";
+import { Mail, Lock, User, Eye, EyeOff } from "lucide-react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { useCustomerAuth } from "../../context/CustomerAuthContext";
+import { useTenant } from "../../context/TenantContext";
 import toast from "react-hot-toast";
 
 type Mode = "login" | "register";
@@ -23,50 +24,26 @@ const registerSchema = z.object({
 type LoginFormValues = z.infer<typeof loginSchema>;
 type RegisterFormValues = z.infer<typeof registerSchema>;
 
-function GoogleIcon() {
-  return (
-    <svg viewBox="0 0 48 48" className="h-5 w-5" aria-hidden="true">
-      <path
-        fill="#EA4335"
-        d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"
-      />
-      <path
-        fill="#4285F4"
-        d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"
-      />
-      <path
-        fill="#FBBC05"
-        d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"
-      />
-      <path
-        fill="#34A853"
-        d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"
-      />
-    </svg>
-  );
-}
-
 export function AuthView({ mode }: { mode: Mode }) {
   const navigate = useNavigate();
+  const { slug, tenant } = useTenant();
   const { user, login, registerUser } = useCustomerAuth();
   const [showPass, setShowPass] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const isLogin = mode === "login";
+  const initial = (tenant?.name || "?").charAt(0).toUpperCase();
 
-  // Redirect if user is already authenticated
   useEffect(() => {
-    if (user) {
-      navigate("/dashboard");
+    if (user && user.role === "customer") {
+      navigate(`/${slug}/dashboard`);
     }
-  }, [user, navigate]);
+  }, [user, navigate, slug]);
 
-  // Set up forms
   const loginForm = useForm<LoginFormValues>({
     resolver: zodResolver(loginSchema),
     defaultValues: { email: "", password: "" },
   });
-
   const registerForm = useForm<RegisterFormValues>({
     resolver: zodResolver(registerSchema),
     defaultValues: { name: "", email: "", password: "" },
@@ -74,13 +51,13 @@ export function AuthView({ mode }: { mode: Mode }) {
 
   const onLoginSubmit = async (data: LoginFormValues) => {
     setIsSubmitting(true);
-    const toastId = toast.loading("Logging into your account...");
+    const toastId = toast.loading("Signing in…");
     try {
       await login(data.email, data.password);
       toast.success("Welcome back!", { id: toastId });
-      navigate("/dashboard");
+      navigate(`/${slug}/dashboard`);
     } catch (err) {
-      toast.error((err as Error).message || "Failed to login.", { id: toastId });
+      toast.error((err as Error).message || "Failed to sign in.", { id: toastId });
     } finally {
       setIsSubmitting(false);
     }
@@ -88,11 +65,11 @@ export function AuthView({ mode }: { mode: Mode }) {
 
   const onRegisterSubmit = async (data: RegisterFormValues) => {
     setIsSubmitting(true);
-    const toastId = toast.loading("Creating your loyalty account...");
+    const toastId = toast.loading("Creating your account…");
     try {
       await registerUser(data.name, data.email, data.password);
-      toast.success("Registration successful! Please log in.", { id: toastId });
-      navigate("/login");
+      toast.success("Account created! Please sign in.", { id: toastId });
+      navigate(`/${slug}/login`);
     } catch (err) {
       toast.error((err as Error).message || "Failed to register.", { id: toastId });
     } finally {
@@ -101,208 +78,96 @@ export function AuthView({ mode }: { mode: Mode }) {
   };
 
   return (
-    <div className="min-h-screen w-full bg-[#121212] font-sans text-[#EBE6DF] flex items-center justify-center py-4 xs:py-8 sm:py-12 px-3.5 xs:px-4">
-      <div className="relative mx-auto flex w-full max-w-md flex-col pb-4 pt-4 xs:pt-8">
-        {/* Logo */}
-        <div className="flex flex-col items-center text-center">
-          <div className="flex h-11 w-11 xs:h-14 xs:w-14 items-center justify-center border border-[#2D2D2D] bg-[#1A1A1A] rounded-[16px] xs:rounded-[20px]">
-            <Coffee className="h-5 w-5 xs:h-6 xs:w-6 text-[#EBE6DF]" strokeWidth={1.6} />
-          </div>
-          <h1 className="mt-3.5 xs:mt-5 text-2xl xs:text-3xl leading-tight tracking-tight text-[#EBE6DF] font-serif font-normal">
-            Coffesarowar
-            <span className="italic"> Cafe</span>
-          </h1>
-          <div className="mt-2 flex items-center gap-2">
-            <span className="h-px w-4 xs:w-6 bg-[#2D2D2D]" />
-            <span className="text-[9px] xs:text-[10px] uppercase tracking-[0.2em] xs:tracking-[0.28em] text-[#A3A3A3] font-bold">
-              Loyalty Club
-            </span>
-            <span className="h-px w-4 xs:w-6 bg-[#2D2D2D]" />
-          </div>
+    <div className="flex min-h-screen w-full items-center justify-center bg-[var(--bg)] px-4 py-10">
+      <div className="w-full max-w-sm">
+        <div
+          className="mb-4 flex h-14 w-14 items-center justify-center rounded-[17px] font-display text-[22px] font-extrabold text-white"
+          style={{ background: "var(--brand)" }}
+        >
+          {initial}
         </div>
+        <h1 className="font-display text-[25px] font-extrabold text-[var(--ink)]">
+          {isLogin ? "Welcome back" : "Create your account"}
+        </h1>
+        <p className="mb-6 mt-1 text-sm text-[var(--muted)]">
+          Your {tenant?.name} loyalty card lives here.
+        </p>
 
-        {/* Card */}
-        <div className="mt-8 xs:mt-10 border border-[#2D2D2D] bg-[#1A1A1A] p-4 xs:p-6 rounded-[32px] xs:rounded-[48px] overflow-hidden shadow-none">
-          {/* Toggle */}
-          <div className="grid grid-cols-2 border border-[#2D2D2D] bg-[#121212] p-1 text-sm font-medium rounded-[32px] overflow-hidden">
-            <Link
-              to="/login"
-              className={`py-2 text-center transition-colors font-bold uppercase tracking-wider text-xs rounded-[28px] ${
-                isLogin
-                  ? "bg-[#EBE6DF] text-black"
-                  : "bg-[#121212] text-[#A3A3A3] hover:text-[#EBE6DF]"
-              }`}
-            >
-              Log in
-            </Link>
-            <Link
-              to="/register"
-              className={`py-2 text-center transition-colors font-bold uppercase tracking-wider text-xs rounded-[28px] ${
-                !isLogin
-                  ? "bg-[#EBE6DF] text-black"
-                  : "bg-[#121212] text-[#A3A3A3] hover:text-[#EBE6DF]"
-              }`}
-            >
-              Sign up
-            </Link>
-          </div>
+        {isLogin ? (
+          <form onSubmit={loginForm.handleSubmit(onLoginSubmit)} className="flex flex-col gap-3">
+            <Field label="Email" icon={<Mail className="h-4 w-4 text-[var(--soft)]" />}>
+              <input
+                type="email"
+                placeholder="you@email.com"
+                {...loginForm.register("email")}
+                className="w-full bg-transparent text-sm text-[var(--ink)] placeholder:text-[var(--soft)] focus:outline-none"
+              />
+            </Field>
+            {loginForm.formState.errors.email && <Err msg={loginForm.formState.errors.email.message} />}
 
-          <div className="mt-6">
-            <h2 className="text-xl text-[#EBE6DF] font-serif font-normal">
-              {isLogin ? "Welcome back" : "Create your account"}
-            </h2>
-            <p className="mt-1 text-sm text-[#A3A3A3]">
-              {isLogin
-                ? "Sign in to collect your stamps."
-                : "Join the club and earn your first stamp today."}
-            </p>
-          </div>
-
-          <div className="mt-6">
-            {isLogin ? (
-              <form onSubmit={loginForm.handleSubmit(onLoginSubmit)} className="space-y-4">
-                <Field label="Email" icon={<Mail className="h-4 w-4 text-[#A3A3A3]" />}>
-                  <input
-                    type="email"
-                    placeholder="you@coffesarowar.cafe"
-                    {...loginForm.register("email")}
-                    className="w-full bg-transparent text-sm text-[#EBE6DF] placeholder:text-[#A3A3A3]/40 focus:outline-none"
-                  />
-                </Field>
-                {loginForm.formState.errors.email && (
-                  <p className="text-xs font-semibold text-red-500 pl-1">
-                    {loginForm.formState.errors.email.message}
-                  </p>
-                )}
-
-                <Field label="Password" icon={<Lock className="h-4 w-4 text-[#A3A3A3]" />}>
-                  <input
-                    type={showPass ? "text" : "password"}
-                    placeholder="••••••••"
-                    {...loginForm.register("password")}
-                    className="w-full bg-transparent text-sm text-[#EBE6DF] placeholder:text-[#A3A3A3]/40 focus:outline-none"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setShowPass((v) => !v)}
-                    className="text-[#A3A3A3] hover:text-[#EBE6DF] focus:outline-none"
-                    aria-label={showPass ? "Hide password" : "Show password"}
-                  >
-                    {showPass ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                  </button>
-                </Field>
-                {loginForm.formState.errors.password && (
-                  <p className="text-xs font-semibold text-red-500 pl-1">
-                    {loginForm.formState.errors.password.message}
-                  </p>
-                )}
-
-                <div className="flex justify-end">
-                  <button
-                    type="button"
-                    className="text-xs font-medium text-[#A3A3A3] hover:text-[#EBE6DF]"
-                  >
-                    Forgot password?
-                  </button>
-                </div>
-
-                <button
-                  type="submit"
-                  disabled={isSubmitting}
-                  className="mt-4 w-full bg-[#EBE6DF] text-black py-4 font-sans font-semibold tracking-wide hover:opacity-90 disabled:opacity-50 uppercase tracking-widest rounded-full transition-transform duration-200 hover:scale-[1.02]"
-                >
-                  {isSubmitting ? "Logging in..." : "Log in"}
-                </button>
-              </form>
-            ) : (
-              <form onSubmit={registerForm.handleSubmit(onRegisterSubmit)} className="space-y-4">
-                <Field label="Full name" icon={<User className="h-4 w-4 text-[#A3A3A3]" />}>
-                  <input
-                    type="text"
-                    placeholder="Aarav Sharma"
-                    {...registerForm.register("name")}
-                    className="w-full bg-transparent text-sm text-[#EBE6DF] placeholder:text-[#A3A3A3]/40 focus:outline-none"
-                  />
-                </Field>
-                {registerForm.formState.errors.name && (
-                  <p className="text-xs font-semibold text-red-500 pl-1">
-                    {registerForm.formState.errors.name.message}
-                  </p>
-                )}
-
-                <Field label="Email" icon={<Mail className="h-4 w-4 text-[#A3A3A3]" />}>
-                  <input
-                    type="email"
-                    placeholder="you@coffesarowar.cafe"
-                    {...registerForm.register("email")}
-                    className="w-full bg-transparent text-sm text-[#EBE6DF] placeholder:text-[#A3A3A3]/40 focus:outline-none"
-                  />
-                </Field>
-                {registerForm.formState.errors.email && (
-                  <p className="text-xs font-semibold text-red-500 pl-1">
-                    {registerForm.formState.errors.email.message}
-                  </p>
-                )}
-
-                <Field label="Password" icon={<Lock className="h-4 w-4 text-[#A3A3A3]" />}>
-                  <input
-                    type={showPass ? "text" : "password"}
-                    placeholder="••••••••"
-                    {...registerForm.register("password")}
-                    className="w-full bg-transparent text-sm text-[#EBE6DF] placeholder:text-[#A3A3A3]/40 focus:outline-none"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setShowPass((v) => !v)}
-                    className="text-[#A3A3A3] hover:text-[#EBE6DF] focus:outline-none"
-                    aria-label={showPass ? "Hide password" : "Show password"}
-                  >
-                    {showPass ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                  </button>
-                </Field>
-                {registerForm.formState.errors.password && (
-                  <p className="text-xs font-semibold text-red-500 pl-1">
-                    {registerForm.formState.errors.password.message}
-                  </p>
-                )}
-
-                <button
-                  type="submit"
-                  disabled={isSubmitting}
-                  className="mt-4 w-full bg-[#EBE6DF] text-black py-4 font-sans font-semibold tracking-wide hover:opacity-90 disabled:opacity-50 uppercase tracking-widest rounded-full transition-transform duration-200 hover:scale-[1.02]"
-                >
-                  {isSubmitting ? "Creating account..." : "Create account"}
-                </button>
-              </form>
+            <Field label="Password" icon={<Lock className="h-4 w-4 text-[var(--soft)]" />}>
+              <input
+                type={showPass ? "text" : "password"}
+                placeholder="••••••••"
+                {...loginForm.register("password")}
+                className="w-full bg-transparent text-sm text-[var(--ink)] placeholder:text-[var(--soft)] focus:outline-none"
+              />
+              <EyeToggle show={showPass} onClick={() => setShowPass((v) => !v)} />
+            </Field>
+            {loginForm.formState.errors.password && (
+              <Err msg={loginForm.formState.errors.password.message} />
             )}
-          </div>
 
-          {/* Divider */}
-          <div className="my-6 flex items-center gap-3">
-            <span className="h-px flex-1 bg-[#2D2D2D]" />
-            <span className="text-[10px] uppercase tracking-[0.22em] text-[#A3A3A3] font-bold">
-              or continue with
-            </span>
-            <span className="h-px flex-1 bg-[#2D2D2D]" />
-          </div>
+            <SubmitButton loading={isSubmitting} label="Sign in" />
+          </form>
+        ) : (
+          <form onSubmit={registerForm.handleSubmit(onRegisterSubmit)} className="flex flex-col gap-3">
+            <Field label="Full name" icon={<User className="h-4 w-4 text-[var(--soft)]" />}>
+              <input
+                type="text"
+                placeholder="Your name"
+                {...registerForm.register("name")}
+                className="w-full bg-transparent text-sm text-[var(--ink)] placeholder:text-[var(--soft)] focus:outline-none"
+              />
+            </Field>
+            {registerForm.formState.errors.name && <Err msg={registerForm.formState.errors.name.message} />}
 
-          {/* Google button */}
-          <button
-            type="button"
-            className="flex w-full items-center justify-center gap-3 border border-[#2D2D2D] bg-[#121212] py-3 text-sm font-bold text-[#EBE6DF] hover:bg-[#EBE6DF] hover:text-black transition-colors rounded-full uppercase tracking-wider text-xs"
-          >
-            <GoogleIcon />
-            <span>Sign in with Google</span>
-          </button>
-        </div>
+            <Field label="Email" icon={<Mail className="h-4 w-4 text-[var(--soft)]" />}>
+              <input
+                type="email"
+                placeholder="you@email.com"
+                {...registerForm.register("email")}
+                className="w-full bg-transparent text-sm text-[var(--ink)] placeholder:text-[var(--soft)] focus:outline-none"
+              />
+            </Field>
+            {registerForm.formState.errors.email && (
+              <Err msg={registerForm.formState.errors.email.message} />
+            )}
 
-        <p className="mt-8 text-center text-xs text-[#A3A3A3]">
-          {isLogin ? "New to Coffesarowar? " : "Already have an account? "}
+            <Field label="Password" icon={<Lock className="h-4 w-4 text-[var(--soft)]" />}>
+              <input
+                type={showPass ? "text" : "password"}
+                placeholder="••••••••"
+                {...registerForm.register("password")}
+                className="w-full bg-transparent text-sm text-[var(--ink)] placeholder:text-[var(--soft)] focus:outline-none"
+              />
+              <EyeToggle show={showPass} onClick={() => setShowPass((v) => !v)} />
+            </Field>
+            {registerForm.formState.errors.password && (
+              <Err msg={registerForm.formState.errors.password.message} />
+            )}
+
+            <SubmitButton loading={isSubmitting} label="Create account" />
+          </form>
+        )}
+
+        <p className="mt-6 text-center text-[13px] text-[var(--muted)]">
+          {isLogin ? "New here? " : "Already a member? "}
           <Link
-            to={isLogin ? "/register" : "/login"}
-            className="font-bold text-[#EBE6DF] hover:underline"
+            to={isLogin ? `/${slug}/register` : `/${slug}/login`}
+            className="font-bold text-[var(--brand)] hover:underline"
           >
-            {isLogin ? "Create an account" : "Log in"}
+            {isLogin ? "Create an account" : "Sign in"}
           </Link>
         </p>
       </div>
@@ -321,14 +186,43 @@ function Field({
 }) {
   return (
     <label className="block">
-      <span className="mb-1.5 block text-[10px] font-bold uppercase tracking-[0.16em] text-[#A3A3A3]">
-        {label}
-      </span>
-      <div className="flex items-center gap-3 border border-[#2D2D2D] bg-[#121212] px-4 py-3.5 transition-colors focus-within:border-[#EBE6DF] rounded-[32px] overflow-hidden">
+      <span className="mb-1.5 block text-[13px] font-semibold text-[var(--ink)]">{label}</span>
+      <div className="flex items-center gap-3 rounded-[13px] border border-[var(--line)] bg-[var(--bg)] px-4 py-3.5 transition-colors focus-within:border-[var(--brand)]">
         <span>{icon}</span>
         {children}
       </div>
     </label>
   );
 }
+
+function Err({ msg }: { msg?: string }) {
+  return <p className="pl-1 text-xs font-semibold text-[var(--err)]">{msg}</p>;
+}
+
+function EyeToggle({ show, onClick }: { show: boolean; onClick: () => void }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className="text-[var(--soft)] hover:text-[var(--ink)] focus:outline-none"
+      aria-label={show ? "Hide password" : "Show password"}
+    >
+      {show ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+    </button>
+  );
+}
+
+function SubmitButton({ loading, label }: { loading: boolean; label: string }) {
+  return (
+    <button
+      type="submit"
+      disabled={loading}
+      className="mt-2 w-full rounded-[15px] py-4 text-[15px] font-bold text-white transition-opacity hover:opacity-90 disabled:opacity-50"
+      style={{ background: "var(--brand)" }}
+    >
+      {loading ? "Please wait…" : label}
+    </button>
+  );
+}
+
 export default AuthView;

@@ -6,7 +6,7 @@ const createHttpError = (message, statusCode) => {
   return error;
 };
 
-const getMyWallet = async ({ userId, role }) => {
+const getMyWallet = async ({ userId, role, organizationId }) => {
   if (!userId) {
     throw createHttpError("Authenticated user context is required.", 401);
   }
@@ -16,7 +16,7 @@ const getMyWallet = async ({ userId, role }) => {
   }
 
   const vouchers = await Voucher.find(
-    { userId, isValid: true },
+    { userId, organizationId, isValid: true },
     { _id: 0, voucherCode: 1, isValid: 1, earnedAt: 1 }
   ).sort({ earnedAt: -1 });
 
@@ -26,7 +26,7 @@ const getMyWallet = async ({ userId, role }) => {
   };
 };
 
-const redeemVoucher = async ({ voucherCode }) => {
+const redeemVoucher = async ({ voucherCode, organizationId }) => {
   if (!voucherCode) {
     throw createHttpError("Voucher code is required.", 400);
   }
@@ -35,13 +35,13 @@ const redeemVoucher = async ({ voucherCode }) => {
   const now = new Date();
 
   const redeemedVoucher = await Voucher.findOneAndUpdate(
-    { voucherCode: normalizedCode, isValid: true },
+    { voucherCode: normalizedCode, organizationId, isValid: true },
     { $set: { isValid: false, redeemedAt: now } },
     { new: true }
   );
 
   if (!redeemedVoucher) {
-    const voucher = await Voucher.findOne({ voucherCode: normalizedCode });
+    const voucher = await Voucher.findOne({ voucherCode: normalizedCode, organizationId });
 
     if (!voucher) {
       throw createHttpError("Voucher code not found.", 404);
@@ -52,7 +52,7 @@ const redeemVoucher = async ({ voucherCode }) => {
 
   return {
     success: true,
-    message: "Voucher successfully redeemed. Dispense free coffee reward."
+    message: "Voucher successfully redeemed. Dispense the reward."
   };
 };
 

@@ -36,6 +36,7 @@ const Voucher = require("../models/Voucher");
 const DynamicQRToken = require("../models/DynamicQRToken");
 const StampClaimEvent = require("../models/StampClaimEvent");
 const User = require("../models/User");
+const Organization = require("../models/Organization");
 
 // Minimal assert helper
 function assert(condition, message) {
@@ -49,23 +50,35 @@ async function runTests() {
   console.log("Starting System Verification Tests...");
   await connectDB();
 
+  // Resolve the multi-tenant org context (tenant: coffesarowar). Reuse the
+  // seeded tenant if present, otherwise create it so this script is runnable
+  // standalone against a fresh database.
+  const tenantSlug = "coffesarowar";
+  let org = await Organization.findOne({ slug: tenantSlug });
+  if (!org) {
+    org = await Organization.create({ slug: tenantSlug, name: "Coffesarowar" });
+  }
+  const organizationId = org._id;
+
   // Create clean test users
   const testCustomerEmail = "test-customer@coffesarowar.com";
   const testAdminEmail = "test-admin@coffesarowar.com";
 
   // Clean old test users
   await User.deleteMany({ email: { $in: [testCustomerEmail, testAdminEmail] } });
-  
+
   const customer = await User.create({
+    organizationId,
     name: "Test Customer",
     email: testCustomerEmail,
     role: "customer"
   });
 
   const admin = await User.create({
+    organizationId,
     name: "Test Admin",
     email: testAdminEmail,
-    role: "admin"
+    role: "business_admin"
   });
 
   const userId = customer._id;
@@ -84,7 +97,7 @@ async function runTests() {
     console.log(`Simulating Stamp Claim #${i}...`);
     
     // Generate a fresh token
-    const tokenResult = await generateQRToken(adminId);
+    const tokenResult = await generateQRToken(adminId, organizationId);
     const token = tokenResult.data.token;
     assert(token, `Failed to generate QR token on iteration ${i}`);
 
@@ -100,7 +113,8 @@ async function runTests() {
     const claimResult = await claimStamp({
       token,
       userId,
-      role: "customer"
+      role: "customer",
+      organizationId
     });
 
     assert(claimResult.success === true, `Failed to claim stamp on iteration ${i}`);
@@ -112,7 +126,7 @@ async function runTests() {
       // 5th stamp milestone trigger assertions
       assert(claimResult.data.rewardTriggered === true, "Reward MUST trigger on 5th stamp");
       assert(claimResult.data.stampsEarned === 0, "Stamps earned MUST reset to 0 on 5th stamp");
-      assert(claimResult.data.voucherCode.startsWith("CAFE-"), "Voucher code must start with CAFE-");
+      assert(claimResult.data.voucherCode.startsWith("COFF-"), "Voucher code must start with COFF- (per-tenant prefix)");
       
       // Verify database state matches
       const card = await StampCard.findOne({ userId });
@@ -134,7 +148,7 @@ async function runTests() {
   await StampCard.updateOne({ userId }, { $set: { stampsEarned: 0, lastStampedAt: null } });
 
   // Generate a single QR token
-  const doubleTapTokenResult = await generateQRToken(adminId);
+  const doubleTapTokenResult = await generateQRToken(adminId, organizationId);
   const token = doubleTapTokenResult.data.token;
 
   console.log(`Dispatching 5 parallel claim requests concurrently with token: ${token}...`);
@@ -144,7 +158,8 @@ async function runTests() {
     claimStamp({
       token,
       userId,
-      role: "customer"
+      role: "customer",
+      organizationId
     }).catch((err) => {
       // Return the error so Promise.all resolved payload contains the errors
       return err;
