@@ -1,4 +1,4 @@
-import { Coffee, MailWarning, MapPin, Phone as PhoneIcon, Mail, Clock, Instagram, Facebook, Twitter } from "lucide-react";
+import { Coffee, MailWarning, MapPin, Phone as PhoneIcon, Mail, Clock, Instagram, Facebook, Twitter, Calendar } from "lucide-react";
 import toast from "react-hot-toast";
 import { useCustomerAuth } from "../context/CustomerAuthContext";
 import { useTenant } from "../context/TenantContext";
@@ -11,6 +11,10 @@ function osmEmbedUrl(lat: number, lon: number): string {
   const delta = 0.01;
   const bbox = `${lon - delta},${lat - delta},${lon + delta},${lat + delta}`;
   return `https://www.openstreetmap.org/export/embed.html?bbox=${bbox}&marker=${lat},${lon}`;
+}
+
+function formatEventDate(iso: string): string {
+  return new Date(iso).toLocaleDateString(undefined, { month: "short", day: "numeric" });
 }
 
 // Rendered inside CustomerLayout (phone shell + bottom nav). Content only.
@@ -45,6 +49,8 @@ export default function CustomerDashboard() {
   const { data: menuData } = useCustomerMenu();
   const menuEnabled = menuData?.menuEnabled ?? false;
   const featuredItems = menuEnabled ? (menuData?.items ?? []).filter((i) => i.isFeatured).slice(0, 3) : [];
+
+  const upcomingEvents = tenant?.upcomingEvents ?? [];
 
   const awayText =
     remaining > 0
@@ -154,6 +160,37 @@ export default function CustomerDashboard() {
                   )}
                 </div>
                 {item.price && <span className="text-sm font-bold text-[var(--ink)]">{item.price}</span>}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {upcomingEvents.length > 0 && (
+        <div className="mt-4 rounded-[20px] border border-[var(--line)] bg-[var(--surface)] p-5">
+          <div className="mb-3 text-xs font-bold uppercase tracking-wider text-[var(--soft)]">
+            Upcoming events
+          </div>
+          <div className="flex flex-col gap-3">
+            {upcomingEvents.map((event) => (
+              <div key={event.id} className="flex gap-3">
+                {event.imageUrl && (
+                  <img src={event.imageUrl} alt="" className="h-14 w-14 flex-shrink-0 rounded-[12px] object-cover" />
+                )}
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-center gap-1.5 text-[11px] font-bold" style={{ color: "var(--brand)" }}>
+                    <Calendar className="h-3.5 w-3.5" />
+                    {formatEventDate(event.date)}
+                    {event.time ? ` · ${event.time}` : ""}
+                  </div>
+                  <div className="truncate text-sm font-semibold text-[var(--ink)]">{event.title}</div>
+                  {event.location && (
+                    <div className="truncate text-[13px] text-[var(--muted)]">{event.location}</div>
+                  )}
+                  {event.description && (
+                    <div className="truncate text-[13px] text-[var(--muted)]">{event.description}</div>
+                  )}
+                </div>
               </div>
             ))}
           </div>

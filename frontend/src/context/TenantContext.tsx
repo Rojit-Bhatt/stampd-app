@@ -24,6 +24,16 @@ export interface TenantContact {
   };
 }
 
+export interface TenantEvent {
+  id: string;
+  title: string;
+  date: string;
+  time: string;
+  location: string;
+  description: string;
+  imageUrl: string;
+}
+
 export interface TenantProgram {
   stampsRequired: number;
   rewardTitle: string;
@@ -36,6 +46,7 @@ export interface Tenant {
   name: string;
   branding: TenantBranding;
   contact: TenantContact;
+  upcomingEvents: TenantEvent[];
   program: TenantProgram;
   menuEnabled: boolean;
 }
