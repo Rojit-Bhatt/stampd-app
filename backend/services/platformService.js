@@ -5,6 +5,7 @@ const StampClaimEvent = require("../models/StampClaimEvent");
 const Voucher = require("../models/Voucher");
 const { generateAuthToken } = require("../utils/tokenUtils");
 const { DEFAULT_PROGRAM } = require("../config/platform");
+const { sendVerifyEmail } = require("./authService");
 
 const SALT_ROUNDS = 10;
 
@@ -137,8 +138,11 @@ const createBusiness = async ({ name, slug, adminName, adminEmail, adminPassword
     name: adminName.trim(),
     email: normalizedAdminEmail,
     password: hashedPassword,
-    role: "business_admin"
+    role: "business_admin",
+    emailVerified: false
   });
+
+  await sendVerifyEmail(admin, organization._id, normalizedSlug);
 
   return {
     success: true,

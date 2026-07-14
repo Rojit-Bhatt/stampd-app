@@ -33,7 +33,7 @@ const sendVerifyEmail = async (user, organizationId, slug) => {
   await sendEmail({
     to: user.email,
     subject: "Verify your email",
-    html: `<p>Confirm your email to start collecting stamps:</p><p><a href="${link}">${link}</a></p>`
+    html: `<p>Confirm your email to activate your account:</p><p><a href="${link}">${link}</a></p>`
   });
 };
 
@@ -321,5 +321,6 @@ module.exports = {
   verifyEmail,
   resendVerification,
   forgotPassword,
-  resetPassword
+  resetPassword,
+  sendVerifyEmail
 };

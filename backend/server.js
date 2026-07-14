@@ -45,6 +45,7 @@ const reviewsRoutes = require("./routes/reviewsRoutes");
 const platformRoutes = require("./routes/platformRoutes");
 const tenantRoutes = require("./routes/tenantRoutes");
 const menuRoutes = require("./routes/menuRoutes");
+const accountRoutes = require("./routes/accountRoutes");
 
 const app = express();
 const PORT = process.env.PORT || 5001;
@@ -78,6 +79,8 @@ app.use("/api/tenant", tenantRoutes);
 app.use("/api/menu", menuRoutes);
 // Tenant-scoped auth (customers + business admins log in per tenant).
 app.use("/api/auth", authRoutes);
+// Shared account actions (profile edit, password change) for any authenticated role.
+app.use("/api/account", accountRoutes);
 // Business-admin console (QR, redemption, customers, settings, menu CRUD).
 app.use("/api/admin", adminRoutes);
 // Customer loyalty (stamps + vouchers), tenant taken from the JWT.
