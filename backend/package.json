@@ -5,7 +5,11 @@
   "main": "server.js",
   "scripts": {
     "start": "node server.js",
-    "dev": "node --watch server.js"
+    "dev": "node --watch server.js",
+    "test": "node tests/integration-qa.js && node tests/run-voucher-test.js && node tests/multi-tenant-isolation.js",
+    "test:integration": "node tests/integration-qa.js",
+    "test:voucher": "node tests/run-voucher-test.js",
+    "test:isolation": "node tests/multi-tenant-isolation.js"
   },
   "dependencies": {
     "bcryptjs": "^2.4.3",
@@ -15,6 +19,7 @@
     "google-auth-library": "^10.9.0",
     "jsonwebtoken": "^9.0.2",
     "mongoose": "^8.7.1",
+    "nodemailer": "^9.0.3",
     "nodemon": "^3.1.14",
     "uuid": "^11.1.0"
   }
