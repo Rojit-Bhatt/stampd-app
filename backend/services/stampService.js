@@ -49,13 +49,22 @@ const generateVoucherCode = async (session, prefix) => {
   throw createHttpError("Unable to generate a unique voucher code.", 500);
 };
 
-const generateQRToken = async (adminUserId, organizationId) => {
+const generateQRToken = async (adminUserId, organizationId, billAmount) => {
   if (!adminUserId) {
     throw createHttpError("Admin user context is required.", 401);
   }
 
-  if (!organizationId) {
-    throw createHttpError("A business context is required.", 400);
+  const org = await loadOrganizationOrThrow(organizationId);
+  const minBillAmount = org.program.minBillAmount || 0;
+
+  if (minBillAmount > 0) {
+    const amount = Number(billAmount);
+    if (billAmount === undefined || billAmount === null || billAmount === "" || Number.isNaN(amount) || amount < 0) {
+      throw createHttpError("Bill amount is required to generate a code.", 400);
+    }
+    if (amount < minBillAmount) {
+      throw createHttpError(`Bill amount must be at least ${minBillAmount}.`, 400);
+    }
   }
 
   const token = uuidv4();

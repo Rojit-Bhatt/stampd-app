@@ -6,7 +6,7 @@ const Voucher = require("../models/Voucher");
 
 const generateAdminQRToken = async (req, res, next) => {
   try {
-    const result = await generateQRToken(req.user.id, req.user.organizationId);
+    const result = await generateQRToken(req.user.id, req.user.organizationId, req.body.billAmount);
     res.status(201).json(result);
   } catch (error) {
     next(error);

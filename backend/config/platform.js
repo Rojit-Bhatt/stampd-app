@@ -8,7 +8,8 @@ const DEFAULT_PROGRAM = {
   stampsRequired: 5,
   rewardTitle: "Free Coffee",
   rewardDescription: "Collect stamps on every visit and unlock a free coffee.",
-  cooldownHours: 18
+  cooldownHours: 18,
+  minBillAmount: 0
 };
 
 module.exports = {

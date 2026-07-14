@@ -24,7 +24,10 @@ const OrganizationSchema = new mongoose.Schema({
     stampsRequired: { type: Number, min: 1, default: DEFAULT_PROGRAM.stampsRequired },
     rewardTitle: { type: String, default: DEFAULT_PROGRAM.rewardTitle },
     rewardDescription: { type: String, default: DEFAULT_PROGRAM.rewardDescription },
-    cooldownHours: { type: Number, min: 0, default: DEFAULT_PROGRAM.cooldownHours }
+    cooldownHours: { type: Number, min: 0, default: DEFAULT_PROGRAM.cooldownHours },
+    // 0 = disabled. Barista must enter a bill amount >= this to generate a
+    // stamp QR when it's set above 0. Plain number, never currency-formatted.
+    minBillAmount: { type: Number, min: 0, default: DEFAULT_PROGRAM.minBillAmount }
   },
 
   menuEnabled: { type: Boolean, default: false },
