@@ -16,6 +16,7 @@ const getPublicTenant = async (req, res, next) => {
         name: organization.name,
         slug: organization.slug,
         branding: organization.branding,
+        contact: organization.contact,
         menuEnabled: organization.menuEnabled,
         program: {
           stampsRequired: organization.program.stampsRequired,
@@ -44,6 +45,7 @@ const getMySettings = async (req, res, next) => {
         slug: organization.slug,
         status: organization.status,
         branding: organization.branding,
+        contact: organization.contact,
         program: organization.program,
         menuEnabled: organization.menuEnabled
       }
@@ -61,7 +63,7 @@ const updateMySettings = async (req, res, next) => {
       throw createHttpError("Business not found.", 404);
     }
 
-    const { name, branding, program, menuEnabled } = req.body;
+    const { name, branding, contact, program, menuEnabled } = req.body;
 
     if (name !== undefined) {
       organization.name = name.trim();
@@ -71,6 +73,13 @@ const updateMySettings = async (req, res, next) => {
       organization.branding = {
         ...organization.branding,
         ...branding
+      };
+    }
+
+    if (contact !== undefined && typeof contact === "object") {
+      organization.contact = {
+        ...organization.contact,
+        ...contact
       };
     }
 
@@ -94,6 +103,7 @@ const updateMySettings = async (req, res, next) => {
         slug: organization.slug,
         status: organization.status,
         branding: organization.branding,
+        contact: organization.contact,
         program: organization.program,
         menuEnabled: organization.menuEnabled
       }

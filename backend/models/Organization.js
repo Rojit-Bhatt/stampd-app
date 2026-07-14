@@ -30,6 +30,24 @@ const OrganizationSchema = new mongoose.Schema({
     minBillAmount: { type: Number, min: 0, default: DEFAULT_PROGRAM.minBillAmount }
   },
 
+  // Contact/location/social info the business admin controls, shown to
+  // customers on their dashboard. All fields optional — a tenant with
+  // nothing filled in just shows no contact section.
+  contact: {
+    phone: { type: String, default: "" },
+    email: { type: String, default: "" },
+    address: { type: String, default: "" },
+    latitude: { type: Number, default: null },
+    longitude: { type: Number, default: null },
+    hours: { type: String, default: "" },
+    aboutUs: { type: String, default: "" },
+    socials: {
+      instagram: { type: String, default: "" },
+      facebook: { type: String, default: "" },
+      x: { type: String, default: "" }
+    }
+  },
+
   menuEnabled: { type: Boolean, default: false },
 
   // Reserved for the future subdomain/custom-domain upgrade path.
