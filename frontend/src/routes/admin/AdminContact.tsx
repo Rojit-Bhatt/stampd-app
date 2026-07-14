@@ -24,6 +24,9 @@ function osmEmbedUrl(lat: number, lon: number): string {
   return `https://www.openstreetmap.org/export/embed.html?bbox=${bbox}&marker=${lat},${lon}`;
 }
 
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const PHONE_RE = /^\+?[0-9\s\-()]{7,20}$/;
+
 export default function AdminContact() {
   const { data: settings, isLoading } = useAdminSettings();
   const update = useUpdateAdminSettings();
@@ -45,7 +48,12 @@ export default function AdminContact() {
   const setSocial = (k: keyof AdminContactData["socials"], v: string) =>
     setContact((c) => (c ? { ...c, socials: { ...c.socials, [k]: v } } : c));
 
+  const phoneError = contact.phone && !PHONE_RE.test(contact.phone) ? "Enter a valid phone number." : "";
+  const emailError = contact.email && !EMAIL_RE.test(contact.email) ? "Enter a valid email address." : "";
+  const hasErrors = Boolean(phoneError || emailError);
+
   const save = async () => {
+    if (hasErrors) return;
     try {
       await update.mutateAsync({ contact });
       toast.success("Contact info saved");
@@ -65,18 +73,22 @@ export default function AdminContact() {
 
       <div className="grid grid-cols-1 items-start gap-6 lg:grid-cols-[1fr_340px]">
         <div className="flex flex-col gap-5 rounded-[20px] border border-[var(--line)] bg-[var(--surface)] p-6">
-          <Field label="Phone">
+          <Field label="Phone" error={phoneError}>
             <input
               value={contact.phone}
               onChange={(e) => set("phone", e.target.value)}
-              className="w-full rounded-[11px] border border-[var(--line)] bg-[var(--bg)] px-4 py-3 text-sm focus:border-[var(--brand)] focus:outline-none"
+              className={`w-full rounded-[11px] border bg-[var(--bg)] px-4 py-3 text-sm focus:outline-none ${
+                phoneError ? "border-[var(--err)]" : "border-[var(--line)] focus:border-[var(--brand)]"
+              }`}
             />
           </Field>
-          <Field label="Email">
+          <Field label="Email" error={emailError}>
             <input
               value={contact.email}
               onChange={(e) => set("email", e.target.value)}
-              className="w-full rounded-[11px] border border-[var(--line)] bg-[var(--bg)] px-4 py-3 text-sm focus:border-[var(--brand)] focus:outline-none"
+              className={`w-full rounded-[11px] border bg-[var(--bg)] px-4 py-3 text-sm focus:outline-none ${
+                emailError ? "border-[var(--err)]" : "border-[var(--line)] focus:border-[var(--brand)]"
+              }`}
             />
           </Field>
           <Field label="Address">
@@ -155,7 +167,7 @@ export default function AdminContact() {
 
           <button
             onClick={save}
-            disabled={update.isPending}
+            disabled={update.isPending || hasErrors}
             className="rounded-[13px] py-3.5 text-[15px] font-bold text-white transition-opacity hover:opacity-90 disabled:opacity-50"
             style={{ background: "var(--brand)" }}
           >
@@ -205,11 +217,12 @@ export default function AdminContact() {
   );
 }
 
-function Field({ label, children }: { label: string; children: React.ReactNode }) {
+function Field({ label, error, children }: { label: string; error?: string; children: React.ReactNode }) {
   return (
     <div>
       <label className="mb-1.5 block text-sm font-bold">{label}</label>
       {children}
+      {error && <p className="mt-1 text-xs font-semibold text-[var(--err)]">{error}</p>}
     </div>
   );
 }
