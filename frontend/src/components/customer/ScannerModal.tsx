@@ -6,7 +6,19 @@ import { useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "../../lib/api";
 import { useNavigate } from "react-router-dom";
 
-export function ScannerModal({ open, onClose }: { open: boolean; onClose: () => void }) {
+export function ScannerModal({
+  open,
+  onClose,
+  slug,
+  tenantName,
+  rewardTitle,
+}: {
+  open: boolean;
+  onClose: () => void;
+  slug: string;
+  tenantName: string;
+  rewardTitle: string;
+}) {
   const scannerRef = useRef<Html5Qrcode | null>(null);
   const queryClient = useQueryClient();
   const navigate = useNavigate();
@@ -194,7 +206,7 @@ export function ScannerModal({ open, onClose }: { open: boolean; onClose: () => 
 
   const handleGoToWallet = () => {
     onClose();
-    navigate("/wallet");
+    navigate(`/${slug}/wallet`);
   };
 
   if (!open) return null;
@@ -226,7 +238,7 @@ export function ScannerModal({ open, onClose }: { open: boolean; onClose: () => 
 
           <h2 className="mt-6 text-3xl font-normal text-[#EBE6DF] font-serif">Congratulations!</h2>
           <p className="mt-2 text-sm text-[#A3A3A3]">
-            You completed your punch card and earned a free coffee voucher!
+            You completed your card and earned a {rewardTitle} voucher!
           </p>
 
           {/* Ticket representation */}
@@ -320,7 +332,7 @@ export function ScannerModal({ open, onClose }: { open: boolean; onClose: () => 
         <div className="flex h-full flex-col items-center justify-center px-6 text-[#EBE6DF] w-full">
           <div className="mb-6 text-center">
             <p className="text-[10px] uppercase tracking-[0.28em] text-[#A3A3A3] font-bold">
-              Cafe Coffesarowar
+              {tenantName}
             </p>
             <h2 className="mt-1 text-2xl font-normal text-[#EBE6DF] font-serif">Scan Counter QR</h2>
           </div>

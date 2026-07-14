@@ -1,6 +1,7 @@
 const mongoose = require("mongoose");
 
 const DynamicQRTokenSchema = new mongoose.Schema({
+  organizationId: { type: mongoose.Schema.Types.ObjectId, ref: "Organization", required: true },
   token: { type: String, required: true, unique: true },
   generatedBy: { type: mongoose.Schema.Types.ObjectId, ref: "User", required: true },
   isUsed: { type: Boolean, default: false },

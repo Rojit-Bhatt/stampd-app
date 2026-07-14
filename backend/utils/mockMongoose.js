@@ -46,9 +46,17 @@ function matchesQuery(doc, query) {
     
     let queryVal = query[key];
     let docVal = doc[key];
-    
-    // Handle operators
-    if (queryVal && typeof queryVal === 'object' && !Array.isArray(queryVal) && !(queryVal instanceof Date)) {
+
+    // Handle operators. Only treat the value as an operator object when it
+    // actually carries $-prefixed operator keys. Without this guard, a scalar
+    // object value like an ObjectId ({ _id, toString }) is misread as an
+    // operator object with no known operators, which makes the field match
+    // ANY document — so findOne({ _id: someObjectId }) returns the first doc
+    // in the collection instead of the one with that id.
+    const isOperatorObject =
+      queryVal && typeof queryVal === 'object' && !Array.isArray(queryVal) &&
+      !(queryVal instanceof Date) && Object.keys(queryVal).some(k => k.startsWith('$'));
+    if (isOperatorObject) {
       let matchesOps = true;
       for (const op of Object.keys(queryVal)) {
         if (op === "$lte") {
@@ -99,21 +107,45 @@ function updateDoc(doc, update) {
   }
 }
 
+// A "leaf" field descriptor is a plain field definition (has type/default/ref),
+// as opposed to a nested object of sub-fields (like branding/program).
+function isLeafDescriptor(val) {
+  return val && typeof val === "object" &&
+    ("type" in val || "default" in val || "ref" in val);
+}
+
+// Recursively compute default values from a schema definition, including nested
+// sub-documents. Real Mongoose fills these automatically; the mock previously
+// only filled top-level defaults, leaving nested objects (e.g. Organization
+// .program / .branding) undefined.
+function computeDefaults(definition) {
+  const out = {};
+  for (const [k, val] of Object.entries(definition)) {
+    if (val && typeof val === "object" && !Array.isArray(val) &&
+        typeof val !== "function" && !isLeafDescriptor(val)) {
+      const nested = computeDefaults(val);
+      if (Object.keys(nested).length) out[k] = nested;
+    } else if (val && typeof val === "object" && val.default !== undefined) {
+      out[k] = typeof val.default === "function" ? val.default() : val.default;
+    }
+  }
+  return out;
+}
+
 class Document {
   constructor(modelName, data) {
     this._modelName = modelName;
     this._id = data._id || new ObjectId();
     this.id = this._id.toString();
-    
+
     const schema = mongoose.modelSchemas[modelName];
     if (schema && schema.definition) {
-      for (const [k, val] of Object.entries(schema.definition)) {
-        if (val && typeof val === 'object' && val.default !== undefined) {
-          this[k] = typeof val.default === 'function' ? val.default() : val.default;
-        }
+      const defaults = computeDefaults(schema.definition);
+      for (const [k, v] of Object.entries(defaults)) {
+        this[k] = v;
       }
     }
-    
+
     for (const [k, v] of Object.entries(data)) {
       if (k !== "_id" && k !== "id") {
         this[k] = v;
@@ -386,6 +418,18 @@ const mongoose = {
           return { acknowledged: true, deletedCount: 1 };
         }
         return { acknowledged: true, deletedCount: 0 };
+      }
+
+      static async deleteMany(query) {
+        const list = db[name] || [];
+        const before = list.length;
+        db[name] = list.filter(doc => !matchesQuery(doc, query));
+        return { acknowledged: true, deletedCount: before - db[name].length };
+      }
+
+      static async countDocuments(query) {
+        const list = db[name] || [];
+        return list.filter(doc => matchesQuery(doc, query)).length;
       }
     };
     

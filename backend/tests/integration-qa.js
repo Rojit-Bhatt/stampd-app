@@ -1,6 +1,9 @@
 const http = require("http");
 
-const BASE_URL = "http://localhost:5001";
+const { bootServer } = require("./helpers/bootServer");
+
+let BASE_URL = process.env.TEST_BASE_URL || "http://localhost:5001";
+const TENANT_SLUG = "coffesarowar";
 
 async function jsonFetch(path, options = {}) {
   const url = `${BASE_URL}${path}`;
@@ -73,9 +76,11 @@ async function runQa() {
     console.log(`1. Testing registration with email: ${registerEmail}...`);
     const regRes = await jsonFetch("/api/auth/register", {
       method: "POST",
+      headers: { "X-Tenant-Slug": TENANT_SLUG },
       body: {
         name: "QA Test User",
         email: registerEmail,
+        phone: "+9779812345678",
         password: "password123",
       },
     });
@@ -93,6 +98,7 @@ async function runQa() {
     console.log("2. Testing login...");
     const loginRes = await jsonFetch("/api/auth/login", {
       method: "POST",
+      headers: { "X-Tenant-Slug": TENANT_SLUG },
       body: {
         email: registerEmail,
         password: "password123",
@@ -170,6 +176,7 @@ async function runQa() {
     const adminEmail = "barista@mansarowar.cafe";
     const adminLoginRes = await jsonFetch("/api/auth/login", {
       method: "POST",
+      headers: { "X-Tenant-Slug": TENANT_SLUG },
       body: {
         email: adminEmail,
         password: "password",
@@ -180,7 +187,7 @@ async function runQa() {
     let adminToken = null;
     if (adminLoginRes.ok && adminLoginData.success && adminLoginData.token) {
       adminToken = adminLoginData.token;
-      if (adminLoginData.user && adminLoginData.user.role === "admin") {
+      if (adminLoginData.user && adminLoginData.user.role === "business_admin") {
         console.log("✅ Admin Login Succeeded. Token and role are correct.");
         results["FLOW-9-ADMIN-LOGIN"] = "PASS";
       } else {
@@ -245,11 +252,11 @@ async function runQa() {
 
     // 12. Test voucher verification with known invalid code
     if (adminToken) {
-      console.log("12. Testing voucher redemption with invalid code 'CAFE-INVALID1'...");
+      console.log("12. Testing voucher redemption with invalid code 'COFF-INVALID1'...");
       const redeemRes = await jsonFetch("/api/admin/redeem-voucher", {
         method: "POST",
         headers: { Authorization: `Bearer ${adminToken}` },
-        body: { voucherCode: "CAFE-INVALID1" },
+        body: { voucherCode: "COFF-INVALID1" },
       });
       const redeemData = await redeemRes.json();
       if (redeemRes.status === 404 || redeemRes.status === 400 || !redeemData.success) {
@@ -269,10 +276,30 @@ async function runQa() {
   }
 
   console.log("\n=== E2E INTEGRATION QA SUMMARY ===");
+  let failed = 0;
   for (const [flow, result] of Object.entries(results)) {
     const symbol = result === "PASS" ? "✅" : result === "SKIP" ? "🟡" : "❌";
+    if (result === "FAIL") failed++;
     console.log(`${symbol} ${flow}: ${result}`);
   }
+  return failed;
 }
 
-runQa();
+(async () => {
+  // Self-contained unless TEST_BASE_URL is supplied — boot our own server on a
+  // dedicated port so `npm test` needs no manually-started server.
+  let server = null;
+  if (!process.env.TEST_BASE_URL) {
+    server = await bootServer({ port: 5011 });
+    BASE_URL = server.baseUrl;
+  }
+  let code = 1;
+  try {
+    code = (await runQa()) ? 1 : 0;
+  } catch (err) {
+    console.error("QA run crashed:", err);
+    code = 1;
+  }
+  if (server) server.stop();
+  process.exit(code);
+})();

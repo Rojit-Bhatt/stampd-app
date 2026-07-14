@@ -2,48 +2,55 @@ import { Link } from "react-router-dom";
 import { Coffee, QrCode, Ticket } from "lucide-react";
 
 interface BottomNavProps {
+  slug: string;
   activeTab: "dashboard" | "wallet" | "none";
   onScanClick: () => void;
 }
 
-export function BottomNav({ activeTab, onScanClick }: BottomNavProps) {
+export function BottomNav({ slug, activeTab, onScanClick }: BottomNavProps) {
   return (
-    <footer className="sticky bottom-0 border-t border-[#2D2D2D] bg-[#121212] px-5 py-3 z-20 rounded-t-[32px] overflow-hidden">
-      <div className="flex items-center justify-between max-w-md mx-auto relative px-4">
-        {/* Left: Stamp Card Link */}
+    <footer className="relative flex-shrink-0 border-t border-[var(--line)] bg-[var(--surface)] px-6 pb-6 pt-3">
+      <div className="relative mx-auto flex max-w-md items-center justify-between px-4">
         <Link
-          to="/dashboard"
-          className={`flex min-h-[44px] min-w-[44px] flex-col items-center justify-center gap-1 p-2 transition-colors ${
-            activeTab === "dashboard" ? "text-[#EBE6DF]" : "text-[#A3A3A3] hover:text-[#EBE6DF]"
+          to={`/${slug}/dashboard`}
+          className={`flex min-h-[44px] flex-col items-center justify-center gap-1 p-2 transition-colors ${
+            activeTab === "dashboard"
+              ? "text-[var(--brand)]"
+              : "text-[var(--soft)] hover:text-[var(--brand)]"
           }`}
-          aria-label="Stamp Card"
+          aria-label="Stamp card"
         >
           <Coffee className="h-5 w-5" strokeWidth={activeTab === "dashboard" ? 2.5 : 2} />
           <span className="text-[10px] font-bold uppercase tracking-wider">Card</span>
         </Link>
 
-        {/* Center: Scan QR Floating CTA */}
-        <div className="absolute -bottom-2.5 left-1/2 -translate-x-1/2">
+        {/* Center scan FAB */}
+        <div className="absolute -top-8 left-1/2 -translate-x-1/2">
           <button
             type="button"
             onClick={onScanClick}
-            className="flex h-14 w-14 items-center justify-center rounded-full bg-[#EBE6DF] text-black border border-[#EBE6DF] transition-transform duration-200 hover:scale-105 active:scale-95 focus:outline-none"
-            aria-label="Scan Counter QR"
+            className="flex items-center justify-center rounded-[20px] text-white transition-transform duration-200 hover:scale-105 active:scale-95"
+            style={{
+              width: 60,
+              height: 60,
+              background: "var(--brand)",
+              boxShadow: "0 12px 24px -8px var(--brand)",
+            }}
+            aria-label="Scan to earn a stamp"
           >
             <QrCode className="h-6 w-6" strokeWidth={2} />
           </button>
         </div>
-
-        {/* Filler to maintain space for center button */}
         <div className="w-14" aria-hidden="true" />
 
-        {/* Right: Wallet Link */}
         <Link
-          to="/wallet"
-          className={`flex min-h-[44px] min-w-[44px] flex-col items-center justify-center gap-1 p-2 transition-colors ${
-            activeTab === "wallet" ? "text-[#EBE6DF]" : "text-[#A3A3A3] hover:text-[#EBE6DF]"
+          to={`/${slug}/wallet`}
+          className={`flex min-h-[44px] flex-col items-center justify-center gap-1 p-2 transition-colors ${
+            activeTab === "wallet"
+              ? "text-[var(--brand)]"
+              : "text-[var(--soft)] hover:text-[var(--brand)]"
           }`}
-          aria-label="Voucher Wallet"
+          aria-label="Voucher wallet"
         >
           <Ticket className="h-5 w-5" strokeWidth={activeTab === "wallet" ? 2.5 : 2} />
           <span className="text-[10px] font-bold uppercase tracking-wider">Wallet</span>

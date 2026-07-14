@@ -2,9 +2,23 @@ const API_URL =
   (import.meta.env.VITE_API_BASE_URL as string) ||
   (typeof window !== "undefined" ? "" : "http://localhost:5001");
 
+// The active tenant slug for the current request context. TenantProvider sets
+// this from the URL (`/:slug/...`) so every request carries `X-Tenant-Slug`.
+// Public routes (register/login, /api/tenant, /api/menu) resolve the tenant
+// from this header; authenticated loyalty routes ignore it and use the JWT.
+let currentTenantSlug: string | null = null;
+
+export function setTenantSlug(slug: string | null) {
+  currentTenantSlug = slug ? slug.trim().toLowerCase() : null;
+}
+
+export function getTenantSlug() {
+  return currentTenantSlug;
+}
+
 interface RequestOptions extends Omit<RequestInit, "body"> {
   body?: any;
-  role?: "admin" | "customer";
+  role?: "admin" | "customer" | "platform";
 }
 
 export async function apiRequest<T = unknown>(
@@ -19,10 +33,25 @@ export async function apiRequest<T = unknown>(
     headers.set("Content-Type", "application/json");
   }
 
+  if (currentTenantSlug && !headers.has("X-Tenant-Slug")) {
+    headers.set("X-Tenant-Slug", currentTenantSlug);
+  }
+
   if (typeof window !== "undefined") {
     // Determine which token to send based on path or explicit role option
-    const role = options.role || (path.startsWith("/api/admin") ? "admin" : "customer");
-    const tokenKey = role === "admin" ? "admin_auth_token" : "customer_auth_token";
+    const role =
+      options.role ||
+      (path.startsWith("/api/platform")
+        ? "platform"
+        : path.startsWith("/api/admin")
+          ? "admin"
+          : "customer");
+    const tokenKey =
+      role === "platform"
+        ? "platform_auth_token"
+        : role === "admin"
+          ? "admin_auth_token"
+          : "customer_auth_token";
     const token = localStorage.getItem(tokenKey);
     if (token) {
       headers.set("Authorization", `Bearer ${token}`);

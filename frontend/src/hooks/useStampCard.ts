@@ -4,6 +4,9 @@ import { apiRequest } from "../lib/api";
 export interface StampCardData {
   stampsEarned: number;
   lastStampedAt: string | null;
+  stampsRequired: number;
+  rewardTitle: string;
+  rewardDescription: string;
 }
 
 export function useStampCard() {

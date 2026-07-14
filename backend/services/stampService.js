@@ -5,9 +5,10 @@ const DynamicQRToken = require("../models/DynamicQRToken");
 const StampCard = require("../models/StampCard");
 const Voucher = require("../models/Voucher");
 const StampClaimEvent = require("../models/StampClaimEvent");
+const Organization = require("../models/Organization");
+const User = require("../models/User");
 
 const TOKEN_TTL_SECONDS = 30;
-const STAMP_COOLDOWN_HOURS = 18;
 
 const createHttpError = (message, statusCode) => {
   const error = new Error(message);
@@ -15,10 +16,29 @@ const createHttpError = (message, statusCode) => {
   return error;
 };
 
-const generateVoucherCode = async (session) => {
+const getVoucherPrefix = (org) => {
+  const derived = (org && org.slug ? org.slug : "").replace(/[^a-z0-9]/gi, "").slice(0, 4).toUpperCase();
+  return derived || "RWD";
+};
+
+const loadOrganizationOrThrow = async (organizationId) => {
+  if (!organizationId) {
+    throw createHttpError("A business context is required.", 400);
+  }
+
+  const org = await Organization.findOne({ _id: organizationId });
+
+  if (!org) {
+    throw createHttpError("Business not found.", 404);
+  }
+
+  return org;
+};
+
+const generateVoucherCode = async (session, prefix) => {
   for (let attempt = 0; attempt < 5; attempt += 1) {
     const randomCode = crypto.randomBytes(4).toString("hex").toUpperCase();
-    const voucherCode = `CAFE-${randomCode}`;
+    const voucherCode = `${prefix}-${randomCode}`;
     const existingVoucher = await Voucher.findOne({ voucherCode }).session(session);
 
     if (!existingVoucher) {
@@ -29,16 +49,21 @@ const generateVoucherCode = async (session) => {
   throw createHttpError("Unable to generate a unique voucher code.", 500);
 };
 
-const generateQRToken = async (adminUserId) => {
+const generateQRToken = async (adminUserId, organizationId) => {
   if (!adminUserId) {
     throw createHttpError("Admin user context is required.", 401);
+  }
+
+  if (!organizationId) {
+    throw createHttpError("A business context is required.", 400);
   }
 
   const token = uuidv4();
 
   await DynamicQRToken.create({
     token,
-    generatedBy: adminUserId
+    generatedBy: adminUserId,
+    organizationId
   });
 
   return {
@@ -50,7 +75,7 @@ const generateQRToken = async (adminUserId) => {
   };
 };
 
-const claimStamp = async ({ token, userId, role }) => {
+const claimStamp = async ({ token, userId, role, organizationId }) => {
   if (!token) {
     throw createHttpError("QR token is required.", 400);
   }
@@ -62,6 +87,19 @@ const claimStamp = async ({ token, userId, role }) => {
   if (role !== "customer") {
     throw createHttpError("Only customers can claim stamps.", 403);
   }
+
+  const claimer = await User.findOne({ _id: userId, organizationId });
+  if (!claimer) {
+    throw createHttpError("Account not found.", 404);
+  }
+  if (claimer.emailVerified === false) {
+    throw createHttpError("Please verify your email before collecting stamps.", 403);
+  }
+
+  const org = await loadOrganizationOrThrow(organizationId);
+  const stampsRequired = org.program.stampsRequired;
+  const cooldownHours = org.program.cooldownHours;
+  const voucherPrefix = getVoucherPrefix(org);
 
   const session = await mongoose.startSession();
 
@@ -84,18 +122,34 @@ const claimStamp = async ({ token, userId, role }) => {
         throw createHttpError("Invalid QR token.", 400);
       }
 
+      // Check it belongs to this tenant
+      if (existingToken.organizationId.toString() !== organizationId) {
+        throw createHttpError("Invalid QR token.", 400);
+      }
+
       // Check if expired
       if (existingToken.createdAt <= tokenExpiryCutoff) {
         throw createHttpError("This QR token has expired.", 400);
       }
 
-      // Atomically mark it as used
-      await DynamicQRToken.updateOne({ _id: existingToken._id }, { $set: { isUsed: true } }, { session });
+      // Atomically consume the token: only the first claimer flips
+      // isUsed false -> true. The earlier findOne read is racy on its own —
+      // two customers scanning the same 30s token could both pass it — so the
+      // conditional update is the authoritative single-use guard.
+      const consumed = await DynamicQRToken.updateOne(
+        { _id: existingToken._id, isUsed: false },
+        { $set: { isUsed: true } },
+        { session }
+      );
+      if (!consumed || consumed.modifiedCount === 0) {
+        throw createHttpError("QR Code has already been used.", 400);
+      }
 
-      const cooldownCutoff = new Date(now.getTime() - STAMP_COOLDOWN_HOURS * 60 * 60 * 1000);
+      const cooldownCutoff = new Date(now.getTime() - cooldownHours * 60 * 60 * 1000);
       const updatedCard = await StampCard.findOneAndUpdate(
         {
           userId,
+          organizationId,
           $or: [{ lastStampedAt: null }, { lastStampedAt: { $lte: cooldownCutoff } }]
         },
         {
@@ -109,13 +163,14 @@ const claimStamp = async ({ token, userId, role }) => {
       );
 
       if (!updatedCard) {
-        const existingCard = await StampCard.findOne({ userId }).session(session);
+        const existingCard = await StampCard.findOne({ userId, organizationId }).session(session);
 
         if (!existingCard) {
           await StampCard.create(
             [
               {
                 userId,
+                organizationId,
                 stampsEarned: 1,
                 lastStampedAt: now
               }
@@ -127,6 +182,7 @@ const claimStamp = async ({ token, userId, role }) => {
             [
               {
                 userId,
+                organizationId,
                 token,
                 createdAt: now
               }
@@ -145,7 +201,7 @@ const claimStamp = async ({ token, userId, role }) => {
           return;
         }
 
-        throw createHttpError("You can only claim one stamp every 18 hours.", 400);
+        throw createHttpError(`You can only claim one stamp every ${cooldownHours} hours.`, 400);
       }
 
       // Log scan event
@@ -153,6 +209,7 @@ const claimStamp = async ({ token, userId, role }) => {
         [
           {
             userId,
+            organizationId,
             token,
             createdAt: now
           }
@@ -160,13 +217,14 @@ const claimStamp = async ({ token, userId, role }) => {
         { session }
       );
 
-      if (updatedCard.stampsEarned >= 5) {
-        const voucherCode = await generateVoucherCode(session);
+      if (updatedCard.stampsEarned >= stampsRequired) {
+        const voucherCode = await generateVoucherCode(session, voucherPrefix);
 
         await Voucher.create(
           [
             {
               userId,
+              organizationId,
               voucherCode
             }
           ],
@@ -174,18 +232,19 @@ const claimStamp = async ({ token, userId, role }) => {
         );
 
         await StampCard.findOneAndUpdate(
-          { userId },
+          { userId, organizationId },
           { $set: { stampsEarned: 0 } },
           { new: true, session }
         );
 
         responsePayload = {
           success: true,
-          message: "Milestone reached! You have earned a free coffee voucher.",
+          message: `Milestone reached! You have earned: ${org.program.rewardTitle}.`,
           data: {
             stampsEarned: 0,
             rewardTriggered: true,
-            voucherCode
+            voucherCode,
+            rewardTitle: org.program.rewardTitle
           }
         };
         return;
@@ -207,16 +266,19 @@ const claimStamp = async ({ token, userId, role }) => {
   }
 };
 
-const getStampBalanceByUserId = async (userId) => {
+const getStampBalanceByUserId = async (userId, organizationId) => {
   if (!userId) {
     throw createHttpError("Authenticated user context is required.", 401);
   }
 
-  let card = await StampCard.findOne({ userId });
+  const org = await loadOrganizationOrThrow(organizationId);
+
+  let card = await StampCard.findOne({ userId, organizationId });
 
   if (!card) {
     card = await StampCard.create({
       userId,
+      organizationId,
       stampsEarned: 0,
       lastStampedAt: null
     });
@@ -226,7 +288,10 @@ const getStampBalanceByUserId = async (userId) => {
     success: true,
     data: {
       stampsEarned: card.stampsEarned,
-      lastStampedAt: card.lastStampedAt
+      lastStampedAt: card.lastStampedAt,
+      stampsRequired: org.program.stampsRequired,
+      rewardTitle: org.program.rewardTitle,
+      rewardDescription: org.program.rewardDescription
     }
   };
 };

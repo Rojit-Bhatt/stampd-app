@@ -4,7 +4,7 @@ import { apiRequest } from "../lib/api";
 export interface User {
   id: string;
   name: string;
-  role: "admin" | "customer";
+  role: "customer" | "business_admin" | "platform";
 }
 
 interface AdminAuthContextType {
@@ -30,11 +30,11 @@ export function AdminAuthProvider({ children }: { children: React.ReactNode }) {
       if (storedToken && storedUser) {
         try {
           const parsedUser = JSON.parse(storedUser);
-          if (parsedUser.role === "admin") {
+          if (parsedUser.role === "business_admin") {
             setToken(storedToken);
             setUser(parsedUser);
           } else {
-            // If the role is customer, we don't treat it as admin auth
+            // Only a tenant's business admin is treated as admin auth.
             localStorage.removeItem("admin_auth_token");
             localStorage.removeItem("admin_auth_user");
           }
@@ -60,8 +60,8 @@ export function AdminAuthProvider({ children }: { children: React.ReactNode }) {
       );
 
       if (res.success && res.token && res.user) {
-        if (res.user.role !== "admin") {
-          throw new Error("Access denied: Not an administrator.");
+        if (res.user.role !== "business_admin") {
+          throw new Error("Access denied: Not a business administrator.");
         }
         localStorage.setItem("admin_auth_token", res.token);
         localStorage.setItem("admin_auth_user", JSON.stringify(res.user));

@@ -4,7 +4,8 @@ const getCustomerWallet = async (req, res, next) => {
   try {
     const result = await getMyWallet({
       userId: req.user.id,
-      role: req.user.role
+      role: req.user.role,
+      organizationId: req.user.organizationId
     });
 
     res.status(200).json(result);
@@ -16,7 +17,8 @@ const getCustomerWallet = async (req, res, next) => {
 const redeemAdminVoucher = async (req, res, next) => {
   try {
     const result = await redeemVoucher({
-      voucherCode: req.body.voucherCode
+      voucherCode: req.body.voucherCode,
+      organizationId: req.user.organizationId
     });
 
     res.status(200).json(result);
