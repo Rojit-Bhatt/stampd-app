@@ -13,6 +13,7 @@ interface MenuItem {
   price: string;
   category: string;
   isAvailable: boolean;
+  isFeatured: boolean;
   sortOrder: number;
 }
 
@@ -240,6 +241,18 @@ export default function MenuManagement() {
                         }}
                       >
                         {i.isAvailable ? "Available" : "Sold out"}
+                      </button>
+                      <button
+                        onClick={() =>
+                          patchItem.mutate({ id: itemId(i), body: { isFeatured: !i.isFeatured } })
+                        }
+                        className="rounded-full px-2.5 py-1 text-[11px] font-bold"
+                        style={{
+                          background: i.isFeatured ? "var(--brand)" : "var(--bg)",
+                          color: i.isFeatured ? "#fff" : "var(--muted)",
+                        }}
+                      >
+                        {i.isFeatured ? "Featured" : "Feature"}
                       </button>
                       <button
                         onClick={() => deleteItem.mutate(itemId(i))}

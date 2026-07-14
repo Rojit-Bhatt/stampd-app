@@ -10,6 +10,7 @@ const MenuItemSchema = new mongoose.Schema({
   price: { type: String, default: "", trim: true },
   category: { type: String, default: "General", trim: true },
   isAvailable: { type: Boolean, default: true },
+  isFeatured: { type: Boolean, default: false },
   sortOrder: { type: Number, default: 0 },
   createdAt: { type: Date, default: Date.now }
 });

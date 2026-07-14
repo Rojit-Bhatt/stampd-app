@@ -85,7 +85,7 @@ const createItem = async (
 
 // Only these fields may be changed via the API — never organizationId or _id,
 // so an admin can't move an item into (or out of) another tenant.
-const MUTABLE_MENU_FIELDS = ["name", "description", "price", "category", "isAvailable", "sortOrder"];
+const MUTABLE_MENU_FIELDS = ["name", "description", "price", "category", "isAvailable", "isFeatured", "sortOrder"];
 
 const updateItem = async (organizationId, itemId, updates) => {
   const safeUpdates = {};
