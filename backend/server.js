@@ -12,7 +12,12 @@ if (!process.env.JWT_SECRET) {
   console.warn("[dev] JWT_SECRET not set — using an insecure development key.");
 }
 
-if (!process.env.MONGODB_URI) {
+// True when running against the in-memory mock DB (no real MONGODB_URI given).
+// Set before the fallback URI is assigned below, so later code can tell dev/mock
+// mode apart from a real connection.
+const USING_MOCK_DB = !process.env.MONGODB_URI;
+
+if (USING_MOCK_DB) {
   process.env.MONGODB_URI = "mongodb://in-memory-fallback";
   console.warn("[dev] MONGODB_URI is not defined. Enabling in-memory MongoDB/Mongoose fallback.");
   const Module = require("module");
@@ -79,6 +84,12 @@ app.use("/api/admin", adminRoutes);
 app.use("/api/stamps", stampRoutes);
 app.use("/api/vouchers", voucherRoutes);
 app.use("/api/reviews", reviewsRoutes);
+
+// Dev/test-only helper endpoints, mounted only against the in-memory mock DB
+// (mock DB only). Never available against a real database / in production.
+if (USING_MOCK_DB) {
+  app.use("/__test__", require("./routes/testHookRoutes"));
+}
 
 app.use((req, _res, next) => {
   const error = new Error(`Route not found: ${req.originalUrl}`);

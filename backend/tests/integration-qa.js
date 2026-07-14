@@ -80,6 +80,7 @@ async function runQa() {
       body: {
         name: "QA Test User",
         email: registerEmail,
+        phone: "+9779812345678",
         password: "password123",
       },
     });

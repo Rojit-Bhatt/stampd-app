@@ -118,8 +118,19 @@ async function run() {
   await api("/api/auth/register", {
     method: "POST",
     slug: "coffesarowar",
-    body: { name: "Alice", email: aliceEmail, password: "password" },
+    body: { name: "Alice", email: aliceEmail, phone: "+9779812345678", password: "password" },
   });
+  // Alice registers unverified; stamping is gated on emailVerified. Mint +
+  // consume an email-verify token via the dev-only hook to verify her.
+  const aliceMint = await api("/__test__/mint-token", {
+    method: "POST",
+    slug: "coffesarowar",
+    body: { email: aliceEmail, type: "email_verify" },
+  });
+  const aliceVerify = await api(`/api/auth/verify-email?token=${aliceMint.json?.token}`, {
+    slug: "coffesarowar",
+  });
+  ok(aliceVerify.status === 200, "Alice verifies her email before collecting stamps");
   const clogin = await api("/api/auth/login", {
     method: "POST",
     slug: "coffesarowar",
