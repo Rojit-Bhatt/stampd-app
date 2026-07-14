@@ -7,6 +7,7 @@ export interface CustomerMenuItem {
   description: string;
   price: string;
   category: string;
+  isFeatured: boolean;
 }
 
 export function useCustomerMenu() {

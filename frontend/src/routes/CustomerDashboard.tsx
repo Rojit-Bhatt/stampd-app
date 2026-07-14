@@ -3,6 +3,7 @@ import toast from "react-hot-toast";
 import { useCustomerAuth } from "../context/CustomerAuthContext";
 import { useTenant } from "../context/TenantContext";
 import { useStampCard } from "../hooks/useStampCard";
+import { useCustomerMenu } from "../hooks/useCustomerMenu";
 import { apiRequest } from "../lib/api";
 import { PunchCard } from "../components/customer/PunchCard";
 
@@ -40,6 +41,10 @@ export default function CustomerDashboard() {
         contact.socials.facebook ||
         contact.socials.x)
   );
+
+  const { data: menuData } = useCustomerMenu();
+  const menuEnabled = menuData?.menuEnabled ?? false;
+  const featuredItems = menuEnabled ? (menuData?.items ?? []).filter((i) => i.isFeatured).slice(0, 3) : [];
 
   const awayText =
     remaining > 0
@@ -133,6 +138,27 @@ export default function CustomerDashboard() {
         </span>
         <span className="text-sm font-semibold text-[var(--ink)]">{awayText}</span>
       </div>
+
+      {featuredItems.length > 0 && (
+        <div className="mt-4 rounded-[20px] border border-[var(--line)] bg-[var(--surface)] p-5">
+          <div className="mb-3 text-xs font-bold uppercase tracking-wider text-[var(--soft)]">
+            Featured picks
+          </div>
+          <div className="flex flex-col gap-2.5">
+            {featuredItems.map((item) => (
+              <div key={item.id} className="flex items-center gap-3">
+                <div className="min-w-0 flex-1">
+                  <div className="truncate text-sm font-semibold text-[var(--ink)]">{item.name}</div>
+                  {item.description && (
+                    <div className="truncate text-[13px] text-[var(--muted)]">{item.description}</div>
+                  )}
+                </div>
+                {item.price && <span className="text-sm font-bold text-[var(--ink)]">{item.price}</span>}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {hasContact && contact && (
         <div className="mt-4 rounded-[20px] border border-[var(--line)] bg-[var(--surface)] p-5">
