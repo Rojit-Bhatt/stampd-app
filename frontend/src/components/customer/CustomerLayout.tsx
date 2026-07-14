@@ -32,7 +32,9 @@ export function CustomerLayout() {
     ? "wallet"
     : location.pathname.endsWith("/dashboard")
       ? "dashboard"
-      : "none";
+      : location.pathname.endsWith("/menu")
+        ? "menu"
+        : "none";
 
   return (
     <div className="flex min-h-screen w-full items-start justify-center bg-[var(--bg)] px-0 py-0 sm:px-4 sm:py-8">

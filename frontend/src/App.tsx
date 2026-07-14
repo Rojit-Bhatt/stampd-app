@@ -21,6 +21,7 @@ const CustomerLogin = lazy(() => import('./routes/CustomerLogin'));
 const CustomerRegister = lazy(() => import('./routes/CustomerRegister'));
 const CustomerDashboard = lazy(() => import('./routes/CustomerDashboard'));
 const CustomerWallet = lazy(() => import('./routes/CustomerWallet'));
+const CustomerMenu = lazy(() => import('./routes/CustomerMenu'));
 const VerifyEmail = lazy(() => import('./routes/VerifyEmail'));
 const ForgotPassword = lazy(() => import('./routes/ForgotPassword'));
 const ResetPassword = lazy(() => import('./routes/ResetPassword'));
@@ -93,6 +94,7 @@ export default function App() {
                     <Route element={<CustomerLayout />}>
                       <Route path="dashboard" element={<CustomerDashboard />} />
                       <Route path="wallet" element={<CustomerWallet />} />
+                      <Route path="menu" element={<CustomerMenu />} />
                     </Route>
 
                     {/* Business admin console. */}
