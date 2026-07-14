@@ -1,6 +1,7 @@
 import { Suspense, lazy } from 'react';
 import { BrowserRouter, Routes, Route, Outlet } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { GoogleOAuthProvider } from '@react-oauth/google';
 import { CustomerAuthProvider } from './context/CustomerAuthContext';
 import { AdminAuthProvider } from './context/AdminAuthContext';
 import { PlatformAuthProvider } from './context/PlatformAuthContext';
@@ -20,6 +21,9 @@ const CustomerLogin = lazy(() => import('./routes/CustomerLogin'));
 const CustomerRegister = lazy(() => import('./routes/CustomerRegister'));
 const CustomerDashboard = lazy(() => import('./routes/CustomerDashboard'));
 const CustomerWallet = lazy(() => import('./routes/CustomerWallet'));
+const VerifyEmail = lazy(() => import('./routes/VerifyEmail'));
+const ForgotPassword = lazy(() => import('./routes/ForgotPassword'));
+const ResetPassword = lazy(() => import('./routes/ResetPassword'));
 const PlatformLanding = lazy(() => import('./routes/platform/PlatformLanding'));
 const PlatformLogin = lazy(() => import('./routes/platform/PlatformLogin'));
 const Businesses = lazy(() => import('./routes/platform/Businesses'));
@@ -38,11 +42,15 @@ const NotFound = lazy(() => import('./routes/NotFound'));
 // Wraps every /:slug/* route in the tenant context (fetches branding + program,
 // themes the subtree, sends X-Tenant-Slug). Renders child routes via <Outlet/>.
 function TenantScope() {
-  return (
+  const clientId = import.meta.env.VITE_GOOGLE_CLIENT_ID as string | undefined;
+  const tree = (
     <TenantProvider>
       <Outlet />
     </TenantProvider>
   );
+  // Only mount the Google provider when a client id is configured, so dev
+  // without one still runs (the Google button hides itself in that case).
+  return clientId ? <GoogleOAuthProvider clientId={clientId}>{tree}</GoogleOAuthProvider> : tree;
 }
 
 export default function App() {
@@ -77,6 +85,9 @@ export default function App() {
                     <Route index element={<BusinessLanding />} />
                     <Route path="login" element={<CustomerLogin />} />
                     <Route path="register" element={<CustomerRegister />} />
+                    <Route path="verify-email" element={<VerifyEmail />} />
+                    <Route path="forgot-password" element={<ForgotPassword />} />
+                    <Route path="reset-password" element={<ResetPassword />} />
 
                     {/* Authenticated customer app (phone shell + bottom nav). */}
                     <Route element={<CustomerLayout />}>

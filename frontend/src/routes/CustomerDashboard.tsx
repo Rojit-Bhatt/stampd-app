@@ -1,12 +1,15 @@
-import { Coffee } from "lucide-react";
+import { Coffee, MailWarning } from "lucide-react";
+import toast from "react-hot-toast";
 import { useCustomerAuth } from "../context/CustomerAuthContext";
 import { useTenant } from "../context/TenantContext";
 import { useStampCard } from "../hooks/useStampCard";
+import { apiRequest } from "../lib/api";
 import { PunchCard } from "../components/customer/PunchCard";
 
 // Rendered inside CustomerLayout (phone shell + bottom nav). Content only.
 export default function CustomerDashboard() {
-  const { logout } = useCustomerAuth();
+  const { user, logout } = useCustomerAuth();
+  const unverified = user?.emailVerified === false;
   const { tenant } = useTenant();
   const { data: stampData, isLoading: cardLoading } = useStampCard();
 
@@ -46,6 +49,36 @@ export default function CustomerDashboard() {
         </button>
       </div>
 
+      {/* Unverified-email prompt. Scanning is blocked by the backend (403)
+          until the email is verified; this nudges the customer to do it. */}
+      {unverified && (
+        <div
+          className="mb-4 flex items-start gap-3 rounded-[16px] border px-4 py-3"
+          style={{ borderColor: "var(--warn-soft)", background: "var(--warn-soft)", color: "var(--warn)" }}
+        >
+          <MailWarning className="mt-0.5 h-5 w-5 flex-shrink-0" />
+          <div className="text-sm">
+            <span className="font-bold">Verify your email to start collecting stamps.</span>{" "}
+            <button
+              onClick={async () => {
+                try {
+                  await apiRequest("/api/auth/resend-verification", {
+                    method: "POST",
+                    body: { email: user?.email },
+                  });
+                  toast.success("Verification email resent.");
+                } catch {
+                  toast.error("Could not resend. Try again.");
+                }
+              }}
+              className="font-bold underline"
+            >
+              Resend
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* Reward card */}
       <div
         className="mb-4 rounded-[26px] p-6 text-white"
@@ -81,7 +114,9 @@ export default function CustomerDashboard() {
       </div>
 
       <p className="mt-4 text-center text-xs text-[var(--muted)]">
-        Tap the scan button below and point at the barista’s QR to earn a stamp.
+        {unverified
+          ? "Verify your email above before you can scan to earn stamps."
+          : "Tap the scan button below and point at the barista’s QR to earn a stamp."}
       </p>
     </div>
   );
