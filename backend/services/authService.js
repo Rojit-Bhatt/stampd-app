@@ -224,11 +224,14 @@ const authenticateWithGoogle = async ({ idToken, organizationId }) => {
       email,
       googleId,
       organizationId,
-      role: "customer"
+      role: "customer",
+      emailVerified: true
     });
 
     await ensureUserStampCard(user._id, organizationId);
-    return formatAuthPayload(user);
+    const payloadOut = formatAuthPayload(user);
+    payloadOut.needsPhone = !user.phone;
+    return payloadOut;
   }
 
   if (user.googleId && user.googleId !== googleId) {
@@ -253,6 +256,18 @@ const authenticateWithGoogle = async ({ idToken, organizationId }) => {
 
   await ensureUserStampCard(user._id, organizationId);
 
+  const payloadOut = formatAuthPayload(user);
+  payloadOut.needsPhone = !user.phone;
+  return payloadOut;
+};
+
+const completeProfile = async ({ userId, organizationId, phone, address }) => {
+  if (!phone || !phone.trim()) throw createHttpError("Phone number is required.", 400);
+  const user = await User.findOne({ _id: userId, organizationId });
+  if (!user) throw createHttpError("Account not found.", 404);
+  user.phone = phone.trim();
+  if (address !== undefined) user.address = (address || "").trim();
+  await user.save();
   return formatAuthPayload(user);
 };
 
@@ -302,6 +317,7 @@ module.exports = {
   registerUser,
   loginUser,
   authenticateWithGoogle,
+  completeProfile,
   verifyEmail,
   resendVerification,
   forgotPassword,
