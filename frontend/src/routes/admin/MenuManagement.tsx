@@ -1,8 +1,8 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { Trash2, Plus } from "lucide-react";
+import { Trash2, Plus, Download } from "lucide-react";
 import toast from "react-hot-toast";
-import { apiRequest } from "../../lib/api";
+import { apiRequest, getTenantSlug } from "../../lib/api";
 import { useAdminSettings, useUpdateAdminSettings } from "../../hooks/useAdminSettings";
 
 interface MenuItem {
@@ -37,10 +37,50 @@ export default function MenuManagement() {
   const { data: items = [], isLoading } = useMenu();
 
   const [draft, setDraft] = useState({ name: "", description: "", price: "", category: "General" });
+  const [importing, setImporting] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   const menuEnabled = settings?.menuEnabled ?? false;
 
   const invalidate = () => qc.invalidateQueries({ queryKey: ["adminMenu"] });
+
+  const downloadTemplate = async () => {
+    const token = localStorage.getItem("admin_auth_token");
+    const slug = getTenantSlug();
+    const res = await fetch("/api/admin/menu/template", {
+      headers: {
+        Authorization: `Bearer ${token}`,
+        ...(slug ? { "X-Tenant-Slug": slug } : {}),
+      },
+    });
+    const blob = await res.blob();
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "menu-template.xlsx";
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const handleImport = async (file: File) => {
+    setImporting(true);
+    try {
+      const form = new FormData();
+      form.append("file", file);
+      const res = await apiRequest<{ success: boolean; imported: number; skipped: number }>(
+        "/api/admin/menu/import",
+        { method: "POST", role: "admin", body: form },
+      );
+      const suffix = res.skipped ? `, skipped ${res.skipped} row(s)` : "";
+      toast.success(`Imported ${res.imported} item(s)${suffix}`);
+      invalidate();
+    } catch (err) {
+      toast.error((err as Error).message || "Import failed.");
+    } finally {
+      setImporting(false);
+      if (fileInputRef.current) fileInputRef.current.value = "";
+    }
+  };
 
   const createItem = useMutation({
     mutationFn: (body: typeof draft) =>
@@ -94,6 +134,33 @@ export default function MenuManagement() {
             style={{ left: menuEnabled ? 28 : 4 }}
           />
         </button>
+      </div>
+
+      {/* Import from Excel */}
+      <div className="mb-6 rounded-[18px] border border-[var(--line)] bg-[var(--surface)] p-5">
+        <div className="mb-3 text-sm font-bold">Import from Excel</div>
+        <p className="mb-3 text-[13px] text-[var(--muted)]">
+          Columns: Name (required), Price, Category, Description.
+        </p>
+        <div className="flex flex-wrap items-center gap-2.5">
+          <button
+            onClick={downloadTemplate}
+            className="inline-flex items-center gap-1.5 rounded-[11px] border border-[var(--line)] bg-[var(--bg)] px-3.5 py-2.5 text-sm font-bold"
+          >
+            <Download className="h-4 w-4" /> Download template
+          </button>
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept=".xlsx,.xls"
+            onChange={(e) => {
+              const file = e.target.files?.[0];
+              if (file) handleImport(file);
+            }}
+            className="text-sm"
+          />
+          {importing && <span className="text-sm text-[var(--muted)]">Importing…</span>}
+        </div>
       </div>
 
       {/* Add item */}
