@@ -38,6 +38,8 @@ const AdminCustomers = lazy(() => import('./routes/admin/AdminCustomers'));
 const StampProgram = lazy(() => import('./routes/admin/StampProgram'));
 const Branding = lazy(() => import('./routes/admin/Branding'));
 const MenuManagement = lazy(() => import('./routes/admin/MenuManagement'));
+const AdminReportsSummary = lazy(() => import('./routes/admin/AdminReportsSummary'));
+const AdminReportsCustomers = lazy(() => import('./routes/admin/AdminReportsCustomers'));
 const NotFound = lazy(() => import('./routes/NotFound'));
 
 // Wraps every /:slug/* route in the tenant context (fetches branding + program,
@@ -114,6 +116,8 @@ export default function App() {
                       <Route path="program" element={<StampProgram />} />
                       <Route path="branding" element={<Branding />} />
                       <Route path="menu" element={<MenuManagement />} />
+                      <Route path="reports/summary" element={<AdminReportsSummary />} />
+                      <Route path="reports/customers" element={<AdminReportsCustomers />} />
                     </Route>
                   </Route>
 

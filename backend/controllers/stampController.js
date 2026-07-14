@@ -1,8 +1,5 @@
-const { generateQRToken, claimStamp, getStampBalanceByUserId } = require("../services/stampService");
+const { generateQRToken, claimStamp, getStampBalanceByUserId, getCustomerDetailRows } = require("../services/stampService");
 const StampClaimEvent = require("../models/StampClaimEvent");
-const User = require("../models/User");
-const StampCard = require("../models/StampCard");
-const Voucher = require("../models/Voucher");
 
 const generateAdminQRToken = async (req, res, next) => {
   try {
@@ -61,58 +58,7 @@ const getRecentScans = async (req, res, next) => {
 
 const getCustomersList = async (req, res, next) => {
   try {
-    const organizationId = req.user.organizationId;
-    const customers = await User.find({ role: "customer", organizationId }).sort({ name: 1 });
-
-    const data = await Promise.all(
-      customers.map(async (customer) => {
-        const stampCard = await StampCard.findOne({ userId: customer._id, organizationId });
-        const stampsEarned = stampCard ? stampCard.stampsEarned : 0;
-        const lastStampedAt = stampCard ? stampCard.lastStampedAt : null;
-
-        const validVoucherCount = (
-          await Voucher.find({
-            userId: customer._id,
-            organizationId,
-            isValid: true,
-          })
-        ).length;
-
-        const lifetimeVoucherCount = await Voucher.countDocuments({
-          userId: customer._id,
-          organizationId,
-        });
-
-        const allEvents = await StampClaimEvent.find({ userId: customer._id, organizationId })
-          .sort({ createdAt: -1 });
-
-        const scanHistory = allEvents.slice(0, 10).map((event) => ({
-          id: event._id.toString(),
-          timestamp: event.createdAt,
-        }));
-
-        const totalSpent = allEvents.reduce((sum, event) => sum + (event.billAmount || 0), 0);
-
-        const idStr = customer._id.toString();
-        const suffix = idStr.substring(Math.max(0, idStr.length - 5)).toUpperCase();
-        const formattedId = `NO. ${suffix.padStart(5, '0')}`;
-
-        return {
-          id: idStr,
-          name: customer.name,
-          email: customer.email,
-          phone: customer.phone || "",
-          address: customer.address || "",
-          customerNo: formattedId,
-          stampsEarned,
-          lastStampedAt,
-          validVoucherCount,
-          lifetimeVoucherCount,
-          totalSpent,
-          scanHistory,
-        };
-      })
-    );
+    const data = await getCustomerDetailRows(req.user.organizationId);
 
     // Sort by last activity (most recent first)
     data.sort((a, b) => {

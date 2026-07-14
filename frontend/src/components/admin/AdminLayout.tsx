@@ -7,6 +7,7 @@ import {
   Stamp,
   Palette,
   UtensilsCrossed,
+  FileSpreadsheet,
   LogOut,
 } from "lucide-react";
 import { useAdminAuth } from "../../context/AdminAuthContext";
@@ -20,6 +21,8 @@ const NAV = [
   { to: "program", label: "Stamp program", Icon: Stamp },
   { to: "branding", label: "Branding", Icon: Palette },
   { to: "menu", label: "Menu", Icon: UtensilsCrossed },
+  { to: "reports/summary", label: "Summary report", Icon: FileSpreadsheet },
+  { to: "reports/customers", label: "Customer report", Icon: FileSpreadsheet },
 ];
 
 // Desktop business-admin console shell. Sidebar recolors from the tenant's

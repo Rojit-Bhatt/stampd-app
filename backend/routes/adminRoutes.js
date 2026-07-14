@@ -15,6 +15,7 @@ const {
   importMenuItemsController,
   downloadMenuTemplate
 } = require("../controllers/menuController");
+const { getSummary, downloadSummary, downloadCustomers } = require("../controllers/reportController");
 const { verifyToken, isBusinessAdmin } = require("../middleware/authMiddleware");
 
 const router = express.Router();
@@ -31,5 +32,8 @@ router.post("/menu/import", verifyToken, isBusinessAdmin, uploadMenuFile, import
 router.get("/menu/template", verifyToken, isBusinessAdmin, downloadMenuTemplate);
 router.patch("/menu/:id", verifyToken, isBusinessAdmin, updateMenuItem);
 router.delete("/menu/:id", verifyToken, isBusinessAdmin, deleteMenuItem);
+router.get("/reports/summary", verifyToken, isBusinessAdmin, getSummary);
+router.get("/reports/summary/download", verifyToken, isBusinessAdmin, downloadSummary);
+router.get("/reports/customers/download", verifyToken, isBusinessAdmin, downloadCustomers);
 
 module.exports = router;

@@ -314,8 +314,65 @@ const getStampBalanceByUserId = async (userId, organizationId) => {
   };
 };
 
+const getCustomerDetailRows = async (organizationId) => {
+  const customers = await User.find({ role: "customer", organizationId }).sort({ name: 1 });
+
+  const rows = await Promise.all(
+    customers.map(async (customer) => {
+      const stampCard = await StampCard.findOne({ userId: customer._id, organizationId });
+      const stampsEarned = stampCard ? stampCard.stampsEarned : 0;
+      const lastStampedAt = stampCard ? stampCard.lastStampedAt : null;
+
+      const validVoucherCount = (
+        await Voucher.find({
+          userId: customer._id,
+          organizationId,
+          isValid: true,
+        })
+      ).length;
+
+      const lifetimeVoucherCount = await Voucher.countDocuments({
+        userId: customer._id,
+        organizationId,
+      });
+
+      const allEvents = await StampClaimEvent.find({ userId: customer._id, organizationId })
+        .sort({ createdAt: -1 });
+
+      const scanHistory = allEvents.slice(0, 10).map((event) => ({
+        id: event._id.toString(),
+        timestamp: event.createdAt,
+      }));
+
+      const totalSpent = allEvents.reduce((sum, event) => sum + (event.billAmount || 0), 0);
+
+      const idStr = customer._id.toString();
+      const suffix = idStr.substring(Math.max(0, idStr.length - 5)).toUpperCase();
+      const formattedId = `NO. ${suffix.padStart(5, '0')}`;
+
+      return {
+        id: idStr,
+        name: customer.name,
+        email: customer.email,
+        phone: customer.phone || "",
+        address: customer.address || "",
+        customerNo: formattedId,
+        stampsEarned,
+        lastStampedAt,
+        validVoucherCount,
+        lifetimeVoucherCount,
+        totalSpent,
+        scanHistory,
+      };
+    })
+  );
+
+  return rows;
+};
+
 module.exports = {
   generateQRToken,
   claimStamp,
-  getStampBalanceByUserId
+  getStampBalanceByUserId,
+  getCustomerDetailRows
 };
