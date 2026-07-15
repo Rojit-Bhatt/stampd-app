@@ -322,5 +322,10 @@ module.exports = {
   resendVerification,
   forgotPassword,
   resetPassword,
-  sendVerifyEmail
+  sendVerifyEmail,
+  // Reused as-is by customerAccountService (global customer identity) — no
+  // behavior change here, just making two already-existing functions
+  // importable from outside this file.
+  ensureUserStampCard,
+  formatAuthPayload
 };

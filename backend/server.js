@@ -46,6 +46,7 @@ const platformRoutes = require("./routes/platformRoutes");
 const tenantRoutes = require("./routes/tenantRoutes");
 const menuRoutes = require("./routes/menuRoutes");
 const accountRoutes = require("./routes/accountRoutes");
+const customerAccountRoutes = require("./routes/customerAccountRoutes");
 
 const app = express();
 const PORT = process.env.PORT || 5001;
@@ -81,6 +82,9 @@ app.use("/api/menu", menuRoutes);
 app.use("/api/auth", authRoutes);
 // Shared account actions (profile edit, password change) for any authenticated role.
 app.use("/api/account", accountRoutes);
+// Global customer identity (register/login/google/verify shared across every
+// tenant) + enter-tenant, the exchange for a normal tenant JWT.
+app.use("/api/customer-auth", customerAccountRoutes);
 // Business-admin console (QR, redemption, customers, settings, menu CRUD).
 app.use("/api/admin", adminRoutes);
 // Customer loyalty (stamps + vouchers), tenant taken from the JWT.
