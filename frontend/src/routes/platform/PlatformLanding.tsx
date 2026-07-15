@@ -1,6 +1,8 @@
 import { useEffect } from "react";
 import { Link } from "react-router-dom";
+import { Phone, Mail, MapPin, Clock, Instagram, Facebook, Twitter } from "lucide-react";
 import { PLATFORM_NAME } from "../../lib/platform";
+import { usePlatformContact } from "../../hooks/usePlatformContact";
 
 const STEPS = [
   { n: "1", t: "We set up your card", d: "Pick your reward and how many stamps it takes. Live in minutes — no app store needed." },
@@ -23,6 +25,19 @@ export default function PlatformLanding() {
   useEffect(() => {
     document.title = `${PLATFORM_NAME} — digital loyalty for local business`;
   }, []);
+
+  const { data: contact } = usePlatformContact();
+  const hasContact = Boolean(
+    contact &&
+      (contact.phone ||
+        contact.email ||
+        contact.address ||
+        contact.hours ||
+        contact.aboutUs ||
+        contact.socials.instagram ||
+        contact.socials.facebook ||
+        contact.socials.x)
+  );
 
   return (
     <div className="min-h-screen bg-[var(--bg)] text-[var(--ink)]">
@@ -166,6 +181,76 @@ export default function PlatformLanding() {
           ))}
         </div>
       </section>
+
+      {hasContact && contact && (
+        <section className="mx-auto max-w-[760px] px-6 py-10">
+          <h2 className="mb-6 text-center font-display text-[30px] font-extrabold">Contact us</h2>
+          <div className="rounded-[20px] border border-[var(--line)] bg-[var(--surface)] p-6">
+            {contact.address && (
+              <div className="mb-2 flex items-start gap-2 text-sm text-[var(--ink)]">
+                <MapPin className="mt-0.5 h-4 w-4 flex-shrink-0 text-[var(--muted)]" />
+                {contact.address}
+              </div>
+            )}
+            {contact.phone && (
+              <a href={`tel:${contact.phone}`} className="mb-2 flex items-center gap-2 text-sm text-[var(--ink)]">
+                <Phone className="h-4 w-4 flex-shrink-0 text-[var(--muted)]" />
+                {contact.phone}
+              </a>
+            )}
+            {contact.email && (
+              <a href={`mailto:${contact.email}`} className="mb-2 flex items-center gap-2 text-sm text-[var(--ink)]">
+                <Mail className="h-4 w-4 flex-shrink-0 text-[var(--muted)]" />
+                {contact.email}
+              </a>
+            )}
+            {contact.hours && (
+              <div className="mb-2 flex items-start gap-2 whitespace-pre-line text-sm text-[var(--ink)]">
+                <Clock className="mt-0.5 h-4 w-4 flex-shrink-0 text-[var(--muted)]" />
+                {contact.hours}
+              </div>
+            )}
+            {contact.aboutUs && <p className="mb-3 text-sm text-[var(--muted)]">{contact.aboutUs}</p>}
+            {(contact.socials.instagram || contact.socials.facebook || contact.socials.x) && (
+              <div className="flex gap-2">
+                {contact.socials.instagram && (
+                  <a
+                    href={contact.socials.instagram}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="flex h-9 w-9 items-center justify-center rounded-full bg-[var(--bg)] text-[var(--muted)] hover:text-[var(--plat)]"
+                    aria-label="Instagram"
+                  >
+                    <Instagram className="h-4 w-4" />
+                  </a>
+                )}
+                {contact.socials.facebook && (
+                  <a
+                    href={contact.socials.facebook}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="flex h-9 w-9 items-center justify-center rounded-full bg-[var(--bg)] text-[var(--muted)] hover:text-[var(--plat)]"
+                    aria-label="Facebook"
+                  >
+                    <Facebook className="h-4 w-4" />
+                  </a>
+                )}
+                {contact.socials.x && (
+                  <a
+                    href={contact.socials.x}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="flex h-9 w-9 items-center justify-center rounded-full bg-[var(--bg)] text-[var(--muted)] hover:text-[var(--plat)]"
+                    aria-label="X (Twitter)"
+                  >
+                    <Twitter className="h-4 w-4" />
+                  </a>
+                )}
+              </div>
+            )}
+          </div>
+        </section>
+      )}
 
       <footer className="mt-6 border-t border-[var(--line)]">
         <div className="mx-auto flex max-w-[1140px] flex-wrap items-center gap-3.5 px-6 py-8 text-sm text-[var(--muted)]">
