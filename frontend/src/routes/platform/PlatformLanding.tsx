@@ -109,7 +109,7 @@ export default function PlatformLanding() {
           </p>
           <div className="flex flex-col gap-3 sm:flex-row">
             <Link
-              to="/coffesarowar"
+              to="/customer-login"
               className="stamp-interactive group relative flex-1 overflow-hidden rounded-xl px-6 py-5 text-white"
               style={{ background: "var(--plat)" }}
             >
@@ -118,7 +118,7 @@ export default function PlatformLanding() {
               <div className="text-[13px] opacity-80">Track your rewards &amp; stamps</div>
             </Link>
             <Link
-              to="/coffesarowar/admin/login"
+              to="/business-login"
               className="stamp-interactive group relative flex-1 overflow-hidden rounded-xl bg-[var(--surface-container)] px-6 py-5"
             >
               <Store className="mb-2 h-6 w-6" style={{ color: "var(--plat)" }} />
@@ -349,12 +349,12 @@ export default function PlatformLanding() {
               <h5 className="mb-3 text-xs font-bold uppercase tracking-widest text-[var(--ink)]">Explore</h5>
               <ul className="flex flex-col gap-2 text-sm text-[var(--muted)]">
                 <li>
-                  <Link to="/coffesarowar" className="hover:text-[var(--plat)]">
+                  <Link to="/customer-login" className="hover:text-[var(--plat)]">
                     Customer app
                   </Link>
                 </li>
                 <li>
-                  <Link to="/coffesarowar/admin/login" className="hover:text-[var(--plat)]">
+                  <Link to="/business-login" className="hover:text-[var(--plat)]">
                     Business console
                   </Link>
                 </li>

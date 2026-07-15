@@ -18,6 +18,7 @@ const queryClient = new QueryClient();
 
 // Lazy load pages for route-based code splitting
 const BusinessLanding = lazy(() => import('./routes/BusinessLanding'));
+const FindBusiness = lazy(() => import('./routes/FindBusiness'));
 const CustomerLogin = lazy(() => import('./routes/CustomerLogin'));
 const CustomerRegister = lazy(() => import('./routes/CustomerRegister'));
 const CustomerDashboard = lazy(() => import('./routes/CustomerDashboard'));
@@ -88,6 +89,11 @@ export default function App() {
                   {/* Platform (SaaS owner) — unscoped, maroon accent. */}
                   <Route path="/" element={<PlatformLanding />} />
                   <Route path="/platform/login" element={<PlatformLogin />} />
+                  {/* Slug-less "which business?" lookup — resolves a typed
+                      business name to its /:slug before handing off to that
+                      tenant's actual (customer or admin) login. */}
+                  <Route path="/business-login" element={<FindBusiness intent="admin" />} />
+                  <Route path="/customer-login" element={<FindBusiness intent="customer" />} />
                   {/* Global customer-account verification — slug-less, since
                       CustomerAccount identity isn't tenant-scoped. */}
                   <Route path="/verify-email" element={<GlobalVerifyEmail />} />
