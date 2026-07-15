@@ -5,6 +5,7 @@ import toast from "react-hot-toast";
 import { apiRequest, getTenantSlug } from "../../lib/api";
 import { useAdminSettings, useUpdateAdminSettings } from "../../hooks/useAdminSettings";
 import { Skeleton } from "../../components/ui/skeleton";
+import { ConfirmDialog } from "../../components/shared/ConfirmDialog";
 
 interface MenuItem {
   id?: string;
@@ -39,6 +40,7 @@ export default function MenuManagement() {
   const { data: items = [], isLoading } = useMenu();
 
   const [draft, setDraft] = useState({ name: "", description: "", price: "", category: "General" });
+  const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null);
   const [importing, setImporting] = useState(false);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
@@ -266,7 +268,7 @@ export default function MenuManagement() {
                         {i.isFeatured ? "Featured" : "Feature"}
                       </button>
                       <button
-                        onClick={() => deleteItem.mutate(itemId(i))}
+                        onClick={() => setPendingDeleteId(itemId(i))}
                         className="flex h-8 w-8 items-center justify-center rounded-[9px] bg-[var(--bg)] text-[var(--muted)] hover:text-[var(--err)]"
                         aria-label={`Delete ${i.name}`}
                       >
@@ -279,6 +281,22 @@ export default function MenuManagement() {
           ))
         )}
       </div>
+
+      <ConfirmDialog
+        open={pendingDeleteId !== null}
+        onOpenChange={(open) => !open && setPendingDeleteId(null)}
+        title="Delete this item?"
+        description={
+          pendingDeleteId
+            ? `"${items.find((i) => itemId(i) === pendingDeleteId)?.name ?? ""}" will be removed from your menu.`
+            : ""
+        }
+        confirmLabel="Delete"
+        confirmColor="var(--err)"
+        onConfirm={() => {
+          if (pendingDeleteId) deleteItem.mutate(pendingDeleteId);
+        }}
+      />
     </div>
   );
 }
