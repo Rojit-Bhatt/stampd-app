@@ -39,7 +39,7 @@ export function PlatformLayout() {
       <aside className="sticky top-0 flex h-screen w-[250px] flex-shrink-0 flex-col border-r border-[var(--line)] bg-[var(--surface)] px-4 py-6">
         <div className="mb-6 flex items-center gap-2.5 px-2">
           <div
-            className="flex h-9 w-9 items-center justify-center rounded-[10px] font-display text-sm font-extrabold text-white"
+            className="flex h-9 w-9 items-center justify-center rounded-xl font-display text-sm font-bold text-white"
             style={{ background: "var(--plat)" }}
           >
             {PLATFORM_NAME.charAt(0)}
@@ -57,11 +57,12 @@ export function PlatformLayout() {
               to={to}
               end={end}
               className={({ isActive }) =>
-                `flex items-center gap-3 rounded-[11px] px-3.5 py-2.5 text-[14px] font-semibold transition-colors ${
-                  isActive ? "text-white" : "text-[var(--ink)] hover:bg-[var(--bg)]"
+                `relative flex items-center gap-3 rounded-2xl px-3.5 py-2.5 text-[14px] font-semibold transition-colors ${
+                  isActive
+                    ? "bg-[var(--surface-container)] text-[var(--plat)] after:absolute after:right-0 after:top-1/2 after:h-4 after:w-[3px] after:-translate-y-1/2 after:rounded-full after:bg-[var(--plat)]"
+                    : "text-[var(--ink)] hover:bg-[var(--surface-container)]"
                 }`
               }
-              style={({ isActive }) => (isActive ? { background: "var(--plat)" } : undefined)}
             >
               <Icon className="h-4 w-4" />
               {label}

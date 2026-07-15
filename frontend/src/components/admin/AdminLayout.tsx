@@ -35,14 +35,8 @@ const isGroup = (item: NavLeaf | NavGroup): item is NavGroup => "children" in it
 
 const NAV: (NavLeaf | NavGroup)[] = [
   { to: "", end: true, label: "Overview", Icon: LayoutDashboard },
-  { to: "generate", label: "Generate stamp", Icon: QrCode },
   { to: "redeem", label: "Redeem voucher", Icon: TicketCheck },
   { to: "customers", label: "Customers", Icon: Users },
-  { to: "program", label: "Stamp program", Icon: Stamp },
-  { to: "branding", label: "Branding", Icon: Palette },
-  { to: "contact", label: "Contact", Icon: Phone },
-  { to: "menu", label: "Menu", Icon: UtensilsCrossed },
-  { to: "events", label: "Events", Icon: Calendar },
   {
     label: "Reports",
     Icon: FileSpreadsheet,
@@ -51,6 +45,14 @@ const NAV: (NavLeaf | NavGroup)[] = [
       { to: "reports/customers", label: "Customer report" },
     ],
   },
+];
+
+const MANAGEMENT_NAV: NavLeaf[] = [
+  { to: "program", label: "Stamp program", Icon: Stamp },
+  { to: "branding", label: "Branding", Icon: Palette },
+  { to: "contact", label: "Contact", Icon: Phone },
+  { to: "menu", label: "Menu", Icon: UtensilsCrossed },
+  { to: "events", label: "Events", Icon: Calendar },
 ];
 
 // Desktop business-admin console shell. Sidebar recolors from the tenant's
@@ -107,7 +109,7 @@ export function AdminLayout() {
       <aside className="sticky top-0 flex h-screen w-[250px] flex-shrink-0 flex-col border-r border-[var(--line)] bg-[var(--surface)] px-4 py-6">
         <div className="mb-6 flex items-center gap-2.5 px-2">
           <div
-            className="flex h-9 w-9 items-center justify-center rounded-[10px] font-display text-sm font-extrabold text-white"
+            className="flex h-9 w-9 items-center justify-center rounded-xl font-display text-sm font-bold text-white"
             style={{ background: "var(--brand)" }}
           >
             {initial}
@@ -124,7 +126,7 @@ export function AdminLayout() {
               <div key={item.label}>
                 <button
                   onClick={() => toggleGroup(item.label)}
-                  className="flex w-full items-center gap-3 rounded-[11px] px-3.5 py-2.5 text-[13.5px] font-semibold text-[var(--ink)] transition-colors hover:bg-[var(--bg)]"
+                  className="flex w-full items-center gap-3 rounded-2xl px-3.5 py-2.5 text-[13.5px] font-semibold text-[var(--ink)] transition-colors hover:bg-[var(--surface-container)]"
                   aria-expanded={openGroups.has(item.label)}
                 >
                   <item.Icon className="h-4 w-4" />
@@ -137,16 +139,7 @@ export function AdminLayout() {
                 {openGroups.has(item.label) && (
                   <div className="ml-4 flex flex-col gap-0.5 border-l border-[var(--line)] pl-3">
                     {item.children.map((child) => (
-                      <NavLink
-                        key={child.to}
-                        to={child.to}
-                        className={({ isActive }) =>
-                          `rounded-[9px] px-3 py-2 text-[13px] font-semibold transition-colors ${
-                            isActive ? "text-white" : "text-[var(--ink)] hover:bg-[var(--bg)]"
-                          }`
-                        }
-                        style={({ isActive }) => (isActive ? { background: "var(--brand)" } : undefined)}
-                      >
+                      <NavLink key={child.to} to={child.to} className={navLinkClass}>
                         {child.label}
                       </NavLink>
                     ))}
@@ -154,34 +147,42 @@ export function AdminLayout() {
                 )}
               </div>
             ) : (
-              <NavLink
-                key={item.to || "overview"}
-                to={item.to}
-                end={item.end}
-                className={({ isActive }) =>
-                  `flex items-center gap-3 rounded-[11px] px-3.5 py-2.5 text-[13.5px] font-semibold transition-colors ${
-                    isActive
-                      ? "text-white"
-                      : "text-[var(--ink)] hover:bg-[var(--bg)]"
-                  }`
-                }
-                style={({ isActive }) => (isActive ? { background: "var(--brand)" } : undefined)}
-              >
+              <NavLink key={item.to || "overview"} to={item.to} end={item.end} className={navLinkClass}>
                 <item.Icon className="h-4 w-4" />
                 {item.label}
               </NavLink>
             )
           )}
+
+          <div className="mb-1 mt-4 px-3.5 text-[11px] font-bold uppercase tracking-wider text-[var(--soft)]">
+            Management
+          </div>
+          {MANAGEMENT_NAV.map((item) => (
+            <NavLink key={item.to} to={item.to} className={navLinkClass}>
+              <item.Icon className="h-4 w-4" />
+              {item.label}
+            </NavLink>
+          ))}
         </nav>
 
-        <div className="mt-auto border-t border-[var(--line)] pt-3">
-          <AccountMenu
-            initial={(account?.name || user?.name || "?").charAt(0).toUpperCase()}
-            name={account?.name || user?.name || ""}
-            settingsPath="settings"
-            onLogout={handleLogout}
-            dropUp
-          />
+        <div className="mt-auto flex flex-col gap-3 pt-3">
+          <NavLink
+            to="generate"
+            className="stamp-interactive flex items-center justify-center gap-2 rounded-full py-3 text-[13.5px] font-bold text-white"
+            style={{ background: "var(--brand)" }}
+          >
+            <QrCode className="h-4 w-4" />
+            Generate stamp
+          </NavLink>
+          <div className="border-t border-[var(--line)] pt-3">
+            <AccountMenu
+              initial={(account?.name || user?.name || "?").charAt(0).toUpperCase()}
+              name={account?.name || user?.name || ""}
+              settingsPath="settings"
+              onLogout={handleLogout}
+              dropUp
+            />
+          </div>
         </div>
       </aside>
 
@@ -190,5 +191,15 @@ export function AdminLayout() {
       </main>
     </div>
   );
+}
+
+// Pale-tint active state with a trailing accent bar, matching the reference
+// design's sidebar treatment — a rounded row, not a solid brand-fill block.
+function navLinkClass({ isActive }: { isActive: boolean }) {
+  return `relative flex items-center gap-3 rounded-2xl px-3.5 py-2.5 text-[13.5px] font-semibold transition-colors ${
+    isActive
+      ? "bg-[var(--surface-container)] text-[var(--brand)] after:absolute after:right-0 after:top-1/2 after:h-4 after:w-[3px] after:-translate-y-1/2 after:rounded-full after:bg-[var(--brand)]"
+      : "text-[var(--ink)] hover:bg-[var(--surface-container)]"
+  }`;
 }
 export default AdminLayout;

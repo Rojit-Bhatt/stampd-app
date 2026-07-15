@@ -9,8 +9,8 @@ interface BottomNavProps {
 
 export function BottomNav({ slug, activeTab, onScanClick }: BottomNavProps) {
   return (
-    <footer className="relative flex-shrink-0 border-t border-[var(--line)] bg-[var(--surface)] px-6 pb-6 pt-3">
-      <div className="relative mx-auto flex max-w-md items-center justify-between px-4">
+    <footer className="relative flex-shrink-0 px-4 pb-5 pt-2">
+      <div className="shadow-ambient relative mx-auto flex max-w-md items-center justify-between rounded-full bg-[var(--surface)] px-5 py-2">
         <Link
           to={`/${slug}/dashboard`}
           className={`flex min-h-[44px] flex-col items-center justify-center gap-1 p-2 transition-colors ${

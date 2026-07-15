@@ -1,4 +1,4 @@
-import { Coffee, Gift } from "lucide-react";
+import { Coffee, Gift, Plus } from "lucide-react";
 
 interface PunchCardProps {
   stampsEarned: number;
@@ -43,7 +43,7 @@ export function PunchCard({ stampsEarned, stampsRequired }: PunchCardProps) {
                   : `Stamp ${i + 1} empty`
             }
           >
-            {isReward ? <Gift className="h-4 w-4" /> : <Coffee className="h-4 w-4" />}
+            {filled ? <Coffee className="h-4 w-4" /> : isReward ? <Gift className="h-4 w-4" /> : <Plus className="h-4 w-4" />}
           </div>
         );
       })}

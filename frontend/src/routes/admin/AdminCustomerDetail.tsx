@@ -1,6 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { Link, useParams } from "react-router-dom";
-import { ArrowLeft, Phone, MapPin, Ticket, Coffee } from "lucide-react";
+import { ChevronRight, Phone, MapPin, Ticket } from "lucide-react";
 import { apiRequest } from "../../lib/api";
 import { useAdminSettings } from "../../hooks/useAdminSettings";
 import { Skeleton } from "../../components/ui/skeleton";
@@ -52,13 +52,13 @@ export default function AdminCustomerDetail() {
 
   return (
     <div>
-      <Link
-        to={`/${slug}/admin/customers`}
-        className="mb-6 inline-flex items-center gap-1.5 text-sm font-semibold text-[var(--muted)] hover:text-[var(--ink)]"
-      >
-        <ArrowLeft className="h-4 w-4" />
-        Back to customers
-      </Link>
+      <div className="mb-6 flex items-center gap-1.5 text-sm font-semibold text-[var(--muted)]">
+        <Link to={`/${slug}/admin/customers`} className="hover:text-[var(--ink)]">
+          Customers
+        </Link>
+        <ChevronRight className="h-3.5 w-3.5" />
+        <span className="text-[var(--ink)]">Detail</span>
+      </div>
 
       {isLoading ? (
         <div className="flex items-center gap-4">
@@ -90,41 +90,21 @@ export default function AdminCustomerDetail() {
           </div>
 
           <div className="mb-6 grid grid-cols-2 gap-4 sm:grid-cols-4">
-            <Stat label="Stamps" value={`${customer.stampsEarned}/${required}`} />
+            <CurrentCardStat stampsEarned={customer.stampsEarned} stampsRequired={required} />
             <Stat label="Active vouchers" value={String(customer.validVoucherCount)} />
             <Stat label="Lifetime vouchers" value={String(customer.lifetimeVoucherCount)} />
             <Stat label="Total spent" value={String(customer.totalSpent)} />
           </div>
 
-          <div className="mb-6 grid gap-4 sm:grid-cols-2">
-            <div className="shadow-ambient rounded-3xl bg-[var(--surface)] p-5">
-              <div className="mb-3 text-xs font-bold uppercase tracking-wider text-[var(--soft)]">Contact</div>
-              <div className="flex items-center gap-2 text-sm text-[var(--ink)]">
-                <Phone className="h-4 w-4 text-[var(--muted)]" />
-                {customer.phone || "—"}
-              </div>
-              <div className="mt-2 flex items-start gap-2 text-sm text-[var(--ink)]">
-                <MapPin className="mt-0.5 h-4 w-4 flex-shrink-0 text-[var(--muted)]" />
-                {customer.address || "—"}
-              </div>
+          <div className="mb-6 shadow-ambient rounded-3xl bg-[var(--surface)] p-5">
+            <div className="mb-3 text-xs font-bold uppercase tracking-wider text-[var(--soft)]">Contact</div>
+            <div className="flex items-center gap-2 text-sm text-[var(--ink)]">
+              <Phone className="h-4 w-4 text-[var(--muted)]" />
+              {customer.phone || "—"}
             </div>
-            <div className="shadow-ambient rounded-3xl bg-[var(--surface)] p-5">
-              <div className="mb-3 text-xs font-bold uppercase tracking-wider text-[var(--soft)]">Card progress</div>
-              <div className="grid grid-cols-5 gap-2">
-                {Array.from({ length: required }).map((_, i) => (
-                  <div
-                    key={i}
-                    className="flex aspect-square items-center justify-center rounded-full"
-                    style={
-                      i < customer.stampsEarned
-                        ? { background: "var(--brand)", color: "#fff" }
-                        : { border: "2px dashed var(--line)", color: "var(--soft)" }
-                    }
-                  >
-                    <Coffee className="h-3.5 w-3.5" />
-                  </div>
-                ))}
-              </div>
+            <div className="mt-2 flex items-start gap-2 text-sm text-[var(--ink)]">
+              <MapPin className="mt-0.5 h-4 w-4 flex-shrink-0 text-[var(--muted)]" />
+              {customer.address || "—"}
             </div>
           </div>
 
@@ -156,6 +136,24 @@ function Stat({ label, value }: { label: string; value: string }) {
     <div className="shadow-ambient rounded-3xl bg-[var(--surface)] p-5">
       <div className="mb-1 text-[13px] text-[var(--muted)]">{label}</div>
       <div className="font-display text-2xl font-bold text-[var(--ink)]">{value}</div>
+    </div>
+  );
+}
+
+// The one brand-tinted stat tile among otherwise-plain cards — same "one
+// accent, quiet surroundings" restraint as the reward card itself.
+function CurrentCardStat({ stampsEarned, stampsRequired }: { stampsEarned: number; stampsRequired: number }) {
+  const pct = Math.min(100, Math.round((stampsEarned / Math.max(1, stampsRequired)) * 100));
+  return (
+    <div className="relative overflow-hidden rounded-3xl p-5 text-white" style={{ background: "var(--brand)" }}>
+      <Ticket className="absolute -bottom-3 -right-3 h-16 w-16 opacity-15" aria-hidden="true" />
+      <div className="relative mb-1 text-[13px] opacity-80">Current card</div>
+      <div className="relative font-display text-2xl font-bold">
+        {stampsEarned}/{stampsRequired}
+      </div>
+      <div className="relative mt-3 h-1.5 w-full overflow-hidden rounded-full bg-white/25">
+        <div className="h-full rounded-full bg-white" style={{ width: `${pct}%` }} />
+      </div>
     </div>
   );
 }
