@@ -67,7 +67,7 @@ export default function OnboardBusiness() {
         <Link to="/platform" className="mb-3.5 inline-block text-[13px] text-[var(--muted)]">
           ← Businesses
         </Link>
-        <div className="rounded-[22px] border border-[#CBE4D6] bg-[var(--ok-soft)] p-8 text-center">
+        <div className="shadow-ambient rounded-3xl border border-[#CBE4D6] bg-[var(--ok-soft)] p-8 text-center">
           <div
             className="mx-auto mb-4 flex h-15 w-15 items-center justify-center rounded-full text-white"
             style={{ width: 60, height: 60, background: "var(--ok)" }}
@@ -90,7 +90,7 @@ export default function OnboardBusiness() {
                 setCopied(true);
                 setTimeout(() => setCopied(false), 1500);
               }}
-              className="flex flex-shrink-0 items-center gap-1.5 rounded-[9px] px-3.5 py-2 text-xs font-bold text-white"
+              className="stamp-interactive flex flex-shrink-0 items-center gap-1.5 rounded-full px-3.5 py-2 text-xs font-bold text-white"
               style={{ background: "var(--plat)" }}
             >
               <Copy className="h-3.5 w-3.5" /> {copied ? "Copied" : "Copy link"}
@@ -99,13 +99,13 @@ export default function OnboardBusiness() {
           <div className="flex justify-center gap-2.5">
             <Link
               to="/platform"
-              className="rounded-[12px] border border-[var(--line)] bg-white px-5 py-3 text-sm font-bold"
+              className="rounded-full border border-[var(--line)] bg-white px-5 py-3 text-sm font-bold"
             >
               Back to businesses
             </Link>
             <button
               onClick={reset}
-              className="rounded-[12px] px-5 py-3 text-sm font-bold text-white"
+              className="stamp-interactive rounded-full px-5 py-3 text-sm font-bold text-white"
               style={{ background: "var(--plat)" }}
             >
               Onboard another
@@ -179,7 +179,7 @@ export default function OnboardBusiness() {
         <button
           onClick={submit}
           disabled={busy}
-          className="rounded-[14px] py-4 text-[16px] font-bold text-white transition-opacity hover:opacity-90 disabled:opacity-50"
+          className="stamp-interactive rounded-full py-4 text-[16px] font-bold text-white disabled:opacity-50"
           style={{ background: "var(--plat)" }}
         >
           {busy ? "Creating…" : "Create business & admin"}
@@ -191,7 +191,7 @@ export default function OnboardBusiness() {
 
 function Card({ title, children }: { title: string; children: React.ReactNode }) {
   return (
-    <div className="rounded-[20px] border border-[var(--line)] bg-[var(--surface)] p-6">
+    <div className="shadow-ambient rounded-3xl bg-[var(--surface)] p-6">
       <div className="mb-3.5 text-xs font-bold uppercase tracking-wider text-[var(--soft)]">{title}</div>
       {children}
     </div>

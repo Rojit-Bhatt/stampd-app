@@ -53,7 +53,7 @@ export default function Businesses() {
         </div>
         <Link
           to="onboard"
-          className="rounded-[13px] px-5 py-3 text-[15px] font-bold text-white"
+          className="stamp-interactive rounded-full px-5 py-3 text-[15px] font-bold text-white"
           style={{ background: "var(--plat)" }}
         >
           + Onboard new business
@@ -62,18 +62,18 @@ export default function Businesses() {
 
       <div className="mb-6 grid grid-cols-2 gap-4 md:grid-cols-4">
         {stats.map((s) => (
-          <div key={s.label} className="rounded-[18px] border border-[var(--line)] bg-[var(--surface)] p-5">
+          <div key={s.label} className="shadow-ambient rounded-3xl bg-[var(--surface)] p-5">
             <div className="mb-1.5 text-[13px] text-[var(--muted)]">{s.label}</div>
             {isLoading ? (
               <Skeleton className="h-[26px] w-10" />
             ) : (
-              <div className="font-display text-[26px] font-extrabold">{s.val}</div>
+              <div className="font-display text-[26px] font-bold">{s.val}</div>
             )}
           </div>
         ))}
       </div>
 
-      <div className="overflow-hidden rounded-[20px] border border-[var(--line)] bg-[var(--surface)]">
+      <div className="shadow-ambient overflow-hidden rounded-3xl bg-[var(--surface)]">
         <div className="grid grid-cols-[2fr_1fr_1fr_1fr_1fr] border-b border-[var(--line)] px-5 py-3 text-[11px] font-bold uppercase tracking-wider text-[var(--soft)]">
           <span>Business</span>
           <span>Status</span>
@@ -112,7 +112,7 @@ export default function Businesses() {
               <span className="flex items-center gap-3 min-w-0">
                 <span
                   className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-[10px] text-xs font-extrabold text-white"
-                  style={{ background: b.branding?.primaryColor || "#8B2635" }}
+                  style={{ background: b.branding?.primaryColor || "var(--brand)" }}
                 >
                   {b.name.charAt(0).toUpperCase()}
                 </span>
