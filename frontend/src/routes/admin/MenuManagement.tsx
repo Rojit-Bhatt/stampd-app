@@ -4,6 +4,7 @@ import { Trash2, Plus, Download } from "lucide-react";
 import toast from "react-hot-toast";
 import { apiRequest, getTenantSlug } from "../../lib/api";
 import { useAdminSettings, useUpdateAdminSettings } from "../../hooks/useAdminSettings";
+import { Skeleton } from "../../components/ui/skeleton";
 
 interface MenuItem {
   id?: string;
@@ -206,7 +207,17 @@ export default function MenuManagement() {
       {/* List grouped by category */}
       <div className="flex flex-col gap-6" style={{ opacity: menuEnabled ? 1 : 0.55 }}>
         {isLoading ? (
-          <div className="text-sm text-[var(--muted)]">Loading…</div>
+          <div className="overflow-hidden rounded-[16px] border border-[var(--line)] bg-[var(--surface)]">
+            {Array.from({ length: 4 }).map((_, i) => (
+              <div key={i} className="flex items-center gap-3 border-b border-[var(--line)] px-4 py-3.5 last:border-b-0">
+                <div className="min-w-0 flex-1">
+                  <Skeleton className="mb-1.5 h-3.5 w-36" />
+                  <Skeleton className="h-3 w-48" />
+                </div>
+                <Skeleton className="h-3.5 w-10" />
+              </div>
+            ))}
+          </div>
         ) : items.length === 0 ? (
           <div className="rounded-[16px] border border-dashed border-[var(--line)] p-8 text-center text-sm text-[var(--muted)]">
             No menu items yet. Add your first above.

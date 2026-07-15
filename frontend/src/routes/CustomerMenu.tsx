@@ -1,6 +1,7 @@
 import { UtensilsCrossed } from "lucide-react";
 import { useCustomerMenu } from "../hooks/useCustomerMenu";
 import { useTenant } from "../context/TenantContext";
+import { Skeleton } from "../components/ui/skeleton";
 
 // Rendered inside CustomerLayout (phone shell + bottom nav). Content only.
 export default function CustomerMenu() {
@@ -17,8 +18,16 @@ export default function CustomerMenu() {
       <p className="mb-5 text-[13px] text-[var(--muted)]">{tenant?.name}</p>
 
       {isLoading ? (
-        <div className="flex justify-center py-16">
-          <div className="h-7 w-7 animate-spin rounded-full border-2 border-[var(--brand)] border-t-transparent" />
+        <div className="overflow-hidden rounded-[16px] border border-[var(--line)] bg-[var(--surface)]">
+          {Array.from({ length: 4 }).map((_, i) => (
+            <div key={i} className="flex items-center gap-3 border-b border-[var(--line)] px-4 py-3.5 last:border-b-0">
+              <div className="min-w-0 flex-1">
+                <Skeleton className="mb-1.5 h-3.5 w-32" />
+                <Skeleton className="h-3 w-44" />
+              </div>
+              <Skeleton className="h-3.5 w-10" />
+            </div>
+          ))}
         </div>
       ) : !menuEnabled ? (
         <EmptyState message="This business hasn't added a menu yet." />

@@ -3,6 +3,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Trash2, Plus, Pencil, X, Check } from "lucide-react";
 import toast from "react-hot-toast";
 import { apiRequest } from "../../lib/api";
+import { Skeleton } from "../../components/ui/skeleton";
 
 interface EventItem {
   id?: string;
@@ -158,7 +159,16 @@ export default function AdminEvents() {
       {/* List */}
       <div className="overflow-hidden rounded-[16px] border border-[var(--line)] bg-[var(--surface)]">
         {isLoading ? (
-          <div className="p-5 text-sm text-[var(--muted)]">Loading…</div>
+          Array.from({ length: 3 }).map((_, i) => (
+            <div key={i} className="flex items-center gap-3 border-b border-[var(--line)] px-4 py-3.5 last:border-b-0">
+              <div className="min-w-0 flex-1">
+                <Skeleton className="mb-1.5 h-3.5 w-40" />
+                <Skeleton className="h-3 w-56" />
+              </div>
+              <Skeleton className="h-8 w-8 rounded-[9px]" />
+              <Skeleton className="h-8 w-8 rounded-[9px]" />
+            </div>
+          ))
         ) : events.length === 0 ? (
           <div className="p-8 text-center text-sm text-[var(--muted)]">No events yet. Add your first above.</div>
         ) : (

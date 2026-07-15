@@ -1,6 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { Link, useNavigate } from "react-router-dom";
 import { apiRequest } from "../../lib/api";
+import { Skeleton } from "../../components/ui/skeleton";
 
 export interface Business {
   id: string;
@@ -47,7 +48,7 @@ export default function Businesses() {
         <div>
           <h1 className="font-display text-[30px] font-extrabold text-[var(--ink)]">Businesses</h1>
           <p className="text-[var(--muted)]">
-            {isLoading ? "Loading…" : `${businesses.length} onboarded · ${active} active`}
+            {isLoading ? <Skeleton className="inline-block h-4 w-36 align-middle" /> : `${businesses.length} onboarded · ${active} active`}
           </p>
         </div>
         <Link
@@ -63,7 +64,11 @@ export default function Businesses() {
         {stats.map((s) => (
           <div key={s.label} className="rounded-[18px] border border-[var(--line)] bg-[var(--surface)] p-5">
             <div className="mb-1.5 text-[13px] text-[var(--muted)]">{s.label}</div>
-            <div className="font-display text-[26px] font-extrabold">{s.val}</div>
+            {isLoading ? (
+              <Skeleton className="h-[26px] w-10" />
+            ) : (
+              <div className="font-display text-[26px] font-extrabold">{s.val}</div>
+            )}
           </div>
         ))}
       </div>
@@ -77,7 +82,23 @@ export default function Businesses() {
           <span>Redeemed</span>
         </div>
 
-        {businesses.length === 0 && !isLoading ? (
+        {isLoading ? (
+          Array.from({ length: 4 }).map((_, i) => (
+            <div key={i} className="grid grid-cols-[2fr_1fr_1fr_1fr_1fr] items-center border-b border-[var(--line)] px-5 py-3.5 last:border-b-0">
+              <span className="flex items-center gap-3">
+                <Skeleton className="h-9 w-9 flex-shrink-0 rounded-[10px]" />
+                <span className="flex-1">
+                  <Skeleton className="mb-1.5 h-3.5 w-24" />
+                  <Skeleton className="h-3 w-16" />
+                </span>
+              </span>
+              <Skeleton className="h-5 w-14 rounded-full" />
+              <Skeleton className="h-3.5 w-8" />
+              <Skeleton className="h-3.5 w-8" />
+              <Skeleton className="h-3.5 w-8" />
+            </div>
+          ))
+        ) : businesses.length === 0 ? (
           <div className="px-5 py-10 text-center text-sm text-[var(--muted)]">
             No businesses yet. Onboard your first.
           </div>
