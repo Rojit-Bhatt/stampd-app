@@ -3,6 +3,7 @@ import toast from "react-hot-toast";
 import { LogOut } from "lucide-react";
 import { apiRequest } from "../../lib/api";
 import { useAccount, useUpdateProfile, useChangePassword } from "../../hooks/useAccount";
+import { Skeleton } from "../ui/skeleton";
 
 interface AccountSettingsFormProps {
   role: "admin" | "customer" | "platform";
@@ -28,7 +29,25 @@ export function AccountSettingsForm({ role, onLogout }: AccountSettingsFormProps
   }, [account, name]);
 
   if (isLoading || !account) {
-    return <div className="text-sm text-[var(--muted)]">Loading…</div>;
+    return (
+      <div className="flex max-w-[480px] flex-col gap-6">
+        <div className="rounded-[18px] border border-[var(--line)] bg-[var(--surface)] p-5">
+          <Skeleton className="mb-3 h-4 w-20" />
+          <Skeleton className="mb-1.5 h-3 w-16" />
+          <Skeleton className="mb-3 h-11 w-full rounded-[11px]" />
+          <Skeleton className="mb-3 h-3 w-40" />
+          <Skeleton className="h-10 w-28 rounded-[13px]" />
+        </div>
+        <div className="rounded-[18px] border border-[var(--line)] bg-[var(--surface)] p-5">
+          <Skeleton className="mb-3 h-4 w-32" />
+          <Skeleton className="mb-1.5 h-3 w-24" />
+          <Skeleton className="mb-3 h-11 w-full rounded-[11px]" />
+          <Skeleton className="mb-1.5 h-3 w-24" />
+          <Skeleton className="mb-3 h-11 w-full rounded-[11px]" />
+          <Skeleton className="h-10 w-32 rounded-[13px]" />
+        </div>
+      </div>
+    );
   }
 
   const saveName = async () => {

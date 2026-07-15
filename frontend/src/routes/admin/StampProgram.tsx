@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import toast from "react-hot-toast";
 import { useAdminSettings, useUpdateAdminSettings, type AdminProgram } from "../../hooks/useAdminSettings";
+import { Skeleton } from "../../components/ui/skeleton";
 
 export default function StampProgram() {
   const { data: settings, isLoading } = useAdminSettings();
@@ -12,7 +13,31 @@ export default function StampProgram() {
   }, [settings, form]);
 
   if (isLoading || !form) {
-    return <div className="text-sm text-[var(--muted)]">Loading…</div>;
+    return (
+      <div className="max-w-[620px]">
+        <Skeleton className="mb-2 h-7 w-56" />
+        <Skeleton className="mb-6 h-4 w-72" />
+        <div className="flex flex-col gap-6 rounded-[20px] border border-[var(--line)] bg-[var(--surface)] p-6">
+          <div>
+            <Skeleton className="mb-2.5 h-3.5 w-52" />
+            <Skeleton className="h-3 w-32" />
+          </div>
+          <div className="border-t border-[var(--line)] pt-5">
+            <Skeleton className="mb-1.5 h-3.5 w-28" />
+            <Skeleton className="h-11 w-full rounded-[11px]" />
+          </div>
+          <div>
+            <Skeleton className="mb-1.5 h-3.5 w-36" />
+            <Skeleton className="h-16 w-full rounded-[11px]" />
+          </div>
+          <div className="border-t border-[var(--line)] pt-5">
+            <Skeleton className="mb-1.5 h-3.5 w-44" />
+            <Skeleton className="h-11 w-24 rounded-[11px]" />
+          </div>
+          <Skeleton className="h-11 w-full rounded-[13px]" />
+        </div>
+      </div>
+    );
   }
 
   const set = <K extends keyof AdminProgram>(k: K, v: AdminProgram[K]) =>

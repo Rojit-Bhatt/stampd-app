@@ -5,6 +5,7 @@ import {
   useUpdateAdminSettings,
   type AdminBranding,
 } from "../../hooks/useAdminSettings";
+import { Skeleton } from "../../components/ui/skeleton";
 
 const SWATCHES = ["#B5533C", "#8B2635", "#7A5CA8", "#2F7E8C", "#C9852B", "#C24B7A", "#3F7A5C", "#2B2B2B"];
 
@@ -32,7 +33,42 @@ export default function Branding() {
   }, [settings, brand]);
 
   if (isLoading || !brand) {
-    return <div className="text-sm text-[var(--muted)]">Loading…</div>;
+    return (
+      <div>
+        <Skeleton className="mb-2 h-7 w-36" />
+        <Skeleton className="mb-6 h-4 w-96" />
+        <div className="grid grid-cols-1 items-start gap-6 lg:grid-cols-[1fr_340px]">
+          <div className="flex flex-col gap-5 rounded-[20px] border border-[var(--line)] bg-[var(--surface)] p-6">
+            <div>
+              <Skeleton className="mb-1.5 h-3.5 w-28" />
+              <Skeleton className="h-11 w-full rounded-[11px]" />
+            </div>
+            <div>
+              <Skeleton className="mb-1.5 h-3.5 w-16" />
+              <Skeleton className="h-11 w-full rounded-[11px]" />
+            </div>
+            <div>
+              <Skeleton className="mb-2 h-3.5 w-24" />
+              <div className="flex flex-wrap gap-2.5">
+                {Array.from({ length: 8 }).map((_, i) => (
+                  <Skeleton key={i} className="h-10 w-10 rounded-[12px]" />
+                ))}
+              </div>
+            </div>
+            <div>
+              <Skeleton className="mb-1.5 h-3.5 w-20" />
+              <Skeleton className="h-11 w-full rounded-[11px]" />
+            </div>
+            <div>
+              <Skeleton className="mb-1.5 h-3.5 w-24" />
+              <Skeleton className="h-11 w-full rounded-[11px]" />
+            </div>
+            <Skeleton className="h-11 w-full rounded-[13px]" />
+          </div>
+          <Skeleton className="h-[280px] w-full rounded-[28px]" />
+        </div>
+      </div>
+    );
   }
 
   const set = <K extends keyof AdminBranding>(k: K, v: AdminBranding[K]) =>

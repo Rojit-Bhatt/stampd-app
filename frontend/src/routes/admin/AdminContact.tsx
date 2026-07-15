@@ -6,6 +6,7 @@ import {
   useUpdateAdminSettings,
   type AdminContact as AdminContactData,
 } from "../../hooks/useAdminSettings";
+import { Skeleton } from "../../components/ui/skeleton";
 
 const EMPTY_CONTACT: AdminContactData = {
   phone: "",
@@ -39,7 +40,25 @@ export default function AdminContact() {
   }, [settings, contact]);
 
   if (isLoading || !contact) {
-    return <div className="text-sm text-[var(--muted)]">Loading…</div>;
+    return (
+      <div>
+        <Skeleton className="mb-2 h-7 w-40" />
+        <Skeleton className="mb-6 h-4 w-96" />
+        <div className="grid grid-cols-1 items-start gap-6 lg:grid-cols-[1fr_340px]">
+          <div className="flex flex-col gap-5 rounded-[20px] border border-[var(--line)] bg-[var(--surface)] p-6">
+            {Array.from({ length: 4 }).map((_, i) => (
+              <div key={i}>
+                <Skeleton className="mb-1.5 h-3.5 w-20" />
+                <Skeleton className="h-11 w-full rounded-[11px]" />
+              </div>
+            ))}
+            <Skeleton className="h-16 w-full rounded-[11px]" />
+            <Skeleton className="h-11 w-full rounded-[13px]" />
+          </div>
+          <Skeleton className="h-[280px] w-full rounded-[24px]" />
+        </div>
+      </div>
+    );
   }
 
   const set = <K extends keyof AdminContactData>(k: K, v: AdminContactData[K]) =>
