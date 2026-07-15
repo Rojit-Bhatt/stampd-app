@@ -1,4 +1,5 @@
 const Organization = require("../models/Organization");
+const User = require("../models/User");
 const { getUpcomingForOrg } = require("../services/eventService");
 
 const createHttpError = (message, statusCode) => {
@@ -41,6 +42,8 @@ const getMySettings = async (req, res, next) => {
       throw createHttpError("Business not found.", 404);
     }
 
+    const adminUser = await User.findOne({ _id: req.user.id });
+
     res.status(200).json({
       success: true,
       settings: {
@@ -49,6 +52,7 @@ const getMySettings = async (req, res, next) => {
         status: organization.status,
         branding: organization.branding,
         contact: organization.contact,
+        adminEmailVerified: adminUser ? adminUser.emailVerified : false,
         program: organization.program,
         menuEnabled: organization.menuEnabled
       }

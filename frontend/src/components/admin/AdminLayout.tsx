@@ -12,10 +12,11 @@ import {
   Phone,
   Calendar,
   ChevronDown,
-  LogOut,
 } from "lucide-react";
 import { useAdminAuth } from "../../context/AdminAuthContext";
 import { useAdminSettings } from "../../hooks/useAdminSettings";
+import { useAccount } from "../../hooks/useAccount";
+import { AccountMenu } from "../shared/AccountMenu";
 
 interface NavLeaf {
   to: string;
@@ -73,6 +74,7 @@ export function AdminLayout() {
   const location = useLocation();
   const { user, logout } = useAdminAuth();
   const { data: settings } = useAdminSettings();
+  const { data: account } = useAccount("admin");
 
   const name = settings?.name || "Business";
   const initial = name.charAt(0).toUpperCase();
@@ -173,17 +175,13 @@ export function AdminLayout() {
         </nav>
 
         <div className="mt-auto border-t border-[var(--line)] pt-3">
-          <div className="mb-2 px-2 text-[13px]">
-            <div className="font-bold">{user?.name}</div>
-            <div className="text-[11px] text-[var(--soft)]">Business admin</div>
-          </div>
-          <button
-            onClick={handleLogout}
-            className="flex w-full items-center gap-2 rounded-[11px] px-3.5 py-2.5 text-[13px] font-semibold text-[var(--muted)] transition-colors hover:bg-[var(--bg)]"
-          >
-            <LogOut className="h-4 w-4" />
-            Log out
-          </button>
+          <AccountMenu
+            initial={(account?.name || user?.name || "?").charAt(0).toUpperCase()}
+            name={account?.name || user?.name || ""}
+            settingsPath="settings"
+            onLogout={handleLogout}
+            dropUp
+          />
         </div>
       </aside>
 

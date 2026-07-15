@@ -1,9 +1,9 @@
 import { Link } from "react-router-dom";
-import { Coffee, QrCode, Ticket, UtensilsCrossed } from "lucide-react";
+import { Coffee, QrCode, Ticket, UtensilsCrossed, Settings } from "lucide-react";
 
 interface BottomNavProps {
   slug: string;
-  activeTab: "dashboard" | "wallet" | "menu" | "none";
+  activeTab: "dashboard" | "wallet" | "menu" | "settings" | "none";
   onScanClick: () => void;
 }
 
@@ -67,6 +67,19 @@ export function BottomNav({ slug, activeTab, onScanClick }: BottomNavProps) {
         >
           <Ticket className="h-5 w-5" strokeWidth={activeTab === "wallet" ? 2.5 : 2} />
           <span className="text-[10px] font-bold uppercase tracking-wider">Wallet</span>
+        </Link>
+
+        <Link
+          to={`/${slug}/settings`}
+          className={`flex min-h-[44px] flex-col items-center justify-center gap-1 p-2 transition-colors ${
+            activeTab === "settings"
+              ? "text-[var(--brand)]"
+              : "text-[var(--soft)] hover:text-[var(--brand)]"
+          }`}
+          aria-label="Settings"
+        >
+          <Settings className="h-5 w-5" strokeWidth={activeTab === "settings" ? 2.5 : 2} />
+          <span className="text-[10px] font-bold uppercase tracking-wider">Settings</span>
         </Link>
       </div>
     </footer>

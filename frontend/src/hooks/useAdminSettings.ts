@@ -37,6 +37,7 @@ export interface AdminSettings {
   status: "active" | "suspended";
   branding: AdminBranding;
   contact: AdminContact;
+  adminEmailVerified: boolean;
   program: AdminProgram;
   menuEnabled: boolean;
 }

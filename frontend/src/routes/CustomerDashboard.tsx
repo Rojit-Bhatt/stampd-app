@@ -19,7 +19,7 @@ function formatEventDate(iso: string): string {
 
 // Rendered inside CustomerLayout (phone shell + bottom nav). Content only.
 export default function CustomerDashboard() {
-  const { user, logout } = useCustomerAuth();
+  const { user } = useCustomerAuth();
   const unverified = user?.emailVerified === false;
   const { tenant } = useTenant();
   const { data: stampData, isLoading: cardLoading } = useStampCard();
@@ -73,12 +73,6 @@ export default function CustomerDashboard() {
             {tenant?.name}
           </div>
         </div>
-        <button
-          onClick={logout}
-          className="rounded-full border border-[var(--line)] bg-[var(--bg)] px-3 py-1.5 text-xs font-bold text-[var(--muted)] transition-colors hover:text-[var(--ink)]"
-        >
-          Logout
-        </button>
       </div>
 
       {/* Unverified-email prompt. Scanning is blocked by the backend (403)

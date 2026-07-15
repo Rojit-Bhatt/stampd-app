@@ -1,8 +1,10 @@
 import { useEffect } from "react";
 import { NavLink, Outlet, useNavigate } from "react-router-dom";
-import { Building2, PlusCircle, LogOut } from "lucide-react";
+import { Building2, PlusCircle } from "lucide-react";
 import { usePlatformAuth } from "../../context/PlatformAuthContext";
 import { PLATFORM_NAME } from "../../lib/platform";
+import { useAccount } from "../../hooks/useAccount";
+import { AccountMenu } from "../shared/AccountMenu";
 
 const NAV = [
   { to: "", end: true, label: "Businesses", Icon: Building2 },
@@ -14,6 +16,7 @@ const NAV = [
 export function PlatformLayout() {
   const { user, isLoading, logout } = usePlatformAuth();
   const navigate = useNavigate();
+  const { data: account } = useAccount("platform");
 
   useEffect(() => {
     if (!isLoading && (!user || user.role !== "platform")) {
@@ -65,20 +68,17 @@ export function PlatformLayout() {
         </nav>
 
         <div className="mt-auto border-t border-[var(--line)] pt-3">
-          <div className="mb-2 px-2 text-[13px]">
-            <div className="font-bold">{user.name}</div>
-            <div className="text-[11px] text-[var(--soft)]">Super-admin</div>
-          </div>
-          <button
-            onClick={() => {
+          <AccountMenu
+            initial={(account?.name || user.name).charAt(0).toUpperCase()}
+            name={account?.name || user.name}
+            settingsPath="/platform/settings"
+            onLogout={() => {
               logout();
               navigate("/platform/login");
             }}
-            className="flex w-full items-center gap-2 rounded-[11px] px-3.5 py-2.5 text-[13px] font-semibold text-[var(--muted)] transition-colors hover:bg-[var(--bg)]"
-          >
-            <LogOut className="h-4 w-4" />
-            Log out
-          </button>
+            accent="var(--plat)"
+            dropUp
+          />
         </div>
       </aside>
 

@@ -30,6 +30,7 @@ const PlatformLogin = lazy(() => import('./routes/platform/PlatformLogin'));
 const Businesses = lazy(() => import('./routes/platform/Businesses'));
 const OnboardBusiness = lazy(() => import('./routes/platform/OnboardBusiness'));
 const BusinessDetail = lazy(() => import('./routes/platform/BusinessDetail'));
+const PlatformSettings = lazy(() => import('./routes/platform/PlatformSettings'));
 const AdminLogin = lazy(() => import('./routes/admin/AdminLogin'));
 const AdminOverview = lazy(() => import('./routes/admin/AdminOverview'));
 const GenerateQr = lazy(() => import('./routes/admin/GenerateQr'));
@@ -42,6 +43,8 @@ const MenuManagement = lazy(() => import('./routes/admin/MenuManagement'));
 const AdminEvents = lazy(() => import('./routes/admin/AdminEvents'));
 const AdminReportsSummary = lazy(() => import('./routes/admin/AdminReportsSummary'));
 const AdminReportsCustomers = lazy(() => import('./routes/admin/AdminReportsCustomers'));
+const AdminSettings = lazy(() => import('./routes/admin/AdminSettings'));
+const CustomerSettings = lazy(() => import('./routes/CustomerSettings'));
 const NotFound = lazy(() => import('./routes/NotFound'));
 
 // Wraps every /:slug/* route in the tenant context (fetches branding + program,
@@ -83,6 +86,7 @@ export default function App() {
                     <Route index element={<Businesses />} />
                     <Route path="onboard" element={<OnboardBusiness />} />
                     <Route path="business/:id" element={<BusinessDetail />} />
+                    <Route path="settings" element={<PlatformSettings />} />
                   </Route>
 
                   {/* Tenant-scoped experiences. */}
@@ -99,6 +103,7 @@ export default function App() {
                       <Route path="dashboard" element={<CustomerDashboard />} />
                       <Route path="wallet" element={<CustomerWallet />} />
                       <Route path="menu" element={<CustomerMenu />} />
+                      <Route path="settings" element={<CustomerSettings />} />
                     </Route>
 
                     {/* Business admin console. */}
@@ -120,6 +125,7 @@ export default function App() {
                       <Route path="contact" element={<AdminContact />} />
                       <Route path="menu" element={<MenuManagement />} />
                       <Route path="events" element={<AdminEvents />} />
+                      <Route path="settings" element={<AdminSettings />} />
                       <Route path="reports/summary" element={<AdminReportsSummary />} />
                       <Route path="reports/customers" element={<AdminReportsCustomers />} />
                     </Route>
