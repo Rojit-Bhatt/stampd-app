@@ -24,6 +24,7 @@ const CustomerDashboard = lazy(() => import('./routes/CustomerDashboard'));
 const CustomerWallet = lazy(() => import('./routes/CustomerWallet'));
 const CustomerMenu = lazy(() => import('./routes/CustomerMenu'));
 const VerifyEmail = lazy(() => import('./routes/VerifyEmail'));
+const ClaimLanding = lazy(() => import('./routes/ClaimLanding'));
 const GlobalVerifyEmail = lazy(() => import('./routes/GlobalVerifyEmail'));
 const ForgotPassword = lazy(() => import('./routes/ForgotPassword'));
 const ResetPassword = lazy(() => import('./routes/ResetPassword'));
@@ -102,6 +103,7 @@ export default function App() {
                     <Route index element={<BusinessLanding />} />
                     <Route path="login" element={<CustomerLogin />} />
                     <Route path="register" element={<CustomerRegister />} />
+                    <Route path="claim" element={<ClaimLanding />} />
                     <Route path="verify-email" element={<VerifyEmail />} />
                     <Route path="forgot-password" element={<ForgotPassword />} />
                     <Route path="reset-password" element={<ResetPassword />} />
