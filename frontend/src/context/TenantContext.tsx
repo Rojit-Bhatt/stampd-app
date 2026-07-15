@@ -100,7 +100,7 @@ export function TenantProvider({ children }: { children: React.ReactNode }) {
 
   const notFound = isError;
 
-  const brand = tenant?.branding?.primaryColor || "#B5533C";
+  const brand = tenant?.branding?.primaryColor || "#8C5E45";
   const brandDeep = darken(brand);
 
   if (isLoading) {

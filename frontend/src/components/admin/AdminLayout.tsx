@@ -80,7 +80,7 @@ export function AdminLayout() {
 
   const name = settings?.name || "Business";
   const initial = name.charAt(0).toUpperCase();
-  const brand = settings?.branding?.primaryColor || "#B5533C";
+  const brand = settings?.branding?.primaryColor || "#8C5E45";
 
   const [openGroups, setOpenGroups] = useState<Set<string>>(() => groupsWithActiveChild(location.pathname));
 
