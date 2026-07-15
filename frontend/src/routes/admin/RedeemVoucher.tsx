@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { Check, AlertTriangle, X } from "lucide-react";
+import { motion, useReducedMotion } from "motion/react";
 import toast from "react-hot-toast";
 import { apiRequest } from "../../lib/api";
 
@@ -9,6 +10,7 @@ export default function RedeemVoucher() {
   const [code, setCode] = useState("");
   const [busy, setBusy] = useState(false);
   const [result, setResult] = useState<Result>(null);
+  const reduceMotion = useReducedMotion();
 
   const redeem = async () => {
     const voucherCode = code.trim().toUpperCase();
@@ -59,8 +61,13 @@ export default function RedeemVoucher() {
         </div>
 
         {result && (
-          <div
-            className="mt-5 rounded-[16px] border p-5 text-center"
+          <motion.div
+            initial={reduceMotion ? false : { scale: 1.06, rotate: result.kind === "ok" ? -1.5 : 0 }}
+            animate={{ scale: 1, rotate: 0 }}
+            transition={
+              reduceMotion ? { duration: 0 } : { type: "spring", stiffness: 340, damping: 16 }
+            }
+            className="relative mt-5 overflow-hidden rounded-3xl border p-5 text-center"
             style={{
               background:
                 result.kind === "ok"
@@ -69,8 +76,23 @@ export default function RedeemVoucher() {
                     ? "var(--warn-soft)"
                     : "var(--err-soft)",
               borderColor: "var(--line)",
+              borderStyle: result.kind === "ok" ? "dashed" : "solid",
             }}
           >
+            {result.kind === "ok" && (
+              <>
+                {/* A punched-hole detail on a redeemed voucher — echoes a
+                    physical ticket punch. */}
+                <span
+                  className="absolute -left-2.5 top-1/2 h-5 w-5 -translate-y-1/2 rounded-full bg-[var(--surface)]"
+                  aria-hidden="true"
+                />
+                <span
+                  className="absolute -right-2.5 top-1/2 h-5 w-5 -translate-y-1/2 rounded-full bg-[var(--surface)]"
+                  aria-hidden="true"
+                />
+              </>
+            )}
             <div
               className="mx-auto mb-3 flex h-13 w-13 items-center justify-center rounded-full text-white"
               style={{
@@ -92,11 +114,11 @@ export default function RedeemVoucher() {
                 <X className="h-6 w-6" />
               )}
             </div>
-            <div className="font-display text-[17px] font-extrabold text-[var(--ink)]">
+            <div className="font-display text-[17px] font-bold text-[var(--ink)]">
               {result.kind === "ok" ? "Redeemed" : result.kind === "used" ? "Not redeemable" : "Not found"}
             </div>
             <div className="mt-1 text-[13px] text-[var(--muted)]">{result.message}</div>
-          </div>
+          </motion.div>
         )}
       </div>
     </div>

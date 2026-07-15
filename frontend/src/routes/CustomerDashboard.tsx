@@ -1,4 +1,5 @@
 import { Coffee, MailWarning, MapPin, Phone as PhoneIcon, Mail, Clock, Instagram, Facebook, Twitter, Calendar } from "lucide-react";
+import { motion, useReducedMotion } from "motion/react";
 import toast from "react-hot-toast";
 import { useTenant } from "../context/TenantContext";
 import { useStampCard } from "../hooks/useStampCard";
@@ -19,6 +20,7 @@ function formatEventDate(iso: string): string {
 
 // Rendered inside CustomerLayout (phone shell + bottom nav). Content only.
 export default function CustomerDashboard() {
+  const reduceMotion = useReducedMotion();
   const { data: account } = useAccount("customer");
   const unverified = account?.emailVerified === false;
   const { tenant } = useTenant();
@@ -105,8 +107,14 @@ export default function CustomerDashboard() {
         </div>
       )}
 
-      {/* Reward card */}
-      <div className="shadow-ambient mb-4 rounded-3xl bg-[var(--surface)] p-6">
+      {/* Reward card — enters like it's being placed down on the counter,
+          the moment a customer sees right after signing in. */}
+      <motion.div
+        initial={reduceMotion ? false : { opacity: 0, y: 28, rotate: -4, scale: 0.94 }}
+        animate={{ opacity: 1, y: 0, rotate: 0, scale: 1 }}
+        transition={reduceMotion ? { duration: 0 } : { type: "spring", stiffness: 220, damping: 20 }}
+        className="shadow-ambient mb-4 rounded-3xl bg-[var(--surface)] p-6"
+      >
         <div className="mb-5 flex items-start justify-between">
           <div className="min-w-0">
             <div className="truncate font-display text-lg font-bold" style={{ color: "var(--brand)" }}>
@@ -126,7 +134,7 @@ export default function CustomerDashboard() {
           </div>
         </div>
         <PunchCard stampsEarned={stampsEarned} stampsRequired={required} />
-      </div>
+      </motion.div>
 
       {/* Away hint */}
       <div className="mb-2 flex items-center gap-3 rounded-3xl border border-[var(--line)] bg-[var(--surface-container)] px-4 py-3">
