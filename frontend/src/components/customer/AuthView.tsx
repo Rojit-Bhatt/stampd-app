@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { Mail, Lock, User, Phone, MapPin, Eye, EyeOff } from "lucide-react";
+import { Mail, Lock, User, Phone, Eye, EyeOff } from "lucide-react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
@@ -28,7 +28,6 @@ const registerSchema = z.object({
     .string()
     .trim()
     .refine((v) => v.replace(/\D/g, "").replace(/^0+/, "").length >= 7, "Enter a valid phone number."),
-  address: z.string().trim().optional(),
 });
 
 type LoginFormValues = z.infer<typeof loginSchema>;
@@ -37,7 +36,7 @@ type RegisterFormValues = z.infer<typeof registerSchema>;
 export function AuthView({ mode }: { mode: Mode }) {
   const navigate = useNavigate();
   const { slug, tenant } = useTenant();
-  const { user, login, registerUser, loginWithGoogle } = useCustomerAuth();
+  const { user, login, registerUser, loginWithGoogle, ensureTenantSession } = useCustomerAuth();
   const [showPass, setShowPass] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [registeredEmail, setRegisteredEmail] = useState<string | null>(null);
@@ -58,7 +57,7 @@ export function AuthView({ mode }: { mode: Mode }) {
   });
   const registerForm = useForm<RegisterFormValues>({
     resolver: zodResolver(registerSchema),
-    defaultValues: { name: "", email: "", password: "", phone: "", address: "" },
+    defaultValues: { name: "", email: "", password: "", phone: "" },
   });
 
   const onLoginSubmit = async (data: LoginFormValues) => {
@@ -66,6 +65,7 @@ export function AuthView({ mode }: { mode: Mode }) {
     const toastId = toast.loading("Signing in…");
     try {
       await login(data.email, data.password);
+      await ensureTenantSession(slug, tenant?.id ?? null);
       toast.success("Welcome back!", { id: toastId });
       navigate(`/${slug}/dashboard`);
     } catch (err) {
@@ -80,7 +80,7 @@ export function AuthView({ mode }: { mode: Mode }) {
     const toastId = toast.loading("Creating your account…");
     try {
       const local = data.phone.replace(/\D/g, "").replace(/^0+/, "");
-      await registerUser(data.name, data.email, data.password, `+977${local}`, data.address);
+      await registerUser(data.name, data.email, data.password, `+977${local}`);
       toast.success("Account created! Check your email.", { id: toastId });
       setRegisteredEmail(data.email);
     } catch (err) {
@@ -94,6 +94,7 @@ export function AuthView({ mode }: { mode: Mode }) {
     if (!credential) return;
     try {
       const { needsPhone } = await loginWithGoogle(credential);
+      await ensureTenantSession(slug, tenant?.id ?? null);
       if (needsPhone) setShowPhoneStep(true);
       else navigate(`/${slug}/dashboard`);
     } catch (err) {
@@ -113,7 +114,7 @@ export function AuthView({ mode }: { mode: Mode }) {
         <button
           onClick={async () => {
             try {
-              await apiRequest("/api/auth/resend-verification", {
+              await apiRequest("/api/customer-auth/resend-verification", {
                 method: "POST",
                 body: { email: registeredEmail },
               });
@@ -218,15 +219,6 @@ export function AuthView({ mode }: { mode: Mode }) {
           {registerForm.formState.errors.phone && (
             <Err msg={registerForm.formState.errors.phone.message} />
           )}
-
-          <Field label="Address (optional)" icon={<MapPin className="h-4 w-4 text-[var(--soft)]" />}>
-            <input
-              type="text"
-              placeholder="Street, city"
-              {...registerForm.register("address")}
-              className="w-full bg-transparent text-sm text-[var(--ink)] placeholder:text-[var(--soft)] focus:outline-none"
-            />
-          </Field>
 
           <Field label="Password" icon={<Lock className="h-4 w-4 text-[var(--soft)]" />}>
             <input
