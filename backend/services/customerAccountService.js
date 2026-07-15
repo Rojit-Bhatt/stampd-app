@@ -109,7 +109,7 @@ const ensureMembership = async ({ customerAccountId, organizationId, account }) 
   return user;
 };
 
-const registerAccount = async ({ name, email, password, phone }) => {
+const registerAccount = async ({ name, email, password, phone, pendingClaimId }) => {
   if (!name || !email || !password) {
     throw createHttpError("Name, email, and password are required.", 400);
   }
@@ -133,6 +133,19 @@ const registerAccount = async ({ name, email, password, phone }) => {
   });
 
   await sendVerifyEmail(account);
+
+  if (pendingClaimId) {
+    try {
+      // Required late — avoids a require cycle (pendingClaimService needs
+      // ensureMembership from this file). Registration succeeding is the
+      // important half; an invalid/expired/already-fulfilled claim id here
+      // shouldn't fail the signup itself.
+      const { linkPendingClaimToAccount } = require("./pendingClaimService");
+      await linkPendingClaimToAccount({ pendingClaimId, customerAccountId: account._id.toString() });
+    } catch (_err) {
+      // Swallow — see comment above.
+    }
+  }
 
   return { success: true, message: "Registered. Check your email to verify your account.", accountId: account._id.toString() };
 };

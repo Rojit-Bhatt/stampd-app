@@ -47,6 +47,7 @@ const tenantRoutes = require("./routes/tenantRoutes");
 const menuRoutes = require("./routes/menuRoutes");
 const accountRoutes = require("./routes/accountRoutes");
 const customerAccountRoutes = require("./routes/customerAccountRoutes");
+const claimRoutes = require("./routes/claimRoutes");
 
 const app = express();
 const PORT = process.env.PORT || 5001;
@@ -85,6 +86,10 @@ app.use("/api/account", accountRoutes);
 // Global customer identity (register/login/google/verify shared across every
 // tenant) + enter-tenant, the exchange for a normal tenant JWT.
 app.use("/api/customer-auth", customerAccountRoutes);
+// QR-as-link claim lifecycle: start (converts a scanned QR token into a
+// longer-lived pending claim), status (polling), fulfill (the actual stamp
+// award, tenant-JWT gated).
+app.use("/api/claim", claimRoutes);
 // Business-admin console (QR, redemption, customers, settings, menu CRUD).
 app.use("/api/admin", adminRoutes);
 // Customer loyalty (stamps + vouchers), tenant taken from the JWT.
