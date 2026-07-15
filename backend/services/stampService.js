@@ -89,6 +89,181 @@ const generateQRToken = async (adminUserId, organizationId, billAmount) => {
   };
 };
 
+// Validates + atomically single-use-consumes a DynamicQRToken. Extracted out
+// of claimStamp so pendingClaimService can reuse the exact same logic when
+// converting a scanned QR into a PendingClaim. Requires an open session
+// (caller manages the transaction). Same checks, same error messages, same
+// order as claimStamp always ran them.
+const consumeDynamicQrToken = async ({ token, organizationId, session }) => {
+  const now = new Date();
+  const tokenExpiryCutoff = new Date(now.getTime() - TOKEN_TTL_SECONDS * 1000);
+
+  // Check if already used first (absolute first check)
+  const usedToken = await DynamicQRToken.findOne({ token, isUsed: true }).session(session);
+  if (usedToken) {
+    throw createHttpError("QR Code has already been used.", 400);
+  }
+
+  // Check if exists
+  const existingToken = await DynamicQRToken.findOne({ token }).session(session);
+  if (!existingToken) {
+    throw createHttpError("Invalid QR token.", 400);
+  }
+
+  // Check it belongs to this tenant
+  if (existingToken.organizationId.toString() !== organizationId) {
+    throw createHttpError("Invalid QR token.", 400);
+  }
+
+  // Check if expired
+  if (existingToken.createdAt <= tokenExpiryCutoff) {
+    throw createHttpError("This QR token has expired.", 400);
+  }
+
+  // Atomically consume the token: only the first claimer flips
+  // isUsed false -> true. The earlier findOne read is racy on its own —
+  // two customers scanning the same 30s token could both pass it — so the
+  // conditional update is the authoritative single-use guard.
+  const consumed = await DynamicQRToken.updateOne(
+    { _id: existingToken._id, isUsed: false },
+    { $set: { isUsed: true } },
+    { session }
+  );
+  if (!consumed || consumed.modifiedCount === 0) {
+    throw createHttpError("QR Code has already been used.", 400);
+  }
+
+  return existingToken;
+};
+
+// The cooldown/increment/voucher-threshold/event-logging core of a stamp
+// claim, keyed by whatever token string the caller wants recorded on the
+// StampClaimEvent audit row (claimStamp passes the raw DynamicQRToken uuid;
+// pendingClaimService passes the PendingClaim's stored sourceToken).
+// Extracted out of claimStamp so pendingClaimService.fulfillPendingClaim can
+// reuse the exact same stamp-award logic without duplicating it. Requires an
+// open session (caller manages the transaction).
+const awardStampInTransaction = async ({ session, userId, organizationId, billAmount, org, now, token }) => {
+  const stampsRequired = org.program.stampsRequired;
+  const cooldownHours = org.program.cooldownHours;
+  const voucherPrefix = getVoucherPrefix(org);
+  const claimedBillAmount = billAmount ?? null;
+
+  const cooldownCutoff = new Date(now.getTime() - cooldownHours * 60 * 60 * 1000);
+  const updatedCard = await StampCard.findOneAndUpdate(
+    {
+      userId,
+      organizationId,
+      $or: [{ lastStampedAt: null }, { lastStampedAt: { $lte: cooldownCutoff } }]
+    },
+    {
+      $inc: { stampsEarned: 1 },
+      $set: { lastStampedAt: now }
+    },
+    {
+      new: true,
+      session
+    }
+  );
+
+  if (!updatedCard) {
+    const existingCard = await StampCard.findOne({ userId, organizationId }).session(session);
+
+    if (!existingCard) {
+      await StampCard.create(
+        [
+          {
+            userId,
+            organizationId,
+            stampsEarned: 1,
+            lastStampedAt: now
+          }
+        ],
+        { session }
+      );
+
+      await StampClaimEvent.create(
+        [
+          {
+            userId,
+            organizationId,
+            token,
+            billAmount: claimedBillAmount,
+            createdAt: now
+          }
+        ],
+        { session }
+      );
+
+      return {
+        success: true,
+        message: "Stamp successfully added to your card.",
+        data: {
+          stampsEarned: 1,
+          rewardTriggered: false
+        }
+      };
+    }
+
+    throw createHttpError(`You can only claim one stamp every ${cooldownHours} hours.`, 400);
+  }
+
+  // Log scan event
+  await StampClaimEvent.create(
+    [
+      {
+        userId,
+        organizationId,
+        token,
+        billAmount: claimedBillAmount,
+        createdAt: now
+      }
+    ],
+    { session }
+  );
+
+  if (updatedCard.stampsEarned >= stampsRequired) {
+    const voucherCode = await generateVoucherCode(session, voucherPrefix);
+
+    await Voucher.create(
+      [
+        {
+          userId,
+          organizationId,
+          voucherCode
+        }
+      ],
+      { session }
+    );
+
+    await StampCard.findOneAndUpdate(
+      { userId, organizationId },
+      { $set: { stampsEarned: 0 } },
+      { new: true, session }
+    );
+
+    return {
+      success: true,
+      message: `Milestone reached! You have earned: ${org.program.rewardTitle}.`,
+      data: {
+        stampsEarned: 0,
+        rewardTriggered: true,
+        voucherCode,
+        rewardTitle: org.program.rewardTitle
+      }
+    };
+  }
+
+  return {
+    success: true,
+    message: "Stamp successfully added to your card.",
+    data: {
+      stampsEarned: updatedCard.stampsEarned,
+      rewardTriggered: false
+    }
+  };
+};
+
 const claimStamp = async ({ token, userId, role, organizationId }) => {
   if (!token) {
     throw createHttpError("QR token is required.", 400);
@@ -111,9 +286,6 @@ const claimStamp = async ({ token, userId, role, organizationId }) => {
   }
 
   const org = await loadOrganizationOrThrow(organizationId);
-  const stampsRequired = org.program.stampsRequired;
-  const cooldownHours = org.program.cooldownHours;
-  const voucherPrefix = getVoucherPrefix(org);
 
   const session = await mongoose.startSession();
 
@@ -122,160 +294,10 @@ const claimStamp = async ({ token, userId, role, organizationId }) => {
 
     await session.withTransaction(async () => {
       const now = new Date();
-      const tokenExpiryCutoff = new Date(now.getTime() - TOKEN_TTL_SECONDS * 1000);
-
-      // Check if already used first (absolute first check)
-      const usedToken = await DynamicQRToken.findOne({ token, isUsed: true }).session(session);
-      if (usedToken) {
-        throw createHttpError("QR Code has already been used.", 400);
-      }
-
-      // Check if exists
-      const existingToken = await DynamicQRToken.findOne({ token }).session(session);
-      if (!existingToken) {
-        throw createHttpError("Invalid QR token.", 400);
-      }
-
-      // Check it belongs to this tenant
-      if (existingToken.organizationId.toString() !== organizationId) {
-        throw createHttpError("Invalid QR token.", 400);
-      }
-
-      // Check if expired
-      if (existingToken.createdAt <= tokenExpiryCutoff) {
-        throw createHttpError("This QR token has expired.", 400);
-      }
-
-      const claimedBillAmount = existingToken.billAmount ?? null;
-
-      // Atomically consume the token: only the first claimer flips
-      // isUsed false -> true. The earlier findOne read is racy on its own —
-      // two customers scanning the same 30s token could both pass it — so the
-      // conditional update is the authoritative single-use guard.
-      const consumed = await DynamicQRToken.updateOne(
-        { _id: existingToken._id, isUsed: false },
-        { $set: { isUsed: true } },
-        { session }
-      );
-      if (!consumed || consumed.modifiedCount === 0) {
-        throw createHttpError("QR Code has already been used.", 400);
-      }
-
-      const cooldownCutoff = new Date(now.getTime() - cooldownHours * 60 * 60 * 1000);
-      const updatedCard = await StampCard.findOneAndUpdate(
-        {
-          userId,
-          organizationId,
-          $or: [{ lastStampedAt: null }, { lastStampedAt: { $lte: cooldownCutoff } }]
-        },
-        {
-          $inc: { stampsEarned: 1 },
-          $set: { lastStampedAt: now }
-        },
-        {
-          new: true,
-          session
-        }
-      );
-
-      if (!updatedCard) {
-        const existingCard = await StampCard.findOne({ userId, organizationId }).session(session);
-
-        if (!existingCard) {
-          await StampCard.create(
-            [
-              {
-                userId,
-                organizationId,
-                stampsEarned: 1,
-                lastStampedAt: now
-              }
-            ],
-            { session }
-          );
-
-          await StampClaimEvent.create(
-            [
-              {
-                userId,
-                organizationId,
-                token,
-                billAmount: claimedBillAmount,
-                createdAt: now
-              }
-            ],
-            { session }
-          );
-
-          responsePayload = {
-            success: true,
-            message: "Stamp successfully added to your card.",
-            data: {
-              stampsEarned: 1,
-              rewardTriggered: false
-            }
-          };
-          return;
-        }
-
-        throw createHttpError(`You can only claim one stamp every ${cooldownHours} hours.`, 400);
-      }
-
-      // Log scan event
-      await StampClaimEvent.create(
-        [
-          {
-            userId,
-            organizationId,
-            token,
-            billAmount: claimedBillAmount,
-            createdAt: now
-          }
-        ],
-        { session }
-      );
-
-      if (updatedCard.stampsEarned >= stampsRequired) {
-        const voucherCode = await generateVoucherCode(session, voucherPrefix);
-
-        await Voucher.create(
-          [
-            {
-              userId,
-              organizationId,
-              voucherCode
-            }
-          ],
-          { session }
-        );
-
-        await StampCard.findOneAndUpdate(
-          { userId, organizationId },
-          { $set: { stampsEarned: 0 } },
-          { new: true, session }
-        );
-
-        responsePayload = {
-          success: true,
-          message: `Milestone reached! You have earned: ${org.program.rewardTitle}.`,
-          data: {
-            stampsEarned: 0,
-            rewardTriggered: true,
-            voucherCode,
-            rewardTitle: org.program.rewardTitle
-          }
-        };
-        return;
-      }
-
-      responsePayload = {
-        success: true,
-        message: "Stamp successfully added to your card.",
-        data: {
-          stampsEarned: updatedCard.stampsEarned,
-          rewardTriggered: false
-        }
-      };
+      const existingToken = await consumeDynamicQrToken({ token, organizationId, session });
+      responsePayload = await awardStampInTransaction({
+        session, userId, organizationId, billAmount: existingToken.billAmount, org, now, token
+      });
     });
 
     return responsePayload;
@@ -374,5 +396,9 @@ module.exports = {
   generateQRToken,
   claimStamp,
   getStampBalanceByUserId,
-  getCustomerDetailRows
+  getCustomerDetailRows,
+  // Reused by pendingClaimService — same logic, no behavior change here.
+  consumeDynamicQrToken,
+  awardStampInTransaction,
+  loadOrganizationOrThrow
 };
