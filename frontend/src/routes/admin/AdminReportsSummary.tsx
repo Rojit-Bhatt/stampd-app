@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Download } from "lucide-react";
 import { apiRequest, getTenantSlug } from "../../lib/api";
+import { Skeleton } from "../../components/ui/skeleton";
 
 interface SummaryStats {
   newCustomers: number;
@@ -96,9 +97,11 @@ export default function AdminReportsSummary() {
         {cards.map((c) => (
           <div key={c.label} className="rounded-[18px] border border-[var(--line)] bg-[var(--surface)] p-5">
             <div className="mb-2 text-[13px] text-[var(--muted)]">{c.label}</div>
-            <div className="font-display text-[26px] font-extrabold leading-none">
-              {isLoading ? "…" : c.val}
-            </div>
+            {isLoading ? (
+              <Skeleton className="h-[26px] w-12" />
+            ) : (
+              <div className="font-display text-[26px] font-extrabold leading-none">{c.val}</div>
+            )}
           </div>
         ))}
       </div>

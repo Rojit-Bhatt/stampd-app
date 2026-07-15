@@ -3,6 +3,7 @@ import { useState } from "react";
 import { useTenant } from "../context/TenantContext";
 import { useVouchers } from "../hooks/useVouchers";
 import toast from "react-hot-toast";
+import { Skeleton } from "../components/ui/skeleton";
 
 // Rendered inside CustomerLayout (phone shell + bottom nav). Content only.
 export default function CustomerWallet() {
@@ -20,8 +21,19 @@ export default function CustomerWallet() {
       </p>
 
       {isLoading ? (
-        <div className="flex justify-center py-16">
-          <div className="h-7 w-7 animate-spin rounded-full border-2 border-[var(--brand)] border-t-transparent" />
+        <div className="flex flex-col gap-4">
+          {Array.from({ length: 2 }).map((_, i) => (
+            <div key={i} className="overflow-hidden rounded-[20px] border border-[var(--line)]">
+              <div className="p-4">
+                <Skeleton className="mb-3 h-6 w-28" />
+                <Skeleton className="h-[52px] w-full rounded-[12px]" />
+              </div>
+              <div className="flex justify-between px-4 py-3">
+                <Skeleton className="h-3 w-24" />
+                <Skeleton className="h-3 w-32" />
+              </div>
+            </div>
+          ))}
         </div>
       ) : error ? (
         <div className="flex flex-col items-center gap-2 py-14 text-center text-[var(--err)]">

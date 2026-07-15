@@ -3,6 +3,7 @@ import { Link, useParams } from "react-router-dom";
 import toast from "react-hot-toast";
 import { apiRequest } from "../../lib/api";
 import type { Business } from "./Businesses";
+import { Skeleton } from "../../components/ui/skeleton";
 
 export default function BusinessDetail() {
   const { id = "" } = useParams();
@@ -31,7 +32,28 @@ export default function BusinessDetail() {
   });
 
   if (isLoading || !business) {
-    return <div className="text-sm text-[var(--muted)]">Loading…</div>;
+    return (
+      <div>
+        <Skeleton className="mb-4 h-4 w-24" />
+        <div className="mb-6 flex flex-wrap items-center gap-4">
+          <Skeleton className="h-[60px] w-[60px] rounded-[16px]" />
+          <div className="flex-1">
+            <Skeleton className="mb-1.5 h-7 w-48" />
+            <Skeleton className="h-3.5 w-32" />
+          </div>
+          <Skeleton className="h-11 w-24 rounded-[12px]" />
+          <Skeleton className="h-11 w-36 rounded-[12px]" />
+        </div>
+        <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
+          {Array.from({ length: 4 }).map((_, i) => (
+            <div key={i} className="rounded-[18px] border border-[var(--line)] bg-[var(--surface)] p-5">
+              <Skeleton className="mb-1.5 h-3.5 w-20" />
+              <Skeleton className="h-6 w-10" />
+            </div>
+          ))}
+        </div>
+      </div>
+    );
   }
 
   const brand = business.branding?.primaryColor || "#8B2635";

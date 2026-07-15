@@ -120,7 +120,11 @@ export default function CustomerDashboard() {
           </div>
           <div className="text-right">
             <div className="font-display text-2xl font-extrabold leading-none">
-              {cardLoading ? "—" : `${stampsEarned} of ${required}`}
+              {cardLoading ? (
+                <span className="inline-block h-6 w-20 animate-pulse rounded bg-white/25 align-middle" />
+              ) : (
+                `${stampsEarned} of ${required}`
+              )}
             </div>
             <div className="text-[11px] opacity-80">stamps</div>
           </div>
