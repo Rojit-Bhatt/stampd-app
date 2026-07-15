@@ -4,6 +4,7 @@ import { Trash2, Plus, Pencil, X, Check } from "lucide-react";
 import toast from "react-hot-toast";
 import { apiRequest } from "../../lib/api";
 import { Skeleton } from "../../components/ui/skeleton";
+import { ConfirmDialog } from "../../components/shared/ConfirmDialog";
 
 interface EventItem {
   id?: string;
@@ -92,6 +93,7 @@ export default function AdminEvents() {
   const [draft, setDraft] = useState(EMPTY_DRAFT);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editDraft, setEditDraft] = useState(EMPTY_DRAFT);
+  const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null);
 
   const invalidate = () => qc.invalidateQueries({ queryKey: ["adminEvents"] });
 
@@ -219,7 +221,7 @@ export default function AdminEvents() {
                   <Pencil className="h-4 w-4" />
                 </button>
                 <button
-                  onClick={() => deleteEvent.mutate(id)}
+                  onClick={() => setPendingDeleteId(id)}
                   className="flex h-8 w-8 items-center justify-center rounded-[9px] bg-[var(--bg)] text-[var(--muted)] hover:text-[var(--err)]"
                   aria-label={`Delete ${e.title}`}
                 >
@@ -230,6 +232,22 @@ export default function AdminEvents() {
           })
         )}
       </div>
+
+      <ConfirmDialog
+        open={pendingDeleteId !== null}
+        onOpenChange={(open) => !open && setPendingDeleteId(null)}
+        title="Delete this event?"
+        description={
+          pendingDeleteId
+            ? `"${events.find((e) => eventId(e) === pendingDeleteId)?.title ?? ""}" will be removed and no longer shown to customers.`
+            : ""
+        }
+        confirmLabel="Delete"
+        confirmColor="var(--err)"
+        onConfirm={() => {
+          if (pendingDeleteId) deleteEvent.mutate(pendingDeleteId);
+        }}
+      />
     </div>
   );
 }
