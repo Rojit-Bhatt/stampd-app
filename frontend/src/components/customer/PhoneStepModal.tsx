@@ -8,7 +8,6 @@ import { useCustomerAuth } from "../../context/CustomerAuthContext";
 export function PhoneStepModal({ onDone }: { onDone: () => void }) {
   const { completeProfile } = useCustomerAuth();
   const [phone, setPhone] = useState("");
-  const [address, setAddress] = useState("");
   const [busy, setBusy] = useState(false);
 
   const save = async () => {
@@ -19,7 +18,7 @@ export function PhoneStepModal({ onDone }: { onDone: () => void }) {
     }
     setBusy(true);
     try {
-      await completeProfile(`+977${local}`, address);
+      await completeProfile(`+977${local}`);
       onDone();
     } catch (e) {
       toast.error((e as Error).message || "Could not save.");
@@ -43,13 +42,6 @@ export function PhoneStepModal({ onDone }: { onDone: () => void }) {
             className="flex-1 bg-transparent px-2 py-3 text-sm text-[var(--ink)] focus:outline-none"
           />
         </div>
-        <textarea
-          value={address}
-          onChange={(e) => setAddress(e.target.value)}
-          rows={2}
-          placeholder="Address (optional)"
-          className="mt-3 w-full rounded-[11px] border border-[var(--line)] bg-[var(--bg)] px-4 py-3 text-sm text-[var(--ink)] focus:outline-none"
-        />
         <button
           disabled={busy}
           onClick={save}

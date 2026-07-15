@@ -16,9 +16,23 @@ export function getTenantSlug() {
   return currentTenantSlug;
 }
 
+// Display-only decode (no signature verification) of a JWT's payload —
+// used to detect a cached tenant token that belongs to a different tenant
+// than the one currently being viewed, so it can be dropped instead of
+// silently misused. Never trust this for anything security-relevant; the
+// backend always re-verifies the real signature.
+export function decodeJwtPayload(token: string): Record<string, any> | null {
+  try {
+    const [, payload] = token.split(".");
+    return JSON.parse(atob(payload.replace(/-/g, "+").replace(/_/g, "/")));
+  } catch {
+    return null;
+  }
+}
+
 interface RequestOptions extends Omit<RequestInit, "body"> {
   body?: any;
-  role?: "admin" | "customer" | "platform";
+  role?: "admin" | "customer" | "platform" | "customer-global";
 }
 
 export async function apiRequest<T = unknown>(
@@ -51,7 +65,9 @@ export async function apiRequest<T = unknown>(
         ? "platform_auth_token"
         : role === "admin"
           ? "admin_auth_token"
-          : "customer_auth_token";
+          : role === "customer-global"
+            ? "customer_global_session"
+            : "customer_auth_token";
     const token = localStorage.getItem(tokenKey);
     if (token) {
       headers.set("Authorization", `Bearer ${token}`);
