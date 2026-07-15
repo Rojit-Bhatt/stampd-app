@@ -8,12 +8,19 @@ const path = require("path");
 //
 // server.js reads `process.env.PORT || 5001` and falls back to mockMongoose
 // whenever MONGODB_URI is unset, so we just drive both via env.
-async function bootServer({ port = 5010, timeoutMs = 15000 } = {}) {
+//
+// `env` sets/overrides additional vars for the child process (e.g. a dummy
+// GOOGLE_CLIENT_ID so a test can deterministically exercise a code path that
+// only runs when that var is configured, regardless of the developer's real
+// .env). `deleteEnv` explicitly unsets vars (beyond the always-forced
+// MONGODB_URI) so a test isn't accidentally affected by ambient shell env.
+async function bootServer({ port = 5010, timeoutMs = 15000, env: envOverrides = {}, deleteEnv = [] } = {}) {
   const serverPath = path.resolve(__dirname, "../../server.js");
   const baseUrl = `http://localhost:${port}`;
 
-  const env = { ...process.env, PORT: String(port) };
+  const env = { ...process.env, PORT: String(port), ...envOverrides };
   delete env.MONGODB_URI; // force the zero-config in-memory mock DB
+  for (const key of deleteEnv) delete env[key];
 
   const child = spawn("node", [serverPath], {
     env,
