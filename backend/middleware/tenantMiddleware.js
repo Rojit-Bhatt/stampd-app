@@ -53,6 +53,7 @@ const resolveTenant = async (req, _res, next) => {
     if (organization.status === "suspended") {
       const error = new Error("This business is currently unavailable.");
       error.statusCode = 403;
+      error.code = "TENANT_SUSPENDED";
       throw error;
     }
 

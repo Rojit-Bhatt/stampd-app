@@ -55,6 +55,7 @@ const verifyToken = async (req, _res, next) => {
       if (!organization || organization.status === "suspended") {
         const error = new Error("This business is suspended.");
         error.statusCode = 401;
+        error.code = "TENANT_SUSPENDED";
         throw error;
       }
     }

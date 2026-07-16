@@ -209,6 +209,26 @@ async function run() {
     "coffesarowar's customer list has no 2nd-tenant users"
   );
 
+  console.log("\n== Suspension tags TENANT_SUSPENDED so the frontend can distinguish it ==");
+  const suspend = await api(`/api/platform/businesses/${brew.id}`, {
+    method: "PATCH",
+    token: pToken,
+    body: { status: "suspended" },
+  });
+  ok(suspend.status === 200 && suspend.json?.business?.status === "suspended", "platform suspends 2nd tenant");
+
+  const suspendedAuthed = await api("/api/admin/settings", { token: brewAdmin });
+  ok(
+    suspendedAuthed.status === 401 && suspendedAuthed.json?.code === "TENANT_SUSPENDED",
+    "suspended tenant's already-issued admin token now gets code TENANT_SUSPENDED (not a generic 401)",
+  );
+
+  const suspendedPublic = await api("/api/tenant", { slug: secondTenantSlug });
+  ok(
+    suspendedPublic.status === 403 && suspendedPublic.json?.code === "TENANT_SUSPENDED",
+    "suspended tenant's public /api/tenant also gets code TENANT_SUSPENDED",
+  );
+
   console.log(`\n== RESULT: ${pass} passed, ${fail} failed ==`);
   return fail ? 1 : 0;
 }
