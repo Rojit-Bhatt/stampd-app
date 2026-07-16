@@ -154,7 +154,7 @@ const createBusiness = async ({ name, slug, adminName, adminEmail, adminPassword
     success: true,
     business: await buildBusinessStats(organization),
     admin: { email: admin.email },
-    tenantPath: `/${normalizedSlug}`
+    tenantPath: `/${normalizedSlug}/admin`
   };
 };
 

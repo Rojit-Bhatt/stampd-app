@@ -77,6 +77,10 @@ async function run() {
     },
   });
   ok(create.status === 201 || create.status === 200, "platform creates 2nd business");
+  ok(
+    create.json?.tenantPath === `/${secondTenantSlug}/admin`,
+    "onboarding hand-off link points at the admin login, not the customer app",
+  );
 
   const list = await api("/api/platform/businesses", { token: pToken });
   const brew = list.json?.businesses?.find((b) => b.slug === secondTenantSlug);
