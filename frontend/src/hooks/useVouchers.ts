@@ -5,6 +5,7 @@ export interface Voucher {
   voucherCode: string;
   isValid: boolean;
   earnedAt: string;
+  expiresAt: string | null;
 }
 
 export function useVouchers() {

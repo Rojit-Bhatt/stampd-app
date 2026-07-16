@@ -33,6 +33,7 @@ export interface AdminProgram {
   rewardDescription: string;
   cooldownHours: number;
   minBillAmount: number;
+  voucherExpiryDays: number;
 }
 
 export interface AdminSettings {

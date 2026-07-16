@@ -34,6 +34,10 @@ export default function StampProgram() {
             <Skeleton className="mb-1.5 h-3.5 w-44" />
             <Skeleton className="h-11 w-24 rounded-[11px]" />
           </div>
+          <div className="border-t border-[var(--line)] pt-5">
+            <Skeleton className="mb-1.5 h-3.5 w-32" />
+            <Skeleton className="h-11 w-24 rounded-[11px]" />
+          </div>
           <Skeleton className="h-11 w-full rounded-[13px]" />
         </div>
       </div>
@@ -125,6 +129,20 @@ export default function StampProgram() {
               className="w-24 rounded-[11px] border border-[var(--line)] bg-[var(--bg)] px-4 py-3 text-sm focus:border-[var(--brand)] focus:outline-none"
             />
             <span className="text-sm text-[var(--muted)]">0 = no minimum — any bill amount can generate a code</span>
+          </div>
+        </div>
+
+        <div className="border-t border-[var(--line)] pt-5">
+          <label className="mb-1.5 block text-sm font-bold">Voucher expiry</label>
+          <div className="flex items-center gap-3">
+            <input
+              type="number"
+              min={0}
+              value={form.voucherExpiryDays}
+              onChange={(e) => set("voucherExpiryDays", Number(e.target.value))}
+              className="w-24 rounded-[11px] border border-[var(--line)] bg-[var(--bg)] px-4 py-3 text-sm focus:border-[var(--brand)] focus:outline-none"
+            />
+            <span className="text-sm text-[var(--muted)]">days — 0 = vouchers never expire</span>
           </div>
         </div>
 

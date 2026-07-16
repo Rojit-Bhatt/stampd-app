@@ -10,7 +10,9 @@ export default function CustomerWallet() {
   const { tenant } = useTenant();
   const { data: vouchers = [], isLoading, error } = useVouchers();
 
-  const active = vouchers.filter((v) => v.isValid);
+  const isExpired = (v: { expiresAt: string | null }) => Boolean(v.expiresAt && new Date(v.expiresAt) < new Date());
+  const visible = vouchers.filter((v) => v.isValid);
+  const active = visible.filter((v) => !isExpired(v));
   const reward = tenant?.program?.rewardTitle || "Reward";
 
   return (
@@ -40,7 +42,7 @@ export default function CustomerWallet() {
           <AlertCircle className="h-8 w-8" />
           <p className="text-sm font-bold">Failed to load vouchers</p>
         </div>
-      ) : active.length === 0 ? (
+      ) : visible.length === 0 ? (
         <div className="flex flex-col items-center gap-4 py-16 text-center">
           <div className="flex h-16 w-16 items-center justify-center rounded-[24px] border border-[var(--line)] bg-[var(--bg)]">
             <Ticket className="h-7 w-7 text-[var(--soft)]" />
@@ -54,8 +56,14 @@ export default function CustomerWallet() {
         </div>
       ) : (
         <div className="flex flex-col gap-4">
-          {active.map((v) => (
-            <VoucherTicket key={v.voucherCode} code={v.voucherCode} reward={reward} earnedAt={v.earnedAt} />
+          {visible.map((v) => (
+            <VoucherTicket
+              key={v.voucherCode}
+              code={v.voucherCode}
+              reward={reward}
+              earnedAt={v.earnedAt}
+              expiresAt={v.expiresAt}
+            />
           ))}
         </div>
       )}
@@ -67,11 +75,14 @@ function VoucherTicket({
   code,
   reward,
   earnedAt,
+  expiresAt,
 }: {
   code: string;
   reward: string;
   earnedAt: string;
+  expiresAt: string | null;
 }) {
+  const expired = Boolean(expiresAt && new Date(expiresAt) < new Date());
   const [copied, setCopied] = useState(false);
 
   const copy = async () => {
@@ -116,9 +127,13 @@ function VoucherTicket({
           <span className="font-display text-lg font-bold text-[var(--ink)]">{reward}</span>
           <span
             className="flex-shrink-0 rounded-full px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider"
-            style={{ background: "var(--ok-soft)", color: "var(--ok)" }}
+            style={
+              expired
+                ? { background: "var(--surface-container-high)", color: "var(--soft)" }
+                : { background: "var(--ok-soft)", color: "var(--ok)" }
+            }
           >
-            Active
+            {expired ? "Expired" : "Active"}
           </span>
         </div>
         <div className="mb-3 flex items-center justify-between rounded-xl bg-[var(--surface-container)] px-3 py-2.5">
