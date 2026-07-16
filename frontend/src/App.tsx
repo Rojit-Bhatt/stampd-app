@@ -5,12 +5,14 @@ import { GoogleOAuthProvider } from '@react-oauth/google';
 import { CustomerAuthProvider } from './context/CustomerAuthContext';
 import { AdminAuthProvider } from './context/AdminAuthContext';
 import { PlatformAuthProvider } from './context/PlatformAuthContext';
+import { OwnerAuthProvider } from './context/OwnerAuthContext';
 import { TenantProvider } from './context/TenantContext';
 import { Toaster } from 'react-hot-toast';
 import ErrorBoundary from './components/ErrorBoundary';
 import { AdminGuard } from './components/admin/AdminGuard';
 import { AdminLayout } from './components/admin/AdminLayout';
 import { PlatformLayout } from './components/platform/PlatformLayout';
+import { OwnerLayout } from './components/owner/OwnerLayout';
 import { CustomerLayout } from './components/customer/CustomerLayout';
 import { GlobalCustomerLayout } from './components/customer/GlobalCustomerLayout';
 import { TenantSessionSync } from './components/customer/TenantSessionSync';
@@ -44,6 +46,15 @@ const PlatformContact = lazy(() => import('./routes/platform/PlatformContact'));
 const PlatformAuditLog = lazy(() => import('./routes/platform/PlatformAuditLog'));
 const PlatformAnalytics = lazy(() => import('./routes/platform/PlatformAnalytics'));
 const PlatformTeam = lazy(() => import('./routes/platform/PlatformTeam'));
+const Plans = lazy(() => import('./routes/platform/Plans'));
+const SubscriptionKeys = lazy(() => import('./routes/platform/SubscriptionKeys'));
+const OwnerLogin = lazy(() => import('./routes/owner/OwnerLogin'));
+const OwnerRegister = lazy(() => import('./routes/owner/OwnerRegister'));
+const OwnerVerifyEmail = lazy(() => import('./routes/owner/OwnerVerifyEmail'));
+const OwnerForgotPassword = lazy(() => import('./routes/owner/OwnerForgotPassword'));
+const OwnerResetPassword = lazy(() => import('./routes/owner/OwnerResetPassword'));
+const OwnerDashboard = lazy(() => import('./routes/owner/OwnerDashboard'));
+const OwnerSubscription = lazy(() => import('./routes/owner/OwnerSubscription'));
 const AdminLogin = lazy(() => import('./routes/admin/AdminLogin'));
 const AdminOverview = lazy(() => import('./routes/admin/AdminOverview'));
 const GenerateQr = lazy(() => import('./routes/admin/GenerateQr'));
@@ -59,6 +70,7 @@ const AdminReportsSummary = lazy(() => import('./routes/admin/AdminReportsSummar
 const AdminReportsCustomers = lazy(() => import('./routes/admin/AdminReportsCustomers'));
 const AdminReportsVouchers = lazy(() => import('./routes/admin/AdminReportsVouchers'));
 const AdminSettings = lazy(() => import('./routes/admin/AdminSettings'));
+const AdminSubscription = lazy(() => import('./routes/admin/AdminSubscription'));
 const CustomerSettings = lazy(() => import('./routes/CustomerSettings'));
 const NotFound = lazy(() => import('./routes/NotFound'));
 
@@ -118,6 +130,21 @@ export default function App() {
             <Route path="audit-log" element={<PlatformAuditLog />} />
             <Route path="analytics" element={<PlatformAnalytics />} />
             <Route path="team" element={<PlatformTeam />} />
+            <Route path="plans" element={<Plans />} />
+            <Route path="subscription-keys" element={<SubscriptionKeys />} />
+          </Route>
+
+          {/* Business owner — global identity, one login manages every
+              business (Organization) that owner runs. Slug-less, same
+              pattern as the global customer identity's login/register. */}
+          <Route path="/owner-login" element={<OwnerLogin />} />
+          <Route path="/owner-register" element={<OwnerRegister />} />
+          <Route path="/owner-verify-email" element={<OwnerVerifyEmail />} />
+          <Route path="/owner-forgot-password" element={<OwnerForgotPassword />} />
+          <Route path="/owner-reset-password" element={<OwnerResetPassword />} />
+          <Route path="/owner" element={<OwnerLayout />}>
+            <Route index element={<OwnerDashboard />} />
+            <Route path="subscription" element={<OwnerSubscription />} />
           </Route>
 
           {/* Tenant-scoped experiences. */}
@@ -159,6 +186,7 @@ export default function App() {
               <Route path="menu" element={<MenuManagement />} />
               <Route path="events" element={<AdminEvents />} />
               <Route path="settings" element={<AdminSettings />} />
+              <Route path="subscription" element={<AdminSubscription />} />
               <Route path="reports/summary" element={<AdminReportsSummary />} />
               <Route path="reports/customers" element={<AdminReportsCustomers />} />
               <Route path="reports/vouchers" element={<AdminReportsVouchers />} />
@@ -175,6 +203,7 @@ export default function App() {
     <ErrorBoundary>
       <QueryClientProvider client={queryClient}>
         <PlatformAuthProvider>
+          <OwnerAuthProvider>
           <AdminAuthProvider>
             <CustomerAuthProvider>
               {/* Single global provider — Google OAuth is one client id for
@@ -209,6 +238,7 @@ export default function App() {
               />
             </CustomerAuthProvider>
           </AdminAuthProvider>
+          </OwnerAuthProvider>
         </PlatformAuthProvider>
       </QueryClientProvider>
     </ErrorBoundary>

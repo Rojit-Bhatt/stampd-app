@@ -48,6 +48,9 @@ const menuRoutes = require("./routes/menuRoutes");
 const accountRoutes = require("./routes/accountRoutes");
 const customerAccountRoutes = require("./routes/customerAccountRoutes");
 const claimRoutes = require("./routes/claimRoutes");
+const subscriptionPlanRoutes = require("./routes/subscriptionPlanRoutes");
+const subscriptionKeyRoutes = require("./routes/subscriptionKeyRoutes");
+const ownerAccountRoutes = require("./routes/ownerAccountRoutes");
 
 const app = express();
 const PORT = process.env.PORT || 5001;
@@ -75,6 +78,11 @@ app.get("/", (_req, res) => {
 
 // Platform super-admin (onboards + manages businesses/tenants).
 app.use("/api/platform", platformRoutes);
+// Subscription plan CRUD (platform-admin-configurable) + public pricing read.
+app.use("/api/platform/plans", subscriptionPlanRoutes);
+// Manually-issued activation keys (no live payment gateway — see
+// docs/superpowers/plans/2026-07-16-multi-business-subscriptions.md).
+app.use("/api/platform/subscription-keys", subscriptionKeyRoutes);
 // Public tenant info (branding + program) resolved from the tenant slug.
 app.use("/api/tenant", tenantRoutes);
 // Public display-only menu for a tenant.
@@ -90,6 +98,10 @@ app.use("/api/customer-auth", customerAccountRoutes);
 // longer-lived pending claim), status (polling), fulfill (the actual stamp
 // award, tenant-JWT gated).
 app.use("/api/claim", claimRoutes);
+// Global business-owner identity (register/login/verify/forgot-reset,
+// enter-business exchange, cross-business dashboard) — the owner-side
+// analogue of /api/customer-auth.
+app.use("/api/owner", ownerAccountRoutes);
 // Business-admin console (QR, redemption, customers, settings, menu CRUD).
 app.use("/api/admin", adminRoutes);
 // Customer loyalty (stamps + vouchers), tenant taken from the JWT.
@@ -124,8 +136,14 @@ const seedDemoData = async () => {
   const User = require("./models/User");
   const Organization = require("./models/Organization");
   const StampCard = require("./models/StampCard");
+  const { ensureDefaultPlansSeeded } = require("./services/subscriptionPlanService");
+  const BusinessOwnerAccount = require("./models/BusinessOwnerAccount");
+  const Subscription = require("./models/Subscription");
 
   try {
+    // 0. The three reference subscription plans (Basic/Growth/Pro).
+    await ensureDefaultPlansSeeded();
+
     // 1. Platform super-admin (no tenant).
     const platformEmail = "admin@stampd.co";
     let platformAdmin = await User.findOne({ email: platformEmail, role: "platform" });
@@ -173,6 +191,42 @@ const seedDemoData = async () => {
         emailVerified: true
       });
       console.log(`[seed] Business admin: ${adminEmail} / password (tenant ${slug})`);
+    }
+
+    // 3b. Grandfather Coffesarowar into the new ownership model on every
+    // fresh mock-DB boot too (mirrors scripts/backfillBusinessOwners.js,
+    // which does the equivalent for a real production DB) — no password set,
+    // same "use forgot-password to claim it" posture as the real migration.
+    if (!org.ownerAccountId) {
+      let ownerAccount = await BusinessOwnerAccount.findOne({ email: businessAdmin.email });
+      if (!ownerAccount) {
+        ownerAccount = await BusinessOwnerAccount.create({
+          name: businessAdmin.name,
+          email: businessAdmin.email,
+          phone: businessAdmin.phone || "",
+          emailVerified: businessAdmin.emailVerified,
+          password: null
+        });
+      }
+      await Organization.updateOne({ _id: org._id }, { $set: { ownerAccountId: ownerAccount._id } });
+      await User.updateOne({ _id: businessAdmin._id }, { $set: { ownerAccountId: ownerAccount._id } });
+
+      const existingSub = await Subscription.findOne({ ownerAccountId: ownerAccount._id });
+      if (!existingSub) {
+        const now = new Date();
+        const HUNDRED_YEARS_MS = 100 * 365 * 24 * 60 * 60 * 1000;
+        await Subscription.create({
+          ownerAccountId: ownerAccount._id,
+          planId: null,
+          planSlug: "grandfathered",
+          status: "active",
+          businessLimitAtPurchase: 10,
+          currentPeriodStart: now,
+          currentPeriodEnd: new Date(now.getTime() + HUNDRED_YEARS_MS),
+          isComped: true
+        });
+      }
+      console.log(`[seed] Grandfathered owner account: ${ownerAccount.email} (comped subscription, 10 businesses)`);
     }
 
     // 4. Demo customer for the demo tenant, pre-loaded with a couple of stamps.

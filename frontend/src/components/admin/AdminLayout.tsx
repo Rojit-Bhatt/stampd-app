@@ -1,4 +1,4 @@
-import { NavLink, Outlet, useLocation, useNavigate, useParams } from "react-router-dom";
+import { Link, NavLink, Outlet, useLocation, useNavigate, useParams } from "react-router-dom";
 import { useEffect, useState } from "react";
 import {
   LayoutDashboard,
@@ -12,6 +12,7 @@ import {
   Phone,
   Calendar,
   ChevronDown,
+  CreditCard,
 } from "lucide-react";
 import { useAdminAuth } from "../../context/AdminAuthContext";
 import { useAdminSettings } from "../../hooks/useAdminSettings";
@@ -54,6 +55,7 @@ const MANAGEMENT_NAV: NavLeaf[] = [
   { to: "contact", label: "Contact", Icon: Phone },
   { to: "menu", label: "Menu", Icon: UtensilsCrossed },
   { to: "events", label: "Events", Icon: Calendar },
+  { to: "subscription", label: "Subscription", Icon: CreditCard },
 ];
 
 // Desktop business-admin console shell. Sidebar recolors from the tenant's
@@ -188,6 +190,20 @@ export function AdminLayout() {
       </aside>
 
       <main className="max-w-[1100px] flex-1 px-10 py-9">
+        {settings?.subscriptionReminder?.show && (
+          <Link
+            to="subscription"
+            className="mb-6 flex items-center justify-between gap-3 rounded-[16px] border border-[var(--warn-soft)] bg-[var(--warn-soft)] px-5 py-3.5 text-sm"
+            style={{ color: "var(--warn)" }}
+          >
+            <span>
+              {settings.subscriptionReminder.daysLeft >= 0
+                ? `Your subscription renews in ${settings.subscriptionReminder.daysLeft} day${settings.subscriptionReminder.daysLeft === 1 ? "" : "s"}.`
+                : `Your subscription is ${Math.abs(settings.subscriptionReminder.daysLeft)} day${Math.abs(settings.subscriptionReminder.daysLeft) === 1 ? "" : "s"} overdue.`}
+            </span>
+            <span className="font-bold underline">Manage subscription →</span>
+          </Link>
+        )}
         <Outlet />
       </main>
     </div>

@@ -57,6 +57,10 @@ export interface AdminSettings {
   adminEmailVerified: boolean;
   program: AdminProgram;
   menuEnabled: boolean;
+  // Only present when this business has an owner account attached AND
+  // renewal is within the reminder window (see subscriptionService in the
+  // backend) — absent otherwise, never a "no subscription" placeholder.
+  subscriptionReminder?: { show: boolean; daysLeft: number; effectiveStatus: string };
 }
 
 export interface AdminSettingsPatch {

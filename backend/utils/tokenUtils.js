@@ -53,9 +53,28 @@ const verifyGlobalSessionToken = (token) => {
   return jwt.verify(token, getGlobalJwtSecret());
 };
 
+// Same global-session shape/secret as generateGlobalSessionToken above, but
+// for a BusinessOwnerAccount instead of a CustomerAccount — {type,
+// ownerAccountId}, disambiguated by `type` so the two can share
+// JWT_GLOBAL_SECRET without ever being confused for one another. Like the
+// customer global token, this can never satisfy authMiddleware.verifyToken's
+// userId/role check, so it can never grant tenant access directly — only
+// exchange for a tenant JWT via /api/owner/enter-business.
+const generateOwnerSessionToken = ({ ownerAccountId }) => {
+  return jwt.sign({ type: "global_owner", ownerAccountId }, getGlobalJwtSecret(), {
+    expiresIn: process.env.GLOBAL_SESSION_EXPIRES_IN || "60d"
+  });
+};
+
+const verifyOwnerSessionToken = (token) => {
+  return jwt.verify(token, getGlobalJwtSecret());
+};
+
 module.exports = {
   generateAuthToken,
   verifyAuthToken,
   generateGlobalSessionToken,
-  verifyGlobalSessionToken
+  verifyGlobalSessionToken,
+  generateOwnerSessionToken,
+  verifyOwnerSessionToken
 };

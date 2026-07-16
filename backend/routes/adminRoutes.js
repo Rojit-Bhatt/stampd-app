@@ -6,6 +6,7 @@ const {
 } = require("../controllers/stampController");
 const { redeemAdminVoucher } = require("../controllers/voucherController");
 const { getMySettings, updateMySettings } = require("../controllers/tenantController");
+const { getMySubscription, redeemMyKey } = require("../controllers/adminSubscriptionController");
 const {
   listMenu,
   createMenuItem,
@@ -35,6 +36,8 @@ router.get("/recent-scans", verifyToken, isBusinessAdmin, getRecentScans);
 router.get("/customers", verifyToken, isBusinessAdmin, getCustomersList);
 router.get("/settings", verifyToken, isBusinessAdmin, getMySettings);
 router.patch("/settings", verifyToken, isBusinessAdmin, updateMySettings);
+router.get("/subscription", verifyToken, isBusinessAdmin, getMySubscription);
+router.post("/subscription/redeem-key", verifyToken, isBusinessAdmin, redeemMyKey);
 router.get("/menu", verifyToken, isBusinessAdmin, listMenu);
 router.post("/menu", verifyToken, isBusinessAdmin, createMenuItem);
 router.post("/menu/import/preview", verifyToken, isBusinessAdmin, uploadMenuFile, previewMenuImport);

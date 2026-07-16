@@ -32,7 +32,7 @@ export function decodeJwtPayload(token: string): Record<string, any> | null {
 
 interface RequestOptions extends Omit<RequestInit, "body"> {
   body?: any;
-  role?: "admin" | "customer" | "platform" | "customer-global";
+  role?: "admin" | "customer" | "platform" | "customer-global" | "owner-global";
 }
 
 export async function apiRequest<T = unknown>(
@@ -67,7 +67,9 @@ export async function apiRequest<T = unknown>(
           ? "admin_auth_token"
           : role === "customer-global"
             ? "customer_global_session"
-            : "customer_auth_token";
+            : role === "owner-global"
+              ? "owner_global_session"
+              : "customer_auth_token";
     const token = localStorage.getItem(tokenKey);
     if (token) {
       headers.set("Authorization", `Bearer ${token}`);

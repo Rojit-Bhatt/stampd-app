@@ -36,6 +36,13 @@ const UserSchema = new mongoose.Schema({
   // business_admin/platform, which have no CustomerAccount and keep
   // authenticating via this row's own password exactly as before.
   customerAccountId: { type: mongoose.Schema.Types.ObjectId, ref: "CustomerAccount", default: null },
+  // Set only for role==="business_admin" rows provisioned via the owner
+  // flow — links this tenant-scoped membership row to its global
+  // BusinessOwnerAccount, the exact analogue of customerAccountId above.
+  // Always null for a business_admin row created directly by platform
+  // onboarding without an attached owner, and always null for
+  // customer/platform rows.
+  ownerAccountId: { type: mongoose.Schema.Types.ObjectId, ref: "BusinessOwnerAccount", default: null },
   createdAt: { type: Date, default: Date.now }
 });
 
@@ -50,6 +57,13 @@ UserSchema.index({ organizationId: 1, googleId: 1 }, { unique: true, sparse: tru
 UserSchema.index(
   { organizationId: 1, customerAccountId: 1 },
   { unique: true, partialFilterExpression: { customerAccountId: { $type: "objectId" } } }
+);
+// One business_admin membership per (org, owner account) — same partial-filter
+// reasoning as the customerAccountId index above (a `sparse` index would not
+// exclude the many rows that carry this field present-but-explicitly-null).
+UserSchema.index(
+  { organizationId: 1, ownerAccountId: 1 },
+  { unique: true, partialFilterExpression: { ownerAccountId: { $type: "objectId" } } }
 );
 
 module.exports = mongoose.model("User", UserSchema);

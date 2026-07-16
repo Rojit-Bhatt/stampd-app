@@ -1,6 +1,6 @@
 import { useEffect } from "react";
 import { NavLink, Outlet, useNavigate } from "react-router-dom";
-import { Building2, PlusCircle, Phone, BarChart3, History, Users } from "lucide-react";
+import { Building2, PlusCircle, Phone, BarChart3, History, Users, Tag, KeyRound } from "lucide-react";
 import { usePlatformAuth } from "../../context/PlatformAuthContext";
 import { PLATFORM_NAME } from "../../lib/platform";
 import { useAccount } from "../../hooks/useAccount";
@@ -26,6 +26,8 @@ const BASE_NAV: NavEntry[] = [
 const OWNER_ONLY_NAV: NavEntry[] = [
   { to: "onboard", label: "Onboard new", Icon: PlusCircle },
   { to: "team", label: "Team", Icon: Users },
+  { to: "plans", label: "Plans", Icon: Tag },
+  { to: "subscription-keys", label: "Subscription Keys", Icon: KeyRound },
 ];
 
 // Guarded desktop shell for the platform super-admin. Accent (--plat)

@@ -106,14 +106,17 @@ const listBusinesses = async () => {
   };
 };
 
-const createBusiness = async ({ name, slug, adminName, adminEmail, adminPassword, category, actorId, actorName }) => {
-  if (!name || !slug || !adminName || !adminEmail || !adminPassword) {
-    throw createHttpError(
-      "name, slug, adminName, adminEmail, and adminPassword are required.",
-      400
-    );
-  }
-
+// Shared core: creates the Organization + its business_admin User row.
+// Extracted so the owner-driven "add a business" flow (subscriptionService/
+// ownerAccountService, plan-limit-gated) can reuse the exact same
+// organization-provisioning logic instead of duplicating it — the caller is
+// responsible for anything specific to how it got here (platform-admin
+// onboarding sends a verify email + writes a PlatformAuditLog entry below;
+// the owner flow does neither, since the admin row's emailVerified is
+// copied from the already-owned account and there's no platform actorId).
+const createOrganizationWithAdmin = async ({
+  name, slug, category, adminName, adminEmail, hashedPassword, emailVerified, ownerAccountId
+}) => {
   const normalizedSlug = normalizeSlug(slug);
 
   if (!normalizedSlug) {
@@ -135,10 +138,10 @@ const createBusiness = async ({ name, slug, adminName, adminEmail, adminPassword
     slug: normalizedSlug,
     category: safeCategory,
     branding: { ...DEFAULT_BRANDING },
-    program: { ...DEFAULT_PROGRAM }
+    program: { ...DEFAULT_PROGRAM },
+    ownerAccountId: ownerAccountId || null
   });
 
-  const hashedPassword = await bcrypt.hash(adminPassword, SALT_ROUNDS);
   const normalizedAdminEmail = normalizeEmail(adminEmail);
 
   const admin = await User.create({
@@ -147,10 +150,28 @@ const createBusiness = async ({ name, slug, adminName, adminEmail, adminPassword
     email: normalizedAdminEmail,
     password: hashedPassword,
     role: "business_admin",
-    emailVerified: false
+    emailVerified: Boolean(emailVerified),
+    ownerAccountId: ownerAccountId || null
   });
 
-  await sendVerifyEmail(admin, organization._id, normalizedSlug);
+  return { organization, admin };
+};
+
+const createBusiness = async ({ name, slug, adminName, adminEmail, adminPassword, category, actorId, actorName }) => {
+  if (!name || !slug || !adminName || !adminEmail || !adminPassword) {
+    throw createHttpError(
+      "name, slug, adminName, adminEmail, and adminPassword are required.",
+      400
+    );
+  }
+
+  const hashedPassword = await bcrypt.hash(adminPassword, SALT_ROUNDS);
+
+  const { organization, admin } = await createOrganizationWithAdmin({
+    name, slug, category, adminName, adminEmail, hashedPassword, emailVerified: false
+  });
+
+  await sendVerifyEmail(admin, organization._id, organization.slug);
 
   await logAction({
     actorId,
@@ -158,14 +179,14 @@ const createBusiness = async ({ name, slug, adminName, adminEmail, adminPassword
     action: "onboard",
     organizationId: organization._id,
     targetName: organization.name,
-    details: `Onboarded with admin ${normalizedAdminEmail}`
+    details: `Onboarded with admin ${admin.email}`
   });
 
   return {
     success: true,
     business: await buildBusinessStats(organization),
     admin: { email: admin.email },
-    tenantPath: `/${normalizedSlug}/admin`
+    tenantPath: `/${organization.slug}/admin`
   };
 };
 
@@ -285,6 +306,8 @@ module.exports = {
   loginPlatformAdmin,
   listBusinesses,
   createBusiness,
+  createOrganizationWithAdmin,
   getBusiness,
-  updateBusiness
+  updateBusiness,
+  buildBusinessStats
 };

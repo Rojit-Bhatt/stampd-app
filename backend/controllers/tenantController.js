@@ -2,6 +2,7 @@ const Organization = require("../models/Organization");
 const User = require("../models/User");
 const { getUpcomingForOrg } = require("../services/eventService");
 const { BUSINESS_CATEGORIES } = require("../config/platform");
+const { getSubscriptionSummary } = require("../services/subscriptionService");
 
 const createHttpError = (message, statusCode) => {
   const error = new Error(message);
@@ -47,6 +48,18 @@ const getMySettings = async (req, res, next) => {
 
     const adminUser = await User.findOne({ _id: req.user.id });
 
+    // Only present when this business was created via the owner-ownership
+    // flow (ownerAccountId set) — a platform-onboarded business with no
+    // attached owner has nothing to remind, so this stays undefined for it
+    // rather than a confusing "no subscription" state.
+    let subscriptionReminder;
+    if (organization.ownerAccountId) {
+      const summary = await getSubscriptionSummary(organization.ownerAccountId);
+      if (summary.reminder.show) {
+        subscriptionReminder = { ...summary.reminder, effectiveStatus: summary.subscription?.effectiveStatus };
+      }
+    }
+
     res.status(200).json({
       success: true,
       settings: {
@@ -58,7 +71,8 @@ const getMySettings = async (req, res, next) => {
         contact: organization.contact,
         adminEmailVerified: adminUser ? adminUser.emailVerified : false,
         program: organization.program,
-        menuEnabled: organization.menuEnabled
+        menuEnabled: organization.menuEnabled,
+        ...(subscriptionReminder ? { subscriptionReminder } : {})
       }
     });
   } catch (error) {

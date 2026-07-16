@@ -56,6 +56,13 @@ const OrganizationSchema = new mongoose.Schema({
 
   menuEnabled: { type: Boolean, default: false },
 
+  // The BusinessOwnerAccount (global owner identity) this business belongs
+  // to. Null for a business onboarded before this feature existed, or one
+  // the platform admin onboarded without attaching an owner — unenforced,
+  // not every Organization has to have one. See User.ownerAccountId for the
+  // per-tenant business_admin membership side of this relationship.
+  ownerAccountId: { type: mongoose.Schema.Types.ObjectId, ref: "BusinessOwnerAccount", default: null },
+
   // Reserved for the future subdomain/custom-domain upgrade path.
   customDomain: { type: String, default: null },
 
