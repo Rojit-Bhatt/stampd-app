@@ -1,6 +1,6 @@
 import { useEffect } from "react";
 import { NavLink, Outlet, useNavigate } from "react-router-dom";
-import { Building2, PlusCircle, Phone } from "lucide-react";
+import { Building2, PlusCircle, Phone, BarChart3, History } from "lucide-react";
 import { usePlatformAuth } from "../../context/PlatformAuthContext";
 import { PLATFORM_NAME } from "../../lib/platform";
 import { useAccount } from "../../hooks/useAccount";
@@ -9,7 +9,9 @@ import { StampdLogo } from "../shared/StampdLogo";
 
 const NAV = [
   { to: "", end: true, label: "Businesses", Icon: Building2 },
+  { to: "analytics", label: "Analytics", Icon: BarChart3 },
   { to: "onboard", label: "Onboard new", Icon: PlusCircle },
+  { to: "audit-log", label: "Activity", Icon: History },
   { to: "contact", label: "Contact", Icon: Phone },
 ];
 
