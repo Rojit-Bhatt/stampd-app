@@ -2,12 +2,14 @@ import { useQuery } from "@tanstack/react-query";
 import { Link, useNavigate } from "react-router-dom";
 import { apiRequest } from "../../lib/api";
 import { Skeleton } from "../../components/ui/skeleton";
+import type { BusinessCategory } from "../../hooks/useAdminSettings";
 
 export interface Business {
   id: string;
   name: string;
   slug: string;
   status: "active" | "suspended";
+  category: BusinessCategory;
   branding: { primaryColor: string };
   customersCount: number;
   stampsIssued: number;

@@ -6,6 +6,16 @@ import { useAdminAuth } from "../context/AdminAuthContext";
 export const BUSINESS_CATEGORIES = ["cafe", "restaurant", "bakery", "salon", "gym", "retail", "other"] as const;
 export type BusinessCategory = (typeof BUSINESS_CATEGORIES)[number];
 
+export const CATEGORY_LABELS: Record<BusinessCategory, string> = {
+  cafe: "Cafe",
+  restaurant: "Restaurant",
+  bakery: "Bakery",
+  salon: "Salon",
+  gym: "Gym",
+  retail: "Retail",
+  other: "Other",
+};
+
 export interface AdminBranding {
   tagline: string;
   logoUrl: string;

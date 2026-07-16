@@ -5,17 +5,7 @@ import { Check, Copy } from "lucide-react";
 import toast from "react-hot-toast";
 import { apiRequest } from "../../lib/api";
 import { PLATFORM_NAME } from "../../lib/platform";
-import { BUSINESS_CATEGORIES, type BusinessCategory } from "../../hooks/useAdminSettings";
-
-const CATEGORY_LABELS: Record<BusinessCategory, string> = {
-  cafe: "Cafe",
-  restaurant: "Restaurant",
-  bakery: "Bakery",
-  salon: "Salon",
-  gym: "Gym",
-  retail: "Retail",
-  other: "Other",
-};
+import { BUSINESS_CATEGORIES, CATEGORY_LABELS, type BusinessCategory } from "../../hooks/useAdminSettings";
 
 const slugify = (s: string) =>
   s.trim().toLowerCase().replace(/[^a-z0-9-]+/g, "-").replace(/^-+|-+$/g, "");
