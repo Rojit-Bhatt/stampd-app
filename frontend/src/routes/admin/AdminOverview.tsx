@@ -1,7 +1,19 @@
 import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Link, useParams } from "react-router-dom";
-import { Stamp, Users, Ticket, Gift, Search, Download } from "lucide-react";
+import { Stamp, Users, Ticket, Wallet, Search, Download, TrendingUp, TrendingDown } from "lucide-react";
+import {
+  ResponsiveContainer,
+  LineChart,
+  Line,
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  Legend,
+} from "recharts";
 import { apiRequest, getTenantSlug } from "../../lib/api";
 import { useAdminSettings } from "../../hooks/useAdminSettings";
 
@@ -19,6 +31,27 @@ interface Scan {
   timestamp: string;
   customerName?: string;
 }
+interface DashboardMetric {
+  value: number;
+  trend: number | null;
+}
+interface DashboardStats {
+  newCustomers: DashboardMetric;
+  stampsIssued: DashboardMetric;
+  revenue: DashboardMetric;
+  activeVouchers: DashboardMetric;
+  stampVelocity: { date: string; count: number }[];
+  voucherActivity: { weekStart: string; earned: number; redeemed: number }[];
+}
+
+// Chart-only categorical pair — kept distinct from --brand/--ok/--err since
+// those are identity/status tokens, not series colors. Validated with the
+// dataviz skill's palette checker (chroma floor, CVD separation, contrast
+// vs. a white card) rather than picked by eye.
+const CHART_EARNED_COLOR = "#A8632E";
+const CHART_REDEEMED_COLOR = "#1A6E99";
+
+const shortDate = (iso: string) => new Date(iso).toLocaleDateString(undefined, { month: "short", day: "numeric" });
 
 function timeAgo(iso: string): string {
   const secs = Math.max(0, Math.floor((Date.now() - new Date(iso).getTime()) / 1000));
@@ -33,12 +66,6 @@ function timeAgo(iso: string): string {
 function lastVisit(iso: string | null): string {
   if (!iso) return "—";
   return new Date(iso).toLocaleDateString(undefined, { month: "short", day: "numeric" });
-}
-
-// Purely decorative fill — no real target exists to measure against, so it
-// never claims a percentage, just gives each tile a little visual weight.
-function decorativeFill(val: number): number {
-  return Math.min(100, Math.round((val / (val + 10)) * 100));
 }
 
 export default function AdminOverview() {
@@ -68,16 +95,23 @@ export default function AdminOverview() {
     refetchInterval: 5000,
   });
 
-  const totalCustomers = customers.length;
-  const activeVouchers = customers.reduce((n, c) => n + (c.validVoucherCount || 0), 0);
-  const stampsOnCards = customers.reduce((n, c) => n + (c.stampsEarned || 0), 0);
+  const { data: dashboardStats } = useQuery<DashboardStats>({
+    queryKey: ["adminDashboardStats"],
+    queryFn: async () => {
+      const res = await apiRequest<{ success: boolean } & DashboardStats>("/api/admin/dashboard-stats", {
+        role: "admin",
+      });
+      return res;
+    },
+  });
+
   const required = settings?.program?.stampsRequired ?? 5;
 
-  const stats = [
-    { label: "Total customers", val: totalCustomers, Icon: Users },
-    { label: "Active vouchers", val: activeVouchers, Icon: Ticket },
-    { label: "Stamps on cards", val: stampsOnCards, Icon: Stamp },
-    { label: "Stamps per reward", val: required, Icon: Gift },
+  const kpis: { label: string; metric?: DashboardMetric; Icon: typeof Users }[] = [
+    { label: "New customers (7d)", metric: dashboardStats?.newCustomers, Icon: Users },
+    { label: "Stamps issued (7d)", metric: dashboardStats?.stampsIssued, Icon: Stamp },
+    { label: "Revenue (7d)", metric: dashboardStats?.revenue, Icon: Wallet },
+    { label: "Active vouchers", metric: dashboardStats?.activeVouchers, Icon: Ticket },
   ];
 
   const filtered = useMemo(() => {
@@ -120,18 +154,78 @@ export default function AdminOverview() {
       </div>
 
       <div className="mb-6 grid grid-cols-2 gap-4 md:grid-cols-4">
-        {stats.map((s) => (
+        {kpis.map((s) => (
           <div key={s.label} className="shadow-ambient rounded-3xl bg-[var(--surface)] p-5">
             <div className="mb-3 flex h-11 w-11 items-center justify-center rounded-2xl bg-[var(--surface-container)]">
               <s.Icon className="h-5 w-5" style={{ color: "var(--brand)" }} />
             </div>
             <div className="mb-1 text-[13px] uppercase tracking-wide text-[var(--muted)]">{s.label}</div>
-            <div className="font-display text-[28px] font-bold leading-none">{s.val}</div>
-            <div className="mt-3 h-1 w-full overflow-hidden rounded-full bg-[var(--surface-container)]">
-              <div className="h-full rounded-full" style={{ width: `${decorativeFill(Number(s.val) || 0)}%`, background: "var(--brand)" }} />
+            <div className="flex items-center gap-2">
+              <div className="font-display text-[28px] font-bold leading-none">{s.metric?.value ?? "—"}</div>
+              {s.metric?.trend !== null && s.metric?.trend !== undefined && (
+                <span
+                  className="flex items-center gap-0.5 text-xs font-bold"
+                  style={{ color: s.metric.trend >= 0 ? "var(--ok)" : "var(--err)" }}
+                >
+                  {s.metric.trend >= 0 ? <TrendingUp className="h-3 w-3" /> : <TrendingDown className="h-3 w-3" />}
+                  {Math.abs(s.metric.trend)}%
+                </span>
+              )}
             </div>
           </div>
         ))}
+      </div>
+
+      <div className="mb-6 grid grid-cols-1 gap-4 lg:grid-cols-2">
+        <div className="shadow-ambient rounded-3xl bg-[var(--surface)] p-6">
+          <h3 className="mb-1 font-display text-[17px] font-bold text-[var(--ink)]">Stamp velocity</h3>
+          <p className="mb-4 text-sm text-[var(--muted)]">Stamps issued per day, last 14 days.</p>
+          <ResponsiveContainer width="100%" height={220}>
+            <LineChart data={dashboardStats?.stampVelocity ?? []} margin={{ top: 4, right: 8, left: -20, bottom: 0 }}>
+              <CartesianGrid stroke="var(--line)" strokeDasharray="3 3" vertical={false} />
+              <XAxis
+                dataKey="date"
+                tickFormatter={shortDate}
+                tick={{ fill: "var(--muted)", fontSize: 12 }}
+                axisLine={{ stroke: "var(--line)" }}
+                tickLine={false}
+                minTickGap={24}
+              />
+              <YAxis allowDecimals={false} tick={{ fill: "var(--muted)", fontSize: 12 }} axisLine={false} tickLine={false} width={28} />
+              <Tooltip
+                labelFormatter={(v) => shortDate(String(v))}
+                contentStyle={{ background: "var(--surface)", border: "1px solid var(--line)", borderRadius: 12 }}
+              />
+              <Line type="monotone" dataKey="count" name="Stamps" stroke="var(--brand)" strokeWidth={2} dot={false} activeDot={{ r: 4 }} />
+            </LineChart>
+          </ResponsiveContainer>
+        </div>
+
+        <div className="shadow-ambient rounded-3xl bg-[var(--surface)] p-6">
+          <h3 className="mb-1 font-display text-[17px] font-bold text-[var(--ink)]">Voucher activity</h3>
+          <p className="mb-4 text-sm text-[var(--muted)]">Earned vs. redeemed per week, last 8 weeks.</p>
+          <ResponsiveContainer width="100%" height={220}>
+            <BarChart data={dashboardStats?.voucherActivity ?? []} margin={{ top: 4, right: 8, left: -20, bottom: 0 }} barGap={2}>
+              <CartesianGrid stroke="var(--line)" strokeDasharray="3 3" vertical={false} />
+              <XAxis
+                dataKey="weekStart"
+                tickFormatter={shortDate}
+                tick={{ fill: "var(--muted)", fontSize: 12 }}
+                axisLine={{ stroke: "var(--line)" }}
+                tickLine={false}
+                minTickGap={24}
+              />
+              <YAxis allowDecimals={false} tick={{ fill: "var(--muted)", fontSize: 12 }} axisLine={false} tickLine={false} width={28} />
+              <Tooltip
+                labelFormatter={(v) => shortDate(String(v))}
+                contentStyle={{ background: "var(--surface)", border: "1px solid var(--line)", borderRadius: 12 }}
+              />
+              <Legend wrapperStyle={{ fontSize: 12 }} />
+              <Bar dataKey="earned" name="Earned" fill={CHART_EARNED_COLOR} radius={[4, 4, 0, 0]} />
+              <Bar dataKey="redeemed" name="Redeemed" fill={CHART_REDEEMED_COLOR} radius={[4, 4, 0, 0]} />
+            </BarChart>
+          </ResponsiveContainer>
+        </div>
       </div>
 
       <div className="shadow-ambient mb-6 rounded-3xl bg-[var(--surface)] p-6">

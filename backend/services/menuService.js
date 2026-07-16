@@ -1,34 +1,60 @@
 const MenuItem = require("../models/MenuItem");
-// xlsx@0.18.5 (the last version published to npm) has unpatched High-severity
-// advisories on this exact parse path: GHSA-4r6h-8v6p-xvw6 (prototype
-// pollution) and GHSA-5pgg-2g8v-p4x9 (ReDoS). No npm-published fix exists —
-// SheetJS only publishes patched builds on their own CDN. Risk accepted:
-// parseMenuWorkbook only runs on files uploaded through POST
-// /api/admin/menu/import, which requires isBusinessAdmin auth — reachable
-// only by an authenticated tenant admin, never the public. Revisit if this
-// parsing path is ever exposed to unauthenticated or cross-tenant input.
-const XLSX = require("xlsx");
+const ExcelJS = require("exceljs");
 
 const MAX_IMPORT_ROWS = 500;
 
 const normalizeHeader = (h) => String(h || "").trim().toLowerCase();
 
+// Strips currency symbols/whitespace and parses a number. Returns null for
+// blank/unparseable input rather than throwing — price is optional.
+const parsePrice = (raw) => {
+  if (raw === undefined || raw === null || raw === "") return null;
+  if (typeof raw === "number") return Number.isFinite(raw) ? raw : null;
+  const cleaned = String(raw).replace(/[^0-9.]/g, "");
+  if (!cleaned) return null;
+  const value = Number(cleaned);
+  return Number.isFinite(value) ? value : null;
+};
+
+// A cell's .value can be a primitive, a Date, or a rich object (formula
+// result, hyperlink, rich text) — this collapses all of those to plain text.
+const cellText = (value) => {
+  if (value === null || value === undefined) return "";
+  if (typeof value === "object") {
+    if (value.text !== undefined) return String(value.text);
+    if (value.result !== undefined) return String(value.result);
+    if (value.richText) return value.richText.map((r) => r.text).join("");
+    return "";
+  }
+  return String(value);
+};
+
 // Reads an uploaded workbook buffer and returns the valid rows plus a count
 // of skipped ones (missing/blank Name, or beyond the 500-row cap). Headers
 // are matched case-insensitively; column order doesn't matter.
-const parseMenuWorkbook = (buffer) => {
-  const workbook = XLSX.read(buffer, { type: "buffer" });
-  const sheet = workbook.Sheets[workbook.SheetNames[0]];
-  const records = XLSX.utils.sheet_to_json(sheet, { defval: "" });
+const parseMenuWorkbook = async (buffer) => {
+  const workbook = new ExcelJS.Workbook();
+  await workbook.xlsx.load(buffer);
+  const sheet = workbook.worksheets[0];
+
+  const headerRow = sheet.getRow(1);
+  const headerByColumn = {};
+  headerRow.eachCell({ includeEmpty: false }, (cell, colNumber) => {
+    headerByColumn[colNumber] = normalizeHeader(cellText(cell.value));
+  });
 
   const rows = [];
   let skipped = 0;
 
-  for (const record of records) {
+  for (let rowNumber = 2; rowNumber <= sheet.rowCount; rowNumber += 1) {
+    const row = sheet.getRow(rowNumber);
+    if (row.cellCount === 0) continue;
+
     const fieldByHeader = {};
-    for (const [key, value] of Object.entries(record)) {
-      fieldByHeader[normalizeHeader(key)] = value;
-    }
+    row.eachCell({ includeEmpty: false }, (cell, colNumber) => {
+      const header = headerByColumn[colNumber];
+      if (header) fieldByHeader[header] = cellText(cell.value);
+    });
 
     const name = String(fieldByHeader.name || "").trim();
     if (!name) {
@@ -43,7 +69,7 @@ const parseMenuWorkbook = (buffer) => {
 
     rows.push({
       name,
-      price: String(fieldByHeader.price || "").trim(),
+      price: parsePrice(fieldByHeader.price),
       category: String(fieldByHeader.category || "").trim() || "General",
       description: String(fieldByHeader.description || "").trim()
     });
@@ -74,7 +100,7 @@ const createItem = async (
     organizationId,
     name: name.trim(),
     description: description !== undefined ? description : "",
-    price: price !== undefined ? price : "",
+    price: price !== undefined ? parsePrice(price) : null,
     category: category !== undefined ? category : "General",
     isAvailable: isAvailable !== undefined ? isAvailable : true,
     sortOrder: sortOrder !== undefined ? sortOrder : 0
@@ -91,7 +117,7 @@ const updateItem = async (organizationId, itemId, updates) => {
   const safeUpdates = {};
   for (const field of MUTABLE_MENU_FIELDS) {
     if (updates[field] !== undefined) {
-      safeUpdates[field] = updates[field];
+      safeUpdates[field] = field === "price" ? parsePrice(updates[field]) : updates[field];
     }
   }
 
@@ -121,44 +147,145 @@ const deleteItem = async (organizationId, itemId) => {
   return { success: true };
 };
 
-const importMenuItems = async (organizationId, buffer) => {
-  const { rows, skipped } = parseMenuWorkbook(buffer);
+const normalizeName = (name) => String(name || "").trim().toLowerCase();
 
-  if (rows.length > 0) {
-    await MenuItem.create(
-      rows.map((row) => ({
-        organizationId,
-        name: row.name,
-        description: row.description,
-        price: row.price,
-        category: row.category,
-        isAvailable: true,
-        sortOrder: 0
-      }))
-    );
+// Parses the workbook and, for every valid row, classifies it against the
+// organization's current menu by name (case-insensitive, the only match key
+// available — no SKU/id column exists in the import format):
+//   - "new": no existing item with that name
+//   - "changed": an existing item exists but price/category/description differ
+//   - "unchanged": an existing item exists and every field is identical
+// Nothing is written yet — the caller shows this diff to the admin, who
+// approves a subset via confirmImport.
+const buildImportPreview = async (organizationId, buffer) => {
+  const { rows, skipped } = await parseMenuWorkbook(buffer);
+  const existingItems = await MenuItem.find({ organizationId });
+
+  const existingByName = new Map();
+  for (const item of existingItems) {
+    existingByName.set(normalizeName(item.name), item);
   }
 
-  return { imported: rows.length, skipped };
+  const previewRows = rows.map((row, index) => {
+    const existing = existingByName.get(normalizeName(row.name));
+
+    if (!existing) {
+      return {
+        key: `new-${index}`,
+        status: "new",
+        existingId: null,
+        name: row.name,
+        price: row.price,
+        category: row.category,
+        description: row.description
+      };
+    }
+
+    const existingPrice = existing.price === undefined ? null : existing.price;
+    const samePrice = existingPrice === row.price;
+    const sameCategory = String(existing.category || "").trim() === row.category;
+    const sameDescription = String(existing.description || "").trim() === row.description;
+    const unchanged = samePrice && sameCategory && sameDescription;
+
+    return {
+      key: `existing-${existing._id}`,
+      status: unchanged ? "unchanged" : "changed",
+      existingId: String(existing._id),
+      name: row.name,
+      price: row.price,
+      category: row.category,
+      description: row.description,
+      previous: unchanged
+        ? undefined
+        : { price: existingPrice, category: existing.category, description: existing.description }
+    };
+  });
+
+  return {
+    rows: previewRows,
+    skipped,
+    summary: {
+      newCount: previewRows.filter((r) => r.status === "new").length,
+      changedCount: previewRows.filter((r) => r.status === "changed").length,
+      unchangedCount: previewRows.filter((r) => r.status === "unchanged").length
+    }
+  };
 };
 
-const buildMenuTemplate = () => {
-  const aoa = [
-    ["Name", "Price", "Category", "Description"],
-    ["Cappuccino", "₹150", "Coffee", "Rich and creamy espresso with steamed milk"]
-  ];
-  const sheet = XLSX.utils.aoa_to_sheet(aoa);
-  const workbook = XLSX.utils.book_new();
-  XLSX.utils.book_append_sheet(workbook, sheet, "Menu");
-  return XLSX.write(workbook, { type: "buffer", bookType: "xlsx" });
+// Writes only the rows the admin approved (status "new"/"changed" — the
+// client omits or ignores "unchanged" rows since there's nothing to write).
+// Reuses createItem/updateItem so every write stays org-scoped and goes
+// through the same validation/whitelisting as the manual "Add an item" form
+// — including when a "changed" row's existingId was echoed back by the
+// client from an earlier preview response: updateItem's own
+// { _id, organizationId } filter means a tampered or stale id simply
+// matches nothing rather than ever touching another tenant's row.
+const confirmImport = async (organizationId, rows) => {
+  if (!Array.isArray(rows)) {
+    throw createHttpError("rows must be an array.", 400);
+  }
+
+  let created = 0;
+  let updated = 0;
+  let skipped = 0;
+
+  for (const row of rows) {
+    if (!row || typeof row !== "object") {
+      skipped += 1;
+      continue;
+    }
+
+    const name = String(row.name || "").trim();
+    if (!name) {
+      skipped += 1;
+      continue;
+    }
+
+    if (row.status === "new") {
+      await createItem(organizationId, {
+        name,
+        description: row.description || "",
+        price: row.price,
+        category: row.category || "General"
+      });
+      created += 1;
+    } else if (row.status === "changed" && row.existingId) {
+      try {
+        await updateItem(organizationId, row.existingId, {
+          description: row.description || "",
+          price: row.price,
+          category: row.category || "General"
+        });
+        updated += 1;
+      } catch (error) {
+        if (error.statusCode !== 404) throw error;
+        skipped += 1;
+      }
+    } else {
+      skipped += 1;
+    }
+  }
+
+  return { created, updated, skipped };
+};
+
+const buildMenuTemplate = async () => {
+  const workbook = new ExcelJS.Workbook();
+  const sheet = workbook.addWorksheet("Menu");
+  sheet.addRow(["Name", "Price", "Category", "Description"]);
+  sheet.addRow(["Cappuccino", "150", "Coffee", "Rich and creamy espresso with steamed milk"]);
+  return workbook.xlsx.writeBuffer();
 };
 
 module.exports = {
   createHttpError,
+  parsePrice,
   listForOrg,
   createItem,
   updateItem,
   deleteItem,
   parseMenuWorkbook,
-  importMenuItems,
+  buildImportPreview,
+  confirmImport,
   buildMenuTemplate
 };

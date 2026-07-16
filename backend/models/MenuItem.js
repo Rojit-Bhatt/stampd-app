@@ -6,8 +6,7 @@ const MenuItemSchema = new mongoose.Schema({
   organizationId: { type: mongoose.Schema.Types.ObjectId, ref: "Organization", required: true },
   name: { type: String, required: true, trim: true },
   description: { type: String, default: "", trim: true },
-  // Stored as a display string (e.g. "₹120") so businesses can format freely.
-  price: { type: String, default: "", trim: true },
+  price: { type: Number, default: null, min: 0 },
   category: { type: String, default: "General", trim: true },
   isAvailable: { type: Boolean, default: true },
   isFeatured: { type: Boolean, default: false },

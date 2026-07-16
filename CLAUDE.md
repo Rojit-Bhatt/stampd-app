@@ -10,6 +10,14 @@ The core loyalty loop: a barista generates a short-lived QR → the customer sca
 
 **Migration state:** multi-tenant backend/frontend, the global customer-identity + QR-as-link claim flow, the full visual redesign, and a global `/explore` cross-tenant business directory (see below) are all done and merged to `main`. `.env.example` files document every required var. Remaining: deploy (Vercel + Atlas), LAN HTTPS for on-phone testing.
 
+**In progress (branch `redesign-stampd-visual-system`, not yet merged):** Menu Management redesign + safe Excel import, and Admin Dashboard analytics/charts. Locked decisions so far:
+- Replace `xlsx` (unpatched CVEs GHSA-4r6h-8v6p-xvw6, GHSA-5pgg-2g8v-p4x9, flagged in `menuService.js`) with **ExcelJS** everywhere it's used (`menuService.js`, `reportService.js`) — independent implementation, not a SheetJS wrapper like `node-xlsx`.
+- Menu import becomes stateless preview/confirm: parse → return full new/changed/unchanged diff to the client → client POSTs back the approved subset → write via existing `createItem`/`updateItem`. No server-side temp storage. Match key is **name only, case-insensitive** (no SKU/id column exists in the import format).
+- `MenuItem.price` converts from String to Number (needs a one-time migration script + `CustomerMenu.tsx` display update).
+- New charting library: **Recharts** (none existed before).
+- Dashboard trend %s must be real, computed week-over-week — only for flow metrics (new customers, stamps issued, revenue) that have a meaningful prior-window comparison; snapshot metrics (e.g. active vouchers right now) get no trend badge, by design, not by oversight. Never fabricate metrics or copy ("Recent Activity" feed, "Campaign Spotlight", trend numbers) that reference designs may show but the data model can't actually back.
+- New Voucher Performance report: redemption rate/avg days-to-redeem scoped to a single cohort (vouchers *earned* in the selected date range, checked for redemption regardless of when), not two independently-filtered populations.
+
 **Stale docs:** `docs/00-overview.md` and `docs/01-project-rules.md` describe the OLD single-cafe app and explicitly list multi-tenancy as out-of-scope. That is obsolete — the product pivoted. Trust the code over those docs. The governance rules in `docs/01` (thin controllers, service-layer logic, no unapproved deps) still apply.
 
 ## Commands

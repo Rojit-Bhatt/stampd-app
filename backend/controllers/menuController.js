@@ -4,7 +4,8 @@ const {
   createItem,
   updateItem,
   deleteItem,
-  importMenuItems,
+  buildImportPreview,
+  confirmImport,
   buildMenuTemplate
 } = require("../services/menuService");
 
@@ -38,28 +39,41 @@ const uploadMenuFile = (req, res, next) => {
   });
 };
 
-const importMenuItemsController = async (req, res, next) => {
+const previewMenuImport = async (req, res, next) => {
   try {
     if (!req.file) {
       const error = new Error("An Excel file is required.");
       error.statusCode = 400;
       throw error;
     }
-    const result = await importMenuItems(req.user.organizationId, req.file.buffer);
+    const result = await buildImportPreview(req.user.organizationId, req.file.buffer);
     res.status(200).json({ success: true, ...result });
   } catch (error) {
     next(error);
   }
 };
 
-const downloadMenuTemplate = (req, res) => {
-  const buffer = buildMenuTemplate();
-  res.setHeader(
-    "Content-Type",
-    "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-  );
-  res.setHeader("Content-Disposition", "attachment; filename=\"menu-template.xlsx\"");
-  res.send(buffer);
+const confirmMenuImport = async (req, res, next) => {
+  try {
+    const result = await confirmImport(req.user.organizationId, req.body.rows);
+    res.status(200).json({ success: true, ...result });
+  } catch (error) {
+    next(error);
+  }
+};
+
+const downloadMenuTemplate = async (req, res, next) => {
+  try {
+    const buffer = await buildMenuTemplate();
+    res.setHeader(
+      "Content-Type",
+      "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+    );
+    res.setHeader("Content-Disposition", "attachment; filename=\"menu-template.xlsx\"");
+    res.send(buffer);
+  } catch (error) {
+    next(error);
+  }
 };
 
 const getPublicMenu = async (req, res, next) => {
@@ -140,6 +154,7 @@ module.exports = {
   updateMenuItem,
   deleteMenuItem,
   uploadMenuFile,
-  importMenuItemsController,
+  previewMenuImport,
+  confirmMenuImport,
   downloadMenuTemplate
 };

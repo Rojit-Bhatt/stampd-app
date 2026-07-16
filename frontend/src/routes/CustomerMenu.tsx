@@ -54,7 +54,9 @@ export default function CustomerMenu() {
                           <div className="truncate text-[13px] text-[var(--muted)]">{i.description}</div>
                         )}
                       </div>
-                      {i.price && <span className="text-sm font-bold text-[var(--ink)]">{i.price}</span>}
+                      {typeof i.price === "number" && (
+                        <span className="text-sm font-bold text-[var(--ink)]">{i.price}</span>
+                      )}
                     </div>
                   ))}
               </div>

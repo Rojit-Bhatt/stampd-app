@@ -54,6 +54,7 @@ const MenuManagement = lazy(() => import('./routes/admin/MenuManagement'));
 const AdminEvents = lazy(() => import('./routes/admin/AdminEvents'));
 const AdminReportsSummary = lazy(() => import('./routes/admin/AdminReportsSummary'));
 const AdminReportsCustomers = lazy(() => import('./routes/admin/AdminReportsCustomers'));
+const AdminReportsVouchers = lazy(() => import('./routes/admin/AdminReportsVouchers'));
 const AdminSettings = lazy(() => import('./routes/admin/AdminSettings'));
 const CustomerSettings = lazy(() => import('./routes/CustomerSettings'));
 const NotFound = lazy(() => import('./routes/NotFound'));
@@ -154,6 +155,7 @@ export default function App() {
               <Route path="settings" element={<AdminSettings />} />
               <Route path="reports/summary" element={<AdminReportsSummary />} />
               <Route path="reports/customers" element={<AdminReportsCustomers />} />
+              <Route path="reports/vouchers" element={<AdminReportsVouchers />} />
             </Route>
           </Route>
 

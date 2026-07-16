@@ -1,22 +1,48 @@
 /**
- * Excel business reports suite (Epic D2).
+ * Excel business reports suite (Epic D2, updated for the ExcelJS migration,
+ * dashboard analytics, and the Voucher Performance report).
  *
  * Self-contained: boots its own server on a dedicated port against the
  * in-memory mock DB. Drives a claim with a bill amount, then confirms the
  * summary stats are correctly scoped to a date range (inclusion via a range
- * covering today, exclusion via a range entirely in the future), and that
- * both report downloads parse back with the right shape.
+ * covering today, exclusion via a range entirely in the future), that both
+ * report downloads parse back with the right shape, that the dashboard
+ * stats endpoint returns real (non-fabricated) numbers, and that the
+ * Voucher Performance report's cohort math is self-consistent.
  *
  * Run directly: `node tests/business-reports.js`
  */
 
-const XLSX = require("xlsx");
+const ExcelJS = require("exceljs");
 const { bootServer } = require("./helpers/bootServer");
 
 const SLUG = "coffesarowar";
 
 function isoDate(d) {
   return d.toISOString().slice(0, 10);
+}
+
+async function readSheetRows(buffer, sheetIndex = 0) {
+  const workbook = new ExcelJS.Workbook();
+  await workbook.xlsx.load(buffer);
+  const sheet = workbook.worksheets[sheetIndex];
+  const rows = [];
+  sheet.eachRow((row) => {
+    const values = [];
+    row.eachCell({ includeEmpty: true }, (cell) => values.push(cell.value));
+    rows.push(values);
+  });
+  return rows;
+}
+
+async function readSheetAsObjects(buffer, sheetIndex = 0) {
+  const rows = await readSheetRows(buffer, sheetIndex);
+  const header = rows[0] || [];
+  return rows.slice(1).map((row) => {
+    const obj = {};
+    header.forEach((h, i) => { obj[h] = row[i]; });
+    return obj;
+  });
 }
 
 async function main() {
@@ -90,15 +116,14 @@ async function main() {
     check("default range -> 200", defaulted.status === 200);
     check("default range includes today's claim", defaulted.body.stampsIssued >= 1);
 
-    // Summary download parses back with the right values.
+    // Summary download parses back with the right values (now via ExcelJS).
     const summaryDownload = await fetch(
       `${baseUrl}/api/admin/reports/summary/download?startDate=${todayStart}&endDate=${todayEnd}`,
       { headers: { Authorization: `Bearer ${adminToken}`, "X-Tenant-Slug": SLUG } },
     );
     check("summary download -> 200", summaryDownload.status === 200);
     const summaryBuf = Buffer.from(await summaryDownload.arrayBuffer());
-    const summaryWb = XLSX.read(summaryBuf, { type: "buffer" });
-    const summaryRows = XLSX.utils.sheet_to_json(summaryWb.Sheets[summaryWb.SheetNames[0]], { header: 1 });
+    const summaryRows = await readSheetRows(summaryBuf);
     const summaryFlat = summaryRows.flat().join(" ");
     check("summary workbook mentions stamps issued", summaryFlat.toLowerCase().includes("stamps issued"));
 
@@ -108,12 +133,54 @@ async function main() {
     });
     check("customers download -> 200", customersDownload.status === 200);
     const customersBuf = Buffer.from(await customersDownload.arrayBuffer());
-    const customersWb = XLSX.read(customersBuf, { type: "buffer" });
-    const customersRows = XLSX.utils.sheet_to_json(customersWb.Sheets[customersWb.SheetNames[0]]);
+    const customersRows = await readSheetAsObjects(customersBuf);
     const myRow = customersRows.find((r) => r.Email === email);
     check("customers workbook has a row for the new customer", Boolean(myRow));
     check("customers row has correct phone", myRow?.Phone === "+9779813334444");
     check("customers row has correct total spent", myRow?.["Total Spent"] === 400);
+
+    // Dashboard stats: real numbers, not fabricated. Snapshot metric
+    // (active vouchers) must carry no trend; flow metrics must.
+    const dashboard = await api("/api/admin/dashboard-stats", { token: adminToken });
+    check("dashboard-stats -> 200", dashboard.status === 200);
+    check("dashboard newCustomers has a numeric value", typeof dashboard.body?.newCustomers?.value === "number");
+    check("dashboard newCustomers reflects today's signup", dashboard.body?.newCustomers?.value >= 1);
+    check("dashboard stampsIssued reflects today's claim", dashboard.body?.stampsIssued?.value >= 1);
+    check("dashboard revenue reflects today's bill amount", dashboard.body?.revenue?.value >= 400);
+    check("dashboard activeVouchers has no trend (snapshot metric)", dashboard.body?.activeVouchers?.trend === null);
+    check("dashboard stampVelocity covers 14 days", Array.isArray(dashboard.body?.stampVelocity) && dashboard.body.stampVelocity.length === 14);
+    check("dashboard voucherActivity covers 8 weeks", Array.isArray(dashboard.body?.voucherActivity) && dashboard.body.voucherActivity.length === 8);
+    const todayVelocity = dashboard.body.stampVelocity.find((d) => d.date === todayStart);
+    check("today's stamp appears in the velocity series", Boolean(todayVelocity) && todayVelocity.count >= 1);
+
+    // Voucher Performance report: cohort math is self-consistent.
+    const voucherPerf = await api(
+      `/api/admin/reports/vouchers?startDate=${todayStart}&endDate=${todayEnd}`,
+      { token: adminToken },
+    );
+    check("voucher performance -> 200", voucherPerf.status === 200);
+    check(
+      "totalEarned = totalRedeemed + totalPending",
+      voucherPerf.body?.totalEarned === voucherPerf.body?.totalRedeemed + voucherPerf.body?.totalPending,
+    );
+    check(
+      "redemptionRate is a percentage in [0, 100]",
+      typeof voucherPerf.body?.redemptionRate === "number" &&
+        voucherPerf.body.redemptionRate >= 0 &&
+        voucherPerf.body.redemptionRate <= 100,
+    );
+
+    const voucherPerfDownload = await fetch(
+      `${baseUrl}/api/admin/reports/vouchers/download?startDate=${todayStart}&endDate=${todayEnd}`,
+      { headers: { Authorization: `Bearer ${adminToken}`, "X-Tenant-Slug": SLUG } },
+    );
+    check("voucher performance download -> 200", voucherPerfDownload.status === 200);
+    const voucherPerfBuf = Buffer.from(await voucherPerfDownload.arrayBuffer());
+    const voucherPerfRows = await readSheetRows(voucherPerfBuf, 0);
+    check(
+      "voucher performance workbook mentions redemption rate",
+      voucherPerfRows.flat().join(" ").toLowerCase().includes("redemption rate"),
+    );
 
     // Tenant isolation.
     const platformLogin = await api("/api/platform/login", {
@@ -143,6 +210,9 @@ async function main() {
       { slug: secondSlug, token: secondLogin.body.token },
     );
     check("second tenant's summary shows 0 (unaffected by coffesarowar's activity)", secondSummary.body.stampsIssued === 0);
+
+    const secondDashboard = await api("/api/admin/dashboard-stats", { slug: secondSlug, token: secondLogin.body.token });
+    check("second tenant's dashboard shows 0 stamps (unaffected)", secondDashboard.body?.stampsIssued?.value === 0);
   } finally {
     stop();
   }

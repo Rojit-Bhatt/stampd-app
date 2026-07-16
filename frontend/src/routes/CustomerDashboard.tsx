@@ -155,7 +155,9 @@ export default function CustomerDashboard() {
                     <div className="truncate text-[13px] text-[var(--muted)]">{item.description}</div>
                   )}
                 </div>
-                {item.price && <span className="text-sm font-bold text-[var(--ink)]">{item.price}</span>}
+                {typeof item.price === "number" && (
+                  <span className="text-sm font-bold text-[var(--ink)]">{item.price}</span>
+                )}
               </div>
             ))}
           </div>

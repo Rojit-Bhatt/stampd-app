@@ -12,10 +12,18 @@ const {
   updateMenuItem,
   deleteMenuItem,
   uploadMenuFile,
-  importMenuItemsController,
+  previewMenuImport,
+  confirmMenuImport,
   downloadMenuTemplate
 } = require("../controllers/menuController");
-const { getSummary, downloadSummary, downloadCustomers } = require("../controllers/reportController");
+const {
+  getDashboard,
+  getSummary,
+  downloadSummary,
+  downloadCustomers,
+  getVoucherPerformance,
+  downloadVoucherPerformance,
+} = require("../controllers/reportController");
 const { listEvents, createEventController, updateEventController, deleteEventController } = require("../controllers/eventController");
 const { verifyToken, isBusinessAdmin } = require("../middleware/authMiddleware");
 
@@ -29,13 +37,17 @@ router.get("/settings", verifyToken, isBusinessAdmin, getMySettings);
 router.patch("/settings", verifyToken, isBusinessAdmin, updateMySettings);
 router.get("/menu", verifyToken, isBusinessAdmin, listMenu);
 router.post("/menu", verifyToken, isBusinessAdmin, createMenuItem);
-router.post("/menu/import", verifyToken, isBusinessAdmin, uploadMenuFile, importMenuItemsController);
+router.post("/menu/import/preview", verifyToken, isBusinessAdmin, uploadMenuFile, previewMenuImport);
+router.post("/menu/import/confirm", verifyToken, isBusinessAdmin, confirmMenuImport);
 router.get("/menu/template", verifyToken, isBusinessAdmin, downloadMenuTemplate);
 router.patch("/menu/:id", verifyToken, isBusinessAdmin, updateMenuItem);
 router.delete("/menu/:id", verifyToken, isBusinessAdmin, deleteMenuItem);
+router.get("/dashboard-stats", verifyToken, isBusinessAdmin, getDashboard);
 router.get("/reports/summary", verifyToken, isBusinessAdmin, getSummary);
 router.get("/reports/summary/download", verifyToken, isBusinessAdmin, downloadSummary);
 router.get("/reports/customers/download", verifyToken, isBusinessAdmin, downloadCustomers);
+router.get("/reports/vouchers", verifyToken, isBusinessAdmin, getVoucherPerformance);
+router.get("/reports/vouchers/download", verifyToken, isBusinessAdmin, downloadVoucherPerformance);
 router.get("/events", verifyToken, isBusinessAdmin, listEvents);
 router.post("/events", verifyToken, isBusinessAdmin, createEventController);
 router.patch("/events/:id", verifyToken, isBusinessAdmin, updateEventController);

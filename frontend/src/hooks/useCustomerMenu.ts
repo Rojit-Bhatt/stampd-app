@@ -5,7 +5,7 @@ export interface CustomerMenuItem {
   id: string;
   name: string;
   description: string;
-  price: string;
+  price: number | null;
   category: string;
   isFeatured: boolean;
 }

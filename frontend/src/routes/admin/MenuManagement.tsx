@@ -1,18 +1,19 @@
-import { useRef, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { Trash2, Plus, Download } from "lucide-react";
+import { Trash2, Plus, Download, UploadCloud, Search } from "lucide-react";
 import toast from "react-hot-toast";
 import { apiRequest, getTenantSlug } from "../../lib/api";
 import { useAdminSettings, useUpdateAdminSettings } from "../../hooks/useAdminSettings";
 import { Skeleton } from "../../components/ui/skeleton";
 import { ConfirmDialog } from "../../components/shared/ConfirmDialog";
+import { MenuImportPreviewModal, type MenuImportPreview } from "../../components/admin/MenuImportPreviewModal";
 
 interface MenuItem {
   id?: string;
   _id?: string;
   name: string;
   description: string;
-  price: string;
+  price: number | null;
   category: string;
   isAvailable: boolean;
   isFeatured: boolean;
@@ -41,7 +42,14 @@ export default function MenuManagement() {
 
   const [draft, setDraft] = useState({ name: "", description: "", price: "", category: "General" });
   const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null);
-  const [importing, setImporting] = useState(false);
+  const [previewing, setPreviewing] = useState(false);
+  const [approving, setApproving] = useState(false);
+  const [dragActive, setDragActive] = useState(false);
+  const [preview, setPreview] = useState<MenuImportPreview | null>(null);
+  const [previewOpen, setPreviewOpen] = useState(false);
+  const [search, setSearch] = useState("");
+  const [categoryFilter, setCategoryFilter] = useState("All");
+  const [statusFilter, setStatusFilter] = useState<"All" | "Available" | "Sold out">("All");
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   const menuEnabled = settings?.menuEnabled ?? false;
@@ -66,29 +74,52 @@ export default function MenuManagement() {
     URL.revokeObjectURL(url);
   };
 
-  const handleImport = async (file: File) => {
-    setImporting(true);
+  const previewFile = async (file: File) => {
+    setPreviewing(true);
     try {
       const form = new FormData();
       form.append("file", file);
-      const res = await apiRequest<{ success: boolean; imported: number; skipped: number }>(
-        "/api/admin/menu/import",
+      const res = await apiRequest<MenuImportPreview & { success: boolean }>(
+        "/api/admin/menu/import/preview",
         { method: "POST", role: "admin", body: form },
       );
-      const suffix = res.skipped ? `, skipped ${res.skipped} row(s)` : "";
-      toast.success(`Imported ${res.imported} item(s)${suffix}`);
+      setPreview(res);
+      setPreviewOpen(true);
+    } catch (err) {
+      toast.error((err as Error).message || "Couldn't read that file.");
+    } finally {
+      setPreviewing(false);
+      if (fileInputRef.current) fileInputRef.current.value = "";
+    }
+  };
+
+  const confirmImport = async () => {
+    if (!preview) return;
+    setApproving(true);
+    try {
+      const rows = preview.rows.filter((r) => r.status !== "unchanged");
+      const res = await apiRequest<{ success: boolean; created: number; updated: number }>(
+        "/api/admin/menu/import/confirm",
+        { method: "POST", role: "admin", body: { rows } },
+      );
+      toast.success(`Added ${res.created}, updated ${res.updated} item(s).`);
       invalidate();
+      setPreviewOpen(false);
+      setPreview(null);
     } catch (err) {
       toast.error((err as Error).message || "Import failed.");
     } finally {
-      setImporting(false);
-      if (fileInputRef.current) fileInputRef.current.value = "";
+      setApproving(false);
     }
   };
 
   const createItem = useMutation({
     mutationFn: (body: typeof draft) =>
-      apiRequest("/api/admin/menu", { method: "POST", role: "admin", body }),
+      apiRequest("/api/admin/menu", {
+        method: "POST",
+        role: "admin",
+        body: { ...body, price: body.price.trim() === "" ? undefined : Number(body.price) },
+      }),
     onSuccess: () => {
       invalidate();
       setDraft({ name: "", description: "", price: "", category: "General" });
@@ -111,10 +142,21 @@ export default function MenuManagement() {
     },
   });
 
-  const categories = Array.from(new Set(items.map((i) => i.category || "General")));
+  const categories = useMemo(() => Array.from(new Set(items.map((i) => i.category || "General"))), [items]);
+
+  const filteredItems = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    return items.filter((i) => {
+      if (categoryFilter !== "All" && (i.category || "General") !== categoryFilter) return false;
+      if (statusFilter === "Available" && !i.isAvailable) return false;
+      if (statusFilter === "Sold out" && i.isAvailable) return false;
+      if (q && !i.name.toLowerCase().includes(q)) return false;
+      return true;
+    });
+  }, [items, search, categoryFilter, statusFilter]);
 
   return (
-    <div className="max-w-[720px]">
+    <div className="max-w-[860px]">
       <h1 className="font-display text-[28px] font-extrabold text-[var(--ink)]">Menu</h1>
       <p className="mb-5 text-[var(--muted)]">A display-only menu customers can browse in the app.</p>
 
@@ -142,29 +184,53 @@ export default function MenuManagement() {
 
       {/* Import from Excel */}
       <div className="mb-6 shadow-ambient rounded-3xl bg-[var(--surface)] p-5">
-        <div className="mb-3 text-sm font-bold">Import from Excel</div>
+        <div className="mb-1 text-sm font-bold">Import from Excel</div>
         <p className="mb-3 text-[13px] text-[var(--muted)]">
-          Columns: Name (required), Price, Category, Description.
+          Columns: Name (required), Price, Category, Description. You'll review what will change before anything is saved.
         </p>
-        <div className="flex flex-wrap items-center gap-2.5">
-          <button
-            onClick={downloadTemplate}
-            className="inline-flex items-center gap-1.5 rounded-[11px] border border-[var(--line)] bg-[var(--bg)] px-3.5 py-2.5 text-sm font-bold"
-          >
-            <Download className="h-4 w-4" /> Download template
-          </button>
+
+        <div
+          onDragOver={(e) => {
+            e.preventDefault();
+            setDragActive(true);
+          }}
+          onDragLeave={() => setDragActive(false)}
+          onDrop={(e) => {
+            e.preventDefault();
+            setDragActive(false);
+            const file = e.dataTransfer.files?.[0];
+            if (file) previewFile(file);
+          }}
+          onClick={() => fileInputRef.current?.click()}
+          className="flex cursor-pointer flex-col items-center justify-center gap-2 rounded-2xl border-2 border-dashed px-6 py-8 text-center transition-colors"
+          style={{
+            borderColor: dragActive ? "var(--brand)" : "var(--line)",
+            background: dragActive ? "var(--plat-soft)" : "var(--bg)",
+          }}
+        >
+          <UploadCloud className="h-6 w-6" style={{ color: "var(--brand)" }} />
+          <div className="text-sm font-bold text-[var(--ink)]">
+            {previewing ? "Reading your file…" : "Drag your .xlsx file here, or click to choose one"}
+          </div>
+          <div className="text-[12px] text-[var(--muted)]">.xlsx or .xls, up to 5MB</div>
           <input
             ref={fileInputRef}
             type="file"
             accept=".xlsx,.xls"
+            className="hidden"
             onChange={(e) => {
               const file = e.target.files?.[0];
-              if (file) handleImport(file);
+              if (file) previewFile(file);
             }}
-            className="text-sm"
           />
-          {importing && <span className="text-sm text-[var(--muted)]">Importing…</span>}
         </div>
+
+        <button
+          onClick={downloadTemplate}
+          className="mt-3 inline-flex items-center gap-1.5 rounded-[11px] border border-[var(--line)] bg-[var(--bg)] px-3.5 py-2.5 text-sm font-bold"
+        >
+          <Download className="h-4 w-4" /> Download template
+        </button>
       </div>
 
       {/* Add item */}
@@ -178,9 +244,12 @@ export default function MenuManagement() {
             className="rounded-[11px] border border-[var(--line)] bg-[var(--bg)] px-3.5 py-2.5 text-sm focus:border-[var(--brand)] focus:outline-none"
           />
           <input
+            type="number"
+            min="0"
+            step="0.01"
             value={draft.price}
             onChange={(e) => setDraft({ ...draft, price: e.target.value })}
-            placeholder="Price (e.g. ₹120)"
+            placeholder="Price"
             className="rounded-[11px] border border-[var(--line)] bg-[var(--bg)] px-3.5 py-2.5 text-sm focus:border-[var(--brand)] focus:outline-none"
           />
           <input
@@ -206,8 +275,42 @@ export default function MenuManagement() {
         </button>
       </div>
 
-      {/* List grouped by category */}
-      <div className="flex flex-col gap-6" style={{ opacity: menuEnabled ? 1 : 0.55 }}>
+      {/* Filter bar */}
+      <div className="mb-3 flex flex-wrap items-center gap-2.5">
+        <div className="flex flex-1 min-w-[160px] items-center gap-2 rounded-[11px] border border-[var(--line)] bg-[var(--surface)] px-3.5 py-2.5">
+          <Search className="h-4 w-4 flex-shrink-0 text-[var(--muted)]" />
+          <input
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Search items"
+            className="w-full bg-transparent text-sm focus:outline-none"
+          />
+        </div>
+        <select
+          value={categoryFilter}
+          onChange={(e) => setCategoryFilter(e.target.value)}
+          className="rounded-[11px] border border-[var(--line)] bg-[var(--surface)] px-3.5 py-2.5 text-sm focus:border-[var(--brand)] focus:outline-none"
+        >
+          <option value="All">All categories</option>
+          {categories.map((c) => (
+            <option key={c} value={c}>
+              {c}
+            </option>
+          ))}
+        </select>
+        <select
+          value={statusFilter}
+          onChange={(e) => setStatusFilter(e.target.value as typeof statusFilter)}
+          className="rounded-[11px] border border-[var(--line)] bg-[var(--surface)] px-3.5 py-2.5 text-sm focus:border-[var(--brand)] focus:outline-none"
+        >
+          <option value="All">All statuses</option>
+          <option value="Available">Available</option>
+          <option value="Sold out">Sold out</option>
+        </select>
+      </div>
+
+      {/* List */}
+      <div style={{ opacity: menuEnabled ? 1 : 0.55 }}>
         {isLoading ? (
           <div className="overflow-hidden shadow-ambient rounded-3xl bg-[var(--surface)]">
             {Array.from({ length: 4 }).map((_, i) => (
@@ -220,67 +323,72 @@ export default function MenuManagement() {
               </div>
             ))}
           </div>
-        ) : items.length === 0 ? (
+        ) : filteredItems.length === 0 ? (
           <div className="rounded-[16px] border border-dashed border-[var(--line)] p-8 text-center text-sm text-[var(--muted)]">
-            No menu items yet. Add your first above.
+            {items.length === 0 ? "No menu items yet. Add your first above." : "No items match these filters."}
           </div>
         ) : (
-          categories.map((cat) => (
-            <div key={cat}>
-              <h3 className="mb-2.5 font-display text-base font-bold" style={{ color: "var(--brand)" }}>
-                {cat}
-              </h3>
-              <div className="overflow-hidden shadow-ambient rounded-3xl bg-[var(--surface)]">
-                {items
-                  .filter((i) => (i.category || "General") === cat)
-                  .map((i) => (
-                    <div
-                      key={itemId(i)}
-                      className="flex items-center gap-3 border-b border-[var(--line)] px-4 py-3.5 last:border-b-0"
-                    >
-                      <div className="flex-1 min-w-0">
-                        <div className="truncate text-sm font-semibold">{i.name}</div>
-                        <div className="truncate text-[13px] text-[var(--muted)]">{i.description}</div>
-                      </div>
-                      <span className="text-sm font-bold">{i.price}</span>
-                      <button
-                        onClick={() =>
-                          patchItem.mutate({ id: itemId(i), body: { isAvailable: !i.isAvailable } })
-                        }
-                        className="rounded-full px-2.5 py-1 text-[11px] font-bold"
-                        style={{
-                          background: i.isAvailable ? "var(--ok-soft)" : "var(--warn-soft)",
-                          color: i.isAvailable ? "var(--ok)" : "var(--warn)",
-                        }}
-                      >
-                        {i.isAvailable ? "Available" : "Sold out"}
-                      </button>
-                      <button
-                        onClick={() =>
-                          patchItem.mutate({ id: itemId(i), body: { isFeatured: !i.isFeatured } })
-                        }
-                        className="rounded-full px-2.5 py-1 text-[11px] font-bold"
-                        style={{
-                          background: i.isFeatured ? "var(--brand)" : "var(--bg)",
-                          color: i.isFeatured ? "#fff" : "var(--muted)",
-                        }}
-                      >
-                        {i.isFeatured ? "Featured" : "Feature"}
-                      </button>
-                      <button
-                        onClick={() => setPendingDeleteId(itemId(i))}
-                        className="flex h-8 w-8 items-center justify-center rounded-[9px] bg-[var(--bg)] text-[var(--muted)] hover:text-[var(--err)]"
-                        aria-label={`Delete ${i.name}`}
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </button>
-                    </div>
-                  ))}
+          <div className="overflow-hidden shadow-ambient rounded-3xl bg-[var(--surface)]">
+            {filteredItems.map((i) => (
+              <div
+                key={itemId(i)}
+                className="flex items-center gap-3 border-b border-[var(--line)] px-4 py-3.5 last:border-b-0"
+              >
+                <div className="flex-1 min-w-0">
+                  <div className="truncate text-sm font-semibold">{i.name}</div>
+                  <div className="truncate text-[13px] text-[var(--muted)]">
+                    {i.category || "General"}
+                    {i.description ? ` · ${i.description}` : ""}
+                  </div>
+                </div>
+                <span className="text-sm font-bold">{typeof i.price === "number" ? i.price : "—"}</span>
+                <button
+                  onClick={() =>
+                    patchItem.mutate({ id: itemId(i), body: { isAvailable: !i.isAvailable } })
+                  }
+                  className="rounded-full px-2.5 py-1 text-[11px] font-bold"
+                  style={{
+                    background: i.isAvailable ? "var(--ok-soft)" : "var(--warn-soft)",
+                    color: i.isAvailable ? "var(--ok)" : "var(--warn)",
+                  }}
+                >
+                  {i.isAvailable ? "Available" : "Sold out"}
+                </button>
+                <button
+                  onClick={() =>
+                    patchItem.mutate({ id: itemId(i), body: { isFeatured: !i.isFeatured } })
+                  }
+                  className="rounded-full px-2.5 py-1 text-[11px] font-bold"
+                  style={{
+                    background: i.isFeatured ? "var(--brand)" : "var(--bg)",
+                    color: i.isFeatured ? "#fff" : "var(--muted)",
+                  }}
+                >
+                  {i.isFeatured ? "Featured" : "Feature"}
+                </button>
+                <button
+                  onClick={() => setPendingDeleteId(itemId(i))}
+                  className="flex h-8 w-8 items-center justify-center rounded-[9px] bg-[var(--bg)] text-[var(--muted)] hover:text-[var(--err)]"
+                  aria-label={`Delete ${i.name}`}
+                >
+                  <Trash2 className="h-4 w-4" />
+                </button>
               </div>
-            </div>
-          ))
+            ))}
+          </div>
         )}
       </div>
+
+      <MenuImportPreviewModal
+        open={previewOpen}
+        onOpenChange={(open) => {
+          setPreviewOpen(open);
+          if (!open) setPreview(null);
+        }}
+        preview={preview}
+        onApprove={confirmImport}
+        approving={approving}
+      />
 
       <ConfirmDialog
         open={pendingDeleteId !== null}
