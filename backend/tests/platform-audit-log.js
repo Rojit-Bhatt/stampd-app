@@ -37,32 +37,32 @@ async function main() {
 
     const runSuffix = Date.now();
     const slug = `auditme-${runSuffix}`;
-    const create = await api("/api/platform/businesses", {
+    const create = await api("/api/platform/companies", {
       method: "POST",
       token: platformToken,
       body: {
         name: "Audit Me Cafe",
         slug,
-        adminName: "Owner",
-        adminEmail: `owner+${runSuffix}@audit.test`,
-        adminPassword: "password",
+        ownerName: "Owner",
+        ownerEmail: `owner+${runSuffix}@audit.test`,
+        ownerPassword: "password",
       },
     });
-    const id = create.body.business.id;
+    const id = create.body.company.id;
 
-    await api(`/api/platform/businesses/${id}`, {
+    await api(`/api/platform/companies/${id}`, {
       method: "PATCH",
       token: platformToken,
       body: { name: "Audit Me Cafe (Renamed)" },
     });
 
-    await api(`/api/platform/businesses/${id}`, {
+    await api(`/api/platform/companies/${id}`, {
       method: "PATCH",
       token: platformToken,
       body: { status: "suspended" },
     });
 
-    await api(`/api/platform/businesses/${id}`, {
+    await api(`/api/platform/companies/${id}`, {
       method: "PATCH",
       token: platformToken,
       body: { status: "active" },

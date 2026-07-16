@@ -11,6 +11,7 @@
  */
 
 const { bootServer } = require("./helpers/bootServer");
+const { makeSiblingOutlet } = require("./helpers/makeOutlet");
 
 const COMPANY = "coffesarowar";
 
@@ -46,26 +47,10 @@ async function main() {
 
     // Onboard a second tenant and drive a stamp claim on it.
     const runSuffix = Date.now();
-    const slug = `rollup-${runSuffix}`;
-    const create = await api("/api/platform/businesses", {
-      method: "POST",
-      token: platformToken,
-      body: {
-        name: "Rollup Test Cafe",
-        slug,
-        adminName: "Owner",
-        adminEmail: `owner+${runSuffix}@rollup.test`,
-        adminPassword: "password",
-      },
-    });
-    check("2nd tenant onboarded -> 201", create.status === 201);
-
-    const adminLogin = await api("/api/auth/login", {
-      method: "POST",
-      slug,
-      body: { email: `owner+${runSuffix}@rollup.test`, password: "password" },
-    });
-    const adminToken = adminLogin.body.token;
+    const sibling = await makeSiblingOutlet(baseUrl, { label: `pa${runSuffix}` });
+    const slug = sibling.outletSlug;
+    check("2nd outlet stood up", Boolean(sibling.outletId));
+    const adminToken = sibling.adminToken;
 
     await api("/api/admin/settings", {
       method: "PATCH",

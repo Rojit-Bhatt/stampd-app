@@ -1,19 +1,19 @@
 /**
- * Subscription business-limit + lazy expiry/grace suite. Self-contained:
- * boots its own server on a dedicated port against the in-memory mock DB.
+ * Subscription outlet-limit + lazy expiry/grace suite. Self-contained: boots
+ * its own server on a dedicated port against the in-memory mock DB.
  *
- * Covers: a brand-new owner gets a 14-day/1-business trial automatically on
- * registration; they can create exactly one business, then a second is
- * blocked with BUSINESS_LIMIT_REACHED; an unverified owner can't create any
- * business; within the grace window (past currentPeriodEnd but before
- * GRACE_PERIOD_DAYS) adding a business still works; past the grace window
- * it's blocked with SUBSCRIPTION_EXPIRED even under the business limit; the
- * in-app reminder appears once within EXPIRY_REMINDER_DAYS.
+ * Covers: a newly registered company gets a 14-day/1-outlet trial; it can
+ * create exactly one outlet, then a second is blocked with
+ * OUTLET_LIMIT_REACHED; within the grace window (past currentPeriodEnd but
+ * before GRACE_PERIOD_DAYS) adding still works; past grace it's blocked with
+ * SUBSCRIPTION_EXPIRED; the reminder appears only within
+ * EXPIRY_REMINDER_DAYS.
  *
  * Run directly: `node tests/subscription-limits.js`
  */
 
 const { bootServer } = require("./helpers/bootServer");
+const { makeCompanyWithOutlet } = require("./helpers/makeOutlet");
 
 async function main() {
   const { baseUrl, stop } = await bootServer({ port: 5029 });
@@ -32,119 +32,91 @@ async function main() {
     }).then(async (r) => ({ status: r.status, body: await r.json().catch(() => null) }));
   };
 
-  const registerVerifyLogin = async (email) => {
-    await api("/api/owner/register", {
+  const addOutlet = (token, label) =>
+    api("/api/company/outlets", {
       method: "POST",
-      body: { name: "Test Owner", email, password: "password123", phone: "9800000000" },
+      token,
+      body: {
+        name: `Outlet ${label}`,
+        slug: `o-${label}`,
+        category: "cafe",
+        adminName: `Admin ${label}`,
+        adminEmail: `a-${label}@test.com`,
+        adminPassword: "password",
+      },
     });
-    const mint = await api("/__test__/mint-owner-token", { method: "POST", body: { email, type: "email_verify" } });
-    await api(`/api/owner/verify-email?token=${mint.body.token}`);
-    const login = await api("/api/owner/login", { method: "POST", body: { email, password: "password123" } });
-    return login.body.token;
-  };
 
   try {
-    // 1. Fresh owner gets a trial automatically.
-    const tokenA = await registerVerifyLogin("subA@test.com");
-    const subA = await api("/api/owner/subscription", { token: tokenA });
-    check("owner A subscription reachable -> 200", subA.status === 200);
-    check("owner A is trialing", subA.body?.subscription?.effectiveStatus === "trialing");
-    check("owner A trial limit is 1 business", subA.body?.subscription?.businessLimitAtPurchase === 1);
-    check("owner A trial businessCount starts at 0", subA.body?.subscription?.businessCount === 0);
+    // 1. A fresh company is on a trial, with no outlets yet.
+    const stamp = Date.now();
+    const a = await makeCompanyWithOutlet(baseUrl, { label: `lim-a-${stamp}`, withOutlet: false });
+    const subA = await api("/api/company/subscription", { token: a.ownerToken });
+    check("company A subscription reachable -> 200", subA.status === 200);
+    check("company A is trialing", subA.body?.subscription?.effectiveStatus === "trialing");
+    check("company A trial limit is 1 outlet", subA.body?.subscription?.outletLimitAtPurchase === 1);
+    check("company A starts with 0 outlets", subA.body?.subscription?.outletCount === 0);
 
-    // 2. Owner A creates their one allowed business.
-    const create1 = await api("/api/owner/businesses", {
-      method: "POST",
-      token: tokenA,
-      body: { name: "A's Cafe", slug: `as-cafe-${Date.now()}`, category: "cafe" },
-    });
-    check("owner A creates their 1st business -> 201", create1.status === 201);
+    // 2. It can create its one allowed outlet...
+    const first = await addOutlet(a.ownerToken, `a1-${stamp}`);
+    check("company A creates its 1st outlet -> 201", first.status === 201);
 
-    // 3. A second business is blocked at the trial limit.
-    const create2 = await api("/api/owner/businesses", {
-      method: "POST",
-      token: tokenA,
-      body: { name: "A's Second Cafe", slug: `as-cafe-2-${Date.now()}`, category: "cafe" },
-    });
-    check("owner A blocked from a 2nd business -> 402", create2.status === 402);
-    check("2nd business rejection has BUSINESS_LIMIT_REACHED code", create2.body?.code === "BUSINESS_LIMIT_REACHED");
+    // 3. ...and no more.
+    const second = await addOutlet(a.ownerToken, `a2-${stamp}`);
+    check("company A blocked from a 2nd outlet -> 402", second.status === 402);
+    check("...with OUTLET_LIMIT_REACHED", second.body?.code === "OUTLET_LIMIT_REACHED");
 
-    // 4. An unverified owner can't create any business at all.
-    await api("/api/owner/register", {
-      method: "POST",
-      body: { name: "Unverified Owner", email: "unverified@test.com", password: "password123", phone: "9800000001" },
-    });
-    const unverifiedLogin = await api("/api/owner/login", {
-      method: "POST",
-      body: { email: "unverified@test.com", password: "password123" },
-    });
-    const unverifiedToken = unverifiedLogin.body.token;
-    const unverifiedCreate = await api("/api/owner/businesses", {
-      method: "POST",
-      token: unverifiedToken,
-      body: { name: "Should Fail", slug: `should-fail-${Date.now()}` },
-    });
-    check("unverified owner blocked from creating a business -> 403", unverifiedCreate.status === 403);
-
-    // 5. Grace period: owner B's subscription is pushed 2 days past
-    // currentPeriodEnd (GRACE_PERIOD_DAYS is 5) — still allowed to add.
-    const tokenB = await registerVerifyLogin("subB@test.com");
-    const ownerBAccountRes = await api("/api/owner/subscription", { token: tokenB });
-    check("owner B subscription reachable -> 200", ownerBAccountRes.status === 200);
-
-    // Need ownerAccountId for the test hook — decode it from the JWT-like
-    // global session isn't meant to be read client-side, so instead grab it
-    // via a business creation first isn't needed; the hook accepts
-    // ownerAccountId directly, so extract via mint-owner-token's account
-    // lookup isn't exposed either. Simplest: decode the unsigned JWT payload
-    // (test-only convenience, mirrors lib/api.ts's decodeJwtPayload trick).
-    const decodeJwt = (token) => JSON.parse(Buffer.from(token.split(".")[1], "base64").toString());
-    const ownerBId = decodeJwt(tokenB).ownerAccountId;
+    // 4. Grace: push company B 2 days past its period end (grace is 5).
+    const b = await makeCompanyWithOutlet(baseUrl, { label: `lim-b-${stamp}`, withOutlet: false });
+    const decodeJwt = (t) => JSON.parse(Buffer.from(t.split(".")[1], "base64").toString());
+    const companyBId = decodeJwt(b.ownerToken).companyId;
 
     const graceExpire = await api("/__test__/expire-subscription", {
       method: "POST",
-      body: { ownerAccountId: ownerBId, daysAgo: 2 },
+      body: { companyId: companyBId, daysAgo: 2 },
     });
-    check("test hook pushes owner B 2 days past period end", graceExpire.status === 200);
+    check("test hook pushes company B 2 days past period end", graceExpire.status === 200);
 
-    const subBGrace = await api("/api/owner/subscription", { token: tokenB });
-    check("owner B effective status is 'grace'", subBGrace.body?.subscription?.effectiveStatus === "grace");
+    const subBGrace = await api("/api/company/subscription", { token: b.ownerToken });
+    check("company B's effective status is 'grace'", subBGrace.body?.subscription?.effectiveStatus === "grace");
 
-    const createDuringGrace = await api("/api/owner/businesses", {
+    const duringGrace = await addOutlet(b.ownerToken, `b1-${stamp}`);
+    check("company B CAN still create an outlet during grace -> 201", duringGrace.status === 201);
+
+    // 5. Past grace: blocked, and the code proves it's expiry that fired
+    // rather than the (also-reached) outlet limit.
+    const pastGrace = await api("/__test__/expire-subscription", {
       method: "POST",
-      token: tokenB,
-      body: { name: "B's Cafe", slug: `bs-cafe-${Date.now()}`, category: "cafe" },
+      body: { companyId: companyBId, daysAgo: 10 },
     });
-    check("owner B CAN still create a business during grace -> 201", createDuringGrace.status === 201);
+    check("test hook pushes company B 10 days past period end", pastGrace.status === 200);
 
-    // 6. Past grace (10 days, > GRACE_PERIOD_DAYS=5) -> blocked even though
-    // this specific owner is technically still under most plans' limits in
-    // spirit; here owner B is now AT their trial limit (1) too, but the
-    // rejection code proves it's the expiry check that fires, not the count
-    // check silently producing the same status for a different reason.
-    const pastGraceExpire = await api("/__test__/expire-subscription", {
+    const subBExpired = await api("/api/company/subscription", { token: b.ownerToken });
+    check("company B's effective status is 'expired'", subBExpired.body?.subscription?.effectiveStatus === "expired");
+    check("company B's reminder shows (past due)", subBExpired.body?.reminder?.show === true);
+
+    const afterExpiry = await addOutlet(b.ownerToken, `b2-${stamp}`);
+    check("company B blocked after real expiry -> 402", afterExpiry.status === 402);
+    check("...with SUBSCRIPTION_EXPIRED, not the limit code", afterExpiry.body?.code === "SUBSCRIPTION_EXPIRED");
+
+    // 6. A fresh trial (14 days out) is well outside the reminder window.
+    const subAReminder = await api("/api/company/subscription", { token: a.ownerToken });
+    check("company A (14 days left) shows no reminder yet", subAReminder.body?.reminder?.show === false);
+
+    // 7. Billing is the company owner's job alone: an OUTLET ADMIN's tenant
+    // JWT must not reach the company's subscription.
+    const outletAdminEmail = `a-a1-${stamp}@test.com`;
+    const mintAdmin = await api("/__test__/mint-admin-token", {
       method: "POST",
-      body: { ownerAccountId: ownerBId, daysAgo: 10 },
+      body: { email: outletAdminEmail, type: "email_verify" },
     });
-    check("test hook pushes owner B 10 days past period end", pastGraceExpire.status === 200);
-
-    const subBExpired = await api("/api/owner/subscription", { token: tokenB });
-    check("owner B effective status is 'expired'", subBExpired.body?.subscription?.effectiveStatus === "expired");
-    check("owner B's reminder shows (past due)", subBExpired.body?.reminder?.show === true);
-
-    const createAfterExpiry = await api("/api/owner/businesses", {
+    await api(`/api/admin-auth/verify-email?token=${mintAdmin.body.token}`);
+    const outletAdminLogin = await api("/api/admin-auth/login", {
       method: "POST",
-      token: tokenB,
-      body: { name: "B's 2nd Cafe", slug: `bs-cafe-2-${Date.now()}`, category: "cafe" },
+      body: { email: outletAdminEmail, password: "password" },
     });
-    check("owner B blocked after real expiry -> 402", createAfterExpiry.status === 402);
-    check("expired rejection has SUBSCRIPTION_EXPIRED code", createAfterExpiry.body?.code === "SUBSCRIPTION_EXPIRED");
-
-    // 7. Reminder appears within EXPIRY_REMINDER_DAYS even while still
-    // nominally "trialing" (owner A, untouched, still has 12+ days left —
-    // should NOT show yet).
-    const subAReminder = await api("/api/owner/subscription", { token: tokenA });
-    check("owner A (fresh trial, 14 days left) reminder does NOT show yet", subAReminder.body?.reminder?.show === false);
+    check("the new outlet's admin can sign in once verified", outletAdminLogin.status === 200);
+    const outletAdminProbe = await api("/api/company/subscription", { token: outletAdminLogin.body.token });
+    check("an outlet admin cannot read the company's subscription -> 401", outletAdminProbe.status === 401);
   } finally {
     stop();
   }

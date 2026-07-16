@@ -17,10 +17,11 @@
  */
 
 const { bootServer } = require("./helpers/bootServer");
+const { makeSiblingOutlet } = require("./helpers/makeOutlet");
 
 const COMPANY = "coffesarowar";
 
-const SLUG_A = "coffesarowar";
+const SLUG_A = "durbarmarg";
 
 async function main() {
   const { baseUrl, stop } = await bootServer({ port: 5031 });
@@ -50,20 +51,9 @@ async function main() {
     const platformToken = platformLogin.body.token;
     check("platform login -> token issued", Boolean(platformToken));
 
-    const SLUG_B = `claimcafe-${runSuffix}`;
-    const adminBEmail = `claimboss+${runSuffix}@test.co`;
-    const onboardB = await api("/api/platform/businesses", {
-      method: "POST",
-      token: platformToken,
-      body: {
-        name: "Claim Cafe",
-        slug: SLUG_B,
-        adminName: "Claim Boss",
-        adminEmail: adminBEmail,
-        adminPassword: "password",
-      },
-    });
-    check("onboard second tenant -> 200/201", onboardB.status === 200 || onboardB.status === 201);
+    const outletB = await makeSiblingOutlet(baseUrl, { label: `gci${runSuffix}` });
+    const SLUG_B = outletB.outletSlug;
+    check("stand up a second outlet -> ok", Boolean(outletB.outletId));
 
     const adminALogin = await api("/api/admin-auth/login", {
       method: "POST",
@@ -73,11 +63,7 @@ async function main() {
     const adminAToken = adminALogin.body.token;
     check("tenant A admin login -> token issued", Boolean(adminAToken));
 
-    const adminBLogin = await api("/api/auth/login", {
-      method: "POST",
-      slug: SLUG_B,
-      body: { email: adminBEmail, password: "password" },
-    });
+    const adminBLogin = { status: 200, body: { token: outletB.adminToken } };
     const adminBToken = adminBLogin.body.token;
     check("tenant B admin login -> token issued", Boolean(adminBToken));
 

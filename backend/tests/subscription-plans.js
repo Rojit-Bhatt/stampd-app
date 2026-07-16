@@ -51,7 +51,7 @@ async function main() {
     const created = await api("/api/platform/plans", {
       method: "POST",
       token: ownerToken,
-      body: { name: "Starter Test", slug: "starter-test", priceNpr: 499, businessLimit: 1, features: ["1 location"] },
+      body: { name: "Starter Test", slug: "starter-test", priceNpr: 499, outletLimit: 1, features: ["1 location"] },
     });
     check("owner creates a plan -> 201", created.status === 201 && created.body?.plan?.slug === "starter-test");
 
@@ -59,7 +59,7 @@ async function main() {
     const dup = await api("/api/platform/plans", {
       method: "POST",
       token: ownerToken,
-      body: { name: "Dup", slug: "starter-test", priceNpr: 1, businessLimit: 1 },
+      body: { name: "Dup", slug: "starter-test", priceNpr: 1, outletLimit: 1 },
     });
     check("duplicate slug rejected -> 409", dup.status === 409);
 
@@ -67,9 +67,9 @@ async function main() {
     const edited = await api("/api/platform/plans/starter-test", {
       method: "PATCH",
       token: ownerToken,
-      body: { priceNpr: 599, businessLimit: 2 },
+      body: { priceNpr: 599, outletLimit: 2 },
     });
-    check("owner edits plan -> 200", edited.status === 200 && edited.body?.plan?.priceNpr === 599 && edited.body?.plan?.businessLimit === 2);
+    check("owner edits plan -> 200", edited.status === 200 && edited.body?.plan?.priceNpr === 599 && edited.body?.plan?.outletLimit === 2);
 
     // 5. Support (read-only platform role) can read admin list, cannot write.
     const invite = await api("/api/platform/admins", {
@@ -91,7 +91,7 @@ async function main() {
     const supportWrite = await api("/api/platform/plans", {
       method: "POST",
       token: supportToken,
-      body: { name: "Nope", slug: "nope", priceNpr: 1, businessLimit: 1 },
+      body: { name: "Nope", slug: "nope", priceNpr: 1, outletLimit: 1 },
     });
     check("support CANNOT create a plan -> 403", supportWrite.status === 403);
 

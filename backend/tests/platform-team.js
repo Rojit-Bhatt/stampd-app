@@ -62,8 +62,8 @@ async function main() {
     check("support admin's own login reflects platformRole support", supportLogin.body.user.platformRole === "support");
     const supportToken = supportLogin.body.token;
 
-    const readAsSupport = await api("/api/platform/businesses", { token: supportToken });
-    check("support can read businesses list -> 200", readAsSupport.status === 200);
+    const readAsSupport = await api("/api/platform/companies", { token: supportToken });
+    check("support can read companies list -> 200", readAsSupport.status === 200);
 
     const analyticsAsSupport = await api("/api/platform/analytics", { token: supportToken });
     check("support can read analytics -> 200", analyticsAsSupport.status === 200);
@@ -71,12 +71,12 @@ async function main() {
     const auditAsSupport = await api("/api/platform/audit-log", { token: supportToken });
     check("support can read audit log -> 200", auditAsSupport.status === 200);
 
-    const onboardAsSupport = await api("/api/platform/businesses", {
+    const onboardAsSupport = await api("/api/platform/companies", {
       method: "POST",
       token: supportToken,
-      body: { name: "Nope", slug: `nope-${runSuffix}`, adminName: "X", adminEmail: `x+${runSuffix}@nope.test`, adminPassword: "password" },
+      body: { name: "Nope", slug: `nope-${runSuffix}`, ownerName: "X", ownerEmail: `x+${runSuffix}@nope.test`, ownerPassword: "password" },
     });
-    check("support CANNOT onboard a business -> 403", onboardAsSupport.status === 403);
+    check("support CANNOT register a company -> 403", onboardAsSupport.status === 403);
 
     const teamAsSupport = await api("/api/platform/admins", { token: supportToken });
     check("support CANNOT list the team -> 403", teamAsSupport.status === 403);

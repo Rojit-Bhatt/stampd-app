@@ -1,23 +1,20 @@
 /**
- * Subscription-key activation suite (replaces live payment-gateway
- * integration — see docs/superpowers/plans/
- * 2026-07-16-multi-business-subscriptions.md). Self-contained: boots its own
- * server on a dedicated port against the in-memory mock DB.
+ * Subscription-key activation suite. There is no payment gateway: the
+ * platform admin issues a key out-of-band and the company owner redeems it.
+ * Self-contained: boots its own server on a dedicated port against the
+ * in-memory mock DB.
  *
- * Covers: platform owner generates a key scoped to a plan; an owner redeems
- * it to activate/extend their subscription; a used/revoked key can't be
- * redeemed again; the downgrade-over-limit rule blocks redeeming a
- * lower-limit key while over that limit; the tenant-scoped
- * /api/admin/subscription surface (no separate owner login needed) reflects
- * the same subscription and can redeem a key too; platform contact info is
- * always included in the summary.
+ * Covers: generating a key scoped to a plan; a company owner redeeming it to
+ * activate/extend its subscription; used/revoked keys refusing a second
+ * redemption; concurrent redemption of one key yielding exactly one winner;
+ * the downgrade-over-limit rule (and the rejected key being released rather
+ * than burned); and redemption being company-owner-only.
  *
  * Run directly: `node tests/subscription-keys.js`
  */
 
 const { bootServer } = require("./helpers/bootServer");
-
-const COMPANY = "coffesarowar";
+const { makeCompanyWithOutlet } = require("./helpers/makeOutlet");
 
 async function main() {
   const { baseUrl, stop } = await bootServer({ port: 5030 });
@@ -26,9 +23,8 @@ async function main() {
     if (cond) console.log(`PASS ${name}`);
     else { console.error(`FAIL ${name}`); failures++; }
   };
-  const api = (path, { method = "GET", token, slug, body } = {}) => {
+  const api = (path, { method = "GET", token, body } = {}) => {
     const headers = { "Content-Type": "application/json" };
-    if (slug) { headers["X-Company-Slug"] = COMPANY; headers["X-Outlet-Slug"] = slug; }
     if (token) headers.Authorization = `Bearer ${token}`;
     return fetch(`${baseUrl}${path}`, {
       method,
@@ -36,202 +32,106 @@ async function main() {
       body: body ? JSON.stringify(body) : undefined,
     }).then(async (r) => ({ status: r.status, body: await r.json().catch(() => null) }));
   };
-
-  const registerVerifyLogin = async (email) => {
-    await api("/api/owner/register", {
-      method: "POST",
-      body: { name: "Key Test Owner", email, password: "password123", phone: "9800000002" },
+  const genKey = (token, planSlug, note) =>
+    api("/api/platform/subscription-keys", { method: "POST", token, body: { planSlug, note } });
+  const redeem = (token, code) =>
+    api("/api/company/subscription/redeem-key", { method: "POST", token, body: { code } });
+  const addOutlet = (token, label) =>
+    api("/api/company/outlets", {
+      method: "POST", token,
+      body: {
+        name: `Outlet ${label}`, slug: `o-${label}`, category: "cafe",
+        adminName: `Admin ${label}`, adminEmail: `a-${label}@test.com`, adminPassword: "password",
+      },
     });
-    const mint = await api("/__test__/mint-owner-token", { method: "POST", body: { email, type: "email_verify" } });
-    await api(`/api/owner/verify-email?token=${mint.body.token}`);
-    const login = await api("/api/owner/login", { method: "POST", body: { email, password: "password123" } });
-    return login.body.token;
-  };
 
   try {
+    const stamp = Date.now();
     const platformLogin = await api("/api/platform/login", {
       method: "POST",
       body: { email: "admin@stampd.co", password: "password" },
     });
     const platformToken = platformLogin.body.token;
 
-    // 1. Generate a "growth" key (limit 3).
-    const genGrowth = await api("/api/platform/subscription-keys", {
-      method: "POST",
-      token: platformToken,
-      body: { planSlug: "growth", note: "Test — paid via phone call" },
-    });
-    check("platform owner generates a growth key -> 201", genGrowth.status === 201 && Boolean(genGrowth.body?.key?.code));
-    const growthCode = genGrowth.body.key.code;
+    // 1. Generate a growth key (3 outlets).
+    const growth = await genKey(platformToken, "growth", "Test — paid by phone");
+    check("platform owner generates a growth key -> 201", growth.status === 201 && Boolean(growth.body?.key?.code));
+    const growthCode = growth.body.key.code;
 
-    // 2. Bad plan slug rejected.
-    const genBad = await api("/api/platform/subscription-keys", {
-      method: "POST",
-      token: platformToken,
-      body: { planSlug: "not-a-real-plan" },
-    });
-    check("generating a key for a nonexistent plan -> 404", genBad.status === 404);
+    const bad = await genKey(platformToken, "not-a-real-plan");
+    check("key for a nonexistent plan -> 404", bad.status === 404);
 
-    // 3. Owner redeems the growth key.
-    const tokenC = await registerVerifyLogin("subC@test.com");
-    const redeemGrowth = await api("/api/owner/subscription/redeem-key", {
-      method: "POST",
-      token: tokenC,
-      body: { code: growthCode },
-    });
-    check("owner C redeems the growth key -> 200", redeemGrowth.status === 200);
+    // 2. A company redeems it and moves onto growth.
+    const c = await makeCompanyWithOutlet(baseUrl, { label: `keyc${stamp}`, withOutlet: false });
+    const redeemed = await redeem(c.ownerToken, growthCode);
+    check("company redeems the growth key -> 200", redeemed.status === 200);
 
-    const subCAfter = await api("/api/owner/subscription", { token: tokenC });
-    check("owner C is now on growth (limit 3)", subCAfter.body?.subscription?.businessLimitAtPurchase === 3);
-    check("owner C effective status is active", subCAfter.body?.subscription?.effectiveStatus === "active");
-    check("platformContact present in summary", "platformContact" in subCAfter.body && "phone" in subCAfter.body.platformContact);
+    const subAfter = await api("/api/company/subscription", { token: c.ownerToken });
+    check("...and is now on growth (3 outlets)", subAfter.body?.subscription?.outletLimitAtPurchase === 3);
+    check("...with an active subscription", subAfter.body?.subscription?.effectiveStatus === "active");
+    check("platform contact included for manual renewal", "platformContact" in subAfter.body);
 
-    // 4. Reusing the same key fails.
-    const reuse = await api("/api/owner/subscription/redeem-key", {
-      method: "POST",
-      token: tokenC,
-      body: { code: growthCode },
-    });
-    check("reusing an already-redeemed key -> 400", reuse.status === 400);
+    // 3. The same key can't be reused.
+    const reuse = await redeem(c.ownerToken, growthCode);
+    check("reusing a redeemed key -> 400", reuse.status === 400);
 
-    // 5. Platform list shows it redeemed, with the owner it was assigned to.
-    const decodeJwt = (token) => JSON.parse(Buffer.from(token.split(".")[1], "base64").toString());
-    const ownerCId = decodeJwt(tokenC).ownerAccountId;
+    const decodeJwt = (t) => JSON.parse(Buffer.from(t.split(".")[1], "base64").toString());
+    const companyCId = decodeJwt(c.ownerToken).companyId;
     const keyList = await api("/api/platform/subscription-keys", { token: platformToken });
-    const listedKey = (keyList.body?.keys || []).find((k) => k.code === growthCode);
-    check("platform key list shows it redeemed", listedKey?.status === "redeemed");
-    check("platform key list shows the redeeming owner", listedKey?.assignedToOwnerAccountId === ownerCId);
+    const listed = (keyList.body?.keys || []).find((k) => k.code === growthCode);
+    check("platform key list shows it redeemed", listed?.status === "redeemed");
+    check("...and which company redeemed it", listed?.assignedToCompanyId === companyCId);
 
-    // 6. Revoke an unused key, then it can't be redeemed.
-    const genToRevoke = await api("/api/platform/subscription-keys", {
-      method: "POST",
-      token: platformToken,
-      body: { planSlug: "basic" },
+    // 4. Revoking an unused key blocks redemption and assigns nobody.
+    const toRevoke = await genKey(platformToken, "basic");
+    const revoked = await api(`/api/platform/subscription-keys/${toRevoke.body.key.code}`, {
+      method: "DELETE", token: platformToken,
     });
-    const revoked = await api(`/api/platform/subscription-keys/${genToRevoke.body.key.code}`, {
-      method: "DELETE",
-      token: platformToken,
-    });
-    check("owner revokes an unused key -> 200", revoked.status === 200 && revoked.body?.key?.status === "revoked");
-    check("revoked key has no assigned owner", revoked.body?.key?.assignedToOwnerAccountId === null);
+    check("platform revokes an unused key -> 200", revoked.status === 200 && revoked.body?.key?.status === "revoked");
+    check("...and it has no assigned company", revoked.body?.key?.assignedToCompanyId === null);
 
-    const redeemRevoked = await api("/api/owner/subscription/redeem-key", {
-      method: "POST",
-      token: tokenC,
-      body: { code: genToRevoke.body.key.code },
-    });
+    const redeemRevoked = await redeem(c.ownerToken, toRevoke.body.key.code);
     check("redeeming a revoked key -> 400", redeemRevoked.status === 400);
 
-    // 5b. Concurrent double-redemption of a single unused key: only one of
-    // two simultaneous requests may succeed (atomic claim in redeemKey).
-    const genForRace = await api("/api/platform/subscription-keys", {
-      method: "POST",
-      token: platformToken,
-      body: { planSlug: "basic" },
-    });
-    const tokenD = await registerVerifyLogin("subD@test.com");
-    const tokenE = await registerVerifyLogin("subE@test.com");
-    const [raceA, raceB] = await Promise.all([
-      api("/api/owner/subscription/redeem-key", { method: "POST", token: tokenD, body: { code: genForRace.body.key.code } }),
-      api("/api/owner/subscription/redeem-key", { method: "POST", token: tokenE, body: { code: genForRace.body.key.code } }),
+    // 5. Two companies racing on one key: exactly one wins.
+    const race = await genKey(platformToken, "basic");
+    const d = await makeCompanyWithOutlet(baseUrl, { label: `keyd${stamp}`, withOutlet: false });
+    const e = await makeCompanyWithOutlet(baseUrl, { label: `keye${stamp}`, withOutlet: false });
+    const [rA, rB] = await Promise.all([
+      redeem(d.ownerToken, race.body.key.code),
+      redeem(e.ownerToken, race.body.key.code),
     ]);
-    const raceStatuses = [raceA.status, raceB.status].sort();
-    check("concurrent redemption: exactly one 200 and one 400", raceStatuses[0] === 200 && raceStatuses[1] === 400);
+    const statuses = [rA.status, rB.status].sort();
+    check("concurrent redemption: exactly one 200 and one 400", statuses[0] === 200 && statuses[1] === 400);
 
-    // 7. Downgrade-over-limit: owner C creates 2 businesses (now has 1 from
-    // no prior creation — create 2 fresh ones to reach 2, still <= 3), then
-    // a "basic" (limit 1) key must be rejected.
-    await api("/api/owner/businesses", {
-      method: "POST",
-      token: tokenC,
-      body: { name: "C's Cafe 1", slug: `cs-cafe-1-${Date.now()}`, category: "cafe" },
-    });
-    await api("/api/owner/businesses", {
-      method: "POST",
-      token: tokenC,
-      body: { name: "C's Cafe 2", slug: `cs-cafe-2-${Date.now()}`, category: "cafe" },
-    });
-    const genBasicForC = await api("/api/platform/subscription-keys", {
-      method: "POST",
-      token: platformToken,
-      body: { planSlug: "basic" },
-    });
-    const downgradeAttempt = await api("/api/owner/subscription/redeem-key", {
-      method: "POST",
-      token: tokenC,
-      body: { code: genBasicForC.body.key.code },
-    });
-    check("redeeming a lower-limit key while over that limit -> 400", downgradeAttempt.status === 400);
-    check("downgrade rejection has PLAN_BELOW_CURRENT_USAGE code", downgradeAttempt.body?.code === "PLAN_BELOW_CURRENT_USAGE");
+    // 6. Downgrade-over-limit: a company running 2 outlets can't drop to a
+    // 1-outlet plan, and the rejected key must be released, not burned.
+    await addOutlet(c.ownerToken, `c1${stamp}`);
+    await addOutlet(c.ownerToken, `c2${stamp}`);
 
-    // 8. Tenant-scoped /api/admin/subscription — enter one of owner C's
-    // businesses and confirm the same subscription is visible + redeemable
-    // from inside the ordinary tenant admin console, no owner login needed.
-    const myBusinesses = await api("/api/owner/my-businesses", { token: tokenC });
-    const firstBiz = myBusinesses.body.businesses[0];
-    const enterResult = await api("/api/owner/enter-business", {
-      method: "POST",
-      token: tokenC,
-      body: { organizationId: firstBiz.organizationId },
-    });
-    const tenantToken = enterResult.body.token;
+    const basicKey = await genKey(platformToken, "basic");
+    const downgrade = await redeem(c.ownerToken, basicKey.body.key.code);
+    check("redeeming a lower-limit key while over it -> 400", downgrade.status === 400);
+    check("...with PLAN_BELOW_CURRENT_USAGE", downgrade.body?.code === "PLAN_BELOW_CURRENT_USAGE");
 
-    const tenantSubView = await api("/api/admin/subscription", { token: tenantToken, slug: firstBiz.slug });
-    check("tenant-scoped subscription view -> 200", tenantSubView.status === 200);
-    check(
-      "tenant-scoped view shows the SAME subscription as the owner dashboard",
-      tenantSubView.body?.subscription?.businessLimitAtPurchase === subCAfter.body?.subscription?.businessLimitAtPurchase,
-    );
+    const afterReject = await api("/api/platform/subscription-keys", { token: platformToken });
+    const basicListed = (afterReject.body?.keys || []).find((k) => k.code === basicKey.body.key.code);
+    check("...and the rejected key is released, not burned", basicListed?.status === "unused");
 
-    const genProForTenantRedeem = await api("/api/platform/subscription-keys", {
-      method: "POST",
-      token: platformToken,
-      body: { planSlug: "pro" },
+    // 7. Redemption is company-owner-only: an outlet admin's tenant JWT
+    // can't reach it.
+    const outletAdminEmail = `a-c1${stamp}@test.com`;
+    const mint = await api("/__test__/mint-admin-token", {
+      method: "POST", body: { email: outletAdminEmail, type: "email_verify" },
     });
-    const tenantRedeem = await api("/api/admin/subscription/redeem-key", {
-      method: "POST",
-      token: tenantToken,
-      slug: firstBiz.slug,
-      body: { code: genProForTenantRedeem.body.key.code },
+    await api(`/api/admin-auth/verify-email?token=${mint.body.token}`);
+    const outletAdminLogin = await api("/api/admin-auth/login", {
+      method: "POST", body: { email: outletAdminEmail, password: "password" },
     });
-    check("redeeming a key from inside the tenant admin console -> 200", tenantRedeem.status === 200);
-
-    const subCFinal = await api("/api/owner/subscription", { token: tokenC });
-    check("owner C is now on pro (limit 6) after the tenant-console redemption", subCFinal.body?.subscription?.businessLimitAtPurchase === 6);
-
-    // 9. A platform-onboarded business with no attached owner has no
-    // subscription surface at all — /api/admin/subscription must 404, not
-    // silently pretend one exists.
-    const onboarded = await api("/api/platform/businesses", {
-      method: "POST",
-      token: platformToken,
-      body: {
-        name: "Owner-less Cafe",
-        slug: `ownerless-${Date.now()}`,
-        adminName: "Owner-less Admin",
-        adminEmail: `ownerless-${Date.now()}@test.com`,
-        adminPassword: "password123",
-        category: "cafe",
-      },
-    });
-    check("platform onboards a business with no owner attached -> 201", onboarded.status === 201);
-
-    const mintOwnerlessAdmin = await api("/__test__/mint-token", {
-      method: "POST",
-      slug: onboarded.body.business.slug,
-      body: { email: onboarded.body.admin.email, type: "email_verify" },
-    });
-    await api(`/api/auth/verify-email?token=${mintOwnerlessAdmin.body.token}`, { slug: onboarded.body.business.slug });
-    const ownerlessLogin = await api("/api/auth/login", {
-      method: "POST",
-      slug: onboarded.body.business.slug,
-      body: { email: onboarded.body.admin.email, password: "password123" },
-    });
-    const ownerlessAdminSettings = await api("/api/admin/settings", { token: ownerlessLogin.body.token, slug: onboarded.body.business.slug });
-    check("owner-less business's settings report hasOwnerAccount:false", ownerlessAdminSettings.body?.settings?.hasOwnerAccount === false);
-
-    const ownerlessSubView = await api("/api/admin/subscription", { token: ownerlessLogin.body.token, slug: onboarded.body.business.slug });
-    check("owner-less business's /api/admin/subscription -> 404 (no dead-end 200)", ownerlessSubView.status === 404);
+    check("the outlet's admin can sign in", outletAdminLogin.status === 200);
+    const proKey = await genKey(platformToken, "pro");
+    const byOutletAdmin = await redeem(outletAdminLogin.body.token, proKey.body.key.code);
+    check("an outlet admin cannot redeem a key -> 401", byOutletAdmin.status === 401);
   } finally {
     stop();
   }

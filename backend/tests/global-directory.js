@@ -14,10 +14,11 @@
  */
 
 const { bootServer } = require("./helpers/bootServer");
+const { makeSiblingOutlet } = require("./helpers/makeOutlet");
 
 const COMPANY = "coffesarowar";
 
-const SLUG_A = "coffesarowar";
+const SLUG_A = "durbarmarg";
 
 async function main() {
   const { baseUrl, stop } = await bootServer({ port: 5032 });
@@ -52,21 +53,9 @@ async function main() {
     const platformToken = platformLogin.body.token;
     check("platform login -> token issued", Boolean(platformToken));
 
-    const SLUG_B = `directorycafe-${runSuffix}`;
-    const adminBEmail = `directoryboss+${runSuffix}@test.co`;
-    const onboardB = await api("/api/platform/businesses", {
-      method: "POST",
-      token: platformToken,
-      body: {
-        name: "Directory Cafe",
-        slug: SLUG_B,
-        category: "bakery",
-        adminName: "Directory Boss",
-        adminEmail: adminBEmail,
-        adminPassword: "password",
-      },
-    });
-    check("onboard second tenant -> 200/201", onboardB.status === 200 || onboardB.status === 201);
+    const outletB = await makeSiblingOutlet(baseUrl, { label: `gd${runSuffix}`, category: "bakery" });
+    const SLUG_B = outletB.outletSlug;
+    check("stand up a second outlet -> ok", Boolean(outletB.outletId));
 
     // --- discover lists both active tenants with real fields. ---
     const registerHelper = async (emailPrefix) => {
