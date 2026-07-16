@@ -102,7 +102,11 @@ const getDashboardStats = async (organizationId) => {
     User.countDocuments({ role: "customer", organizationId, createdAt: previousRange }),
     StampClaimEvent.countDocuments({ organizationId, createdAt: currentRange }),
     StampClaimEvent.countDocuments({ organizationId, createdAt: previousRange }),
-    Voucher.countDocuments({ organizationId, isValid: true }),
+    Voucher.countDocuments({
+      organizationId,
+      isValid: true,
+      $or: [{ expiresAt: null }, { expiresAt: { $gte: now } }]
+    }),
     StampClaimEvent.find({ organizationId, createdAt: currentRange }),
     StampClaimEvent.find({ organizationId, createdAt: previousRange }),
   ]);

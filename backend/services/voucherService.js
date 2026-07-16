@@ -17,7 +17,7 @@ const getMyWallet = async ({ userId, role, organizationId }) => {
 
   const vouchers = await Voucher.find(
     { userId, organizationId, isValid: true },
-    { _id: 0, voucherCode: 1, isValid: 1, earnedAt: 1 }
+    { _id: 0, voucherCode: 1, isValid: 1, earnedAt: 1, expiresAt: 1 }
   ).sort({ earnedAt: -1 });
 
   return {
@@ -48,6 +48,16 @@ const redeemVoucher = async ({ voucherCode, organizationId }) => {
     }
 
     throw createHttpError("Voucher is already redeemed or invalid.", 400);
+  }
+
+  // Caught the expiry after the fact: undo the redemption timestamp (this
+  // voucher was consumed, not honored) and reject.
+  if (redeemedVoucher.expiresAt && redeemedVoucher.expiresAt < now) {
+    await Voucher.findOneAndUpdate(
+      { voucherCode: normalizedCode, organizationId },
+      { $set: { redeemedAt: null } }
+    );
+    throw createHttpError("This voucher's expired.", 400);
   }
 
   return {

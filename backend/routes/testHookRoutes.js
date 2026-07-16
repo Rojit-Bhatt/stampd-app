@@ -4,6 +4,7 @@ const User = require("../models/User");
 const VerificationToken = require("../models/VerificationToken");
 const CustomerAccount = require("../models/CustomerAccount");
 const AccountVerificationToken = require("../models/AccountVerificationToken");
+const Voucher = require("../models/Voucher");
 const { resolveTenant } = require("../middleware/tenantMiddleware");
 
 const router = express.Router();
@@ -53,6 +54,28 @@ router.post("/mint-global-token", async (req, res, next) => {
       usedAt: null
     });
     res.json({ success: true, token: raw });
+  } catch (error) {
+    next(error);
+  }
+});
+
+// DEV/TEST ONLY. Force a voucher's expiresAt into the past so a test can
+// deterministically exercise the "redeem an expired voucher" path without
+// waiting real days or faking the system clock.
+router.post("/expire-voucher", async (req, res, next) => {
+  try {
+    const { voucherCode } = req.body;
+    const normalizedCode = String(voucherCode || "").trim().toUpperCase();
+
+    const voucher = await Voucher.findOneAndUpdate(
+      { voucherCode: normalizedCode },
+      { $set: { expiresAt: new Date(Date.now() - 3600 * 1000) } },
+      { new: true }
+    );
+
+    if (!voucher) return res.status(404).json({ success: false });
+
+    res.json({ success: true });
   } catch (error) {
     next(error);
   }

@@ -9,7 +9,10 @@ const DEFAULT_PROGRAM = {
   rewardTitle: "Free Coffee",
   rewardDescription: "Collect stamps on every visit and unlock a free coffee.",
   cooldownHours: 18,
-  minBillAmount: 0
+  minBillAmount: 0,
+  // 0 = vouchers never expire. When set above 0, a voucher earned under
+  // this program gets an expiresAt of (earnedAt + this many days).
+  voucherExpiryDays: 0
 };
 
 // The fixed set of business categories a tenant can be filed under, used for

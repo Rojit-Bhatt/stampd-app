@@ -224,13 +224,18 @@ const awardStampInTransaction = async ({ session, userId, organizationId, billAm
 
   if (updatedCard.stampsEarned >= stampsRequired) {
     const voucherCode = await generateVoucherCode(session, voucherPrefix);
+    const voucherExpiryDays = org.program.voucherExpiryDays || 0;
+    const expiresAt = voucherExpiryDays > 0
+      ? new Date(now.getTime() + voucherExpiryDays * 24 * 60 * 60 * 1000)
+      : null;
 
     await Voucher.create(
       [
         {
           userId,
           organizationId,
-          voucherCode
+          voucherCode,
+          expiresAt
         }
       ],
       { session }

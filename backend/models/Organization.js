@@ -29,7 +29,11 @@ const OrganizationSchema = new mongoose.Schema({
     cooldownHours: { type: Number, min: 0, default: DEFAULT_PROGRAM.cooldownHours },
     // 0 = disabled. Barista must enter a bill amount >= this to generate a
     // stamp QR when it's set above 0. Plain number, never currency-formatted.
-    minBillAmount: { type: Number, min: 0, default: DEFAULT_PROGRAM.minBillAmount }
+    minBillAmount: { type: Number, min: 0, default: DEFAULT_PROGRAM.minBillAmount },
+    // 0 = vouchers never expire (default, no behavior change for existing
+    // tenants). Above 0, a newly-earned voucher's expiresAt is set this
+    // many days after earnedAt.
+    voucherExpiryDays: { type: Number, min: 0, default: DEFAULT_PROGRAM.voucherExpiryDays }
   },
 
   // Contact/location/social info the business admin controls, shown to
