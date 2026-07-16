@@ -1,14 +1,14 @@
 const mongoose = require("mongoose");
 
-// One per BusinessOwnerAccount. Tracks what plan they're on and gates how
-// many businesses (Organizations) they can run — see subscriptionService's
-// assertCanAddBusiness. Expiry/grace/reminder are always DERIVED from
+// One per Company. Tracks what plan they're on and gates how many outlets
+// (Organizations) they can run — see subscriptionService's
+// assertCanAddOutlet. Expiry/grace/reminder are always DERIVED from
 // currentPeriodEnd at read time (subscriptionService.computeEffectiveStatus)
 // rather than a persisted "expired" status field that needs a cron job to
 // flip — the same lazy-expiry approach already used for Voucher.expiresAt,
 // necessary because the mock DB (and this app generally) has no scheduler.
 const SubscriptionSchema = new mongoose.Schema({
-  ownerAccountId: { type: mongoose.Schema.Types.ObjectId, ref: "BusinessOwnerAccount", required: true },
+  companyId: { type: mongoose.Schema.Types.ObjectId, ref: "Company", required: true },
   // Null while trialing pre-purchase, or for a grandfathered/comped
   // subscription that doesn't reference a real plan document.
   planId: { type: mongoose.Schema.Types.ObjectId, ref: "SubscriptionPlan", default: null },
@@ -19,15 +19,14 @@ const SubscriptionSchema = new mongoose.Schema({
   planSlug: { type: String, default: "" },
   status: { type: String, enum: ["trialing", "active", "canceled"], default: "trialing" },
   // Snapshotted from the plan at purchase/renewal time, NOT read live off
-  // SubscriptionPlan.businessLimit — so a platform admin editing a plan's
+  // SubscriptionPlan.outletLimit — so a platform admin editing a plan's
   // limit down later never retroactively strands an existing subscriber
   // mid-cycle (they keep what they paid for until their next renewal).
-  businessLimitAtPurchase: { type: Number, required: true },
+  outletLimitAtPurchase: { type: Number, required: true },
   currentPeriodStart: { type: Date, default: Date.now },
   currentPeriodEnd: { type: Date, required: true },
-  // True for a manually granted/grandfathered subscription (e.g. the
-  // pre-existing seeded tenant backfilled by scripts/backfillBusinessOwners.js)
-  // — never went through real checkout.
+  // True for a manually granted subscription (e.g. a comped demo company) —
+  // never went through key redemption.
   isComped: { type: Boolean, default: false },
   // Tracks the last time the renewal-reminder email went out, so it fires
   // once per expiry cycle rather than on every page load that happens to

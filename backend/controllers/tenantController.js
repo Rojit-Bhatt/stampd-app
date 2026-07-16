@@ -48,16 +48,14 @@ const getMySettings = async (req, res, next) => {
 
     const adminUser = await User.findOne({ _id: req.user.id });
 
-    // Only present when this business was created via the owner-ownership
-    // flow (ownerAccountId set) — a platform-onboarded business with no
-    // attached owner has nothing to remind, so this stays undefined for it
-    // rather than a confusing "no subscription" state.
+    // Every outlet belongs to a company, so there's always a subscription to
+    // check. The banner is informational only — an outlet admin can see that
+    // renewal is due but can't act on it; managing the plan is the company
+    // owner's job (see routes/companyRoutes.js).
     let subscriptionReminder;
-    if (organization.ownerAccountId) {
-      const summary = await getSubscriptionSummary(organization.ownerAccountId);
-      if (summary.reminder.show) {
-        subscriptionReminder = { ...summary.reminder, effectiveStatus: summary.subscription?.effectiveStatus };
-      }
+    const summary = await getSubscriptionSummary(organization.companyId);
+    if (summary.reminder.show) {
+      subscriptionReminder = { ...summary.reminder, effectiveStatus: summary.subscription?.effectiveStatus };
     }
 
     res.status(200).json({
@@ -72,11 +70,6 @@ const getMySettings = async (req, res, next) => {
         adminEmailVerified: adminUser ? adminUser.emailVerified : false,
         program: organization.program,
         menuEnabled: organization.menuEnabled,
-        // Lets the admin console hide/show the Subscription nav item and
-        // route — a platform-onboarded business with no attached owner has
-        // no subscription to manage at all (GET /api/admin/subscription
-        // 404s for it), so that surface must not be shown as a dead end.
-        hasOwnerAccount: Boolean(organization.ownerAccountId),
         ...(subscriptionReminder ? { subscriptionReminder } : {})
       }
     });

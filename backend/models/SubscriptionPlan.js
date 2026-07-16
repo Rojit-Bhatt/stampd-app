@@ -11,7 +11,8 @@ const SubscriptionPlanSchema = new mongoose.Schema({
   // frontend lib/subscription.ts's formatNpr, same convention as
   // Organization.program.minBillAmount).
   priceNpr: { type: Number, required: true, min: 0 },
-  businessLimit: { type: Number, required: true, min: 1 },
+  // How many outlets a company on this plan may run.
+  outletLimit: { type: Number, required: true, min: 1 },
   features: { type: [String], default: [] },
   isMostPopular: { type: Boolean, default: false },
   billingIntervalDays: { type: Number, default: 365 },

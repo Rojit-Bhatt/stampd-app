@@ -36,13 +36,15 @@ const UserSchema = new mongoose.Schema({
   // business_admin/platform, which have no CustomerAccount and keep
   // authenticating via this row's own password exactly as before.
   customerAccountId: { type: mongoose.Schema.Types.ObjectId, ref: "CustomerAccount", default: null },
-  // Set only for role==="business_admin" rows provisioned via the owner
-  // flow — links this tenant-scoped membership row to its global
-  // BusinessOwnerAccount, the exact analogue of customerAccountId above.
-  // Always null for a business_admin row created directly by platform
-  // onboarding without an attached owner, and always null for
+  // Set only for role==="business_admin" rows — links this tenant-scoped
+  // membership to its global AdminAccount, the exact analogue of
+  // customerAccountId above. The password lives on the AdminAccount, never
+  // here: a business_admin User row is a membership, not a credential.
+  adminAccountId: { type: mongoose.Schema.Types.ObjectId, ref: "AdminAccount", default: null },
+  // Denormalized from the AdminAccount's outlet, so a company owner's
+  // outlet list and the login's redirect are one query. Null for
   // customer/platform rows.
-  ownerAccountId: { type: mongoose.Schema.Types.ObjectId, ref: "BusinessOwnerAccount", default: null },
+  companyId: { type: mongoose.Schema.Types.ObjectId, ref: "Company", default: null },
   createdAt: { type: Date, default: Date.now }
 });
 
@@ -58,12 +60,15 @@ UserSchema.index(
   { organizationId: 1, customerAccountId: 1 },
   { unique: true, partialFilterExpression: { customerAccountId: { $type: "objectId" } } }
 );
-// One business_admin membership per (org, owner account) — same partial-filter
-// reasoning as the customerAccountId index above (a `sparse` index would not
-// exclude the many rows that carry this field present-but-explicitly-null).
+// One business_admin membership per (org, admin account) — same partial-filter
+// reasoning as the customerAccountId index above. Global staff email
+// uniqueness is deliberately NOT enforced here: it lives on AdminAccount,
+// where a single collection makes it actually indexable. Emails on this
+// collection must stay non-unique globally, because a customer legitimately
+// holds one membership row per outlet, all carrying the same email.
 UserSchema.index(
-  { organizationId: 1, ownerAccountId: 1 },
-  { unique: true, partialFilterExpression: { ownerAccountId: { $type: "objectId" } } }
+  { organizationId: 1, adminAccountId: 1 },
+  { unique: true, partialFilterExpression: { adminAccountId: { $type: "objectId" } } }
 );
 
 module.exports = mongoose.model("User", UserSchema);

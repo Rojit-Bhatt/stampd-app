@@ -1,9 +1,10 @@
 const {
   loginPlatformAdmin,
-  listBusinesses,
-  createBusiness,
-  getBusiness,
-  updateBusiness
+  listCompanies,
+  registerCompany,
+  getCompanyById,
+  updateCompany,
+  updateOutlet
 } = require("../services/platformService");
 const {
   getContact,
@@ -23,26 +24,26 @@ const platformLogin = async (req, res, next) => {
   }
 };
 
-const getBusinesses = async (req, res, next) => {
+const getCompanies = async (req, res, next) => {
   try {
-    const result = await listBusinesses();
+    const result = await listCompanies();
     res.status(200).json(result);
   } catch (error) {
     next(error);
   }
 };
 
-const postBusiness = async (req, res, next) => {
+const postCompany = async (req, res, next) => {
   try {
-    const { name, slug, adminName, adminEmail, adminPassword, category } = req.body;
+    const { name, slug, ownerName, ownerEmail, ownerPassword, phone } = req.body;
     const actor = await User.findOne({ _id: req.user.id });
-    const result = await createBusiness({
+    const result = await registerCompany({
       name,
       slug,
-      adminName,
-      adminEmail,
-      adminPassword,
-      category,
+      ownerName,
+      ownerEmail,
+      ownerPassword,
+      phone,
       actorId: req.user.id,
       actorName: actor ? actor.name : "Unknown"
     });
@@ -52,26 +53,43 @@ const postBusiness = async (req, res, next) => {
   }
 };
 
-const getBusinessById = async (req, res, next) => {
+const getCompany = async (req, res, next) => {
   try {
-    const { id } = req.params;
-    const result = await getBusiness(id);
+    const result = await getCompanyById(req.params.id);
     res.status(200).json(result);
   } catch (error) {
     next(error);
   }
 };
 
-const patchBusiness = async (req, res, next) => {
+const patchCompany = async (req, res, next) => {
   try {
-    const { id } = req.params;
-    const { name, category, status, adminEmail } = req.body;
+    const { name, status, ownerEmail } = req.body;
     const actor = await User.findOne({ _id: req.user.id });
-    const result = await updateBusiness(id, {
+    const result = await updateCompany(req.params.id, {
+      name,
+      status,
+      ownerEmail,
+      actorId: req.user.id,
+      actorName: actor ? actor.name : "Unknown"
+    });
+    res.status(200).json(result);
+  } catch (error) {
+    next(error);
+  }
+};
+
+// The platform can edit an individual outlet inside a company too — the
+// company registers its own outlets, but the platform stays able to fix or
+// suspend one.
+const patchOutlet = async (req, res, next) => {
+  try {
+    const { name, category, status } = req.body;
+    const actor = await User.findOne({ _id: req.user.id });
+    const result = await updateOutlet(req.params.outletId, {
       name,
       category,
       status,
-      adminEmail,
       actorId: req.user.id,
       actorName: actor ? actor.name : "Unknown"
     });
@@ -128,10 +146,11 @@ const patchPlatformContact = async (req, res, next) => {
 
 module.exports = {
   platformLogin,
-  getBusinesses,
-  postBusiness,
-  getBusinessById,
-  patchBusiness,
+  getCompanies,
+  postCompany,
+  getCompany,
+  patchCompany,
+  patchOutlet,
   getAuditLog,
   getAnalytics,
   getPublicPlatformContact,

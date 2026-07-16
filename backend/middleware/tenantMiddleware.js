@@ -1,62 +1,98 @@
+const Company = require("../models/Company");
 const Organization = require("../models/Organization");
 
-// Hosts that are never treated as a tenant subdomain.
+// Hosts that are never treated as a company subdomain.
 const RESERVED_SUBDOMAINS = new Set(["www", "api", "app", "localhost"]);
 
-// Resolve the active tenant slug from the request. Checks, in order:
-//   1. X-Tenant-Slug header (sent by the frontend based on the URL path) — the
-//      primary mechanism for today's path-based tenancy.
-//   2. A :slug route param.
-//   3. The subdomain of the Host header — the future custom-domain path.
-// Switching fully to subdomains later needs no code change here.
-const extractTenantSlug = (req) => {
-  const headerSlug = req.headers["x-tenant-slug"];
-  if (headerSlug && typeof headerSlug === "string") {
-    return headerSlug.trim().toLowerCase();
+// Resolve the active company+outlet pair from the request. An outlet's slug
+// is unique only WITHIN its company, so a single slug can never identify a
+// tenant — both segments are always required. Checks, in order:
+//   1. X-Company-Slug + X-Outlet-Slug headers (sent by the frontend based on
+//      the /[company]/[outlet] URL) — the primary path-based mechanism.
+//   2. :companySlug / :outletSlug route params.
+//   3. The Host subdomain for the company (the future custom-domain path),
+//      with the outlet still coming from the route param.
+const extractTenantRef = (req) => {
+  const headerCompany = req.headers["x-company-slug"];
+  const headerOutlet = req.headers["x-outlet-slug"];
+  if (typeof headerCompany === "string" && typeof headerOutlet === "string") {
+    return {
+      companySlug: headerCompany.trim().toLowerCase(),
+      outletSlug: headerOutlet.trim().toLowerCase()
+    };
   }
 
-  if (req.params && req.params.slug) {
-    return String(req.params.slug).trim().toLowerCase();
+  const paramCompany = req.params && req.params.companySlug;
+  const paramOutlet = req.params && req.params.outletSlug;
+  if (paramCompany && paramOutlet) {
+    return {
+      companySlug: String(paramCompany).trim().toLowerCase(),
+      outletSlug: String(paramOutlet).trim().toLowerCase()
+    };
   }
 
   const host = (req.headers.host || "").split(":")[0];
   const labels = host.split(".");
   if (labels.length > 2) {
     const candidate = labels[0].toLowerCase();
-    if (!RESERVED_SUBDOMAINS.has(candidate)) {
-      return candidate;
+    if (!RESERVED_SUBDOMAINS.has(candidate) && paramOutlet) {
+      return {
+        companySlug: candidate,
+        outletSlug: String(paramOutlet).trim().toLowerCase()
+      };
     }
   }
 
   return null;
 };
 
-// Loads the tenant onto req.organization / req.organizationId, or 404s.
+// Loads the company + outlet onto req.company / req.organization /
+// req.organizationId, or 404s. req.organizationId stays exactly what it has
+// always been — one outlet's id — so every downstream tenant-scoped query
+// and the whole isolation invariant are unchanged by the company layer.
 const resolveTenant = async (req, _res, next) => {
   try {
-    const slug = extractTenantSlug(req);
+    const ref = extractTenantRef(req);
 
-    if (!slug) {
-      const error = new Error("No business specified. A tenant slug is required.");
+    if (!ref || !ref.companySlug || !ref.outletSlug) {
+      const error = new Error("No outlet specified. A company and outlet are required.");
       error.statusCode = 400;
       throw error;
     }
 
-    const organization = await Organization.findOne({ slug });
+    const company = await Company.findOne({ slug: ref.companySlug });
 
-    if (!organization) {
-      const error = new Error(`Business '${slug}' was not found.`);
+    if (!company) {
+      const error = new Error(`Company '${ref.companySlug}' was not found.`);
       error.statusCode = 404;
       throw error;
     }
 
-    if (organization.status === "suspended") {
+    // A suspended company takes all of its outlets down with it.
+    if (company.status === "suspended") {
       const error = new Error("This business is currently unavailable.");
       error.statusCode = 403;
       error.code = "TENANT_SUSPENDED";
       throw error;
     }
 
+    const organization = await Organization.findOne({ companyId: company._id, slug: ref.outletSlug });
+
+    if (!organization) {
+      const error = new Error(`Outlet '${ref.outletSlug}' was not found.`);
+      error.statusCode = 404;
+      throw error;
+    }
+
+    if (organization.status === "suspended" || organization.status === "archived") {
+      const error = new Error("This business is currently unavailable.");
+      error.statusCode = 403;
+      error.code = "TENANT_SUSPENDED";
+      throw error;
+    }
+
+    req.company = company;
+    req.companyId = company._id.toString();
     req.organization = organization;
     req.organizationId = organization._id.toString();
     next();
@@ -70,5 +106,5 @@ const resolveTenant = async (req, _res, next) => {
 
 module.exports = {
   resolveTenant,
-  extractTenantSlug
+  extractTenantRef
 };

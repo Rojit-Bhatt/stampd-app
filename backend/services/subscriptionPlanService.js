@@ -16,7 +16,7 @@ const formatPlan = (plan) => ({
   slug: plan.slug,
   name: plan.name,
   priceNpr: plan.priceNpr,
-  businessLimit: plan.businessLimit,
+  outletLimit: plan.outletLimit,
   features: plan.features || [],
   isMostPopular: plan.isMostPopular,
   billingIntervalDays: plan.billingIntervalDays,
@@ -57,14 +57,14 @@ const getPlanBySlug = async (slug) => {
   return plan;
 };
 
-const createPlan = async ({ name, slug, priceNpr, businessLimit, features, isMostPopular, sortOrder, actorId, actorName }) => {
-  if (!name || !slug || priceNpr === undefined || businessLimit === undefined) {
-    throw createHttpError("name, slug, priceNpr, and businessLimit are required.", 400);
+const createPlan = async ({ name, slug, priceNpr, outletLimit, features, isMostPopular, sortOrder, actorId, actorName }) => {
+  if (!name || !slug || priceNpr === undefined || outletLimit === undefined) {
+    throw createHttpError("name, slug, priceNpr, and outletLimit are required.", 400);
   }
   const normalizedSlug = normalizeSlug(slug);
   if (!normalizedSlug) throw createHttpError("A valid slug is required.", 400);
   if (Number(priceNpr) < 0) throw createHttpError("priceNpr must be >= 0.", 400);
-  if (Number(businessLimit) < 1) throw createHttpError("businessLimit must be >= 1.", 400);
+  if (Number(outletLimit) < 1) throw createHttpError("outletLimit must be >= 1.", 400);
 
   const existing = await SubscriptionPlan.findOne({ slug: normalizedSlug });
   if (existing) throw createHttpError("A plan with this slug already exists.", 409);
@@ -73,7 +73,7 @@ const createPlan = async ({ name, slug, priceNpr, businessLimit, features, isMos
     name: name.trim(),
     slug: normalizedSlug,
     priceNpr: Number(priceNpr),
-    businessLimit: Number(businessLimit),
+    outletLimit: Number(outletLimit),
     features: Array.isArray(features) ? features : [],
     isMostPopular: Boolean(isMostPopular),
     sortOrder: sortOrder !== undefined ? Number(sortOrder) : 0
@@ -81,22 +81,22 @@ const createPlan = async ({ name, slug, priceNpr, businessLimit, features, isMos
 
   await logAction({
     actorId, actorName, action: "plan_create", organizationId: null,
-    targetName: plan.name, details: `Rs ${plan.priceNpr}/yr, ${plan.businessLimit} business limit`
+    targetName: plan.name, details: `Rs ${plan.priceNpr}/yr, ${plan.outletLimit} outlet limit`
   });
 
   return { success: true, plan: formatPlan(plan) };
 };
 
-const updatePlan = async (slug, { name, priceNpr, businessLimit, features, isMostPopular, isActive, sortOrder, actorId, actorName }) => {
+const updatePlan = async (slug, { name, priceNpr, outletLimit, features, isMostPopular, isActive, sortOrder, actorId, actorName }) => {
   const plan = await getPlanBySlug(slug);
 
   if (priceNpr !== undefined && Number(priceNpr) < 0) throw createHttpError("priceNpr must be >= 0.", 400);
-  if (businessLimit !== undefined && Number(businessLimit) < 1) throw createHttpError("businessLimit must be >= 1.", 400);
+  if (outletLimit !== undefined && Number(outletLimit) < 1) throw createHttpError("outletLimit must be >= 1.", 400);
 
   const updates = {};
   if (name !== undefined) updates.name = name.trim();
   if (priceNpr !== undefined) updates.priceNpr = Number(priceNpr);
-  if (businessLimit !== undefined) updates.businessLimit = Number(businessLimit);
+  if (outletLimit !== undefined) updates.outletLimit = Number(outletLimit);
   if (features !== undefined) updates.features = Array.isArray(features) ? features : [];
   if (isMostPopular !== undefined) updates.isMostPopular = Boolean(isMostPopular);
   if (isActive !== undefined) updates.isActive = Boolean(isActive);
@@ -108,7 +108,7 @@ const updatePlan = async (slug, { name, priceNpr, businessLimit, features, isMos
     { new: true }
   );
 
-  // NOTE: existing Subscriptions snapshot businessLimitAtPurchase at
+  // NOTE: existing Subscriptions snapshot outletLimitAtPurchase at
   // purchase/renewal time (Phase 3) — this edit intentionally does not
   // retroactively change any already-purchased subscription's limit.
   await logAction({

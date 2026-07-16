@@ -4,8 +4,8 @@ const User = require("../models/User");
 const VerificationToken = require("../models/VerificationToken");
 const CustomerAccount = require("../models/CustomerAccount");
 const AccountVerificationToken = require("../models/AccountVerificationToken");
-const BusinessOwnerAccount = require("../models/BusinessOwnerAccount");
-const OwnerVerificationToken = require("../models/OwnerVerificationToken");
+const AdminAccount = require("../models/AdminAccount");
+const AdminVerificationToken = require("../models/AdminVerificationToken");
 const Voucher = require("../models/Voucher");
 const Subscription = require("../models/Subscription");
 const { resolveTenant } = require("../middleware/tenantMiddleware");
@@ -62,17 +62,17 @@ router.post("/mint-global-token", async (req, res, next) => {
   }
 });
 
-// DEV/TEST ONLY. Same idea as /mint-global-token but for the global
-// BusinessOwnerAccount identity.
-router.post("/mint-owner-token", async (req, res, next) => {
+// DEV/TEST ONLY. Same idea as /mint-global-token but for a staff
+// AdminAccount (company owner or outlet admin).
+router.post("/mint-admin-token", async (req, res, next) => {
   try {
     const { email, type } = req.body;
-    const account = await BusinessOwnerAccount.findOne({ email: String(email || "").toLowerCase() });
+    const account = await AdminAccount.findOne({ email: String(email || "").toLowerCase() });
     if (!account) return res.status(404).json({ success: false });
 
     const raw = crypto.randomBytes(32).toString("hex");
-    await OwnerVerificationToken.create({
-      ownerAccountId: account._id,
+    await AdminVerificationToken.create({
+      adminAccountId: account._id,
       type,
       tokenHash: crypto.createHash("sha256").update(raw).digest("hex"),
       expiresAt: new Date(Date.now() + 3600 * 1000),
@@ -112,11 +112,11 @@ router.post("/expire-voucher", async (req, res, next) => {
 // Mirrors /expire-voucher exactly.
 router.post("/expire-subscription", async (req, res, next) => {
   try {
-    const { ownerAccountId, daysAgo } = req.body;
+    const { companyId, daysAgo } = req.body;
     const offsetMs = (Number(daysAgo) || 10) * 24 * 60 * 60 * 1000;
 
     const subscription = await Subscription.findOneAndUpdate(
-      { ownerAccountId },
+      { companyId },
       { $set: { currentPeriodEnd: new Date(Date.now() - offsetMs) } },
       { new: true }
     );

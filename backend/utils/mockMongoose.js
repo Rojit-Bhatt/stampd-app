@@ -59,17 +59,36 @@ function matchesQuery(doc, query) {
     if (isOperatorObject) {
       let matchesOps = true;
       for (const op of Object.keys(queryVal)) {
-        if (op === "$lte") {
-          const lteVal = queryVal[op];
-          if (docVal === null || docVal === undefined || new Date(docVal) > new Date(lteVal)) {
-            matchesOps = false;
-          }
-        } else if (op === "$gte") {
-          const gteVal = queryVal[op];
-          if (docVal === null || docVal === undefined || new Date(docVal) < new Date(gteVal)) {
-            matchesOps = false;
-          }
+        // Unsupported operators MUST throw, not fall through. Silently
+        // leaving matchesOps true made the field match every document —
+        // e.g. find({x: {$ne: 5}}) returned the whole collection while real
+        // Mongo returns only non-5 rows, and no test could see the
+        // difference. A loud dev-time failure beats a plausible wrong
+        // answer; add the operator here if you genuinely need it.
+        if (op !== "$lte" && op !== "$gte") {
+          throw new Error(
+            `[Mock Mongoose] Unsupported query operator "${op}". Only $lte/$gte/$or/equality are implemented — ` +
+            `see CLAUDE.md. Express this as a JS filter after fetching instead.`
+          );
         }
+
+        const opVal = queryVal[op];
+        if (docVal === null || docVal === undefined) {
+          matchesOps = false;
+          continue;
+        }
+
+        // Compare numbers numerically and dates as dates. The previous
+        // unconditional `new Date(...)` coercion truncated fractional
+        // numbers to whole milliseconds — {$gte: 10.9} matched a value of
+        // 10.5, because Date(10.5) and Date(10.9) are both 10ms. That let a
+        // "sufficient balance" guard pass on an insufficient balance.
+        const bothNumeric = typeof docVal === "number" && typeof opVal === "number";
+        const left = bothNumeric ? docVal : new Date(docVal).getTime();
+        const right = bothNumeric ? opVal : new Date(opVal).getTime();
+
+        if (op === "$lte" && left > right) matchesOps = false;
+        if (op === "$gte" && left < right) matchesOps = false;
       }
       if (!matchesOps) return false;
       continue;

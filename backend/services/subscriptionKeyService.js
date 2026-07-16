@@ -11,12 +11,11 @@ const createHttpError = (message, statusCode, code) => {
   return error;
 };
 
-// 8 random bytes (64 bits) rather than voucher-code-style 4 — a redeemed
-// key grants a real paid plan to whoever presents it first (unbound to any
-// specific owner at generation time), so brute-forcing the space needs a
-// wider margin than a single-tenant voucher code does. A findOne
-// uniqueness check backstops collisions anyway (mock DB doesn't enforce
-// `unique`, same caveat as every other global-uniqueness field here).
+// 8 random bytes (64 bits): a redeemed key grants a real paid plan to
+// whoever presents it first (it isn't bound to a company at generation
+// time), so the space needs a wider margin than a single-outlet voucher
+// code. A findOne check backstops collisions — the mock DB doesn't enforce
+// `unique`, same caveat as every other global-uniqueness field here.
 const generateCode = () => `KEY-${crypto.randomBytes(8).toString("hex").toUpperCase()}`;
 
 const formatKey = (key) => ({
@@ -25,7 +24,7 @@ const formatKey = (key) => ({
   planSlug: key.planSlug,
   status: key.status,
   note: key.note || "",
-  assignedToOwnerAccountId: key.assignedToOwnerAccountId ? key.assignedToOwnerAccountId.toString() : null,
+  assignedToCompanyId: key.assignedToCompanyId ? key.assignedToCompanyId.toString() : null,
   createdAt: key.createdAt,
   redeemedAt: key.redeemedAt
 });
@@ -80,12 +79,11 @@ const revokeKey = async (code) => {
   return { success: true, key: formatKey(updated) };
 };
 
-// The core redemption: validates the key, runs the same downgrade-over-limit
-// check a real checkout would, then applies the plan to the owner's
-// subscription (subscriptionService.applyPurchase — same extend-from-
-// current-period-end-if-still-active logic whether the activation came from
-// a gateway or, as here, a manually-issued key).
-const redeemKey = async ({ code, ownerAccountId }) => {
+// The core redemption: validates the key, runs the downgrade-over-limit
+// check, then applies the plan to the company's subscription
+// (subscriptionService.applyPurchase — extends from the current period end
+// when still active, so redeeming early never loses paid days).
+const redeemKey = async ({ code, companyId }) => {
   if (!code) throw createHttpError("A key is required.", 400);
 
   const normalizedCode = String(code).trim().toUpperCase();
@@ -95,15 +93,14 @@ const redeemKey = async ({ code, ownerAccountId }) => {
 
   // Atomically flip unused -> redeemed FIRST, gated on the query itself
   // still matching status:"unused" — this is the actual claim. Two
-  // concurrent redemptions of the same code (double-click, or the owner
-  // dashboard and a tenant-console tab both open) can both pass the plain
-  // findOne check above, but only one findOneAndUpdate with this predicate
-  // can ever return a document, so only one can proceed to applyPurchase.
-  // Without this, both would call applyPurchase and stack two activation
-  // periods from a single key.
+  // concurrent redemptions of the same code (a double-click, or two tabs)
+  // can both pass the plain findOne above, but only one findOneAndUpdate
+  // with this predicate can ever return a document, so only one proceeds to
+  // applyPurchase. Without it, both would stack an activation period from a
+  // single key.
   const claimed = await SubscriptionKey.findOneAndUpdate(
     { _id: key._id, status: "unused" },
-    { $set: { status: "redeemed", assignedToOwnerAccountId: ownerAccountId, redeemedAt: new Date() } },
+    { $set: { status: "redeemed", assignedToCompanyId: companyId, redeemedAt: new Date() } },
     { new: true }
   );
   if (!claimed) {
@@ -112,8 +109,8 @@ const redeemKey = async ({ code, ownerAccountId }) => {
 
   try {
     const plan = await getPlanBySlug(key.planSlug);
-    await assertPlanChangeAllowed(ownerAccountId, plan);
-    const subscription = await applyPurchase({ ownerAccountId, plan });
+    await assertPlanChangeAllowed(companyId, plan);
+    const subscription = await applyPurchase({ companyId, plan });
     return { success: true, subscription };
   } catch (error) {
     // The claim succeeded but activation failed (e.g. downgrade-over-limit)
@@ -121,23 +118,19 @@ const redeemKey = async ({ code, ownerAccountId }) => {
     // rejected redemption.
     await SubscriptionKey.findOneAndUpdate(
       { _id: key._id },
-      { $set: { status: "unused", assignedToOwnerAccountId: null, redeemedAt: null } }
+      { $set: { status: "unused", assignedToCompanyId: null, redeemedAt: null } }
     );
     throw error;
   }
 };
 
-// Resolves a tenant-scoped organizationId to the owner account that should
-// see/manage its subscription — used by the /:slug/admin console's
-// Subscription page, which authenticates via the normal tenant JWT (no
-// separate owner login needed to view/redeem for the business you already
-// operate).
-const resolveOwnerAccountForOrganization = async (organizationId) => {
+// Resolves an outlet to the company whose subscription covers it.
+const resolveCompanyForOrganization = async (organizationId) => {
   const organization = await Organization.findOne({ _id: organizationId });
-  if (!organization || !organization.ownerAccountId) {
-    throw createHttpError("This business has no owner account attached.", 404);
+  if (!organization || !organization.companyId) {
+    throw createHttpError("This outlet has no company attached.", 404);
   }
-  return organization.ownerAccountId;
+  return organization.companyId;
 };
 
 module.exports = {
@@ -146,5 +139,5 @@ module.exports = {
   listKeys,
   revokeKey,
   redeemKey,
-  resolveOwnerAccountForOrganization
+  resolveCompanyForOrganization
 };

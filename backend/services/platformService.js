@@ -1,27 +1,17 @@
 const bcrypt = require("bcryptjs");
+const Company = require("../models/Company");
 const Organization = require("../models/Organization");
+const AdminAccount = require("../models/AdminAccount");
 const User = require("../models/User");
 const StampClaimEvent = require("../models/StampClaimEvent");
 const Voucher = require("../models/Voucher");
 const { generateAuthToken } = require("../utils/tokenUtils");
-const { DEFAULT_PROGRAM, BUSINESS_CATEGORIES } = require("../config/platform");
-const { sendVerifyEmail } = require("./authService");
+const { BUSINESS_CATEGORIES } = require("../config/platform");
 const { logAction } = require("./platformAuditService");
+const companyService = require("./companyService");
+const { startTrialSubscription } = require("./subscriptionService");
 
-const SALT_ROUNDS = 10;
-
-// The in-memory mock DB only fills top-level schema defaults, not nested
-// sub-document defaults (branding/program). Passing these explicitly keeps
-// behavior identical against real Mongoose (which would set the same
-// values anyway) while making the mock DB behave correctly too.
-const DEFAULT_BRANDING = {
-  tagline: "",
-  logoUrl: "",
-  bannerUrl: "",
-  primaryColor: "#7c3f1d"
-};
-
-const normalizeEmail = (email) => email.trim().toLowerCase();
+const normalizeEmail = (email) => String(email || "").trim().toLowerCase();
 
 const createHttpError = (message, statusCode) => {
   const error = new Error(message);
@@ -29,34 +19,57 @@ const createHttpError = (message, statusCode) => {
   return error;
 };
 
-const normalizeSlug = (slug) =>
-  slug
-    .trim()
-    .toLowerCase()
-    .replace(/[^a-z0-9-]/g, "");
-
-const buildBusinessStats = async (org) => {
+const buildOutletStats = async (outlet) => {
   const customersCount = (
-    await User.find({ organizationId: org._id, role: "customer" })
+    await User.find({ organizationId: outlet._id, role: "customer" })
   ).length;
   const stampsIssued = (
-    await StampClaimEvent.find({ organizationId: org._id })
+    await StampClaimEvent.find({ organizationId: outlet._id })
   ).length;
   const vouchersRedeemed = (
-    await Voucher.find({ organizationId: org._id, isValid: false })
+    await Voucher.find({ organizationId: outlet._id, isValid: false })
   ).length;
 
   return {
-    id: org._id.toString(),
-    name: org.name,
-    slug: org.slug,
-    status: org.status,
-    category: org.category,
-    branding: org.branding,
-    menuEnabled: org.menuEnabled,
+    id: outlet._id.toString(),
+    name: outlet.name,
+    slug: outlet.slug,
+    status: outlet.status,
+    category: outlet.category,
+    branding: outlet.branding,
+    menuEnabled: outlet.menuEnabled,
     customersCount,
     stampsIssued,
     vouchersRedeemed
+  };
+};
+
+// A company row for the platform console, with its outlets nested and the
+// per-outlet numbers rolled up.
+const buildCompanyStats = async (company) => {
+  const outlets = await Organization.find({ companyId: company._id });
+  const outletRows = await Promise.all(outlets.map(buildOutletStats));
+  const owner = await AdminAccount.findOne({ companyId: company._id, kind: "company_owner" });
+
+  const totals = outletRows.reduce(
+    (acc, o) => ({
+      customersCount: acc.customersCount + o.customersCount,
+      stampsIssued: acc.stampsIssued + o.stampsIssued,
+      vouchersRedeemed: acc.vouchersRedeemed + o.vouchersRedeemed
+    }),
+    { customersCount: 0, stampsIssued: 0, vouchersRedeemed: 0 }
+  );
+
+  return {
+    id: company._id.toString(),
+    name: company.name,
+    slug: company.slug,
+    status: company.status,
+    branding: company.branding,
+    owner: owner ? { name: owner.name, email: owner.email, emailVerified: owner.emailVerified } : null,
+    outlets: outletRows.sort((a, b) => a.name.localeCompare(b.name)),
+    outletCount: outletRows.filter((o) => o.status !== "archived").length,
+    ...totals
   };
 };
 
@@ -96,218 +109,159 @@ const loginPlatformAdmin = async ({ email, password }) => {
   };
 };
 
-const listBusinesses = async () => {
-  const organizations = await Organization.find({});
-  const businesses = await Promise.all(organizations.map(buildBusinessStats));
-
-  return {
-    success: true,
-    businesses
-  };
+const listCompanies = async () => {
+  const companies = await Company.find({});
+  const rows = await Promise.all(companies.map(buildCompanyStats));
+  return { success: true, companies: rows.sort((a, b) => a.name.localeCompare(b.name)) };
 };
 
-// Shared core: creates the Organization + its business_admin User row.
-// Extracted so the owner-driven "add a business" flow (subscriptionService/
-// ownerAccountService, plan-limit-gated) can reuse the exact same
-// organization-provisioning logic instead of duplicating it — the caller is
-// responsible for anything specific to how it got here (platform-admin
-// onboarding sends a verify email + writes a PlatformAuditLog entry below;
-// the owner flow does neither, since the admin row's emailVerified is
-// copied from the already-owned account and there's no platform actorId).
-const createOrganizationWithAdmin = async ({
-  name, slug, category, adminName, adminEmail, hashedPassword, emailVerified, ownerAccountId
-}) => {
-  const normalizedSlug = normalizeSlug(slug);
-
-  if (!normalizedSlug) {
-    throw createHttpError("A valid slug is required.", 400);
-  }
-
-  const existingOrg = await Organization.findOne({ slug: normalizedSlug });
-
-  if (existingOrg) {
-    throw createHttpError("A business with this slug already exists.", 409);
-  }
-
-  // Onboarding shouldn't hard-fail over a bad/missing category — fall back
-  // to the safe default instead of throwing.
-  const safeCategory = BUSINESS_CATEGORIES.includes(category) ? category : "other";
-
-  const organization = await Organization.create({
-    name: name.trim(),
-    slug: normalizedSlug,
-    category: safeCategory,
-    branding: { ...DEFAULT_BRANDING },
-    program: { ...DEFAULT_PROGRAM },
-    ownerAccountId: ownerAccountId || null
+// The platform registers a company and its owner; the company then registers
+// its own outlets. Every new company starts on a trial subscription, so it
+// can stand up its first outlet immediately.
+const registerCompany = async ({ name, slug, ownerName, ownerEmail, ownerPassword, phone, actorId, actorName }) => {
+  const { company, owner } = await companyService.createCompany({
+    name, slug, ownerName, ownerEmail, ownerPassword, phone
   });
 
-  const normalizedAdminEmail = normalizeEmail(adminEmail);
-
-  const admin = await User.create({
-    organizationId: organization._id,
-    name: adminName.trim(),
-    email: normalizedAdminEmail,
-    password: hashedPassword,
-    role: "business_admin",
-    emailVerified: Boolean(emailVerified),
-    ownerAccountId: ownerAccountId || null
-  });
-
-  return { organization, admin };
-};
-
-const createBusiness = async ({ name, slug, adminName, adminEmail, adminPassword, category, actorId, actorName }) => {
-  if (!name || !slug || !adminName || !adminEmail || !adminPassword) {
-    throw createHttpError(
-      "name, slug, adminName, adminEmail, and adminPassword are required.",
-      400
-    );
-  }
-
-  const hashedPassword = await bcrypt.hash(adminPassword, SALT_ROUNDS);
-
-  const { organization, admin } = await createOrganizationWithAdmin({
-    name, slug, category, adminName, adminEmail, hashedPassword, emailVerified: false
-  });
-
-  await sendVerifyEmail(admin, organization._id, organization.slug);
+  await startTrialSubscription(company._id);
 
   await logAction({
     actorId,
     actorName,
     action: "onboard",
-    organizationId: organization._id,
-    targetName: organization.name,
-    details: `Onboarded with admin ${admin.email}`
+    organizationId: null,
+    targetName: company.name,
+    details: `Company registered with owner ${owner.email}`
   });
 
   return {
     success: true,
-    business: await buildBusinessStats(organization),
-    admin: { email: admin.email },
-    tenantPath: `/${organization.slug}/admin`
+    company: await buildCompanyStats(company),
+    owner: { email: owner.email },
+    companyPath: `/${company.slug}`
   };
 };
 
-const getBusiness = async (id) => {
-  const organization = await Organization.findOne({ _id: id });
-
-  if (!organization) {
-    throw createHttpError("Business not found.", 404);
-  }
-
-  return {
-    success: true,
-    business: await buildBusinessStats(organization)
-  };
+const getCompanyById = async (id) => {
+  const company = await Company.findOne({ _id: id });
+  if (!company) throw createHttpError("Company not found.", 404);
+  return { success: true, company: await buildCompanyStats(company) };
 };
 
-const updateBusiness = async (id, { name, category, status, adminEmail, actorId, actorName }) => {
-  const organization = await Organization.findOne({ _id: id });
-
-  if (!organization) {
-    throw createHttpError("Business not found.", 404);
-  }
+const updateCompany = async (id, { name, status, ownerEmail, actorId, actorName }) => {
+  const company = await Company.findOne({ _id: id });
+  if (!company) throw createHttpError("Company not found.", 404);
 
   if (status !== undefined && status !== "active" && status !== "suspended") {
     throw createHttpError("status must be either 'active' or 'suspended'.", 400);
   }
 
-  if (category !== undefined && !BUSINESS_CATEGORIES.includes(category)) {
-    throw createHttpError("Not a valid category.", 400);
-  }
-
   const updates = {};
+  if (name !== undefined) updates.name = name.trim();
+  if (status !== undefined) updates.status = status;
 
-  if (name !== undefined) {
-    updates.name = name.trim();
-  }
+  const updated = Object.keys(updates).length
+    ? await Company.findOneAndUpdate({ _id: id }, { $set: updates }, { new: true })
+    : company;
 
-  if (category !== undefined) {
-    updates.category = category;
-  }
+  let ownerResult = null;
+  let ownerEmailChanged = false;
 
-  if (status !== undefined) {
-    updates.status = status;
-  }
+  if (ownerEmail !== undefined) {
+    const normalized = normalizeEmail(ownerEmail);
+    const owner = await AdminAccount.findOne({ companyId: id, kind: "company_owner" });
+    if (!owner) throw createHttpError("This company has no owner account to update.", 404);
 
-  const updatedOrganization = await Organization.findOneAndUpdate(
-    { _id: id },
-    { $set: updates },
-    { new: true }
-  );
-
-  let adminResult = null;
-  let adminEmailChanged = false;
-
-  if (adminEmail !== undefined) {
-    const normalizedAdminEmail = normalizeEmail(adminEmail);
-    const adminUser = await User.findOne({ organizationId: id, role: "business_admin" });
-
-    if (!adminUser) {
-      throw createHttpError("This business has no admin account to update.", 404);
-    }
-
-    if (adminUser.email !== normalizedAdminEmail) {
-      const collision = await User.findOne({ organizationId: id, email: normalizedAdminEmail });
-      if (collision) {
-        throw createHttpError("That email is already in use for this business.", 409);
-      }
-
-      const updatedAdmin = await User.findOneAndUpdate(
-        { _id: adminUser._id },
-        { $set: { email: normalizedAdminEmail, emailVerified: false } },
+    if (owner.email !== normalized) {
+      await companyService.assertEmailAvailable(normalized);
+      const updatedOwner = await AdminAccount.findOneAndUpdate(
+        { _id: owner._id },
+        { $set: { email: normalized, emailVerified: false } },
         { new: true }
       );
-
-      await sendVerifyEmail(updatedAdmin, id, updatedOrganization.slug);
-      adminResult = { email: updatedAdmin.email };
-      adminEmailChanged = true;
+      await companyService.sendAdminVerifyEmail(updatedOwner);
+      ownerResult = { email: updatedOwner.email };
+      ownerEmailChanged = true;
     } else {
-      adminResult = { email: adminUser.email };
+      ownerResult = { email: owner.email };
     }
   }
 
   const changeParts = [];
-  if (name !== undefined && updates.name !== undefined) changeParts.push(`name → "${updates.name}"`);
-  if (category !== undefined && updates.category !== undefined) changeParts.push(`category → ${updates.category}`);
-  if (adminEmailChanged) changeParts.push(`admin email → ${adminResult.email}`);
+  if (updates.name !== undefined) changeParts.push(`name → "${updates.name}"`);
+  if (ownerEmailChanged) changeParts.push(`owner email → ${ownerResult.email}`);
 
   if (status !== undefined) {
     await logAction({
-      actorId,
-      actorName,
+      actorId, actorName,
       action: status === "suspended" ? "suspend" : "reactivate",
-      organizationId: id,
-      targetName: updatedOrganization.name,
+      organizationId: null,
+      targetName: updated.name,
       details: changeParts.join("; ")
     });
   } else if (changeParts.length) {
     await logAction({
-      actorId,
-      actorName,
-      action: "edit",
-      organizationId: id,
-      targetName: updatedOrganization.name,
-      details: changeParts.join("; ")
+      actorId, actorName, action: "edit", organizationId: null,
+      targetName: updated.name, details: changeParts.join("; ")
     });
   }
 
   return {
     success: true,
-    business: await buildBusinessStats(updatedOrganization),
-    ...(adminResult ? { admin: adminResult } : {})
+    company: await buildCompanyStats(updated),
+    ...(ownerResult ? { owner: ownerResult } : {})
   };
+};
+
+// The platform can also edit an individual outlet inside a company.
+const updateOutlet = async (outletId, { name, category, status, actorId, actorName }) => {
+  const outlet = await Organization.findOne({ _id: outletId });
+  if (!outlet) throw createHttpError("Outlet not found.", 404);
+
+  if (status !== undefined && !["active", "suspended", "archived"].includes(status)) {
+    throw createHttpError("status must be 'active', 'suspended', or 'archived'.", 400);
+  }
+  if (category !== undefined && !BUSINESS_CATEGORIES.includes(category)) {
+    throw createHttpError("Not a valid category.", 400);
+  }
+
+  const updates = {};
+  if (name !== undefined) updates.name = name.trim();
+  if (category !== undefined) updates.category = category;
+  if (status !== undefined) updates.status = status;
+
+  const updated = await Organization.findOneAndUpdate({ _id: outletId }, { $set: updates }, { new: true });
+
+  const changeParts = [];
+  if (updates.name !== undefined) changeParts.push(`name → "${updates.name}"`);
+  if (updates.category !== undefined) changeParts.push(`category → ${updates.category}`);
+
+  if (status !== undefined) {
+    await logAction({
+      actorId, actorName,
+      action: status === "suspended" ? "suspend" : "reactivate",
+      organizationId: outletId,
+      targetName: updated.name,
+      details: changeParts.join("; ")
+    });
+  } else if (changeParts.length) {
+    await logAction({
+      actorId, actorName, action: "edit", organizationId: outletId,
+      targetName: updated.name, details: changeParts.join("; ")
+    });
+  }
+
+  return { success: true, outlet: await buildOutletStats(updated) };
 };
 
 module.exports = {
   createHttpError,
   loginPlatformAdmin,
-  listBusinesses,
-  createBusiness,
-  createOrganizationWithAdmin,
-  getBusiness,
-  updateBusiness,
-  buildBusinessStats
+  listCompanies,
+  registerCompany,
+  getCompanyById,
+  updateCompany,
+  updateOutlet,
+  buildCompanyStats,
+  buildOutletStats
 };

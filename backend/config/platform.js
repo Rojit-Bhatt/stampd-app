@@ -20,8 +20,25 @@ const DEFAULT_PROGRAM = {
 // default for a business that hasn't set one.
 const BUSINESS_CATEGORIES = ["cafe", "restaurant", "bakery", "salon", "gym", "retail", "other"];
 
+// Slugs a company may never take. A company slug owns a whole top-level URL
+// segment (/[company]/[outlet]), so one colliding with a static route would
+// make that company permanently unreachable — React Router ranks static
+// above dynamic, so the app keeps working and the company silently doesn't.
+// Must cover every top-level route in the frontend's App.tsx plus the API
+// prefix and the reserved subdomains.
+const RESERVED_SLUGS = new Set([
+  "api", "www", "app", "admin", "assets", "static", "public",
+  "explore", "platform", "company", "owner",
+  "admin-login", "business-login", "customer-login", "customer-register",
+  "verify-email", "reset-password", "forgot-password"
+]);
+
+const isReservedSlug = (slug) => RESERVED_SLUGS.has(String(slug || "").trim().toLowerCase());
+
 module.exports = {
   PLATFORM_NAME,
   DEFAULT_PROGRAM,
-  BUSINESS_CATEGORIES
+  BUSINESS_CATEGORIES,
+  RESERVED_SLUGS,
+  isReservedSlug
 };

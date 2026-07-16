@@ -33,9 +33,9 @@ if (USING_MOCK_DB) {
 
 const express = require("express");
 const cors = require("cors");
-const bcrypt = require("bcryptjs");
 const connectDB = require("./config/db");
 const { PLATFORM_NAME } = require("./config/platform");
+const { seedDemoData } = require("./seed/demoSeed");
 
 const authRoutes = require("./routes/authRoutes");
 const adminRoutes = require("./routes/adminRoutes");
@@ -50,7 +50,8 @@ const customerAccountRoutes = require("./routes/customerAccountRoutes");
 const claimRoutes = require("./routes/claimRoutes");
 const subscriptionPlanRoutes = require("./routes/subscriptionPlanRoutes");
 const subscriptionKeyRoutes = require("./routes/subscriptionKeyRoutes");
-const ownerAccountRoutes = require("./routes/ownerAccountRoutes");
+const companyRoutes = require("./routes/companyRoutes");
+const adminAuthRoutes = require("./routes/adminAuthRoutes");
 
 const app = express();
 const PORT = process.env.PORT || 5001;
@@ -98,10 +99,12 @@ app.use("/api/customer-auth", customerAccountRoutes);
 // longer-lived pending claim), status (polling), fulfill (the actual stamp
 // award, tenant-JWT gated).
 app.use("/api/claim", claimRoutes);
-// Global business-owner identity (register/login/verify/forgot-reset,
-// enter-business exchange, cross-business dashboard) — the owner-side
-// analogue of /api/customer-auth.
-app.use("/api/owner", ownerAccountRoutes);
+// The unified, slug-less staff login. One email+password form for company
+// owners and outlet admins alike — the credentials decide which.
+app.use("/api/admin-auth", adminAuthRoutes);
+// The company owner's console: its outlets, its subscription, its
+// cross-outlet rollup. Company-owner session only.
+app.use("/api/company", companyRoutes);
 // Business-admin console (QR, redemption, customers, settings, menu CRUD).
 app.use("/api/admin", adminRoutes);
 // Customer loyalty (stamps + vouchers), tenant taken from the JWT.
@@ -129,131 +132,6 @@ app.use((error, _req, res, _next) => {
     ...(error.code ? { code: error.code } : {})
   });
 });
-
-// Seed a platform admin plus one demo tenant (Coffesarowar) with its business
-// admin and a demo customer, so the app is usable immediately in development.
-const seedDemoData = async () => {
-  const User = require("./models/User");
-  const Organization = require("./models/Organization");
-  const StampCard = require("./models/StampCard");
-  const { ensureDefaultPlansSeeded } = require("./services/subscriptionPlanService");
-  const BusinessOwnerAccount = require("./models/BusinessOwnerAccount");
-  const Subscription = require("./models/Subscription");
-
-  try {
-    // 0. The three reference subscription plans (Basic/Growth/Pro).
-    await ensureDefaultPlansSeeded();
-
-    // 1. Platform super-admin (no tenant).
-    const platformEmail = "admin@stampd.co";
-    let platformAdmin = await User.findOne({ email: platformEmail, role: "platform" });
-    if (!platformAdmin) {
-      platformAdmin = await User.create({
-        organizationId: null,
-        name: `${PLATFORM_NAME} Admin`,
-        email: platformEmail,
-        password: await bcrypt.hash("password", 10),
-        role: "platform",
-        emailVerified: true
-      });
-      console.log(`[seed] Platform admin: ${platformEmail} / password`);
-    }
-
-    // 2. Demo tenant "Coffesarowar".
-    const slug = "coffesarowar";
-    let org = await Organization.findOne({ slug });
-    if (!org) {
-      org = await Organization.create({
-        slug,
-        name: "Coffesarowar",
-        createdBy: platformAdmin._id,
-        branding: {
-          tagline: "Every cup earns you closer to a free one.",
-          logoUrl: "",
-          bannerUrl: "",
-          primaryColor: "#7c3f1d"
-        }
-        // program is filled from schema defaults (5 stamps → Free Coffee, 18h).
-      });
-      console.log(`[seed] Tenant: ${org.name} (/${slug})`);
-    }
-
-    // 3. Business admin (barista) for the demo tenant.
-    const adminEmail = "barista@mansarowar.cafe";
-    let businessAdmin = await User.findOne({ organizationId: org._id, email: adminEmail });
-    if (!businessAdmin) {
-      businessAdmin = await User.create({
-        organizationId: org._id,
-        name: "Coffesarowar Barista",
-        email: adminEmail,
-        password: await bcrypt.hash("password", 10),
-        role: "business_admin",
-        emailVerified: true
-      });
-      console.log(`[seed] Business admin: ${adminEmail} / password (tenant ${slug})`);
-    }
-
-    // 3b. Grandfather Coffesarowar into the new ownership model on every
-    // fresh mock-DB boot too (mirrors scripts/backfillBusinessOwners.js,
-    // which does the equivalent for a real production DB) — no password set,
-    // same "use forgot-password to claim it" posture as the real migration.
-    if (!org.ownerAccountId) {
-      let ownerAccount = await BusinessOwnerAccount.findOne({ email: businessAdmin.email });
-      if (!ownerAccount) {
-        ownerAccount = await BusinessOwnerAccount.create({
-          name: businessAdmin.name,
-          email: businessAdmin.email,
-          phone: businessAdmin.phone || "",
-          emailVerified: businessAdmin.emailVerified,
-          password: null
-        });
-      }
-      await Organization.updateOne({ _id: org._id }, { $set: { ownerAccountId: ownerAccount._id } });
-      await User.updateOne({ _id: businessAdmin._id }, { $set: { ownerAccountId: ownerAccount._id } });
-
-      const existingSub = await Subscription.findOne({ ownerAccountId: ownerAccount._id });
-      if (!existingSub) {
-        const now = new Date();
-        const HUNDRED_YEARS_MS = 100 * 365 * 24 * 60 * 60 * 1000;
-        await Subscription.create({
-          ownerAccountId: ownerAccount._id,
-          planId: null,
-          planSlug: "grandfathered",
-          status: "active",
-          businessLimitAtPurchase: 10,
-          currentPeriodStart: now,
-          currentPeriodEnd: new Date(now.getTime() + HUNDRED_YEARS_MS),
-          isComped: true
-        });
-      }
-      console.log(`[seed] Grandfathered owner account: ${ownerAccount.email} (comped subscription, 10 businesses)`);
-    }
-
-    // 4. Demo customer for the demo tenant, pre-loaded with a couple of stamps.
-    const customerEmail = "customer@mansarowar.cafe";
-    let customer = await User.findOne({ organizationId: org._id, email: customerEmail });
-    if (!customer) {
-      customer = await User.create({
-        organizationId: org._id,
-        name: "Regular Customer",
-        email: customerEmail,
-        password: await bcrypt.hash("password", 10),
-        role: "customer",
-        phone: "+9779800000000",
-        emailVerified: true
-      });
-      await StampCard.create({
-        organizationId: org._id,
-        userId: customer._id,
-        stampsEarned: 2,
-        lastStampedAt: null
-      });
-      console.log(`[seed] Customer: ${customerEmail} / password (tenant ${slug})`);
-    }
-  } catch (err) {
-    console.error("Failed to seed demo data:", err);
-  }
-};
 
 const startServer = async () => {
   await connectDB();

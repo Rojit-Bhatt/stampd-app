@@ -1,10 +1,11 @@
 const express = require("express");
 const {
   platformLogin,
-  getBusinesses,
-  postBusiness,
-  getBusinessById,
-  patchBusiness,
+  getCompanies,
+  postCompany,
+  getCompany,
+  patchCompany,
+  patchOutlet,
   getAuditLog,
   getAnalytics,
   getPublicPlatformContact,
@@ -17,10 +18,16 @@ const { verifyToken, isPlatformAdmin, isPlatformOwner } = require("../middleware
 const router = express.Router();
 
 router.post("/login", platformLogin);
-router.get("/businesses", verifyToken, isPlatformAdmin, getBusinesses);
-router.post("/businesses", verifyToken, isPlatformOwner, postBusiness);
-router.get("/businesses/:id", verifyToken, isPlatformAdmin, getBusinessById);
-router.patch("/businesses/:id", verifyToken, isPlatformOwner, patchBusiness);
+
+// The platform registers companies; each company then registers its own
+// outlets. The platform keeps read access to every outlet and can still
+// edit/suspend one.
+router.get("/companies", verifyToken, isPlatformAdmin, getCompanies);
+router.post("/companies", verifyToken, isPlatformOwner, postCompany);
+router.get("/companies/:id", verifyToken, isPlatformAdmin, getCompany);
+router.patch("/companies/:id", verifyToken, isPlatformOwner, patchCompany);
+router.patch("/outlets/:outletId", verifyToken, isPlatformOwner, patchOutlet);
+
 router.get("/audit-log", verifyToken, isPlatformAdmin, getAuditLog);
 router.get("/analytics", verifyToken, isPlatformAdmin, getAnalytics);
 router.get("/admins", verifyToken, isPlatformOwner, getAdmins);
