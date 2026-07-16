@@ -74,7 +74,8 @@ const formatAuthPayload = (user) => {
       id: user._id.toString(),
       name: user.name,
       role: user.role,
-      emailVerified: user.emailVerified
+      emailVerified: user.emailVerified,
+      organizationId: user.organizationId ? user.organizationId.toString() : null
     }
   };
 };
