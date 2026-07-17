@@ -99,7 +99,19 @@ One collection per identity is what makes email uniqueness a single enforceable 
 - **`DynamicQRToken.purpose`** (`earn`/`redeem`) is checked on consume, so scanning the counter's earn QR on the redeem page can't move a balance the wrong way.
 - **Redeem** is staff-initiated too: a customer must never be able to move their own balance. The sufficient-funds check **is** the atomic `findOneAndUpdate({…, balanceCenti: {$gte: price}})` — not a read-then-write, which two concurrent redeems could both pass.
 - **Expiry is rolling inactivity**: derived from `lastActivityAt` at read time, materialized on the next write (zero the row + log an `expire` row). Any earn or redeem restarts the clock. `pointsExpiryDays: 0` = never. **No cron.** Test hook: `/__test__/expire-points` just drags `lastActivityAt` back, so ageing a row *is* the production path.
-- **Catalog**: a `MenuItem` with a `pointsPriceCenti` is redeemable; `null` means menu-only, so adding points to an outlet never puts its whole menu up for redemption.
+- **Catalog**: `getRedeemCatalog` merges two collections — a `MenuItem` with a `pointsPriceCenti` (`null` = menu-only, so adding points to an outlet never puts its whole menu up for redemption) and a standalone `RewardItem` (points-only things the outlet doesn't sell). Nothing downstream knows there are two. `kind` on redeem is optional; ObjectIds are unique across collections.
+
+## Campaigns
+
+A `Campaign` multiplies what a bill earns for a window, optionally filtered to certain days. `campaignService.resolveActiveMultiplier` is the only place this resolves, and it returns `{multiplier: 1, campaign: null}` when nothing is live, so callers never branch. Resolved at **claim** time, not QR-generation time (a campaign can start between the two); the QR preview is advisory only and recomputed server-side. Both `multiplier` and `campaignId` are snapshotted onto the ledger row — it has to keep saying why it's worth what it is after the campaign ends or is deleted.
+
+Two constants in `config/platform.js` carry the decisions:
+- **`CAMPAIGN_STACKING = "max"`.** Overlapping campaigns do NOT compound: a 2× and a 3× give 3×, not 6×. Compounding gives away more than either campaign promised. Any other value **throws** rather than silently doing something else.
+- **`PLATFORM_TIMEZONE = "Asia/Kathmandu"`.** `daysOfWeek` is judged here, never in UTC — Nepal is UTC+5:45, so a "Thursday" campaign judged in UTC would actually run Wednesday 18:15 → Thursday 18:15 local. `startAt`/`endAt` are absolute instants and need no such handling. Uses `Intl`, not a fixed offset.
+
+`Campaign` is not `Event`: an Event is a display-only listing, a Campaign changes what a bill is worth. Deliberately separate models, pages and route groups.
+
+**Seed data that changes earn math must live where nothing asserts on it.** The demo's live 2× is on `coffesarowar/thamel`, not `durbarmarg` — the suite earns against durbarmarg ~30 times, and a multiplier there silently doubles every expected figure.
 
 ## Subscriptions (key-based, no payment gateway)
 
@@ -168,13 +180,11 @@ Use the shared utilities instead of ad hoc shadows/hover states: `.shadow-ambien
 
 The reference screens this system came from live at `frontend design/` (8 `code.html`+`screen.png` pairs plus `stampd_core/DESIGN.md`) — useful for token values and motion rationale, but **the shipped code wins** where they've diverged (e.g. headings are bold/extrabold, not the regular weight `DESIGN.md` specifies).
 
-## Phase C — rewards catalog + campaigns (next)
+## What's left
 
-- Standalone `RewardItem` for non-menu rewards, alongside the existing `MenuItem.pointsPriceCenti` (which Phase B pulled forward because redeem needed something to redeem against). Plus a `pointsPrice` column in the Excel menu import, and admin CRUD for both.
-- `Campaign{organizationId, name, multiplier, startAt, endAt, daysOfWeek[], isActive}` with `resolveActiveMultiplier(org, now)` evaluated at earn time. `PointsTransaction` already carries `multiplier` and `campaignId`, and `awardPointsInTransaction` already snapshots a `multiplier` of 1 — so the ledger's shape doesn't change when campaigns land.
-- **Stacking rule: max, no compounding** (if a 2x weekend and a 3x Thursday both match, it's 3x, not 6x) — still worth confirming before building.
-- Timezone is unresolved: `daysOfWeek` needs a definition of "Thursday" and the server runs UTC.
-- Suites: `tests/rewards-catalog.js`, `tests/campaigns.js`.
+Deploy (Vercel + Atlas) and LAN HTTPS for on-phone testing. Nothing in the loyalty model is outstanding.
+
+Known gap: `backend/.env` carries a real `MONGODB_URI`, so `npm run dev` tries Atlas and fails on IP whitelisting rather than falling back to the mock. Tests are unaffected (`bootServer` forces `MONGODB_URI=""`); for a local UI run, start the backend with `MONGODB_URI="" npm run dev -w backend`.
 
 ## Stale docs
 
