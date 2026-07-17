@@ -18,13 +18,15 @@ const { makeSiblingOutlet } = require("./helpers/makeOutlet");
 const COMPANY = "coffesarowar";
 const SLUG = "durbarmarg";
 
-async function buildWorkbook(rows) {
+async function buildWorkbook(rows, header = ["Name", "Price", "Category", "Description"]) {
   const workbook = new ExcelJS.Workbook();
   const sheet = workbook.addWorksheet("Menu");
-  sheet.addRow(["Name", "Price", "Category", "Description"]);
+  sheet.addRow(header);
   for (const row of rows) sheet.addRow(row);
   return workbook.xlsx.writeBuffer();
 }
+
+const POINTS_HEADER = ["Name", "Price", "Points Price", "Category", "Description"];
 
 async function readWorkbookHeader(buffer) {
   const workbook = new ExcelJS.Workbook();
@@ -159,7 +161,7 @@ async function main() {
     const templateHeader = await readWorkbookHeader(templateBuf);
     check(
       "template has the right header row",
-      JSON.stringify(templateHeader) === JSON.stringify(["Name", "Price", "Category", "Description"]),
+      JSON.stringify(templateHeader) === JSON.stringify(["Name", "Price", "Points Price", "Category", "Description"]),
     );
 
     // 9. Tenant isolation: importing into coffesarowar doesn't touch another tenant.
@@ -204,6 +206,95 @@ async function main() {
       "coffesarowar's Cappuccino price untouched by the other tenant's confirm call",
       (coffesarowarUnaffected.body?.items || []).find((i) => i.name === "Cappuccino")?.price === 200,
     );
+
+    // --- Points Price column ------------------------------------------
+    //
+    // The column is optional, and the difference between "absent" and
+    // "present but blank" is load-bearing: an admin re-importing an older
+    // sheet that predates the column must not have every points price wiped.
+    console.log("\n== Points Price column ==");
+
+    const uploadSheet = async (buffer) => {
+      const fd = new FormData();
+      fd.append(
+        "file",
+        new Blob([Buffer.from(buffer)], {
+          type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        }),
+        "menu.xlsx",
+      );
+      return api("/api/admin/menu/import/preview", { method: "POST", token: adminToken, body: fd });
+    };
+    const confirmRows = (rows) =>
+      api("/api/admin/menu/import/confirm", { method: "POST", token: adminToken, body: { rows } });
+    const currentMenu = async () =>
+      (await api("/api/admin/menu", { token: adminToken })).body.items || [];
+
+    let pv = await uploadSheet(
+      await buildWorkbook(
+        [
+          ["Flat White", "180", "180", "Coffee", "Silky"],
+          ["Plain Bun", "60", "", "Food", "Menu only"],
+        ],
+        POINTS_HEADER,
+      ),
+    );
+    check("preview reports the column present", pv.body?.hasPointsPriceColumn === true);
+    check(
+      "a filled cell parses to a number",
+      pv.body.rows.find((r) => r.name === "Flat White")?.pointsPrice === 180,
+    );
+    check(
+      "a blank cell in a PRESENT column means menu-only (null)",
+      pv.body.rows.find((r) => r.name === "Plain Bun")?.pointsPrice === null,
+    );
+
+    await confirmRows(pv.body.rows.filter((r) => r.status !== "unchanged"));
+    let ptsItems = await currentMenu();
+    check(
+      "a points price is stored as centipoints",
+      ptsItems.find((i) => i.name === "Flat White")?.pointsPriceCenti === 18000,
+    );
+    check(
+      "a blank one is stored as null",
+      ptsItems.find((i) => i.name === "Plain Bun")?.pointsPriceCenti === null,
+    );
+
+    // The footgun this three-state rule exists for.
+    pv = await uploadSheet(await buildWorkbook([["Flat White", "190", "Coffee", "Silky, pricier"]]));
+    check("preview reports the column absent", pv.body?.hasPointsPriceColumn === false);
+    check(
+      "a row from a column-less sheet carries no pointsPrice key",
+      !("pointsPrice" in pv.body.rows.find((r) => r.name === "Flat White")),
+    );
+
+    await confirmRows(pv.body.rows.filter((r) => r.status !== "unchanged"));
+    ptsItems = await currentMenu();
+    check("the rupee price still updates", ptsItems.find((i) => i.name === "Flat White")?.price === 190);
+    check(
+      "an ABSENT column leaves the existing points price alone",
+      ptsItems.find((i) => i.name === "Flat White")?.pointsPriceCenti === 18000,
+    );
+
+    // ...but a present-but-blank cell is a real instruction to clear it.
+    pv = await uploadSheet(
+      await buildWorkbook([["Flat White", "190", "", "Coffee", "Silky, pricier"]], POINTS_HEADER),
+    );
+    const clearRow = pv.body.rows.find((r) => r.name === "Flat White");
+    check("clearing a points price reads as 'changed'", clearRow?.status === "changed");
+    check("and the diff shows what it was", clearRow?.previous?.pointsPrice === 180);
+    await confirmRows(pv.body.rows.filter((r) => r.status !== "unchanged"));
+    ptsItems = await currentMenu();
+    check(
+      "a PRESENT but blank cell does clear it",
+      ptsItems.find((i) => i.name === "Flat White")?.pointsPriceCenti === null,
+    );
+
+    pv = await uploadSheet(
+      await buildWorkbook([["Flat White", "190", "", "Coffee", "Silky, pricier"]], POINTS_HEADER),
+    );
+    check("re-importing the identical sheet is 'unchanged'", pv.body.rows[0]?.status === "unchanged");
+
   } finally {
     stop();
   }

@@ -1,9 +1,14 @@
 const MenuItem = require("../models/MenuItem");
 const ExcelJS = require("exceljs");
+const { toCenti, toPoints } = require("../utils/pointsMath");
 
 const MAX_IMPORT_ROWS = 500;
 
 const normalizeHeader = (h) => String(h || "").trim().toLowerCase();
+
+// The import's column name for a menu item's redeem price. Matched
+// case-insensitively like every other header.
+const POINTS_PRICE_HEADER = "points price";
 
 // Strips currency symbols/whitespace and parses a number. Returns null for
 // blank/unparseable input rather than throwing — price is optional.
@@ -43,6 +48,10 @@ const parseMenuWorkbook = async (buffer) => {
     headerByColumn[colNumber] = normalizeHeader(cellText(cell.value));
   });
 
+  // Whether the sheet carries a points-price column AT ALL, which is a
+  // different question from whether a given cell is blank — see below.
+  const hasPointsPriceColumn = Object.values(headerByColumn).includes(POINTS_PRICE_HEADER);
+
   const rows = [];
   let skipped = 0;
 
@@ -71,11 +80,19 @@ const parseMenuWorkbook = async (buffer) => {
       name,
       price: parsePrice(fieldByHeader.price),
       category: String(fieldByHeader.category || "").trim() || "General",
-      description: String(fieldByHeader.description || "").trim()
+      description: String(fieldByHeader.description || "").trim(),
+      // THREE states, not two, and the distinction is load-bearing:
+      //   undefined — the sheet has no points-price column, so leave whatever
+      //               the item already has alone
+      //   null      — the column exists and this cell is blank: menu-only
+      //   number    — redeemable at this price
+      // Collapsing the first two would mean an admin re-importing an older
+      // sheet silently wipes every points price they'd set.
+      pointsPrice: hasPointsPriceColumn ? parsePrice(fieldByHeader[POINTS_PRICE_HEADER]) : undefined
     });
   }
 
-  return { rows, skipped };
+  return { rows, skipped, hasPointsPriceColumn };
 };
 
 const createHttpError = (message, statusCode) => {
@@ -90,17 +107,22 @@ const listForOrg = async (organizationId) => {
 
 const createItem = async (
   organizationId,
-  { name, description, price, category, isAvailable, sortOrder }
+  { name, description, price, category, isAvailable, sortOrder, pointsPrice }
 ) => {
   if (!name) {
     throw createHttpError("Menu item name is required.", 400);
   }
+
+  const parsedPointsPrice = pointsPrice === undefined ? null : parsePrice(pointsPrice);
 
   const item = await MenuItem.create({
     organizationId,
     name: name.trim(),
     description: description !== undefined ? description : "",
     price: price !== undefined ? parsePrice(price) : null,
+    // null = menu-only, the default: giving an outlet a points program must
+    // never put its whole menu up for redemption.
+    pointsPriceCenti: parsedPointsPrice === null ? null : toCenti(parsedPointsPrice),
     category: category !== undefined ? category : "General",
     isAvailable: isAvailable !== undefined ? isAvailable : true,
     sortOrder: sortOrder !== undefined ? sortOrder : 0
@@ -119,6 +141,14 @@ const updateItem = async (organizationId, itemId, updates) => {
     if (updates[field] !== undefined) {
       safeUpdates[field] = field === "price" ? parsePrice(updates[field]) : updates[field];
     }
+  }
+
+  // Handled apart from the whitelist loop because the API speaks points and
+  // the column stores centipoints, and because `null` here is a real value
+  // ("make this menu-only") that must survive the undefined check above.
+  if (updates.pointsPrice !== undefined) {
+    const parsed = parsePrice(updates.pointsPrice);
+    safeUpdates.pointsPriceCenti = parsed === null ? null : toCenti(parsed);
   }
 
   const updatedItem = await MenuItem.findOneAndUpdate(
@@ -153,12 +183,13 @@ const normalizeName = (name) => String(name || "").trim().toLowerCase();
 // organization's current menu by name (case-insensitive, the only match key
 // available — no SKU/id column exists in the import format):
 //   - "new": no existing item with that name
-//   - "changed": an existing item exists but price/category/description differ
+//   - "changed": an existing item exists but price/points price/category/
+//     description differ
 //   - "unchanged": an existing item exists and every field is identical
 // Nothing is written yet — the caller shows this diff to the admin, who
 // approves a subset via confirmImport.
 const buildImportPreview = async (organizationId, buffer) => {
-  const { rows, skipped } = await parseMenuWorkbook(buffer);
+  const { rows, skipped, hasPointsPriceColumn } = await parseMenuWorkbook(buffer);
   const existingItems = await MenuItem.find({ organizationId });
 
   const existingByName = new Map();
@@ -177,7 +208,8 @@ const buildImportPreview = async (organizationId, buffer) => {
         name: row.name,
         price: row.price,
         category: row.category,
-        description: row.description
+        description: row.description,
+        ...(hasPointsPriceColumn ? { pointsPrice: row.pointsPrice } : {})
       };
     }
 
@@ -185,7 +217,17 @@ const buildImportPreview = async (organizationId, buffer) => {
     const samePrice = existingPrice === row.price;
     const sameCategory = String(existing.category || "").trim() === row.category;
     const sameDescription = String(existing.description || "").trim() === row.description;
-    const unchanged = samePrice && sameCategory && sameDescription;
+
+    // Only a factor when the sheet actually carries the column. Without it,
+    // the item's existing points price isn't being proposed for change at
+    // all, so it can't make the row "changed".
+    const existingPointsPrice =
+      existing.pointsPriceCenti === null || existing.pointsPriceCenti === undefined
+        ? null
+        : toPoints(existing.pointsPriceCenti);
+    const samePointsPrice = !hasPointsPriceColumn || existingPointsPrice === row.pointsPrice;
+
+    const unchanged = samePrice && sameCategory && sameDescription && samePointsPrice;
 
     return {
       key: `existing-${existing._id}`,
@@ -195,15 +237,22 @@ const buildImportPreview = async (organizationId, buffer) => {
       price: row.price,
       category: row.category,
       description: row.description,
+      ...(hasPointsPriceColumn ? { pointsPrice: row.pointsPrice } : {}),
       previous: unchanged
         ? undefined
-        : { price: existingPrice, category: existing.category, description: existing.description }
+        : {
+            price: existingPrice,
+            category: existing.category,
+            description: existing.description,
+            ...(hasPointsPriceColumn ? { pointsPrice: existingPointsPrice } : {})
+          }
     };
   });
 
   return {
     rows: previewRows,
     skipped,
+    hasPointsPriceColumn,
     summary: {
       newCount: previewRows.filter((r) => r.status === "new").length,
       changedCount: previewRows.filter((r) => r.status === "changed").length,
@@ -241,12 +290,17 @@ const confirmImport = async (organizationId, rows) => {
       continue;
     }
 
+    // Absent (not null) means the sheet had no points-price column, so the
+    // item's existing price is left exactly as it was.
+    const pointsPriceUpdate = "pointsPrice" in row ? { pointsPrice: row.pointsPrice } : {};
+
     if (row.status === "new") {
       await createItem(organizationId, {
         name,
         description: row.description || "",
         price: row.price,
-        category: row.category || "General"
+        category: row.category || "General",
+        ...pointsPriceUpdate
       });
       created += 1;
     } else if (row.status === "changed" && row.existingId) {
@@ -254,7 +308,8 @@ const confirmImport = async (organizationId, rows) => {
         await updateItem(organizationId, row.existingId, {
           description: row.description || "",
           price: row.price,
-          category: row.category || "General"
+          category: row.category || "General",
+          ...pointsPriceUpdate
         });
         updated += 1;
       } catch (error) {
@@ -272,8 +327,11 @@ const confirmImport = async (organizationId, rows) => {
 const buildMenuTemplate = async () => {
   const workbook = new ExcelJS.Workbook();
   const sheet = workbook.addWorksheet("Menu");
-  sheet.addRow(["Name", "Price", "Category", "Description"]);
-  sheet.addRow(["Cappuccino", "150", "Coffee", "Rich and creamy espresso with steamed milk"]);
+  sheet.addRow(["Name", "Price", "Points Price", "Category", "Description"]);
+  sheet.addRow(["Cappuccino", "150", "150", "Coffee", "Rich and creamy espresso with steamed milk"]);
+  // Second example row on purpose: a blank Points Price is how you say
+  // "on the menu, but not redeemable".
+  sheet.addRow(["Seasonal Tart", "320", "", "Food", "Menu only — not redeemable for points"]);
   return workbook.xlsx.writeBuffer();
 };
 
