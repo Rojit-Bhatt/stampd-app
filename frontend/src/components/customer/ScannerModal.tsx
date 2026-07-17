@@ -13,6 +13,8 @@ interface EarnResult {
   pointsEarned: number;
   billAmount: number;
   balance: number;
+  multiplier?: number;
+  campaignName?: string | null;
 }
 
 export function ScannerModal({
@@ -233,6 +235,8 @@ export function ScannerModal({
         points={earned.pointsEarned}
         billAmount={earned.billAmount}
         balance={earned.balance}
+        multiplier={earned.multiplier}
+        campaignName={earned.campaignName}
         onDone={onClose}
         doneLabel="Done"
         onSecondary={handleGoToHistory}

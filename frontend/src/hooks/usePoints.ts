@@ -12,6 +12,22 @@ export interface PointsBalance {
   earnPercent: number;
   /** 0 = never expires. */
   pointsExpiryDays: number;
+  /** 1 unless a campaign is live right now. */
+  multiplier: number;
+  /** Null unless a campaign is live right now. */
+  activeCampaign: { name: string; multiplier: number } | null;
+}
+
+export interface PublicCampaign {
+  id: string;
+  name: string;
+  description: string;
+  multiplier: number;
+  startAt: string;
+  endAt: string | null;
+  daysOfWeek: number[];
+  /** Whether it is multiplying anything RIGHT NOW, as opposed to scheduled. */
+  isLive: boolean;
 }
 
 export interface PointsTransaction {
@@ -68,6 +84,19 @@ export function useRewardCatalog(enabled = true) {
       return response.data || [];
     },
     enabled,
+  });
+}
+
+// What's on and what's coming at this outlet. Live ones first.
+export function usePublicCampaigns() {
+  const { companySlug, outletSlug } = useTenant();
+  return useQuery<PublicCampaign[]>({
+    queryKey: ["publicCampaigns", companySlug, outletSlug],
+    queryFn: async () => {
+      const response = await apiRequest<{ success: boolean; data: PublicCampaign[] }>("/api/points/campaigns");
+      return response.data || [];
+    },
+    staleTime: 1000 * 60,
   });
 }
 

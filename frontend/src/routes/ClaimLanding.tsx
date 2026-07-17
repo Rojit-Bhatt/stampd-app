@@ -21,6 +21,8 @@ interface ClaimResult {
   pointsEarned: number;
   billAmount: number;
   balance: number;
+  multiplier?: number;
+  campaignName?: string | null;
 }
 
 // StrictMode-safe module-scope cache — same pattern as VerifyEmail.tsx /
@@ -121,6 +123,8 @@ export default function ClaimLanding() {
             pointsEarned: res.data.pointsEarned ?? 0,
             billAmount: res.data.billAmount ?? 0,
             balance: res.data.balance ?? 0,
+            multiplier: res.data.multiplier,
+            campaignName: res.data.campaignName,
           });
           setStage("success");
         } else if (res.data.expired) {
@@ -203,6 +207,8 @@ export default function ClaimLanding() {
         points={result.pointsEarned}
         billAmount={result.billAmount}
         balance={result.balance}
+        multiplier={result.multiplier}
+        campaignName={result.campaignName}
         onDone={() => navigate(tenantPath(companySlug, slug, "dashboard"))}
         doneLabel="Go to dashboard"
       />

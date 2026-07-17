@@ -1,11 +1,13 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { QRCodeSVG } from "qrcode.react";
+import { Zap } from "lucide-react";
 import toast from "react-hot-toast";
 import { apiRequest } from "../../lib/api";
 import { useAdminSettings } from "../../hooks/useAdminSettings";
 import { useTenant } from "../../context/TenantContext";
 import { tenantUrl } from "../../lib/tenantPath";
 import { formatNpr } from "../../lib/subscription";
+import { useCampaigns } from "../../hooks/useCampaigns";
 
 // Staff enters the bill, then the customer scans with their phone's own
 // camera app (not an in-app scanner) — the QR encodes a URL to
@@ -18,7 +20,16 @@ import { formatNpr } from "../../lib/subscription";
 export default function GenerateQr() {
   const { companySlug, outletSlug } = useTenant();
   const { data: settings } = useAdminSettings();
+  const { data: campaigns = [] } = useCampaigns();
   const earnPercent = settings?.programResolved?.earnPercent ?? 100;
+
+  // The server is authoritative and recomputes this at claim time; this is
+  // so staff can see what the customer is about to get before they scan.
+  // Overlapping campaigns don't stack — the biggest wins.
+  const liveCampaign = campaigns
+    .filter((c) => c.isLive)
+    .reduce<(typeof campaigns)[number] | null>((best, c) => (!best || c.multiplier > best.multiplier ? c : best), null);
+  const multiplier = liveCampaign?.multiplier ?? 1;
 
   const [token, setToken] = useState<string | null>(null);
   const [ttl, setTtl] = useState(0);
@@ -29,7 +40,7 @@ export default function GenerateQr() {
 
   const parsedAmount = Number(billAmount);
   const amountValid = billAmount !== "" && Number.isFinite(parsedAmount) && parsedAmount > 0;
-  const pointsPreview = amountValid ? Math.round(parsedAmount * earnPercent) / 100 : 0;
+  const pointsPreview = amountValid ? Math.round(parsedAmount * earnPercent * multiplier) / 100 : 0;
 
   const generate = useCallback(async (amount: number) => {
     setLoading(true);
@@ -69,6 +80,16 @@ export default function GenerateQr() {
       <h1 className="font-display text-2xl font-extrabold text-[var(--ink)]">Earn code</h1>
       <p className="mb-6 mt-1 text-[var(--muted)]">Enter the bill, then have the customer scan.</p>
 
+      {liveCampaign && (
+        <div
+          className="mb-4 flex items-center justify-center gap-2 rounded-full px-4 py-2.5 text-sm font-bold"
+          style={{ background: "var(--brand)", color: "#fff" }}
+        >
+          <Zap className="h-4 w-4" />
+          {liveCampaign.multiplier}× points on right now — {liveCampaign.name}
+        </div>
+      )}
+
       <div className="rounded-3xl border border-[var(--line)] bg-[var(--surface)] p-8 shadow-ambient">
         <label className="mb-4 block text-left">
           <span className="mb-1.5 block text-sm font-bold text-[var(--ink)]">Bill amount</span>
@@ -89,6 +110,7 @@ export default function GenerateQr() {
             <span className="mt-1.5 block text-xs font-semibold text-[var(--muted)]">
               Earns <span style={{ color: "var(--brand)" }}>{pointsPreview}</span> points
               {earnPercent !== 100 ? ` (${earnPercent}% back)` : ""}
+              {liveCampaign ? ` · ${liveCampaign.multiplier}× ${liveCampaign.name}` : ""}
             </span>
           ) : (
             <span className="mt-1.5 block text-xs text-[var(--soft)]">

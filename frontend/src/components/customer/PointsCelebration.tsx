@@ -1,4 +1,4 @@
-import { Coins, Gift, ArrowRight } from "lucide-react";
+import { Coins, Gift, ArrowRight, Zap } from "lucide-react";
 import { motion, useReducedMotion } from "motion/react";
 import { formatPoints } from "../../hooks/usePoints";
 import { formatNpr } from "../../lib/subscription";
@@ -10,6 +10,10 @@ interface EarnProps {
   /** What the customer actually paid — shown alongside, so the maths is visible. */
   billAmount: number;
   balance: number;
+  /** 1 unless a campaign applied. */
+  multiplier?: number;
+  /** Named when a campaign applied, so a bigger number has a visible reason. */
+  campaignName?: string | null;
 }
 
 interface RedeemProps {
@@ -84,6 +88,19 @@ export function PointsCelebration(props: PointsCelebrationProps) {
             <p className="mt-2 text-sm text-[#A3A3A3]">
               on a {formatNpr(props.billAmount)} bill
             </p>
+            {/* A doubled number with no explanation reads as a bug. */}
+            {props.multiplier !== undefined && props.multiplier > 1 && (
+              <motion.div
+                initial={reduceMotion ? false : { opacity: 0, scale: 0.9 }}
+                animate={{ opacity: 1, scale: 1 }}
+                transition={{ delay: reduceMotion ? 0 : 0.3, type: "spring", stiffness: 300, damping: 16 }}
+                className="mt-3 inline-flex items-center gap-1.5 rounded-full px-3.5 py-1.5 text-xs font-bold"
+                style={{ background: "var(--brand)", color: "#fff" }}
+              >
+                <Zap className="h-3.5 w-3.5" />
+                {props.multiplier}× — {props.campaignName || "campaign"}
+              </motion.div>
+            )}
           </>
         ) : (
           <>

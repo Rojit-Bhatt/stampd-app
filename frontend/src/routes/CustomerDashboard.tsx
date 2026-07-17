@@ -1,8 +1,8 @@
-import { Coins, MailWarning, MapPin, Phone as PhoneIcon, Mail, Clock, Instagram, Facebook, Twitter, Calendar, Gift } from "lucide-react";
+import { Coins, MailWarning, MapPin, Phone as PhoneIcon, Mail, Clock, Instagram, Facebook, Twitter, Calendar, Gift, Zap } from "lucide-react";
 import { Link } from "react-router-dom";
 import toast from "react-hot-toast";
 import { useTenant } from "../context/TenantContext";
-import { usePointsBalance, useRewardCatalog, formatPoints } from "../hooks/usePoints";
+import { usePointsBalance, useRewardCatalog, usePublicCampaigns, formatPoints } from "../hooks/usePoints";
 import { useCustomerMenu } from "../hooks/useCustomerMenu";
 import { useAccount } from "../hooks/useAccount";
 import { apiRequest } from "../lib/api";
@@ -19,6 +19,16 @@ function formatEventDate(iso: string): string {
   return new Date(iso).toLocaleDateString(undefined, { month: "short", day: "numeric" });
 }
 
+const DAY_LABELS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+
+// Falls back to the schedule when a campaign has no description of its own.
+function campaignWhen(c: { startAt: string; daysOfWeek: number[] }): string {
+  const from = new Date(c.startAt).toLocaleDateString(undefined, { month: "short", day: "numeric" });
+  if (c.daysOfWeek.length === 0 || c.daysOfWeek.length === 7) return `From ${from}`;
+  const days = c.daysOfWeek.slice().sort((a, b) => a - b).map((d) => DAY_LABELS[d]).join(", ");
+  return `${days} · from ${from}`;
+}
+
 // Rendered inside CustomerLayout (phone shell + bottom nav). Content only.
 export default function CustomerDashboard() {
   const { data: account } = useAccount("customer");
@@ -26,6 +36,7 @@ export default function CustomerDashboard() {
   const { tenant, companySlug, outletSlug } = useTenant();
   const { data: points, isLoading: cardLoading } = usePointsBalance();
   const { data: catalog = [] } = useRewardCatalog();
+  const { data: campaigns = [] } = usePublicCampaigns();
 
   const balance = points?.balance ?? 0;
   const earnPercent = points?.earnPercent ?? tenant?.program?.earnPercent ?? 100;
@@ -68,6 +79,9 @@ export default function CustomerDashboard() {
 
   const firstName = (account?.name || "").split(" ")[0];
 
+  // The live one already has its own banner above — this is what's next.
+  const upcomingCampaigns = campaigns.filter((c) => !c.isLive).slice(0, 3);
+
   return (
     <div className="px-5 py-6">
       {/* Header — the shared top bar (wordmark/scan/notifications/avatar)
@@ -105,6 +119,26 @@ export default function CustomerDashboard() {
             >
               Resend
             </button>
+          </div>
+        </div>
+      )}
+
+      {/* Above the balance on purpose: a live multiplier is the most
+          time-sensitive thing on this page — it's the reason to come in
+          today rather than tomorrow. */}
+      {points?.activeCampaign && (
+        <div
+          className="mb-4 flex items-center gap-3 rounded-3xl px-4 py-3.5"
+          style={{ background: "var(--brand)", color: "#fff" }}
+        >
+          <span className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-full bg-white/20">
+            <Zap className="h-4 w-4" />
+          </span>
+          <div className="min-w-0 flex-1">
+            <div className="truncate text-sm font-bold">
+              {formatPoints(points.activeCampaign.multiplier)}× points on right now
+            </div>
+            <div className="truncate text-[13px] opacity-80">{points.activeCampaign.name}</div>
           </div>
         </div>
       )}
@@ -171,6 +205,32 @@ export default function CustomerDashboard() {
           <p className="mt-3 text-[12px] text-[var(--muted)]">
             Ask the counter to bring up the redeem code, then scan it.
           </p>
+        </div>
+      )}
+
+      {upcomingCampaigns.length > 0 && (
+        <div className="mt-4 shadow-ambient rounded-3xl bg-[var(--surface)] p-5">
+          <div className="mb-3 text-xs font-bold uppercase tracking-wider text-[var(--soft)]">
+            Coming up
+          </div>
+          <div className="flex flex-col gap-3">
+            {upcomingCampaigns.map((c) => (
+              <div key={c.id} className="flex items-center gap-3">
+                <span
+                  className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-full font-display text-xs font-extrabold"
+                  style={{ background: "var(--surface-container)", color: "var(--brand)" }}
+                >
+                  {formatPoints(c.multiplier)}×
+                </span>
+                <div className="min-w-0 flex-1">
+                  <div className="truncate text-sm font-semibold text-[var(--ink)]">{c.name}</div>
+                  <div className="truncate text-[13px] text-[var(--muted)]">
+                    {c.description || campaignWhen(c)}
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
         </div>
       )}
 

@@ -54,7 +54,7 @@ async function main() {
     console.log("\n== The catalog merges both collections ==");
     const rw = await api("/api/admin/rewards", {
       method: "POST", token: adminToken,
-      body: { name: "Tote Bag", description: "Canvas, our logo.", pointsPrice: 50 },
+      body: { name: "Enamel Pin", description: "Small, ours.", pointsPrice: 50 },
     });
     check("a standalone reward is created -> 201", rw.status === 201, rw.body);
     check("its price comes back in points, not centi", rw.body.reward.pointsPrice === 50, rw.body.reward);
@@ -62,23 +62,23 @@ async function main() {
     const cat = await api("/api/points/catalog", { token: customerToken });
     const byName = Object.fromEntries((cat.body.data || []).map((i) => [i.name, i]));
     check("a priced menu item is in the catalog", byName["House Coffee"]?.kind === "menu", cat.body.data);
-    check("the standalone reward is in the catalog", byName["Tote Bag"]?.kind === "reward", cat.body.data);
+    check("the standalone reward is in the catalog", byName["Enamel Pin"]?.kind === "reward", cat.body.data);
     check(
       "a menu item with no points price stays out",
       !byName["Seasonal Special"],
       Object.keys(byName),
     );
-    check("the catalog is sorted cheapest-first", cat.body.data[0].name === "Tote Bag", cat.body.data.map((i) => i.name));
+    check("the catalog is sorted cheapest-first", cat.body.data[0].name === "Enamel Pin", cat.body.data.map((i) => i.name));
 
     console.log("\n== Redeeming a standalone reward ==");
     const before = (await api("/api/points/balance", { token: customerToken })).body.data.balance;
     const red = await api("/api/points/redeem", {
       method: "POST", token: customerToken,
-      body: { token: (await redeemQr()).body.data.token, itemId: byName["Tote Bag"].id, kind: "reward" },
+      body: { token: (await redeemQr()).body.data.token, itemId: byName["Enamel Pin"].id, kind: "reward" },
     });
     check("the reward redeems -> 200", red.status === 200, red.body);
     check("it deducts its points price", red.body.data.balance === before - 50, red.body.data);
-    check("it names the reward back", red.body.data.rewardName === "Tote Bag", red.body.data);
+    check("it names the reward back", red.body.data.rewardName === "Enamel Pin", red.body.data);
 
     console.log("\n== Redeeming a menu item still works ==");
     const red2 = await api("/api/points/redeem", {
@@ -93,10 +93,10 @@ async function main() {
     // no kind must still resolve correctly rather than 404.
     const red3 = await api("/api/points/redeem", {
       method: "POST", token: customerToken,
-      body: { token: (await redeemQr()).body.data.token, itemId: byName["Tote Bag"].id },
+      body: { token: (await redeemQr()).body.data.token, itemId: byName["Enamel Pin"].id },
     });
     check("redeeming without a kind still resolves", red3.status === 200, red3.body);
-    check("...and resolves to the right thing", red3.body.data.rewardName === "Tote Bag", red3.body.data);
+    check("...and resolves to the right thing", red3.body.data.rewardName === "Enamel Pin", red3.body.data);
 
     console.log("\n== The ledger keeps the receipt ==");
     const hist = await api("/api/points/history", { token: customerToken });
@@ -109,7 +109,7 @@ async function main() {
     const cat2 = await api("/api/points/catalog", { token: customerToken });
     check(
       "an inactive reward leaves the catalog",
-      !(cat2.body.data || []).some((i) => i.name === "Tote Bag"),
+      !(cat2.body.data || []).some((i) => i.name === "Enamel Pin"),
       cat2.body.data.map((i) => i.name),
     );
     const blocked = await api("/api/points/redeem", {
@@ -123,7 +123,7 @@ async function main() {
     const stillListed = await api("/api/admin/rewards", { token: adminToken });
     check(
       "the admin still sees it, switched off",
-      stillListed.body.data.some((r) => r.name === "Tote Bag" && r.isActive === false),
+      stillListed.body.data.some((r) => r.name === "Enamel Pin" && r.isActive === false),
       stillListed.body.data,
     );
 
@@ -138,9 +138,12 @@ async function main() {
       method: "POST", body: { email: "patan@coffesarowar.com", password: "password" },
     });
     const siblingRewards = await api("/api/admin/rewards", { token: sibling.body.token, slug: "patan" });
+    // Not "the sibling has no rewards" — every outlet is seeded with its own.
+    // The invariant is that it can't see THIS outlet's.
     check(
-      "a sibling outlet sees none of this outlet's rewards",
-      Array.isArray(siblingRewards.body.data) && siblingRewards.body.data.length === 0,
+      "a sibling outlet doesn't see this outlet's reward",
+      Array.isArray(siblingRewards.body.data) &&
+        !siblingRewards.body.data.some((r) => r.name === "Enamel Pin"),
       siblingRewards.body.data,
     );
 

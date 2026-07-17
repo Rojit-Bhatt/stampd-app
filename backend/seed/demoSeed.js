@@ -82,6 +82,8 @@ const seedDemoData = async () => {
   const CustomerAccount = require("../models/CustomerAccount");
   const PointsBalance = require("../models/PointsBalance");
   const PointsTransaction = require("../models/PointsTransaction");
+  const Campaign = require("../models/Campaign");
+  const RewardItem = require("../models/RewardItem");
   const Subscription = require("../models/Subscription");
   const MenuItem = require("../models/MenuItem");
   const { ensureDefaultPlansSeeded } = require("../services/subscriptionPlanService");
@@ -208,6 +210,36 @@ const seedDemoData = async () => {
             category: "Food",
             pointsPriceCenti: null
           });
+
+          // A standalone reward — something the outlet doesn't sell, so it
+          // only exists for points.
+          await RewardItem.create({
+            organizationId: outlet._id,
+            name: "Tote Bag",
+            description: "Canvas, our logo on it.",
+            pointsPriceCenti: toCenti(500),
+            sortOrder: 1
+          });
+
+          // One live campaign, on ONE outlet, so a cold boot shows both
+          // states side by side: thamel is running 2x, its siblings aren't.
+          //
+          // Deliberately NOT durbarmarg: that's the outlet the test suite
+          // earns against ~30 times, and a live multiplier there would
+          // silently double every expected figure. Seed data that changes
+          // earn math has to live where nothing is asserting on it.
+          if (def.slug === "coffesarowar" && outletDef.slug === "thamel") {
+            await Campaign.create({
+              organizationId: outlet._id,
+              name: "Opening Week",
+              description: "Double points on every bill this week.",
+              multiplier: 2,
+              startAt: new Date(now.getTime() - 2 * DAY_MS),
+              endAt: new Date(now.getTime() + 5 * DAY_MS),
+              daysOfWeek: [],
+              isActive: true
+            });
+          }
 
           console.log(`[seed]   Outlet: /${def.slug}/${outletDef.slug} — admin ${outletDef.admin} / password`);
         }

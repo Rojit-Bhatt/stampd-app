@@ -7,6 +7,8 @@ import {
   Users,
   Coins,
   Receipt,
+  Gift,
+  Zap,
   Palette,
   UtensilsCrossed,
   FileSpreadsheet,
@@ -53,6 +55,8 @@ const NAV: (NavLeaf | NavGroup)[] = [
 
 const BASE_MANAGEMENT_NAV: NavLeaf[] = [
   { to: "program", label: "Points program", Icon: Coins },
+  { to: "rewards", label: "Rewards", Icon: Gift },
+  { to: "campaigns", label: "Campaigns", Icon: Zap },
   { to: "branding", label: "Branding", Icon: Palette },
   { to: "contact", label: "Contact", Icon: Phone },
   { to: "menu", label: "Menu", Icon: UtensilsCrossed },
