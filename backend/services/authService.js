@@ -27,9 +27,9 @@ const issueToken = async (user, type, organizationId) => {
   return raw;
 };
 
-const sendVerifyEmail = async (user, organizationId, slug) => {
+const sendVerifyEmail = async (user, organizationId, companySlug, outletSlug) => {
   const raw = await issueToken(user, "email_verify", organizationId);
-  const link = buildAuthLink({ slug, path: "verify-email", token: raw });
+  const link = buildAuthLink({ companySlug, outletSlug, path: "verify-email", token: raw });
   await sendEmail({
     to: user.email,
     subject: "Verify your email",
@@ -84,7 +84,7 @@ const formatAuthPayload = (user) => {
   };
 };
 
-const registerUser = async ({ name, email, password, phone, address, organizationId, slug }) => {
+const registerUser = async ({ name, email, password, phone, address, organizationId, companySlug, outletSlug }) => {
   if (!name || !email || !password) {
     throw createHttpError("Name, email, and password are required.", 400);
   }
@@ -114,7 +114,7 @@ const registerUser = async ({ name, email, password, phone, address, organizatio
   });
 
   await ensureUserPointsBalance(createdUser._id, organizationId);
-  await sendVerifyEmail(createdUser, organizationId, slug);
+  await sendVerifyEmail(createdUser, organizationId, companySlug, outletSlug);
 
   return { success: true, message: "Registered. Check your email to verify your account." };
 };
@@ -174,11 +174,11 @@ const verifyEmail = async ({ token, organizationId }) => {
   return { success: true, message: "Email verified. You can now collect stamps." };
 };
 
-const resendVerification = async ({ email, organizationId, slug }) => {
+const resendVerification = async ({ email, organizationId, companySlug, outletSlug }) => {
   if (email && organizationId) {
     const user = await User.findOne({ organizationId, email: normalizeEmail(email) });
     if (user && !user.emailVerified) {
-      await sendVerifyEmail(user, organizationId, slug);
+      await sendVerifyEmail(user, organizationId, companySlug, outletSlug);
     }
   }
   // Never reveal whether the email exists.
@@ -276,12 +276,12 @@ const completeProfile = async ({ userId, organizationId, phone, address }) => {
   return formatAuthPayload(user);
 };
 
-const forgotPassword = async ({ email, organizationId, slug }) => {
+const forgotPassword = async ({ email, organizationId, companySlug, outletSlug }) => {
   if (email && organizationId) {
     const user = await User.findOne({ organizationId, email: normalizeEmail(email) });
     if (user) {
       const raw = await issueToken(user, "password_reset", organizationId);
-      const link = buildAuthLink({ slug, path: "reset-password", token: raw });
+      const link = buildAuthLink({ companySlug, outletSlug, path: "reset-password", token: raw });
       await sendEmail({
         to: user.email,
         subject: "Reset your password",

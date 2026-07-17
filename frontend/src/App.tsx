@@ -52,6 +52,9 @@ const CompanyDashboard = lazy(() => import('./routes/company/CompanyDashboard'))
 const CompanySubscription = lazy(() => import('./routes/company/CompanySubscription'));
 const CompanyReports = lazy(() => import('./routes/company/CompanyReports'));
 const AdminLogin = lazy(() => import('./routes/AdminLogin'));
+const AdminVerifyEmail = lazy(() => import('./routes/AdminVerifyEmail'));
+const AdminForgotPassword = lazy(() => import('./routes/AdminForgotPassword'));
+const AdminResetPassword = lazy(() => import('./routes/AdminResetPassword'));
 const AdminOverview = lazy(() => import('./routes/admin/AdminOverview'));
 const GenerateQr = lazy(() => import('./routes/admin/GenerateQr'));
 const RedeemPoints = lazy(() => import('./routes/admin/RedeemPoints'));
@@ -129,6 +132,12 @@ export default function App() {
           </Route>
 
           <Route path="/admin-login" element={<AdminLogin />} />
+          {/* Where the staff verification / reset emails land. Slug-less like
+              the login they lead to. Without these an unverified admin is
+              locked out permanently — login refuses them with 403. */}
+          <Route path="/admin-verify-email" element={<AdminVerifyEmail />} />
+          <Route path="/admin-forgot-password" element={<AdminForgotPassword />} />
+          <Route path="/admin-reset-password" element={<AdminResetPassword />} />
           <Route path="/company" element={<CompanyLayout />}>
             <Route index element={<CompanyDashboard />} />
             <Route path="reports" element={<CompanyReports />} />

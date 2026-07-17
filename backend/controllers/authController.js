@@ -8,7 +8,8 @@ const register = async (req, res, next) => {
     const { name, email, password, phone, address } = req.body;
     const result = await registerUser({
       name, email, password, phone, address,
-      organizationId: req.organizationId, slug: req.organization.slug
+      organizationId: req.organizationId,
+      companySlug: req.company.slug, outletSlug: req.organization.slug
     });
     res.status(201).json(result);
   } catch (error) {
@@ -48,7 +49,8 @@ const verifyEmailController = async (req, res, next) => {
 const resendVerificationController = async (req, res, next) => {
   try {
     const result = await resendVerification({
-      email: req.body.email, organizationId: req.organizationId, slug: req.organization.slug
+      email: req.body.email, organizationId: req.organizationId,
+      companySlug: req.company.slug, outletSlug: req.organization.slug
     });
     res.status(200).json(result);
   } catch (error) {
@@ -59,7 +61,8 @@ const resendVerificationController = async (req, res, next) => {
 const forgotPasswordController = async (req, res, next) => {
   try {
     const result = await forgotPassword({
-      email: req.body.email, organizationId: req.organizationId, slug: req.organization.slug
+      email: req.body.email, organizationId: req.organizationId,
+      companySlug: req.company.slug, outletSlug: req.organization.slug
     });
     res.status(200).json(result);
   } catch (error) {

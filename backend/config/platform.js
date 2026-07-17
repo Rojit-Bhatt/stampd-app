@@ -55,6 +55,7 @@ const RESERVED_SLUGS = new Set([
   "api", "www", "app", "admin", "assets", "static", "public",
   "explore", "platform", "company", "owner",
   "admin-login", "business-login", "customer-login", "customer-register",
+  "admin-verify-email", "admin-forgot-password", "admin-reset-password",
   "verify-email", "reset-password", "forgot-password"
 ]);
 
