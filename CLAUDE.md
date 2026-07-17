@@ -6,11 +6,9 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 **Stampd** — a multi-tenant white-label loyalty SaaS for the Nepali market. The platform owner registers **companies**; each company runs one or more **outlets**, each an isolated tenant with its own branding, loyalty program, and customers. One codebase serves many businesses. "Coffesarowar" is just the first seeded company, not the product.
 
-The core loyalty loop: staff generates a short-lived QR → the customer scans it with their **phone's own camera** (no app install), lands on a public claim page, signs in or is recognized silently → earns a stamp → at `stampsRequired`, a voucher auto-generates and the balance resets → staff redeems the voucher. A customer can also scan from inside the app.
+The core loyalty loop: staff enters the **bill amount** (mandatory) and generates a short-lived QR → the customer scans it with their **phone's own camera** (no app install), lands on a public claim page, signs in or is recognized silently → earns points as a percentage of the bill. To spend them, staff puts up a **redeem** QR → the customer scans it and picks from the outlet's reward catalog → the price is deducted. A customer can also scan from inside the app.
 
 `PLATFORM_NAME` in `backend/config/platform.js` (mirrored in `frontend/src/lib/platform.ts`) is the single rebrand knob for the whole SaaS.
-
-**Next up — Phase B: stamps → points.** The stamp/voucher loop above is being replaced wholesale by points proportional to bill amount, redeemable against a catalog. See the "Phase B" section at the bottom before touching loyalty code — much of what's described here is scheduled for deletion.
 
 ## Commands
 
@@ -61,7 +59,7 @@ The mock is deliberately partial. Know its limits *before* writing a query:
 
 ## Multi-tenant architecture
 
-**Every loyalty record carries `organizationId`.** `User`, `StampCard`, `Voucher`, `DynamicQRToken`, `StampClaimEvent`, `MenuItem` are all outlet-scoped. Isolation is enforced by scoping every query with `organizationId` — when adding any query, it MUST include it, or you leak data across tenants. This is the invariant the whole product depends on.
+**Every loyalty record carries `organizationId`.** `User`, `PointsBalance`, `PointsTransaction`, `DynamicQRToken`, `MenuItem` are all outlet-scoped. Isolation is enforced by scoping every query with `organizationId` — when adding any query, it MUST include it, or you leak data across tenants. This is the invariant the whole product depends on. **Points never pool across outlets**: a balance is earned at one counter and spent at that same counter, even between two outlets of the same company.
 
 **Three roles** (`User.role`): `platform` (super-admin, `organizationId = null`), `business_admin` (an outlet's staff), `customer` (an outlet's end user). Platform admins additionally carry `platformRole` (`owner` / `support`) — `owner` gates registering companies, team management, plans, and keys.
 
@@ -88,7 +86,20 @@ One collection per identity is what makes email uniqueness a single enforceable 
 
 **Unified admin login.** `POST /api/admin-auth/login` is slug-less: one email+password form for all staff. The backend looks up the `AdminAccount` and branches on `kind` — a company owner gets a company session and lands at `/company`; an outlet admin gets a tenant JWT and lands at `/[company]/[outlet]/admin`. No match → "not registered". Each outlet's credentials are independent (own hash, verified once) — there is no password copying or fan-out between them. An unverified admin is refused **at login** with 403 `EMAIL_NOT_VERIFIED`, not gated inside the console.
 
-**QR-as-link claim flow.** The QR staff generates (`GenerateQr.tsx`) encodes a real URL (`/[company]/[outlet]/claim?token=…`), not a bare token, so the phone's native camera opens it. The claim page converts the scanned `DynamicQRToken` (30s, single-use) into a `PendingClaim` (15 min) — decoupling "how long the QR is scannable" from "how long the customer has to finish signing in." A brand-new signup's first stamp stays pending until they verify their email (maybe minutes later, another device), at which point `pendingClaimService.autoFulfillForAccount` fulfills every pending claim for that account across all tenants.
+**QR-as-link claim flow.** The QR staff generates (`GenerateQr.tsx`) encodes a real URL (`/[company]/[outlet]/claim?token=…`), not a bare token, so the phone's native camera opens it. Build these with `tenantUrl`, never by hand — a one-segment URL resolves to a *company* and silently bounces to `/explore`. The claim page converts the scanned `DynamicQRToken` (30s, single-use) into a `PendingClaim` (15 min) — decoupling "how long the QR is scannable" from "how long the customer has to finish signing in." A brand-new signup's first earn stays pending until they verify their email (maybe minutes later, another device), at which point `pendingClaimService.autoFulfillForAccount` fulfills every pending claim for that account across all tenants.
+
+## The points loop
+
+`services/pointsService.js` is the whole loyalty core. `PointsBalance` holds one balance per customer per outlet; `PointsTransaction` is the append-only ledger behind every history, report and KPI. A correction is a new row, never an edit — **the balance must always equal the sum of the ledger**, which is what makes a drifted balance detectable instead of merely wrong.
+
+**Points are INTEGER centipoints** (`utils/pointsMath.js`; 1 point = 100). A balance is mutated with `$inc`, so the arithmetic happens inside the DB where the result can't be rounded, and repeatedly `$inc`-ing a decimal drifts until a balance reads `10.499999999` and the `$gte` redemption guard rejects a customer who has exactly enough. Integers make that impossible while preserving the fractional points the program promises (Rs 105 at 10% = 10.5 points = 1050 centi). **Centipoints never leave the backend** — responses convert once, on the way out, via `toPoints()`.
+
+- **Earn**: the bill is **mandatory** (the award is a function of it, so a bill-less token could only award zero). `earnCenti = round(bill × earnPercent × multiplier)` — the `/100` and `×100` cancel, which is why `earnPercent` maps so cleanly onto this representation.
+- **No cooldown.** The token's single-use guard (`consumeDynamicQrToken`) already serializes claimers, so removing it left no gap, and two genuine bills are two genuine earns.
+- **`DynamicQRToken.purpose`** (`earn`/`redeem`) is checked on consume, so scanning the counter's earn QR on the redeem page can't move a balance the wrong way.
+- **Redeem** is staff-initiated too: a customer must never be able to move their own balance. The sufficient-funds check **is** the atomic `findOneAndUpdate({…, balanceCenti: {$gte: price}})` — not a read-then-write, which two concurrent redeems could both pass.
+- **Expiry is rolling inactivity**: derived from `lastActivityAt` at read time, materialized on the next write (zero the row + log an `expire` row). Any earn or redeem restarts the clock. `pointsExpiryDays: 0` = never. **No cron.** Test hook: `/__test__/expire-points` just drags `lastActivityAt` back, so ageing a row *is* the production path.
+- **Catalog**: a `MenuItem` with a `pointsPriceCenti` is redeemable; `null` means menu-only, so adding points to an outlet never puts its whole menu up for redemption.
 
 ## Subscriptions (key-based, no payment gateway)
 
@@ -157,19 +168,13 @@ Use the shared utilities instead of ad hoc shadows/hover states: `.shadow-ambien
 
 The reference screens this system came from live at `frontend design/` (8 `code.html`+`screen.png` pairs plus `stampd_core/DESIGN.md`) — useful for token values and motion rationale, but **the shipped code wins** where they've diverged (e.g. headings are bold/extrabold, not the regular weight `DESIGN.md` specifies).
 
-## Phase B — stamps → points (next)
+## Phase C — rewards catalog + campaigns (next)
 
-Full plan: `docs/superpowers/plans/2026-07-16-multi-business-subscriptions.md` and the approved restructure plan. The locked shape:
-
-- **Delete outright**: `StampCard`, `Voucher`, `StampClaimEvent`, `voucherService`, voucher routes/pages/hooks and their suites.
-- **New**: `PointsBalance{organizationId, userId, balance, lastActivityAt}` and a `PointsTransaction` ledger (`earn`/`redeem`/`expire`) powering customer history + admin transaction history. `DynamicQRToken` gains `purpose: "earn"|"redeem"`.
-- **Earn**: bill amount **mandatory** before QR generation; award = bill × `earnPercent` (default 100 → 1 point per rupee) × campaign multiplier. **No cooldown** — every bill earns; the token's single-use guard already serializes claimers.
-- **Program config**: `earnPercent` + `pointsExpiryDays` replace `stampsRequired`/`cooldownHours`/`voucherExpiryDays`/`rewardTitle`/`rewardDescription`/`minBillAmount`. Still resolved through `programService`.
-- **Expiry**: rolling inactivity, lazy on read, materialized on next write. No cron.
-- **Redeem**: staff-initiated 30s single-use QR → customer scans → picks a catalog item → atomic `findOneAndUpdate({…, balance: {$gte: price}}, {$inc: {balance: -price}})` (`$gte` is mock-DB supported; no match = insufficient balance).
-- **Points are strictly per-outlet.** No cross-outlet balance, ever.
-
-Two open decisions flagged during planning: **fractional-point float drift** (repeated `$inc` of decimals accumulates binary error — either round to 2dp at every write or store integer centipoints) and the **campaign multiplier stacking rule** (default: max, no compounding).
+- Standalone `RewardItem` for non-menu rewards, alongside the existing `MenuItem.pointsPriceCenti` (which Phase B pulled forward because redeem needed something to redeem against). Plus a `pointsPrice` column in the Excel menu import, and admin CRUD for both.
+- `Campaign{organizationId, name, multiplier, startAt, endAt, daysOfWeek[], isActive}` with `resolveActiveMultiplier(org, now)` evaluated at earn time. `PointsTransaction` already carries `multiplier` and `campaignId`, and `awardPointsInTransaction` already snapshots a `multiplier` of 1 — so the ledger's shape doesn't change when campaigns land.
+- **Stacking rule: max, no compounding** (if a 2x weekend and a 3x Thursday both match, it's 3x, not 6x) — still worth confirming before building.
+- Timezone is unresolved: `daysOfWeek` needs a definition of "Thursday" and the server runs UTC.
+- Suites: `tests/rewards-catalog.js`, `tests/campaigns.js`.
 
 ## Stale docs
 
