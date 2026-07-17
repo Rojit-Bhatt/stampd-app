@@ -4,10 +4,12 @@ interface StampdLogoProps {
   className?: string;
 }
 
-// Hand-built recreation of the Stampd mark (2x2 stamp-card grid: three
-// outline circles + one filled "stamped" circle). Colors are fixed, not
-// tenant-themed — this is the platform's own identity, distinct from
-// --brand/--plat which theme per-tenant UI.
+// The Stampd mark: one coin earned on top of another, the top one struck
+// with a point. Colors are fixed, not tenant-themed — this is the platform's
+// own identity, distinct from --brand/--plat which theme per-tenant UI.
+//
+// The front coin is drawn last and filled opaque so it occludes the back
+// coin's stroke without needing a mask.
 export function StampdLogo({ size = 24, tile = false, className = "" }: StampdLogoProps) {
   const iconSize = tile ? Math.round(size * 0.64) : size;
 
@@ -19,14 +21,13 @@ export function StampdLogo({ size = 24, tile = false, className = "" }: StampdLo
       className={tile ? "" : className}
       aria-hidden="true"
     >
-      <g stroke="#1F1B18" strokeWidth="6" fill="none" strokeLinecap="round">
-        <circle cx="27" cy="27" r="15" />
-        <circle cx="73" cy="27" r="15" />
-        <circle cx="27" cy="73" r="15" />
-        <line x1="50" y1="6" x2="50" y2="94" />
-        <line x1="6" y1="50" x2="94" y2="50" />
-      </g>
-      <circle cx="73" cy="73" r="15" fill="#C15D2C" />
+      <circle cx="36" cy="38" r="24" fill="none" stroke="#1F1B18" strokeWidth="6" />
+      <circle cx="62" cy="62" r="24" fill="#C15D2C" stroke="#1F1B18" strokeWidth="6" />
+      <path
+        transform="translate(62 62)"
+        fill="#F3ECE2"
+        d="M0,-12 Q1.7,-1.7 12,0 Q1.7,1.7 0,12 Q-1.7,1.7 -12,0 Q-1.7,-1.7 0,-12 Z"
+      />
     </svg>
   );
 

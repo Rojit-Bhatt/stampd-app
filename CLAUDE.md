@@ -4,28 +4,13 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## What this is
 
-A **multi-tenant white-label loyalty SaaS** (the "Druto" model). The platform owner onboards nearby cafes/restaurants; each becomes an isolated **tenant** with its own branded space, its own stamp program, its own customers. One codebase serves many businesses. "Coffesarowar" is now just the first seeded tenant, not the product.
+**Stampd** — a multi-tenant white-label loyalty SaaS for the Nepali market. The platform owner registers **companies**; each company runs one or more **outlets**, each an isolated tenant with its own branding, loyalty program, and customers. One codebase serves many businesses. "Coffesarowar" is just the first seeded company, not the product.
 
-The core loyalty loop: a barista generates a short-lived QR → the customer scans it with their **phone's own camera** (no app install), lands on a public claim page, signs in or registers with zero friction if already recognized → earns 1 stamp (per-tenant cooldown) → at the tenant's `stampsRequired` threshold, a reward voucher auto-generates and the stamp balance resets → barista redeems the voucher. A customer can also stamp from inside the app itself via the in-app camera scanner.
+The core loyalty loop: staff generates a short-lived QR → the customer scans it with their **phone's own camera** (no app install), lands on a public claim page, signs in or is recognized silently → earns a stamp → at `stampsRequired`, a voucher auto-generates and the balance resets → staff redeems the voucher. A customer can also scan from inside the app.
 
-**Migration state:** multi-tenant backend/frontend, the global customer-identity + QR-as-link claim flow, the full visual redesign, a global `/explore` cross-tenant business directory, Menu Management redesign + safe Excel import, Admin Dashboard analytics/charts, a toast restyle + app-wide copy pass, the Stampd logo mark, per-tenant voucher expiry, and multiple-platform-admins/roles are all done, merged to `main`, and pushed to `origin`. `.env.example` files document every required var. Remaining: deploy (Vercel + Atlas), LAN HTTPS for on-phone testing.
+`PLATFORM_NAME` in `backend/config/platform.js` (mirrored in `frontend/src/lib/platform.ts`) is the single rebrand knob for the whole SaaS.
 
-**In progress: multi-business subscriptions + key-based activation** (see `docs/superpowers/plans/2026-07-16-multi-business-subscriptions.md` for the full plan). One `BusinessOwnerAccount` (a new global identity, mirroring `CustomerAccount`'s pattern exactly) can own multiple `Organization`s ("businesses") and switch between them from a single login, gated by a platform-admin-configurable `SubscriptionPlan` (Basic/Growth/Pro — business-count limits, not physical-location limits: each business an owner runs is fully independent, own slug/branding/stamp program, no stamp-sharing). **No live payment gateway integration** — eSewa/Fonepay API integration was planned and then explicitly dropped in favor of a manual **key-based activation** system: the platform admin generates a `SubscriptionKey` scoped to a plan, contacts the business out-of-band (phone/email) to confirm payment, hands over the key; the business admin redeems it from a new tenant-scoped "Subscription" section in the existing `/:slug/admin` console (`AdminLayout`, not a separate owner-only surface) to confirm/extend that business's subscription. That page shows a days-left countdown and, once near expiry, the platform's own contact info (reused from the existing `platformConfigService` contact singleton) so the business knows who to reach — the same contact info goes into the lazily-sent (no cron) renewal-reminder email. `Subscription.businessLimitAtPurchase` is snapshotted at key-redemption time, never read live off the plan, so a later plan edit never retroactively strands an existing subscriber. Expiry/grace (5-day grace period) are always derived from `currentPeriodEnd` at read time, same lazy-expiry approach as `Voucher.expiresAt` — no cron job exists or is needed. Backend phases 0–3 (config, plan CRUD, owner identity/auth/migration, subscription+limit+grace+downgrade-rule enforcement) are implemented and tested; phase 4 (the key system) is in progress; frontend (owner dashboard, platform-admin Plans + Subscription Keys pages, tenant-admin Subscription page) not yet built.
-
-**Toast restyle, logo, voucher expiry details:**
-- Toasts (`react-hot-toast`, single `<Toaster>` in `App.tsx`): `bottom-right`, no green/red (`--ok`/`--err` dropped from the icon theme) — success/error share one neutral `--surface`/`--ink` card, distinguished by icon shape only. Every `toast.success`/`error`/`loading` string app-wide (and the "Invalid email or password." message thrown from `authService.js`/`platformService.js`/`customerAccountService.js`) got a lighter, chill copy pass.
-- `components/shared/StampdLogo.tsx`: hand-built SVG (2x2 stamp-card grid, fixed `#1F1B18`/`#C15D2C` colors, not tenant-themed) replacing the old letter-badges/bare-text brand marks across platform and customer headers/login pages, plus the favicon and `<title>`.
-- Voucher expiry: `Organization.program.voucherExpiryDays` (0 = never expires, the default — no behavior change for existing tenants). Set on `Voucher.expiresAt` at earn time in `stampService.js`; `voucherService.js`'s `redeemVoucher` lazily rejects an expired voucher at redemption time (no cron job); `reportService.js`'s active-vouchers KPI excludes an expired-but-untouched voucher. Admin config lives in `StampProgram.tsx`; the customer wallet shows a neutral "Expired" badge. `backend/tests/voucher-expiry.js` covers it, using a new mock-DB-only `/__test__/expire-voucher` hook (mirrors the existing `/__test__/mint-token` pattern) to deterministically force expiry without waiting real days.
-
-**Menu import / dashboard analytics details** (merged from `redesign-stampd-visual-system`):
-- `xlsx` (unpatched CVEs GHSA-4r6h-8v6p-xvw6, GHSA-5pgg-2g8v-p4x9) fully replaced by **ExcelJS** in `menuService.js`/`reportService.js` — independent implementation, not a SheetJS wrapper like `node-xlsx`. Dependency removed from `backend/package.json`.
-- Menu import is stateless preview/confirm: `POST /api/admin/menu/import/preview` (multipart, returns a new/changed/unchanged diff, match key is name-only case-insensitive) → admin reviews in `MenuImportPreviewModal.tsx` (green/yellow/gray) → `POST /api/admin/menu/import/confirm` (JSON `{rows}`) writes only the approved rows via the existing org-scoped `createItem`/`updateItem`, so a tampered `existingId` from another tenant just matches nothing. The old synchronous `POST /menu/import` endpoint is gone.
-- `MenuItem.price`: String → Number (migration script `backend/scripts/migrateMenuItemPriceToNumber.js` for existing real-DB rows; mock DB needs no migration since it's in-memory).
-- **Recharts** added as the app's first charting library, used in `AdminOverview.tsx`.
-- `GET /api/admin/dashboard-stats` (new, in `reportService.js`) backs the Overview's 4 KPI tiles: real week-over-week trend % on new customers/stamps issued/revenue (flow metrics), no trend badge on active vouchers (a snapshot, not a flow — deliberate), plus a 14-day stamp-velocity series and an 8-week voucher earned-vs-redeemed series, both bucketed in JS (mock DB has no aggregation pipeline).
-- New Voucher Performance report (`GET /api/admin/reports/vouchers[/download]`, `AdminReportsVouchers.tsx`): redemption rate/avg days-to-redeem scoped to a single cohort (vouchers *earned* in the selected date range, checked for redemption regardless of when), not two independently-filtered populations.
-
-**Stale docs:** `docs/00-overview.md` and `docs/01-project-rules.md` describe the OLD single-cafe app and explicitly list multi-tenancy as out-of-scope. That is obsolete — the product pivoted. Trust the code over those docs. The governance rules in `docs/01` (thin controllers, service-layer logic, no unapproved deps) still apply.
+**Next up — Phase B: stamps → points.** The stamp/voucher loop above is being replaced wholesale by points proportional to bill amount, redeemable against a catalog. See the "Phase B" section at the bottom before touching loyalty code — much of what's described here is scheduled for deletion.
 
 ## Commands
 
@@ -42,90 +27,150 @@ Backend (`cd backend`):
 ```bash
 npm run dev              # node --watch server.js
 npm test                 # chained run of every tests/*.js suite (see package.json)
-npm run test:integration # single suite
-npm run test:voucher
 npm run test:isolation   # the key cross-tenant leakage test
 ```
 
-Tests are plain `node tests/*.js` scripts (no framework) that boot against the in-memory mock DB. Run one directly: `node backend/tests/multi-tenant-isolation.js`. New suites must be added to `package.json`'s `test` script's chain to run in CI/`npm test`.
+Tests are plain `node tests/*.js` scripts (no framework) that boot a real server against the in-memory mock DB, each on its own port. Run one directly: `node backend/tests/multi-tenant-isolation.js`. **New suites must be added to `package.json`'s `test` chain** or they never run. Helpers live in `tests/helpers/` (`bootServer.js`, `makeOutlet.js`).
 
 ## Zero-config dev DB
 
-There is **no real MongoDB in dev.** When `MONGODB_URI` is unset, `server.js` monkey-patches `require("mongoose")` to return `utils/mockMongoose.js` — an in-memory Mongoose shim. Same when `JWT_SECRET` is unset (dev fallback key; both **fatal in production**).
+There is **no real MongoDB in dev.** When `MONGODB_URI` is unset, `server.js` monkey-patches `require("mongoose")` to return `utils/mockMongoose.js` — an in-memory shim. Same when `JWT_SECRET` is unset (dev fallback key; both **fatal in production**). Being in-memory, it doesn't persist across serverless invocations — **production needs MongoDB Atlas.**
 
-The mock is deliberately partial — know its limits before writing queries against it:
-- Query matching: top-level equality, `$or`, `$lte`, `$gte` only. No nested-path or other operators.
+The mock is deliberately partial. Know its limits *before* writing a query:
+- **Query matching: top-level equality, `$or`, `$lte`, `$gte` only.** Any other operator **throws** — it does not silently match. Don't reach for `$ne`/`$gt`/`$in`.
+- **No nested-path queries.** `{"program.x": 1}` reads `doc["program.x"]` literally and matches nothing; a dotted `$set` creates a literal dotted key instead of nesting. Resolve nested config in JS from fetched documents.
 - `.populate()` only handles the `userId` path.
 - **No `findById`** — use `findOne({ _id })`.
-- It DOES fill nested schema defaults (`computeDefaults`) so `Organization.program` / `.branding` populate correctly.
+- `.sort()` takes a single key. No `updateMany`, no aggregation pipeline, no real transactions.
+- It DOES fill nested schema defaults (`computeDefaults`), so `Organization.program` / `.branding` populate.
+- **Indexes are not enforced.** Any uniqueness an index promises must also be checked explicitly in the service (see `companyService.assertEmailAvailable`).
 
-Because it is in-memory, it does not persist across serverless invocations — **production needs MongoDB Atlas.**
+`seed/demoSeed.js` seeds the whole demo world, all with password `password`:
+- platform admin `admin@stampd.co`
+- 3 companies — `coffesarowar` (3 outlets), `himalayan-bites` (2), `sweet-corner` (1)
+- a company owner per company (`owner@coffesarowar.com`, …) and an admin per outlet (`durbarmarg@coffesarowar.com`, …)
+- 3 customers (`asha@example.com`, `bikash@example.com`, `chandra@example.com`) as real verified `CustomerAccount`s, so they can sign in through the UI. Overlaps are deliberate: asha spans two outlets of one company; bikash spans three outlets across **three different companies** — that's the case the isolation invariant must hold for.
 
-`seedDemoData()` only seeds a legacy per-tenant `User` row for the demo customer — it does **not** create a matching global `CustomerAccount`. Since customer login now goes through the global `/api/customer-auth` system (see below), the seeded `customer@mansarowar.cafe` cannot sign in via the UI on a fresh mock DB. To exercise a real customer session in dev, register a new account through `/​:slug/register` and verify it with the `/__test__/mint-global-token` hook (mock-DB-only, mirrors the real "check your email" flow without sending mail).
+## Company → outlet structure
+
+`Company` is the entity (globally unique `slug`, branding, `programDefaults`, status). An `Organization` is **one outlet** and carries a required `companyId`.
+
+**An outlet slug is unique only within its company** — compound unique `{companyId, slug}`. Two chains can both own a `durbarmarg`. This is why every tenant URL and every tenant lookup needs **both** slugs; one slug alone can never identify an outlet. `config/platform.js` `RESERVED_SLUGS` / `isReservedSlug` keeps a company slug from colliding with a real route (`explore`, `platform`, `company`, `admin-login`, …).
+
+**Program config inherits: platform default → company → outlet.** Every field in `Organization.program` defaults to `null`, meaning "inherit". `services/programService.js` `resolveProgram(company, organization)` is **the only place config resolves** — never read `org.program.x` directly. It uses `??`, never `||`, because `0` is a legitimate configured value that `||` would silently drop through to the parent.
 
 ## Multi-tenant architecture
 
-**Every loyalty record carries `organizationId`.** `User`, `StampCard`, `Voucher`, `DynamicQRToken`, `StampClaimEvent`, `MenuItem` are all tenant-scoped. Isolation is enforced by scoping every query with `organizationId` — when adding any query, it MUST include it, or you leak data across tenants. This is the invariant the whole product depends on.
+**Every loyalty record carries `organizationId`.** `User`, `StampCard`, `Voucher`, `DynamicQRToken`, `StampClaimEvent`, `MenuItem` are all outlet-scoped. Isolation is enforced by scoping every query with `organizationId` — when adding any query, it MUST include it, or you leak data across tenants. This is the invariant the whole product depends on.
 
-**Three roles** (`User.role`):
-- `platform` — SaaS super-admin, `organizationId = null`, onboards/suspends businesses.
-- `business_admin` — a tenant's admin/barista.
-- `customer` — a tenant's end user.
+**Three roles** (`User.role`): `platform` (super-admin, `organizationId = null`), `business_admin` (an outlet's staff), `customer` (an outlet's end user). Platform admins additionally carry `platformRole` (`owner` / `support`) — `owner` gates registering companies, team management, plans, and keys.
 
-**Customer identity is global; loyalty data stays per-tenant.** A `CustomerAccount` (`models/CustomerAccount.js`) owns email/password/phone/name/emailVerified/googleId platform-wide — one signup works at every tenant. Each tenant's `User` (role `customer`) is a lightweight **membership** row linked via `User.customerAccountId`, and it alone still owns that tenant's `StampCard`/`Voucher`/`StampClaimEvent` rows. `name`/`phone`/`emailVerified` on the membership are denormalized copies kept in sync by `customerAccountService.ensureMembership` — this is what lets existing tenant-scoped code (`stampService`, admin customer list/reports) read a customer's identity fields with zero changes. **Reporting stays strictly per-tenant**: `CustomerAccount` is never joined into or exposed through any admin-facing report, so a cafe never sees that "its" customer also visits other cafes, and stamp/visit counts never bleed across tenants — this is the same `organizationId` isolation invariant, one layer below the shared identity.
+**Identity is global; loyalty data stays per-outlet.** Two parallel global-identity systems, same shape, deliberately separate:
 
-Two parallel auth systems, deliberately kept separate: `business_admin`/`platform` login is untouched, tenant-scoped, `{userId, role, organizationId}` JWTs via `authService.js`/`authRoutes.js`. Customer auth is entirely global: a customer holds a long-lived **global session token** (`{type: "global_customer", customerAccountId}`, separate `JWT_GLOBAL_SECRET`, verified by `middleware/customerAuthMiddleware.js`) that is exchanged per-tenant for a normal tenant JWT via `POST /api/customer-auth/enter-tenant` (auto-provisioning the membership on first visit to a new tenant). The frontend's `TenantSessionSync` component runs this exchange on every `/:slug/*` page load, so a returning customer is recognized silently everywhere, not just on the QR-claim page.
+| | Customers | Staff |
+|---|---|---|
+| Global identity | `CustomerAccount` | `AdminAccount` |
+| Owns | email/password/phone/name/emailVerified/googleId | same, plus `kind` (`company_owner`/`outlet_admin`) + `companyId` |
+| Per-outlet row | `User` (role `customer`) via `customerAccountId` | `User` (role `business_admin`) via `adminAccountId` |
 
-**QR-as-link claim flow:** the QR a barista generates (`GenerateQr.tsx`) encodes a real URL (`/:slug/claim?token=...`), not a bare token, so it opens in the phone's native camera/browser with no app required. `/:slug/claim` converts the scanned `DynamicQRToken` (still 30s, single-use) into a longer-lived `PendingClaim` (`models/PendingClaim.js`, 15 min window) — this decouples "how long the on-screen QR is scannable" from "how long the customer then has to finish signing in." A brand-new signup's first stamp stays an unfulfilled `PendingClaim` until the customer verifies their email (possibly minutes later, another tab/device), at which point `pendingClaimService.autoFulfillForAccount` fulfills every pending claim for that account across all tenants.
+One collection per identity is what makes email uniqueness a single enforceable index. `name`/`phone`/`emailVerified` on the `User` membership are denormalized copies kept in sync by `customerAccountService.ensureMembership`, which is what lets outlet-scoped code read identity fields unchanged.
+
+**Reporting stays strictly per-outlet.** `CustomerAccount` is never joined into or exposed through any admin-facing report — a cafe never learns that "its" customer also visits others. The company owner's rollup (`companyReportService`) is the one cross-outlet view, and it is company-private: no outlet console can see a sibling's numbers.
+
+**Three token types:**
+1. **Tenant JWT** `{userId, role, organizationId}` — `JWT_SECRET`, signed in `utils/tokenUtils.js`, verified by `middleware/authMiddleware.js` (`verifyToken` → `req.user`; `isBusinessAdmin`/`isPlatformAdmin`/`isPlatformOwner` guards). Covers `business_admin`, `platform`, and — after `enter-tenant` — `customer`.
+2. **Global customer session** `{type: "global_customer", customerAccountId}` — `JWT_GLOBAL_SECRET`, `middleware/customerAuthMiddleware.js`. Proves *which account*, never grants tenant access; its shape structurally can't pass `verifyToken`.
+3. **Company session** `{type: "company_owner", adminAccountId, companyId}` — `JWT_GLOBAL_SECRET`, `middleware/companyAuthMiddleware.js`.
 
 **Two ways the active tenant is determined — do not confuse them:**
-1. **Public/unauthenticated routes** (`/api/tenant`, `/api/menu`, `/api/auth` register/login) use `resolveTenant` middleware (`middleware/tenantMiddleware.js`), which reads the tenant from, in order: `X-Tenant-Slug` header → `:slug` param → Host subdomain. Sets `req.organization` + `req.organizationId`. This is subdomain-ready for the future custom-domain flip with no rewrite.
-2. **Authenticated loyalty routes** (`/api/admin`, `/api/stamps`, `/api/vouchers`) take the tenant from the **JWT** (`req.user.organizationId`), NOT the URL. A user can only ever act within their own tenant regardless of any client-supplied slug — this is a security boundary, don't replace it with slug-based resolution.
+1. **Public routes** (`/api/tenant`, `/api/menu`, `/api/auth`) use `resolveTenant` (`middleware/tenantMiddleware.js`): reads `X-Company-Slug` + `X-Outlet-Slug` headers → `:companySlug`/`:outletSlug` params → Host subdomain, then `Company.findOne({slug})` → `Organization.findOne({companyId, slug})`. Both are top-level equality, so mock-DB safe. Sets `req.company`, `req.organization`, `req.organizationId`. Suspended → 403 `TENANT_SUSPENDED`.
+2. **Authenticated loyalty routes** (`/api/admin`, `/api/stamps`, `/api/vouchers`) take the tenant from the **JWT**, NOT the URL. A user can only ever act within their own tenant regardless of any client-supplied slug — **a security boundary; don't replace it with slug-based resolution.**
 
-Tenant JWT payload: `{ userId, role, organizationId }`, signed in `utils/tokenUtils.js`, verified in `middleware/authMiddleware.js` (`verifyToken` → sets `req.user`; `isBusinessAdmin` / `isPlatformAdmin` role guards). This covers `business_admin`, `platform`, and — after `enter-tenant` — `customer` too, so every already-existing tenant-scoped route needed zero changes for the global-identity migration. The separate global session token (`{type, customerAccountId}`) only ever proves "which `CustomerAccount`," never grants tenant access directly — its shape structurally can't pass `verifyToken`'s `userId`/`role` check even before considering it's signed with a different secret.
+**Unified admin login.** `POST /api/admin-auth/login` is slug-less: one email+password form for all staff. The backend looks up the `AdminAccount` and branches on `kind` — a company owner gets a company session and lands at `/company`; an outlet admin gets a tenant JWT and lands at `/[company]/[outlet]/admin`. No match → "not registered". Each outlet's credentials are independent (own hash, verified once) — there is no password copying or fan-out between them. An unverified admin is refused **at login** with 403 `EMAIL_NOT_VERIFIED`, not gated inside the console.
 
-**Per-tenant program config replaces hardcoded constants.** `stampsRequired`, `rewardTitle`, `rewardDescription`, `cooldownHours` live in `Organization.program`; branding in `Organization.branding`; `Organization.category` (enum: `cafe`/`restaurant`/`bakery`/`salon`/`gym`/`retail`/`other`, default `other`) powers the `/explore` directory's filter pills — set at platform onboarding (`OnboardBusiness.tsx`) or self-service by the tenant (`Branding.tsx`). Defaults come from `config/platform.js` (`DEFAULT_PROGRAM`, `BUSINESS_CATEGORIES`). `PLATFORM_NAME` (default "Stampd") is the single rebrand knob for the whole SaaS; frontend mirror in `lib/platform.ts`.
+**QR-as-link claim flow.** The QR staff generates (`GenerateQr.tsx`) encodes a real URL (`/[company]/[outlet]/claim?token=…`), not a bare token, so the phone's native camera opens it. The claim page converts the scanned `DynamicQRToken` (30s, single-use) into a `PendingClaim` (15 min) — decoupling "how long the QR is scannable" from "how long the customer has to finish signing in." A brand-new signup's first stamp stays pending until they verify their email (maybe minutes later, another device), at which point `pendingClaimService.autoFulfillForAccount` fulfills every pending claim for that account across all tenants.
+
+## Subscriptions (key-based, no payment gateway)
+
+Platform-admin-configurable `SubscriptionPlan`s (outlet-count limits) gate how many outlets a company may run. **There is no payment API** — eSewa/Fonepay integration was considered and deliberately dropped. Instead: the platform admin generates a `SubscriptionKey` scoped to a plan, confirms payment out-of-band (phone/email), and hands over the key; the **company owner** redeems it at `/company/subscription` (`POST /api/company/subscription/redeem-key` — outlet admins cannot). That page shows a days-left countdown and, near expiry, the platform's contact info (from the `platformConfigService` singleton), which also goes into the lazily-sent renewal-reminder email.
+
+Two rules worth not breaking:
+- `Subscription.outletLimitAtPurchase` is **snapshotted at redemption**, never read live off the plan — a later plan edit must never retroactively strand an existing subscriber.
+- Expiry and the 5-day grace period are **always derived from `currentPeriodEnd` at read time**. No cron job exists or is needed anywhere in this codebase.
 
 ## Backend layering (enforced)
 
-`routes/ → controllers/ → services/ → models/`. Controllers are thin: parse request, call a service, format the HTTP response. **All business logic and multi-model/DB writes live in `services/`.** Keep the atomic `findOneAndUpdate` transaction style in `services/stampService.js` — the stamp claim uses a session + atomic cooldown-guarded update to prevent double-stamping races.
+`routes/ → controllers/ → services/ → models/`. Controllers are thin: parse request, call a service, format the response. **All business logic and multi-model writes live in `services/`.** Keep the atomic `findOneAndUpdate` style in `services/stampService.js` — the stamp claim uses a session + atomic guarded update to prevent double-stamping races.
 
 Route groups mounted in `server.js`:
-- `/api/platform` — super-admin: onboard/list/manage tenants (`isPlatformAdmin`).
-- `/api/tenant` — public tenant branding+program lookup by slug (`resolveTenant`).
+- `/api/platform` — super-admin: register/list/manage companies + outlets (`isPlatformAdmin`); `/plans` and `/subscription-keys` nested under it.
+- `/api/tenant` — public outlet branding+program lookup (`resolveTenant`).
 - `/api/menu` — public display-only menu (`resolveTenant`).
-- `/api/auth` — tenant-scoped business_admin/platform login only now (`resolveTenant`); customer register/login moved to `/api/customer-auth`.
-- `/api/account` — shared profile/password endpoints for any authenticated role (`verifyToken`).
-- `/api/customer-auth` — global customer identity: register/login/google/verify-email/forgot-reset password (no tenant needed), `enter-tenant` (exchanges a global session for a tenant JWT, `resolveTenant` + `verifyGlobalSession`), and the `/explore` surface's two reads — `discover` (every active business + a real recent-stamp-volume trending signal) and `my-tenants` (every membership the current `CustomerAccount` has, joined to `Organization`/`StampCard`/`Voucher`), both `verifyGlobalSession`-gated only, no tenant.
-- `/api/claim` — QR-as-link claim lifecycle: `start` (token → `PendingClaim`), `:id/status` (polling), `:id/fulfill` (the actual stamp award, tenant JWT only — `resolveTenant` deliberately not used here).
-- `/api/admin` — business-admin console: QR gen, redeem, customers, settings, menu CRUD (`isBusinessAdmin`).
+- `/api/auth` — legacy tenant-scoped login (`resolveTenant`).
+- `/api/admin-auth` — the unified staff identity: login, verify-email, resend, forgot/reset password. Slug-less.
+- `/api/company` — company owner console (`verifyCompanySession`): outlets CRUD, `enter-outlet`, subscription + key redemption, cross-outlet rollup.
+- `/api/account` — shared profile/password for any authenticated role (`verifyToken`).
+- `/api/customer-auth` — global customer identity: register/login/google/verify/reset (no tenant), `enter-tenant` (exchanges a global session for a tenant JWT, auto-provisioning the membership), plus `/explore`'s two reads — `discover` and `my-tenants` (`verifyGlobalSession` only, no tenant).
+- `/api/claim` — QR-as-link lifecycle: `start`, `:id/status`, `:id/fulfill` (tenant JWT only — `resolveTenant` deliberately unused).
+- `/api/admin` — outlet console: QR gen, redeem, customers, settings, menu CRUD (`isBusinessAdmin`).
 - `/api/stamps`, `/api/vouchers` — customer loyalty (tenant from JWT).
-- `/api/reviews` — public Google reviews passthrough for the tenant landing page.
+- `/api/reviews` — public Google reviews passthrough.
 
-`server.js` `seedDemoData()` seeds a platform admin (`admin@stampd.co` / password), tenant `coffesarowar`, its business admin (`barista@mansarowar.cafe`), and a demo customer — all password `password`.
+**Dependency constraint:** `xlsx` is banned (unpatched CVEs GHSA-4r6h-8v6p-xvw6, GHSA-5pgg-2g8v-p4x9). Spreadsheet work uses **ExcelJS** (`menuService.js`, `reportService.js`) — an independent implementation, not a SheetJS wrapper like `node-xlsx`. Don't reintroduce it, directly or transitively.
+
+**Menu import** is stateless preview/confirm: `POST /api/admin/menu/import/preview` (multipart → new/changed/unchanged diff, matched on name case-insensitively) → admin reviews in `MenuImportPreviewModal.tsx` → `POST /api/admin/menu/import/confirm` (JSON `{rows}`) writes only approved rows through the org-scoped `createItem`/`updateItem`, so a tampered `existingId` from another tenant just matches nothing.
 
 ## Frontend
 
-React 19 + Vite + TS + Tailwind v4. State conventions (`docs/01-project-rules.md` §4, still current): TanStack Query for server state; React Context for session auth (`PlatformAuthContext`, `AdminAuthContext`, `CustomerAuthContext`, separate `platform_auth_token` / `admin_auth_token` / `customer_auth_token` in localStorage); React Hook Form + Zod for forms; React Hot Toast for alerts. `components/ui/` is a shadcn/Radix kit — reuse it, don't reimplement primitives. `motion` (Framer Motion's successor) is the animation library.
+React 19 + Vite + TS + Tailwind v4. TanStack Query for server state; React Context for session auth; React Hook Form + Zod for forms; React Hot Toast for alerts; `motion` (Framer Motion's successor) for animation; Recharts for charts. `components/ui/` is a shadcn/Radix kit — reuse it, don't reimplement primitives.
 
-`lib/api.ts` `apiRequest()` is the single fetch wrapper; it auto-selects the auth token by path/role and attaches `X-Tenant-Slug` (set via `setTenantSlug`).
+`lib/api.ts` `apiRequest()` is the single fetch wrapper: it auto-selects the auth token by path/role and attaches `X-Company-Slug`/`X-Outlet-Slug` (set via `setTenantRef`). localStorage keys: `platform_auth_token`, `admin_auth_token`, `customer_auth_token`, `customer_global_session`, `company_session`.
 
-Route structure (`App.tsx`): `/` platform landing, `/platform/*` SaaS console (`routes/platform/`), `/:slug/*` tenant-scoped (wrapped in `TenantProvider` + `TenantSessionSync`, which silently exchanges a customer's global session for a tenant JWT on every page load) — customer app + `/:slug/admin/*` business console (`routes/admin/`). Several customer-facing routes are deliberately **slug-less** (no tenant context at all until one is actually entered): `/business-login` (`FindBusiness.tsx`, typed business name → resolves via `GET /api/tenant` → `/:slug/admin/login`), `/customer-login` / `/customer-register` (`GlobalCustomerLogin.tsx`/`GlobalCustomerRegister.tsx`, genuine global sign-in/signup — no business lookup, since customer identity is global), `/verify-email` (global customer-identity verification), and `/explore` + `/explore/mine` (wrapped in `GlobalCustomerLayout`, see below). `TenantContext` themes the `/:slug` subtree from `branding.primaryColor` (`--brand`).
+**`lib/tenantPath.ts` builds every tenant URL** — `tenantPath(company, outlet, sub)` / `tenantUrl(origin, …)` for QR codes and emails. Don't interpolate `/${slug}/…` by hand: a missing company segment should be a type error, not a URL that silently resolves elsewhere.
 
-`GoogleOAuthProvider` wraps the **entire** app once at the top of `App.tsx` (one client id, not per-tenant) — don't reintroduce it inside `TenantScope`; any `<GoogleLogin>` anywhere, tenant-scoped or the global customer pages, needs this shared ancestor or it throws.
+Route structure (`App.tsx`):
+- `/` platform landing · `/platform/*` SaaS console (`routes/platform/`, `PlatformLayout` gated on `platformRole`)
+- `/admin-login` unified staff sign-in (slug-less) · `/company/*` company owner console (`routes/company/`)
+- `/:companySlug` alone → redirect to `/explore` (there is no company-level customer page)
+- `/:companySlug/:outletSlug/*` → `TenantScope` (`TenantProvider` + `TenantSessionSync`) — customer app + `/admin/*` outlet console (`routes/admin/`)
+- Deliberately slug-less customer routes: `/customer-login`, `/customer-register`, `/verify-email`, and `/explore` + `/explore/mine` (in `GlobalCustomerLayout`)
 
-Auth guards trust their cached token optimistically but must revalidate against the server: `AdminGuard` logs out and redirects to login if the settings fetch comes back with an auth error (a stale/expired `admin_auth_token` used to strand staff in a permanent "Verifying credentials" loop otherwise); `GlobalCustomerLayout` does the same for a stale `customer_global_session` using its `useMyTenants()` fetch. `CustomerAuthContext.ensureTenantSession` only reuses a cached tenant token if its embedded `organizationId` actually matches the tenant being viewed, so a stale tenant-A token can never get attached to tenant-B requests. `CustomerAuthContext`'s `globalAccount` state is lazily hydrated from `localStorage` on init (not just inside `ensureTenantSession`) so slug-less pages can gate on it with no `TenantSessionSync` in their tree.
+`TenantContext` themes the `/:companySlug/:outletSlug` subtree from `branding.primaryColor` (`--brand`); its query key includes both slugs.
 
-**`/explore` — the cross-tenant business directory.** `GlobalCustomerLayout.tsx` (parallel to the tenant-scoped `CustomerLayout.tsx`) provides the shell: top-bar scan icon opens `GlobalScannerModal.tsx` (decodes a QR and just `navigate()`s to its `/:slug/claim?token=...` path — no claim API call itself, unlike the tenant-scoped `ScannerModal.tsx`), plus a 2-tab bottom nav (`/explore` "Home", `/explore/mine` "My Businesses"; no center FAB, since the scanner already lives in the top bar here). `Explore.tsx` shows a condensed "My Places" row (via `useMyTenants()`) above a search/category-filtered "Discover" grid (via `useDiscover()`) sorted by client-side haversine distance (`lib/geo.ts`) when geolocation is granted, else by real recent stamp volume — never a fabricated rating or "deal." Clicking any business (already-joined or brand new) links straight to `/:slug/dashboard`; first-time entry is auto-provisioned by the existing `TenantSessionSync`/`ensureTenantSession`, no separate "join" call. `ExploreMine.tsx` is the fuller membership list with real stamp/voucher progress.
+`GoogleOAuthProvider` wraps the **entire** app once at the top of `App.tsx` (one client id, not per-tenant) — don't reintroduce it inside `TenantScope`; any `<GoogleLogin>` anywhere needs this shared ancestor or it throws.
+
+**Auth guards trust their cached token optimistically but must revalidate.** `AdminGuard` logs out and redirects if its settings fetch returns an auth error (a stale token otherwise strands staff in a permanent "Verifying credentials" loop); `GlobalCustomerLayout` does the same via `useMyTenants()`. `CustomerAuthContext.ensureTenantSession` only reuses a cached tenant token if its embedded `organizationId` matches the outlet being viewed, so a stale tenant-A token can never be attached to tenant-B requests. Its `globalAccount` state hydrates from localStorage on init so slug-less pages can gate on it with no `TenantSessionSync` in their tree.
+
+**`/explore` — the cross-tenant directory.** `GlobalCustomerLayout.tsx` (parallel to tenant-scoped `CustomerLayout.tsx`): top-bar scan icon opens `GlobalScannerModal.tsx` (decodes a QR and just `navigate()`s to its claim path — no API call, unlike the tenant-scoped `ScannerModal.tsx`), plus a 2-tab bottom nav. `Explore.tsx` shows a "My Places" row above a search/category-filtered "Discover" grid, sorted by client-side haversine distance (`lib/geo.ts`) when geolocation is granted, else by real recent stamp volume — **never a fabricated rating or "deal."** Clicking any business links straight to its dashboard; first-time entry auto-provisions via `TenantSessionSync`. `ExploreMine.tsx` is the fuller membership list.
 
 ### Design system ("Stampd")
 
-Warm cream/brown palette, retrofitted onto the shadcn kit via CSS custom properties in `index.css`: `--bg`/`--surface`/`--surface-container`/`--surface-container-high`/`--ink`/`--muted`/`--soft`/`--line`/`--brand`/`--brand-deep` plus `--info`/`--ok`/`--warn`/`--err` (each with a `-soft` tint). **`--plat` and `--plat-soft` are aliases of `--brand`/a `color-mix()` of it** — the platform console shares the tenant accent rather than having its own distinct color, so `var(--plat)` call-sites don't need touching if the shared token ever changes. Fonts: Libre Caslon Text (serif, `--font-display`) for headings/display text, Inter (`--font-sans`) for body/UI, loaded in `styles/fonts.css`.
+Warm cream/brown palette, retrofitted onto the shadcn kit via CSS custom properties in `index.css`: `--bg`/`--surface`/`--surface-container`/`--surface-container-high`/`--ink`/`--muted`/`--soft`/`--line`/`--brand`/`--brand-deep`, plus `--info`/`--ok`/`--warn`/`--err` (each with a `-soft` tint). **`--plat`/`--plat-soft` are aliases of `--brand`** — the platform console shares the tenant accent rather than owning a separate color. Fonts: Libre Caslon Text (`--font-display`) for headings, Inter (`--font-sans`) for body/UI, loaded in `styles/fonts.css`.
 
-Shared utility classes (in `index.css`, use them instead of ad hoc shadows/hover states): `.shadow-ambient` (soft brand-tinted card shadow — every card-level `bg-[var(--surface)]` container should pair `rounded-3xl` with this) and `.stamp-interactive` (hover-lift + press-scale, respects `prefers-reduced-motion`).
+Use the shared utilities instead of ad hoc shadows/hover states: `.shadow-ambient` (every card-level `bg-[var(--surface)]` container should pair `rounded-3xl` with it) and `.stamp-interactive` (hover-lift + press-scale, respects reduced motion).
 
-Motion philosophy ("stamp-claim physics"): weighted, celebratory, squash-and-stretch spring entrances (`type: "spring"`), always guarded by `useReducedMotion()`. `components/customer/StampCelebration.tsx` is the shared "you earned a stamp / here's your voucher" moment reused by both the in-app scanner (`ScannerModal.tsx`) and the QR-link claim page (`ClaimLanding.tsx`) — don't duplicate that celebration UI, extend the shared component instead. Other signature moments: the voucher-redeem "hole punch" effect (`RedeemVoucher.tsx`), the login/logout stamp-card flip (`CustomerSettings.tsx`).
+**Toasts:** single `<Toaster>` in `App.tsx`, `bottom-right`. No green/red — success and error share one neutral `--surface`/`--ink` card and differ by icon shape only. Copy is light and chill throughout; match that voice.
 
-`AdminCustomerDetail.tsx` (`/:slug/admin/customers/:id`) is a dedicated page, not a drawer — it reads from the same cached `["adminCustomers"]` list rather than a new endpoint.
+**Logo:** `components/shared/StampdLogo.tsx` — hand-built SVG (a coin earned atop another, the top one struck with a point). Colors are fixed (`#1F1B18`/`#C15D2C`/`#F3ECE2`), **not** tenant-themed: this is the platform's identity, distinct from `--brand`. Also inlined as the favicon in `index.html` — change both together.
 
-The reference screens this system was built from live outside the app at `frontend design/` (8 `code.html`+`screen.png` pairs plus `stampd_core/DESIGN.md`) — useful for the token values and motion rationale, but the shipped code is the source of truth where they've since diverged (e.g. heading weight is bold/extrabold throughout the app, not the regular weight `DESIGN.md` specifies).
+**Motion** ("stamp-claim physics"): weighted, celebratory spring entrances (`type: "spring"`), always guarded by `useReducedMotion()`. `components/customer/StampCelebration.tsx` is the shared earn moment reused by both `ScannerModal.tsx` and `ClaimLanding.tsx` — extend it, don't duplicate it. Other signature moments: the voucher-redeem "hole punch" (`RedeemVoucher.tsx`), the login/logout card flip (`CustomerSettings.tsx`).
+
+The reference screens this system came from live at `frontend design/` (8 `code.html`+`screen.png` pairs plus `stampd_core/DESIGN.md`) — useful for token values and motion rationale, but **the shipped code wins** where they've diverged (e.g. headings are bold/extrabold, not the regular weight `DESIGN.md` specifies).
+
+## Phase B — stamps → points (next)
+
+Full plan: `docs/superpowers/plans/2026-07-16-multi-business-subscriptions.md` and the approved restructure plan. The locked shape:
+
+- **Delete outright**: `StampCard`, `Voucher`, `StampClaimEvent`, `voucherService`, voucher routes/pages/hooks and their suites.
+- **New**: `PointsBalance{organizationId, userId, balance, lastActivityAt}` and a `PointsTransaction` ledger (`earn`/`redeem`/`expire`) powering customer history + admin transaction history. `DynamicQRToken` gains `purpose: "earn"|"redeem"`.
+- **Earn**: bill amount **mandatory** before QR generation; award = bill × `earnPercent` (default 100 → 1 point per rupee) × campaign multiplier. **No cooldown** — every bill earns; the token's single-use guard already serializes claimers.
+- **Program config**: `earnPercent` + `pointsExpiryDays` replace `stampsRequired`/`cooldownHours`/`voucherExpiryDays`/`rewardTitle`/`rewardDescription`/`minBillAmount`. Still resolved through `programService`.
+- **Expiry**: rolling inactivity, lazy on read, materialized on next write. No cron.
+- **Redeem**: staff-initiated 30s single-use QR → customer scans → picks a catalog item → atomic `findOneAndUpdate({…, balance: {$gte: price}}, {$inc: {balance: -price}})` (`$gte` is mock-DB supported; no match = insufficient balance).
+- **Points are strictly per-outlet.** No cross-outlet balance, ever.
+
+Two open decisions flagged during planning: **fractional-point float drift** (repeated `$inc` of decimals accumulates binary error — either round to 2dp at every write or store integer centipoints) and the **campaign multiplier stacking rule** (default: max, no compounding).
+
+## Stale docs
+
+`docs/00-overview.md` and `docs/01-project-rules.md` describe the OLD single-cafe app and explicitly list multi-tenancy as out of scope. That is obsolete — the product pivoted. **Trust the code over those docs.** The governance rules in `docs/01` (thin controllers, service-layer logic, no unapproved deps) still apply.
