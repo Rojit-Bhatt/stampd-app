@@ -139,24 +139,26 @@ export async function apiRequest<T = unknown>(
 }
 
 // Ported admin endpoints
-export async function getRecentScans() {
-  return apiRequest<{ success: boolean; data: any[] }>("/api/admin/recent-scans", { role: "admin" });
+export interface QrTokenResponse {
+  success: boolean;
+  data: { token: string; purpose: "earn" | "redeem"; billAmount?: number; expiresInSeconds: number };
 }
 
-export async function generateQr() {
-  return apiRequest<{ success: boolean; data: { token: string; expiresInSeconds: number } }>(
-    "/api/admin/generate-qr",
-    { method: "POST", role: "admin" }
-  );
+// A bill is mandatory: points are a percentage of what was actually paid,
+// so the server refuses a bill-less earn token rather than awarding zero.
+export async function generateQr(billAmount: number) {
+  return apiRequest<QrTokenResponse>("/api/admin/generate-qr", {
+    method: "POST",
+    body: { billAmount },
+    role: "admin",
+  });
 }
 
-export async function redeemVoucher(voucherCode: string) {
-  return apiRequest<{ success: boolean; message: string }>(
-    "/api/admin/redeem-voucher",
-    {
-      method: "POST",
-      body: { voucherCode },
-      role: "admin",
-    }
-  );
+// Redemption is staff-initiated too — a customer must never be able to move
+// their own balance. The customer picks the reward after scanning.
+export async function generateRedeemQr() {
+  return apiRequest<QrTokenResponse>("/api/admin/generate-redeem-qr", {
+    method: "POST",
+    role: "admin",
+  });
 }

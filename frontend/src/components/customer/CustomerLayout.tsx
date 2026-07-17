@@ -12,7 +12,7 @@ import { StampdLogo } from "../shared/StampdLogo";
 import { tenantPath } from "../../lib/tenantPath";
 
 // The authenticated customer app shell: a phone-framed viewport with a shared
-// scanner modal and bottom navigation. Wraps the dashboard and wallet routes.
+// scanner modal and bottom navigation. Wraps the dashboard and history routes.
 export function CustomerLayout() {
   const { companySlug, slug, tenant } = useTenant();
   const { user, isLoading } = useCustomerAuth();
@@ -35,8 +35,8 @@ export function CustomerLayout() {
     );
   }
 
-  const activeTab = location.pathname.endsWith("/wallet")
-    ? "wallet"
+  const activeTab = location.pathname.endsWith("/history")
+    ? "history"
     : location.pathname.endsWith("/dashboard")
       ? "dashboard"
       : location.pathname.endsWith("/menu")
@@ -53,7 +53,6 @@ export function CustomerLayout() {
           onClose={() => setScanOpen(false)}
           slug={slug}
           tenantName={tenant?.name || ""}
-          rewardTitle={tenant?.program?.rewardTitle || "reward"}
         />
 
         <header className="flex flex-shrink-0 items-center justify-between px-5 pt-5">
@@ -66,7 +65,7 @@ export function CustomerLayout() {
           <div className="flex items-center gap-2">
             <button
               onClick={() => setScanOpen(true)}
-              aria-label="Scan to earn a stamp"
+              aria-label="Scan to earn points"
               className="stamp-interactive flex h-9 w-9 items-center justify-center rounded-full bg-[var(--surface-container)] text-[var(--ink)]"
             >
               <QrCode className="h-4 w-4" />

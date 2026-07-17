@@ -13,10 +13,10 @@ interface PlatformAnalyticsData {
   businessesTotal: number;
   businessesActive: number;
   newCustomers: DashboardMetric;
-  stampsIssued: DashboardMetric;
+  pointsIssued: DashboardMetric;
   revenue: DashboardMetric;
-  vouchersRedeemed: DashboardMetric;
-  stampVelocity: { date: string; count: number }[];
+  redemptions: DashboardMetric;
+  pointsVelocity: { date: string; points: number }[];
 }
 
 const shortDate = (iso: string) => new Date(iso).toLocaleDateString(undefined, { month: "short", day: "numeric" });
@@ -48,9 +48,9 @@ export default function PlatformAnalytics() {
     ? [
         { label: "Businesses", val: `${stats.businessesActive}/${stats.businessesTotal}`, trend: null },
         { label: "New customers (7d)", val: stats.newCustomers.value, trend: stats.newCustomers.trend },
-        { label: "Stamps issued (7d)", val: stats.stampsIssued.value, trend: stats.stampsIssued.trend },
+        { label: "Points issued (7d)", val: stats.pointsIssued.value, trend: stats.pointsIssued.trend },
         { label: "Revenue (7d)", val: stats.revenue.value, trend: stats.revenue.trend },
-        { label: "Vouchers redeemed (7d)", val: stats.vouchersRedeemed.value, trend: stats.vouchersRedeemed.trend },
+        { label: "Redemptions (7d)", val: stats.redemptions.value, trend: stats.redemptions.trend },
       ]
     : [];
 
@@ -79,18 +79,18 @@ export default function PlatformAnalytics() {
       </div>
 
       <div className="shadow-ambient rounded-3xl bg-[var(--surface)] p-6">
-        <h3 className="mb-1 font-display text-lg font-bold text-[var(--ink)]">Stamp velocity</h3>
-        <p className="mb-4 text-[13px] text-[var(--muted)]">Stamps issued per day across every business, last 14 days.</p>
+        <h3 className="mb-1 font-display text-lg font-bold text-[var(--ink)]">Points velocity</h3>
+        <p className="mb-4 text-[13px] text-[var(--muted)]">Points issued per day across every business, last 14 days.</p>
         {isLoading || !stats ? (
           <Skeleton className="h-[220px] w-full rounded-xl" />
         ) : (
           <ResponsiveContainer width="100%" height={220}>
-            <LineChart data={stats.stampVelocity.map((d) => ({ ...d, label: shortDate(d.date) }))}>
+            <LineChart data={stats.pointsVelocity.map((d) => ({ ...d, label: shortDate(d.date) }))}>
               <CartesianGrid strokeDasharray="3 3" stroke="var(--line)" />
               <XAxis dataKey="label" tick={{ fontSize: 12 }} stroke="var(--soft)" />
-              <YAxis allowDecimals={false} tick={{ fontSize: 12 }} stroke="var(--soft)" />
+              <YAxis tick={{ fontSize: 12 }} stroke="var(--soft)" />
               <Tooltip />
-              <Line type="monotone" dataKey="count" stroke="var(--plat)" strokeWidth={2} dot={false} />
+              <Line type="monotone" dataKey="points" stroke="var(--plat)" strokeWidth={2} dot={false} />
             </LineChart>
           </ResponsiveContainer>
         )}

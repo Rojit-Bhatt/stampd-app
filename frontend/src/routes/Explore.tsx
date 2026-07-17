@@ -1,8 +1,10 @@
 import { useMemo, useState } from "react";
 import { Link } from "react-router-dom";
-import { Search, MapPin, Gift } from "lucide-react";
+import { Search, MapPin, Coins } from "lucide-react";
 import { useDiscover, type DiscoverBusiness } from "../hooks/useDiscover";
 import { useMyTenants } from "../hooks/useMyTenants";
+import { formatPoints } from "../hooks/usePoints";
+import { tenantPath } from "../lib/tenantPath";
 import { BUSINESS_CATEGORIES, type BusinessCategory } from "../hooks/useAdminSettings";
 import { distanceKm } from "../lib/geo";
 import { darken } from "../lib/color";
@@ -60,11 +62,11 @@ export default function Explore() {
           b.contact.latitude != null && b.contact.longitude != null
             ? distanceKm(coords.lat, coords.lon, b.contact.latitude, b.contact.longitude)
             : Infinity;
-        if (da === Infinity && db === Infinity) return b.recentStampCount - a.recentStampCount;
+        if (da === Infinity && db === Infinity) return b.recentActivityCount - a.recentActivityCount;
         return da - db;
       });
     } else {
-      list = [...list].sort((a, b) => b.recentStampCount - a.recentStampCount);
+      list = [...list].sort((a, b) => b.recentActivityCount - a.recentActivityCount);
     }
 
     return list;
@@ -79,7 +81,7 @@ export default function Explore() {
             {myTenants.map((m) => (
               <Link
                 key={m.organizationId}
-                to={`/${m.slug}/dashboard`}
+                to={tenantPath(m.companySlug, m.slug, "dashboard")}
                 className="stamp-interactive shadow-ambient min-w-[180px] flex-shrink-0 rounded-3xl bg-[var(--surface-container)] p-4"
               >
                 <div className="mb-3 flex h-10 w-10 items-center justify-center rounded-2xl bg-white text-sm font-bold" style={{ color: m.branding.primaryColor }}>
@@ -87,7 +89,7 @@ export default function Explore() {
                 </div>
                 <div className="truncate font-bold text-[var(--ink)]">{m.name}</div>
                 <div className="mt-1 text-xs text-[var(--muted)]">
-                  {m.stampsEarned}/{m.stampsRequired} stamps
+                  {formatPoints(m.balance)} points
                 </div>
               </Link>
             ))}
@@ -208,8 +210,10 @@ function BusinessCard({ business }: { business: DiscoverBusiness }) {
           <h3 className="truncate font-display text-lg font-bold text-[var(--ink)]">{business.name}</h3>
         </div>
         <div className="mb-3 flex items-center gap-1.5 text-sm" style={{ color: business.branding.primaryColor }}>
-          <Gift className="h-3.5 w-3.5" />
-          {business.program.rewardTitle}
+          <Coins className="h-3.5 w-3.5" />
+          {business.program.earnPercent === 100
+            ? "1 point per Rs 1"
+            : `${business.program.earnPercent}% back in points`}
         </div>
         <div className="flex items-center gap-1.5">
           {isNew && (

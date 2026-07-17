@@ -95,8 +95,8 @@ export default function CompanyDetail() {
   const stats = [
     { label: "Outlets", val: company.outletCount },
     { label: "Customers", val: company.customersCount },
-    { label: "Stamps issued", val: company.stampsIssued },
-    { label: "Vouchers redeemed", val: company.vouchersRedeemed },
+    { label: "Points issued", val: company.pointsIssued },
+    { label: "Redemptions", val: company.redemptionCount },
   ];
 
   return (

@@ -28,7 +28,8 @@ const ExploreMine = lazy(() => import('./routes/ExploreMine'));
 const CustomerLogin = lazy(() => import('./routes/CustomerLogin'));
 const CustomerRegister = lazy(() => import('./routes/CustomerRegister'));
 const CustomerDashboard = lazy(() => import('./routes/CustomerDashboard'));
-const CustomerWallet = lazy(() => import('./routes/CustomerWallet'));
+const CustomerHistory = lazy(() => import('./routes/CustomerHistory'));
+const RedeemLanding = lazy(() => import('./routes/RedeemLanding'));
 const CustomerMenu = lazy(() => import('./routes/CustomerMenu'));
 const VerifyEmail = lazy(() => import('./routes/VerifyEmail'));
 const ClaimLanding = lazy(() => import('./routes/ClaimLanding'));
@@ -53,17 +54,17 @@ const CompanyReports = lazy(() => import('./routes/company/CompanyReports'));
 const AdminLogin = lazy(() => import('./routes/AdminLogin'));
 const AdminOverview = lazy(() => import('./routes/admin/AdminOverview'));
 const GenerateQr = lazy(() => import('./routes/admin/GenerateQr'));
-const RedeemVoucher = lazy(() => import('./routes/admin/RedeemVoucher'));
+const RedeemPoints = lazy(() => import('./routes/admin/RedeemPoints'));
 const AdminCustomers = lazy(() => import('./routes/admin/AdminCustomers'));
 const AdminCustomerDetail = lazy(() => import('./routes/admin/AdminCustomerDetail'));
-const StampProgram = lazy(() => import('./routes/admin/StampProgram'));
+const PointsProgram = lazy(() => import('./routes/admin/PointsProgram'));
 const Branding = lazy(() => import('./routes/admin/Branding'));
 const AdminContact = lazy(() => import('./routes/admin/AdminContact'));
 const MenuManagement = lazy(() => import('./routes/admin/MenuManagement'));
 const AdminEvents = lazy(() => import('./routes/admin/AdminEvents'));
 const AdminReportsSummary = lazy(() => import('./routes/admin/AdminReportsSummary'));
 const AdminReportsCustomers = lazy(() => import('./routes/admin/AdminReportsCustomers'));
-const AdminReportsVouchers = lazy(() => import('./routes/admin/AdminReportsVouchers'));
+const AdminTransactions = lazy(() => import('./routes/admin/AdminTransactions'));
 const AdminSettings = lazy(() => import('./routes/admin/AdminSettings'));
 const AdminSubscription = lazy(() => import('./routes/admin/AdminSubscription'));
 const CustomerSettings = lazy(() => import('./routes/CustomerSettings'));
@@ -145,6 +146,9 @@ export default function App() {
             <Route path="login" element={<CustomerLogin />} />
             <Route path="register" element={<CustomerRegister />} />
             <Route path="claim" element={<ClaimLanding />} />
+            {/* Where the counter's staff-initiated redeem QR lands. Outside
+                CustomerLayout: it arrives from a phone camera, not the app. */}
+            <Route path="redeem" element={<RedeemLanding />} />
             <Route path="verify-email" element={<VerifyEmail />} />
             <Route path="forgot-password" element={<ForgotPassword />} />
             <Route path="reset-password" element={<ResetPassword />} />
@@ -152,7 +156,7 @@ export default function App() {
             {/* Authenticated customer app (phone shell + bottom nav). */}
             <Route element={<CustomerLayout />}>
               <Route path="dashboard" element={<CustomerDashboard />} />
-              <Route path="wallet" element={<CustomerWallet />} />
+              <Route path="history" element={<CustomerHistory />} />
               <Route path="menu" element={<CustomerMenu />} />
               <Route path="settings" element={<CustomerSettings />} />
             </Route>
@@ -169,10 +173,10 @@ export default function App() {
             >
               <Route index element={<AdminOverview />} />
               <Route path="generate" element={<GenerateQr />} />
-              <Route path="redeem" element={<RedeemVoucher />} />
+              <Route path="redeem" element={<RedeemPoints />} />
               <Route path="customers" element={<AdminCustomers />} />
               <Route path="customers/:id" element={<AdminCustomerDetail />} />
-              <Route path="program" element={<StampProgram />} />
+              <Route path="program" element={<PointsProgram />} />
               <Route path="branding" element={<Branding />} />
               <Route path="contact" element={<AdminContact />} />
               <Route path="menu" element={<MenuManagement />} />
@@ -181,7 +185,7 @@ export default function App() {
               <Route path="subscription" element={<AdminSubscription />} />
               <Route path="reports/summary" element={<AdminReportsSummary />} />
               <Route path="reports/customers" element={<AdminReportsCustomers />} />
-              <Route path="reports/vouchers" element={<AdminReportsVouchers />} />
+              <Route path="transactions" element={<AdminTransactions />} />
             </Route>
           </Route>
 

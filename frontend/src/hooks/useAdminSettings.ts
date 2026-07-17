@@ -38,13 +38,18 @@ export interface AdminContact {
   };
 }
 
+// This outlet's OVERRIDES. A null means "inherit from the company" — the
+// nulls are load-bearing, so this can't be typed as plain numbers.
 export interface AdminProgram {
-  stampsRequired: number;
-  rewardTitle: string;
-  rewardDescription: string;
-  cooldownHours: number;
-  minBillAmount: number;
-  voucherExpiryDays: number;
+  earnPercent: number | null;
+  pointsExpiryDays: number | null;
+}
+
+// The values that actually apply here, after the outlet's overrides are laid
+// over the company's defaults. Always numbers; never null.
+export interface ResolvedProgram {
+  earnPercent: number;
+  pointsExpiryDays: number;
 }
 
 export interface AdminSettings {
@@ -55,7 +60,14 @@ export interface AdminSettings {
   branding: AdminBranding;
   contact: AdminContact;
   adminEmailVerified: boolean;
+  /** This outlet's raw overrides (null = inherit). */
   program: AdminProgram;
+  /** What actually applies, company defaults resolved in. */
+  programResolved: ResolvedProgram;
+  /** Which fields this outlet has taken control of. */
+  programOverridden: (keyof AdminProgram)[];
+  /** The company's defaults, for showing what "inherit" means. */
+  companyProgramDefaults: ResolvedProgram | null;
   menuEnabled: boolean;
   // False for a platform-onboarded business with no attached owner — the
   // Subscription nav item/route must be hidden for it (there's nothing to

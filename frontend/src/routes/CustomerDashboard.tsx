@@ -1,12 +1,13 @@
-import { Coffee, MailWarning, MapPin, Phone as PhoneIcon, Mail, Clock, Instagram, Facebook, Twitter, Calendar } from "lucide-react";
-import { motion, useReducedMotion } from "motion/react";
+import { Coins, MailWarning, MapPin, Phone as PhoneIcon, Mail, Clock, Instagram, Facebook, Twitter, Calendar, Gift } from "lucide-react";
+import { Link } from "react-router-dom";
 import toast from "react-hot-toast";
 import { useTenant } from "../context/TenantContext";
-import { useStampCard } from "../hooks/useStampCard";
+import { usePointsBalance, useRewardCatalog, formatPoints } from "../hooks/usePoints";
 import { useCustomerMenu } from "../hooks/useCustomerMenu";
 import { useAccount } from "../hooks/useAccount";
 import { apiRequest } from "../lib/api";
-import { PunchCard } from "../components/customer/PunchCard";
+import { tenantPath } from "../lib/tenantPath";
+import { PointsBalanceCard } from "../components/customer/PointsBalanceCard";
 
 function osmEmbedUrl(lat: number, lon: number): string {
   const delta = 0.01;
@@ -20,17 +21,21 @@ function formatEventDate(iso: string): string {
 
 // Rendered inside CustomerLayout (phone shell + bottom nav). Content only.
 export default function CustomerDashboard() {
-  const reduceMotion = useReducedMotion();
   const { data: account } = useAccount("customer");
   const unverified = account?.emailVerified === false;
-  const { tenant } = useTenant();
-  const { data: stampData, isLoading: cardLoading } = useStampCard();
+  const { tenant, companySlug, outletSlug } = useTenant();
+  const { data: points, isLoading: cardLoading } = usePointsBalance();
+  const { data: catalog = [] } = useRewardCatalog();
 
-  const program = tenant?.program;
-  const required = stampData?.stampsRequired ?? program?.stampsRequired ?? 5;
-  const reward = stampData?.rewardTitle ?? program?.rewardTitle ?? "Reward";
-  const stampsEarned = stampData?.stampsEarned ?? 0;
-  const remaining = Math.max(0, required - stampsEarned);
+  const balance = points?.balance ?? 0;
+  const earnPercent = points?.earnPercent ?? tenant?.program?.earnPercent ?? 100;
+
+  // What the balance can actually buy right now — far more motivating than a
+  // bare number, and it's the outlet's own catalog, not an invented target.
+  const affordable = catalog.filter((item) => item.pointsPrice <= balance);
+  const nextUp = catalog
+    .filter((item) => item.pointsPrice > balance)
+    .sort((a, b) => a.pointsPrice - b.pointsPrice)[0];
 
   const contact = tenant?.contact;
   const hasLatLong = contact?.latitude != null && contact?.longitude != null;
@@ -53,10 +58,13 @@ export default function CustomerDashboard() {
 
   const upcomingEvents = tenant?.upcomingEvents ?? [];
 
-  const awayText =
-    remaining > 0
-      ? `You're ${remaining} stamp${remaining > 1 ? "s" : ""} from a ${reward}`
-      : "Card complete — your reward is ready!";
+  const awayText = cardLoading
+    ? "Loading your points…"
+    : affordable.length > 0
+      ? `You can redeem ${affordable.length} reward${affordable.length === 1 ? "" : "s"} right now`
+      : nextUp
+        ? `${formatPoints(nextUp.pointsPrice - balance)} more points for a ${nextUp.name}`
+        : "Every rupee you spend earns points here";
 
   const firstName = (account?.name || "").split(" ")[0];
 
@@ -80,7 +88,7 @@ export default function CustomerDashboard() {
         >
           <MailWarning className="mt-0.5 h-5 w-5 flex-shrink-0" />
           <div className="text-sm">
-            <span className="font-bold">Verify your email to start collecting stamps.</span>{" "}
+            <span className="font-bold">Verify your email to start collecting points.</span>{" "}
             <button
               onClick={async () => {
                 try {
@@ -101,34 +109,13 @@ export default function CustomerDashboard() {
         </div>
       )}
 
-      {/* Reward card — enters like it's being placed down on the counter,
-          the moment a customer sees right after signing in. */}
-      <motion.div
-        initial={reduceMotion ? false : { opacity: 0, y: 28, rotate: -4, scale: 0.94 }}
-        animate={{ opacity: 1, y: 0, rotate: 0, scale: 1 }}
-        transition={reduceMotion ? { duration: 0 } : { type: "spring", stiffness: 220, damping: 20 }}
-        className="shadow-ambient mb-4 rounded-3xl bg-[var(--surface)] p-6"
-      >
-        <div className="mb-5 flex items-start justify-between">
-          <div className="min-w-0">
-            <div className="truncate font-display text-lg font-bold" style={{ color: "var(--brand)" }}>
-              {tenant?.name}
-            </div>
-            <div className="truncate text-sm text-[var(--muted)]">{reward}</div>
-          </div>
-          <div className="flex-shrink-0 text-right">
-            <div className="font-display text-2xl font-bold leading-none" style={{ color: "var(--brand)" }}>
-              {cardLoading ? (
-                <span className="inline-block h-6 w-14 animate-pulse rounded bg-[var(--line)] align-middle" />
-              ) : (
-                `${stampsEarned}/${required}`
-              )}
-            </div>
-            <div className="text-[11px] uppercase tracking-wider text-[var(--soft)]">stamps</div>
-          </div>
-        </div>
-        <PunchCard stampsEarned={stampsEarned} stampsRequired={required} />
-      </motion.div>
+      <PointsBalanceCard
+        balance={balance}
+        earnPercent={earnPercent}
+        expiresAt={points?.expiresAt ?? null}
+        businessName={tenant?.name}
+        isLoading={cardLoading}
+      />
 
       {/* Away hint */}
       <div className="mb-2 flex items-center gap-3 rounded-3xl border border-[var(--line)] bg-[var(--surface-container)] px-4 py-3">
@@ -136,10 +123,56 @@ export default function CustomerDashboard() {
           className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-full text-white"
           style={{ background: "var(--brand)" }}
         >
-          <Coffee className="h-4 w-4" />
+          <Coins className="h-4 w-4" />
         </span>
         <span className="text-sm font-semibold text-[var(--ink)]">{awayText}</span>
       </div>
+
+      {catalog.length > 0 && (
+        <div className="mt-4 shadow-ambient rounded-3xl bg-[var(--surface)] p-5">
+          <div className="mb-3 flex items-center justify-between">
+            <div className="text-xs font-bold uppercase tracking-wider text-[var(--soft)]">
+              Redeem your points
+            </div>
+            <Link to={tenantPath(companySlug, outletSlug, "history")} className="text-xs font-bold" style={{ color: "var(--brand)" }}>
+              History
+            </Link>
+          </div>
+          <div className="flex flex-col gap-2.5">
+            {catalog.slice(0, 4).map((item) => {
+              const canAfford = item.pointsPrice <= balance;
+              return (
+                <div key={item.id} className="flex items-center gap-3">
+                  <span
+                    className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full"
+                    style={{
+                      background: canAfford ? "var(--brand)" : "var(--surface-container)",
+                      color: canAfford ? "#fff" : "var(--soft)",
+                    }}
+                  >
+                    <Gift className="h-3.5 w-3.5" />
+                  </span>
+                  <div className="min-w-0 flex-1">
+                    <div className="truncate text-sm font-semibold text-[var(--ink)]">{item.name}</div>
+                    {item.description && (
+                      <div className="truncate text-[13px] text-[var(--muted)]">{item.description}</div>
+                    )}
+                  </div>
+                  <span
+                    className="flex-shrink-0 text-sm font-bold"
+                    style={{ color: canAfford ? "var(--brand)" : "var(--soft)" }}
+                  >
+                    {formatPoints(item.pointsPrice)}
+                  </span>
+                </div>
+              );
+            })}
+          </div>
+          <p className="mt-3 text-[12px] text-[var(--muted)]">
+            Ask the counter to bring up the redeem code, then scan it.
+          </p>
+        </div>
+      )}
 
       {featuredItems.length > 0 && (
         <div className="mt-4 shadow-ambient rounded-3xl bg-[var(--surface)] p-5">
@@ -289,8 +322,8 @@ export default function CustomerDashboard() {
 
       <p className="mt-4 text-center text-xs text-[var(--muted)]">
         {unverified
-          ? "Verify your email above before you can scan to earn stamps."
-          : "Tap the scan button below and point at the barista’s QR to earn a stamp."}
+          ? "Verify your email above before you can scan to earn points."
+          : "Tap the scan button below and point at the counter’s QR to earn points."}
       </p>
     </div>
   );

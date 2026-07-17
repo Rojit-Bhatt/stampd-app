@@ -5,7 +5,7 @@ import toast from "react-hot-toast";
 import { apiRequest } from "../lib/api";
 import { useTenant } from "../context/TenantContext";
 import { useCustomerAuth } from "../context/CustomerAuthContext";
-import { StampCelebration } from "../components/customer/StampCelebration";
+import { PointsCelebration } from "../components/customer/PointsCelebration";
 import { tenantPath } from "../lib/tenantPath";
 
 type Stage =
@@ -18,10 +18,9 @@ type Stage =
   | "error";
 
 interface ClaimResult {
-  stampsEarned: number;
-  rewardTriggered: boolean;
-  voucherCode?: string;
-  rewardTitle?: string;
+  pointsEarned: number;
+  billAmount: number;
+  balance: number;
 }
 
 // StrictMode-safe module-scope cache — same pattern as VerifyEmail.tsx /
@@ -50,7 +49,6 @@ export default function ClaimLanding() {
   const [errorMsg, setErrorMsg] = useState("");
   const [pendingClaimId, setPendingClaimId] = useState<string | null>(null);
   const [result, setResult] = useState<ClaimResult | null>(null);
-  const [copied, setCopied] = useState(false);
   const [mode, setMode] = useState<"login" | "register">("login");
   const [busy, setBusy] = useState(false);
   const checkedOnce = useRef(false);
@@ -98,7 +96,7 @@ export default function ClaimLanding() {
         setStage("awaiting-verification");
       } else {
         setStage("error");
-        setErrorMsg(message || "Could not add your stamp.");
+        setErrorMsg(message || "Could not add your points.");
       }
     }
   };
@@ -120,10 +118,9 @@ export default function ClaimLanding() {
         );
         if (res.data.fulfilled) {
           setResult({
-            stampsEarned: res.data.stampsEarned ?? 0,
-            rewardTriggered: Boolean(res.data.rewardTriggered),
-            voucherCode: res.data.voucherCode,
-            rewardTitle: res.data.rewardTitle,
+            pointsEarned: res.data.pointsEarned ?? 0,
+            billAmount: res.data.billAmount ?? 0,
+            balance: res.data.balance ?? 0,
           });
           setStage("success");
         } else if (res.data.expired) {
@@ -162,13 +159,6 @@ export default function ClaimLanding() {
     }
   };
 
-  const copyCode = async () => {
-    if (!result?.voucherCode) return;
-    await navigator.clipboard.writeText(result.voucherCode);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 1500);
-  };
-
   if (stage === "resolving" || stage === "checking" || stage === "fulfilling") {
     return (
       <div className="flex min-h-screen items-center justify-center bg-[var(--bg)]">
@@ -180,7 +170,7 @@ export default function ClaimLanding() {
   if (stage === "error") {
     return (
       <div className="flex min-h-screen flex-col items-center justify-center bg-[var(--bg)] px-6 text-center">
-        <h2 className="font-display text-xl font-bold text-[var(--ink)]">Couldn't add your stamp</h2>
+        <h2 className="font-display text-xl font-bold text-[var(--ink)]">Couldn't add your points</h2>
         <p className="mt-2 max-w-sm text-sm text-[var(--muted)]">{errorMsg}</p>
         <Link
           to={tenantPath(companySlug, slug)}
@@ -199,7 +189,7 @@ export default function ClaimLanding() {
         <Mail className="h-10 w-10 text-[var(--brand)]" />
         <h2 className="mt-4 font-display text-xl font-bold text-[var(--ink)]">Check your email</h2>
         <p className="mt-2 max-w-sm text-sm text-[var(--muted)]">
-          Click the verification link we sent you — your stamp at {tenant?.name} will be added
+          Click the verification link we sent you — your points at {tenant?.name} will be added
           automatically the moment you do, even from another device.
         </p>
       </div>
@@ -208,14 +198,11 @@ export default function ClaimLanding() {
 
   if (stage === "success" && result) {
     return (
-      <StampCelebration
-        rewardTriggered={result.rewardTriggered}
-        stampsEarned={result.stampsEarned}
-        stampsRequired={tenant?.program?.stampsRequired}
-        rewardTitle={result.rewardTitle || "reward"}
-        voucherCode={result.voucherCode}
-        copied={copied}
-        onCopyCode={copyCode}
+      <PointsCelebration
+        variant="earn"
+        points={result.pointsEarned}
+        billAmount={result.billAmount}
+        balance={result.balance}
         onDone={() => navigate(tenantPath(companySlug, slug, "dashboard"))}
         doneLabel="Go to dashboard"
       />
@@ -236,7 +223,7 @@ export default function ClaimLanding() {
           Scan to collect at {tenant?.name}
         </h1>
         <p className="mb-6 mt-1 text-sm text-[var(--muted)]">
-          {mode === "login" ? "Sign in to add your stamp." : "Create an account to add your stamp."}
+          {mode === "login" ? "Sign in to add your points." : "Create an account to add your points."}
         </p>
 
         {mode === "login" ? (
@@ -302,7 +289,7 @@ function ClaimLoginForm({
         className="mt-2 w-full rounded-[15px] py-4 text-[15px] font-bold text-white transition-opacity hover:opacity-90 disabled:opacity-50"
         style={{ background: "var(--brand)" }}
       >
-        {busy ? "Please wait…" : "Sign in & add stamp"}
+        {busy ? "Please wait…" : "Sign in & add points"}
       </button>
     </form>
   );

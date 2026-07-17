@@ -13,5 +13,6 @@
       "runtimeArgs": ["run", "dev", "-w", "backend"],
       "port": 5001
     }
-  ]
+  ],
+  "autoVerify": true
 }

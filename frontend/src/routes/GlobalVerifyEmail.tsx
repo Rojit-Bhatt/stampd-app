@@ -5,10 +5,9 @@ import { apiRequest } from "../lib/api";
 interface FulfilledClaim {
   organizationId: string;
   organizationName: string;
-  stampsEarned: number;
-  rewardTriggered: boolean;
-  voucherCode?: string;
-  rewardTitle?: string;
+  pointsEarned: number;
+  billAmount: number;
+  balance: number;
 }
 
 interface VerifyResponse {
@@ -34,7 +33,7 @@ function verifyOnce(token: string) {
 }
 
 // Global (slug-less) counterpart to VerifyEmail.tsx — verifies the account
-// itself, not a tenant membership, and reports every stamp that was left
+// itself, not a tenant membership, and reports every claim that was left
 // pending on a QR scan made before verification finished.
 export default function GlobalVerifyEmail() {
   const [params] = useSearchParams();
@@ -84,7 +83,7 @@ export default function GlobalVerifyEmail() {
                     <span className="font-bold text-[var(--ink)]">{f.organizationName}</span>
                     <span className="text-[var(--muted)]">
                       {" "}
-                      — {f.rewardTriggered ? `reward unlocked! ${f.voucherCode ?? ""}` : "stamp added"}
+                      — {f.pointsEarned} points added
                     </span>
                   </div>
                 ))}

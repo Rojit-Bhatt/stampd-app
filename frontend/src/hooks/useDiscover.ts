@@ -17,10 +17,12 @@ export interface DiscoverBusiness {
     longitude: number | null;
   };
   program: {
-    rewardTitle: string;
+    /** Percentage of the bill returned as points. 100 = 1 point per rupee. */
+    earnPercent: number;
   };
   createdAt: string;
-  recentStampCount: number;
+  /** Real points movements in the last 7 days — the trending signal. */
+  recentActivityCount: number;
 }
 
 export function useDiscover() {

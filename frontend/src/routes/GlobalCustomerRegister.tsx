@@ -55,7 +55,7 @@ export default function GlobalCustomerRegister() {
         <h1 className="font-display text-[25px] font-extrabold text-[var(--ink)]">Check your email</h1>
         <p className="mb-6 mt-2 text-sm text-[var(--muted)]">
           We sent a verification link to <b className="text-[var(--ink)]">{registeredEmail}</b>. Open it
-          to start collecting stamps.
+          to start collecting points.
         </p>
         <button
           onClick={async () => {

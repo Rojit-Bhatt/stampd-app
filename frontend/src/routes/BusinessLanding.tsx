@@ -44,9 +44,13 @@ export default function BusinessLanding() {
               How it works
             </div>
             <p className="text-[15px] leading-relaxed text-[var(--ink)]">
-              Collect a stamp every visit. Fill your card of{" "}
-              <b>{program?.stampsRequired}</b> and earn a <b>{program?.rewardTitle}</b> — no paper
-              punch card to lose.
+              Every visit earns points on what you spend
+              {program?.earnPercent === 100
+                ? " — 1 point per rupee"
+                : program?.earnPercent
+                  ? ` — ${program.earnPercent}% of your bill back`
+                  : ""}
+              . Spend them on the good stuff, no paper card to lose.
             </p>
           </div>
 

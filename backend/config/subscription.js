@@ -10,7 +10,7 @@ const DEFAULT_PLANS = [
     outletLimit: 1,
     features: [
       "1 outlet",
-      "Digital Stamp Cards",
+      "Points loyalty program",
       "AI Digital Menu",
       "Scratch Cards",
       "Unlimited QR scans",
@@ -27,7 +27,7 @@ const DEFAULT_PLANS = [
     outletLimit: 3,
     features: [
       "Up to 3 outlets",
-      "Digital Stamp Cards",
+      "Points loyalty program",
       "AI Digital Menu",
       "Scratch Cards",
       "Same QR, GPS branch detection",
@@ -44,7 +44,7 @@ const DEFAULT_PLANS = [
     outletLimit: 6,
     features: [
       "Up to 6 outlets",
-      "Digital Stamp Cards",
+      "Points loyalty program",
       "AI Digital Menu",
       "Scratch Cards",
       "Same QR, GPS branch detection",

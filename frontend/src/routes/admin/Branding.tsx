@@ -221,14 +221,12 @@ export default function Branding() {
                 className="rounded-[14px] p-3.5 text-white"
                 style={{ background: `linear-gradient(150deg, ${brand.primaryColor}, ${deep})` }}
               >
-                <div className="text-[11px] opacity-80">Reward card</div>
-                <div className="mb-2.5 font-display text-base font-extrabold">
-                  {settings?.program?.rewardTitle}
-                </div>
-                <div className="flex gap-1.5">
-                  <span className="h-5 w-5 rounded-full bg-white" />
-                  <span className="h-5 w-5 rounded-full bg-white" />
-                  <span className="h-5 w-5 rounded-full border-2 border-dashed border-white/50 bg-white/25" />
+                <div className="text-[11px] opacity-80">Points balance</div>
+                <div className="mb-1 font-display text-2xl font-extrabold">1,240</div>
+                <div className="text-[11px] opacity-80">
+                  {settings?.programResolved?.earnPercent === 100
+                    ? "1 point per Rs 1"
+                    : `${settings?.programResolved?.earnPercent ?? 100}% back`}
                 </div>
               </div>
             </div>

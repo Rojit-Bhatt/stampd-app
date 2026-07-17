@@ -9,10 +9,11 @@ interface OutletRow {
   name: string;
   status: string;
   customersCount: number;
-  stampsIssued: number;
-  stampsIssuedThisWeek: number;
-  vouchersEarned: number;
-  vouchersRedeemed: number;
+  transactions: number;
+  pointsIssued: number;
+  pointsIssuedThisWeek: number;
+  pointsRedeemed: number;
+  redemptionCount: number;
   revenue: number;
 }
 
@@ -21,10 +22,11 @@ interface Rollup {
   totals: {
     outletCount: number;
     customersCount: number;
-    stampsIssued: number;
-    stampsIssuedThisWeek: number;
-    vouchersEarned: number;
-    vouchersRedeemed: number;
+    transactions: number;
+    pointsIssued: number;
+    pointsIssuedThisWeek: number;
+    pointsRedeemed: number;
+    redemptionCount: number;
     revenue: number;
   };
   outlets: OutletRow[];
@@ -43,7 +45,7 @@ export default function CompanyReports() {
   const tiles = [
     { label: "Outlets", val: totals ? String(totals.outletCount) : "—" },
     { label: "Customers", val: totals ? String(totals.customersCount) : "—" },
-    { label: "Stamps issued", val: totals ? String(totals.stampsIssued) : "—" },
+    { label: "Points issued", val: totals ? String(totals.pointsIssued) : "—" },
     { label: "Revenue", val: totals ? formatNpr(totals.revenue) : "—" },
   ];
 
@@ -65,7 +67,7 @@ export default function CompanyReports() {
         <div className="grid grid-cols-[2fr_1fr_1fr_1fr_1fr] border-b border-[var(--line)] px-5 py-3 text-[11px] font-bold uppercase tracking-wider text-[var(--soft)]">
           <span>Outlet</span>
           <span>Customers</span>
-          <span>Stamps</span>
+          <span>Points</span>
           <span>Redeemed</span>
           <span>Revenue</span>
         </div>
@@ -93,8 +95,8 @@ export default function CompanyReports() {
                 </span>
               </span>
               <span className="font-semibold">{o.customersCount}</span>
-              <span className="font-semibold">{o.stampsIssued}</span>
-              <span className="font-semibold">{o.vouchersRedeemed}</span>
+              <span className="font-semibold">{o.pointsIssued}</span>
+              <span className="font-semibold">{o.redemptionCount}</span>
               <span className="font-semibold">{formatNpr(o.revenue)}</span>
             </div>
           ))

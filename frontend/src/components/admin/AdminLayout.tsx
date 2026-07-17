@@ -5,7 +5,8 @@ import {
   QrCode,
   TicketCheck,
   Users,
-  Stamp,
+  Coins,
+  Receipt,
   Palette,
   UtensilsCrossed,
   FileSpreadsheet,
@@ -37,7 +38,8 @@ const isGroup = (item: NavLeaf | NavGroup): item is NavGroup => "children" in it
 
 const NAV: (NavLeaf | NavGroup)[] = [
   { to: "", end: true, label: "Overview", Icon: LayoutDashboard },
-  { to: "redeem", label: "Redeem voucher", Icon: TicketCheck },
+  { to: "redeem", label: "Redeem points", Icon: TicketCheck },
+  { to: "transactions", label: "Transactions", Icon: Receipt },
   { to: "customers", label: "Customers", Icon: Users },
   {
     label: "Reports",
@@ -45,13 +47,12 @@ const NAV: (NavLeaf | NavGroup)[] = [
     children: [
       { to: "reports/summary", label: "Summary report" },
       { to: "reports/customers", label: "Customer report" },
-      { to: "reports/vouchers", label: "Voucher performance" },
     ],
   },
 ];
 
 const BASE_MANAGEMENT_NAV: NavLeaf[] = [
-  { to: "program", label: "Stamp program", Icon: Stamp },
+  { to: "program", label: "Points program", Icon: Coins },
   { to: "branding", label: "Branding", Icon: Palette },
   { to: "contact", label: "Contact", Icon: Phone },
   { to: "menu", label: "Menu", Icon: UtensilsCrossed },
@@ -182,7 +183,7 @@ export function AdminLayout() {
             style={{ background: "var(--brand)" }}
           >
             <QrCode className="h-4 w-4" />
-            Generate stamp
+            Earn code
           </NavLink>
           <div className="border-t border-[var(--line)] pt-3">
             <AccountMenu

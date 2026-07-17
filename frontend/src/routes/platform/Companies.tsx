@@ -17,8 +17,8 @@ export interface Outlet {
   category: BusinessCategory;
   branding: { primaryColor: string };
   customersCount: number;
-  stampsIssued: number;
-  vouchersRedeemed: number;
+  pointsIssued: number;
+  redemptionCount: number;
 }
 
 export interface Company {
@@ -31,8 +31,8 @@ export interface Company {
   outlets: Outlet[];
   outletCount: number;
   customersCount: number;
-  stampsIssued: number;
-  vouchersRedeemed: number;
+  pointsIssued: number;
+  redemptionCount: number;
 }
 
 export function useCompanies() {
@@ -211,7 +211,7 @@ export default function Companies() {
                           <span>Outlet</span>
                           <span>Status</span>
                           <span>Customers</span>
-                          <span>Stamps</span>
+                          <span>Points</span>
                         </div>
                         {c.outlets.map((o) => (
                           <div key={o.id} className="grid grid-cols-[2fr_1fr_1fr_1fr] items-center px-1 py-1.5 text-[13px]">
@@ -223,7 +223,7 @@ export default function Companies() {
                             </span>
                             <span className="text-[var(--muted)]">{o.status}</span>
                             <span className="font-semibold">{o.customersCount}</span>
-                            <span className="font-semibold">{o.stampsIssued}</span>
+                            <span className="font-semibold">{o.pointsIssued}</span>
                           </div>
                         ))}
                       </div>

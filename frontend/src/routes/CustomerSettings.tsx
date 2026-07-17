@@ -26,7 +26,7 @@ export default function CustomerSettings() {
       <p className="mb-6 text-[13px] text-[var(--muted)]">Your account details.</p>
       <AccountSettingsForm role="customer" onLogout={handleLogout} />
 
-      {/* The stamp card flips away as the session ends. */}
+      {/* The card flips away as the session ends. */}
       <AnimatePresence>
         {loggingOut && (
           <motion.div

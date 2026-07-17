@@ -1,15 +1,17 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { Download, UserPlus, Stamp, Ticket, CheckCircle2, Wallet } from "lucide-react";
+import { Download, UserPlus, Coins, Gift, Hourglass, Wallet, Receipt } from "lucide-react";
 import { apiRequest, tenantHeaders } from "../../lib/api";
 import { useAdminAuth } from "../../context/AdminAuthContext";
 import { Skeleton } from "../../components/ui/skeleton";
 
 interface SummaryStats {
   newCustomers: number;
-  stampsIssued: number;
-  vouchersEarned: number;
-  vouchersRedeemed: number;
+  transactions: number;
+  pointsIssued: number;
+  pointsRedeemed: number;
+  pointsExpired: number;
+  pointsOutstanding: number;
   totalRevenue: number;
   startDate: string;
   endDate: string;
@@ -56,9 +58,11 @@ export default function AdminReportsSummary() {
 
   const cards = [
     { label: "New customers", val: stats?.newCustomers ?? "—", Icon: UserPlus },
-    { label: "Stamps issued", val: stats?.stampsIssued ?? "—", Icon: Stamp },
-    { label: "Vouchers earned", val: stats?.vouchersEarned ?? "—", Icon: Ticket },
-    { label: "Vouchers redeemed", val: stats?.vouchersRedeemed ?? "—", Icon: CheckCircle2 },
+    { label: "Transactions", val: stats?.transactions ?? "—", Icon: Receipt },
+    { label: "Points issued", val: stats?.pointsIssued ?? "—", Icon: Coins },
+    { label: "Points redeemed", val: stats?.pointsRedeemed ?? "—", Icon: Gift },
+    { label: "Points expired", val: stats?.pointsExpired ?? "—", Icon: Hourglass },
+    { label: "Points outstanding", val: stats?.pointsOutstanding ?? "—", Icon: Wallet },
     { label: "Total revenue", val: stats?.totalRevenue ?? "—", Icon: Wallet },
   ];
 

@@ -37,10 +37,10 @@ export interface TenantEvent {
 }
 
 export interface TenantProgram {
-  stampsRequired: number;
-  rewardTitle: string;
-  rewardDescription: string;
-  cooldownHours: number;
+  /** Percentage of the bill returned as points. 100 = 1 point per rupee. */
+  earnPercent: number;
+  /** 0 = points never expire. */
+  pointsExpiryDays: number;
 }
 
 export interface Tenant {
@@ -56,7 +56,9 @@ export interface Tenant {
 
 interface TenantContextValue {
   companySlug: string;
+  /** The outlet slug. `outletSlug` is the same value under its precise name. */
   slug: string;
+  outletSlug: string;
   tenant: Tenant | null;
   isLoading: boolean;
   notFound: boolean;
@@ -175,7 +177,7 @@ export function TenantProvider({ children }: { children: React.ReactNode }) {
   }
 
   return (
-    <TenantContext.Provider value={{ companySlug, slug, tenant: tenant ?? null, isLoading, notFound, suspended, path: (sub = "") => tenantPath(companySlug, outletSlug, sub) }}>
+    <TenantContext.Provider value={{ companySlug, slug, outletSlug, tenant: tenant ?? null, isLoading, notFound, suspended, path: (sub = "") => tenantPath(companySlug, outletSlug, sub) }}>
       <div style={{ ["--brand" as any]: brand, ["--brand-deep" as any]: brandDeep }}>
         {children}
       </div>

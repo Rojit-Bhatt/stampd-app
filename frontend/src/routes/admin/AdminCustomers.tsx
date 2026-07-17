@@ -14,12 +14,12 @@ interface AdminCustomer {
   customerNo: string;
   phone: string;
   address: string;
-  stampsEarned: number;
-  lastStampedAt: string | null;
-  validVoucherCount: number;
-  lifetimeVoucherCount: number;
+  pointsBalance: number;
+  lifetimePoints: number;
+  lastActivityAt: string | null;
+  redemptionCount: number;
   totalSpent: number;
-  scanHistory: { id: string; timestamp: string }[];
+  history: { id: string; type: string; points: number; createdAt: string }[];
 }
 
 function lastVisit(iso: string | null): string {
@@ -30,7 +30,6 @@ function lastVisit(iso: string | null): string {
 export default function AdminCustomers() {
   const { slug } = useParams();
   const { data: settings } = useAdminSettings();
-  const required = settings?.program?.stampsRequired ?? 5;
   const { user } = useAdminAuth();
   const orgId = user?.organizationId ?? null;
   const [query, setQuery] = useState("");
@@ -101,8 +100,8 @@ export default function AdminCustomers() {
         <div className="grid grid-cols-[2fr_1fr_1fr_1fr_1fr] gap-4 border-b border-[var(--line)] px-5 py-3 text-[11px] font-bold uppercase tracking-wider text-[var(--soft)]">
           <span>Customer</span>
           <span>No.</span>
-          <span>Stamps</span>
-          <span>Vouchers</span>
+          <span>Points</span>
+          <span>Redeemed</span>
           <span>Last visit</span>
         </div>
 
@@ -144,10 +143,10 @@ export default function AdminCustomers() {
               </span>
               <span className="font-mono text-[13px] text-[var(--muted)]">{c.customerNo}</span>
               <span className="text-sm font-semibold">
-                {c.stampsEarned}/{required}
+                {c.pointsBalance}
               </span>
-              <span className="text-sm font-semibold">{c.validVoucherCount}</span>
-              <span className="text-[13px] text-[var(--muted)]">{lastVisit(c.lastStampedAt)}</span>
+              <span className="text-sm font-semibold">{c.redemptionCount}</span>
+              <span className="text-[13px] text-[var(--muted)]">{lastVisit(c.lastActivityAt)}</span>
             </Link>
           ))
         )}

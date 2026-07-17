@@ -8,7 +8,7 @@ import { useNavigate } from "react-router-dom";
 // decode it just navigates to the scanned URL's path+query (a QR always
 // encodes /:slug/claim?token=...); the existing ClaimLanding page handles the
 // rest for an already-globally-authenticated customer. No claim API call
-// here, no StampCelebration — ScannerModal.tsx itself is untouched and still
+// here, no PointsCelebration — ScannerModal.tsx itself is untouched and still
 // used inside a specific tenant's dashboard.
 export function GlobalScannerModal({ open, onClose }: { open: boolean; onClose: () => void }) {
   const scannerRef = useRef<Html5Qrcode | null>(null);

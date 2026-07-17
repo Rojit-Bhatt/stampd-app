@@ -285,7 +285,7 @@ export default function CompanyDashboard() {
         open={pendingArchive !== null}
         onOpenChange={(open) => !open && setPendingArchive(null)}
         title={`Archive ${pendingArchive?.name ?? "this outlet"}?`}
-        description="It stops serving customers and frees a plan slot. Its customers, stamps and menu are all kept, and you can restore it later."
+        description="It stops serving customers and frees a plan slot. Its customers, points and menu are all kept, and you can restore it later."
         confirmLabel="Archive"
         confirmColor="var(--warn)"
         onConfirm={() => {

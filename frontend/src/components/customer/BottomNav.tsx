@@ -1,11 +1,11 @@
 import { Link } from "react-router-dom";
-import { Coffee, QrCode, Ticket, UtensilsCrossed, Settings } from "lucide-react";
+import { Coffee, QrCode, Coins, UtensilsCrossed, Settings } from "lucide-react";
 import { tenantPath } from "../../lib/tenantPath";
 import { useTenant } from "../../context/TenantContext";
 
 interface BottomNavProps {
   slug: string;
-  activeTab: "dashboard" | "wallet" | "menu" | "settings" | "none";
+  activeTab: "dashboard" | "history" | "menu" | "settings" | "none";
   onScanClick: () => void;
 }
 
@@ -21,7 +21,7 @@ export function BottomNav({ slug, activeTab, onScanClick }: BottomNavProps) {
               ? "text-[var(--brand)]"
               : "text-[var(--soft)] hover:text-[var(--brand)]"
           }`}
-          aria-label="Stamp card"
+          aria-label="Points balance"
         >
           <Coffee className="h-5 w-5" strokeWidth={activeTab === "dashboard" ? 2.5 : 2} />
           <span className="text-[10px] font-bold uppercase tracking-wider">Card</span>
@@ -52,7 +52,7 @@ export function BottomNav({ slug, activeTab, onScanClick }: BottomNavProps) {
               background: "var(--brand)",
               boxShadow: "0 12px 24px -8px var(--brand)",
             }}
-            aria-label="Scan to earn a stamp"
+            aria-label="Scan to earn points"
           >
             <QrCode className="h-6 w-6" strokeWidth={2} />
           </button>
@@ -60,16 +60,16 @@ export function BottomNav({ slug, activeTab, onScanClick }: BottomNavProps) {
         <div className="w-14" aria-hidden="true" />
 
         <Link
-          to={tenantPath(companySlug, slug, "wallet")}
+          to={tenantPath(companySlug, slug, "history")}
           className={`flex min-h-[44px] flex-col items-center justify-center gap-1 p-2 transition-colors ${
-            activeTab === "wallet"
+            activeTab === "history"
               ? "text-[var(--brand)]"
               : "text-[var(--soft)] hover:text-[var(--brand)]"
           }`}
-          aria-label="Voucher wallet"
+          aria-label="Points history"
         >
-          <Ticket className="h-5 w-5" strokeWidth={activeTab === "wallet" ? 2.5 : 2} />
-          <span className="text-[10px] font-bold uppercase tracking-wider">Wallet</span>
+          <Coins className="h-5 w-5" strokeWidth={activeTab === "history" ? 2.5 : 2} />
+          <span className="text-[10px] font-bold uppercase tracking-wider">Points</span>
         </Link>
 
         <Link

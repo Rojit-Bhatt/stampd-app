@@ -20,7 +20,7 @@ export default function AdminReportsCustomers() {
     <div className="max-w-[560px]">
       <h1 className="font-display text-[28px] font-extrabold text-[var(--ink)]">Customer report</h1>
       <p className="mb-6 text-[var(--muted)]">
-        Download every customer's contact info, stamp progress, and lifetime totals as an Excel file.
+        Download every customer's contact info, points balance, and lifetime totals as an Excel file.
       </p>
       <button
         onClick={download}

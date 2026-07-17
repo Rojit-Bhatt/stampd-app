@@ -20,23 +20,23 @@ import { usePlatformContact } from "../../hooks/usePlatformContact";
 import { StampdLogo } from "../../components/shared/StampdLogo";
 
 const STEPS = [
-  { n: "1", t: "We set up your card", d: "Pick your reward and how many stamps it takes. Live in minutes — no app store needed." },
-  { n: "2", t: "Customers scan to collect", d: "They scan a code at your counter. Each visit adds a stamp to their digital card." },
-  { n: "3", t: "They earn, you keep them", d: "A full card becomes a free-reward voucher — and a reason to come back." },
+  { n: "1", t: "We set up your program", d: "Pick how much of each bill comes back as points. Live in minutes — no app store needed." },
+  { n: "2", t: "Customers scan to collect", d: "You enter the bill, they scan the code. Points land on their balance instantly." },
+  { n: "3", t: "They spend, you keep them", d: "They put points toward the things you choose — and a reason to come back." },
 ];
 const CUSTOMER_FEATURES = [
-  { Icon: Wallet, t: "Digital wallet", d: "Every stamp card lives in your phone's browser — one home for every business you're loyal to, nothing to print or lose." },
-  { Icon: QrCode, t: "Instant QR stamps", d: "Scan the counter code with your phone's own camera, or the in-app scanner, and your stamp lands immediately." },
+  { Icon: Wallet, t: "One balance per place", d: "Every balance lives in your phone's browser — one home for every business you're loyal to, nothing to print or lose." },
+  { Icon: QrCode, t: "Instant QR points", d: "Scan the counter code with your phone's own camera, or the in-app scanner, and your points land immediately." },
 ];
 const BUSINESS_FEATURES = [
-  { Icon: BarChart3, t: "Powerful insights", d: "Track stamps, redemptions, and repeat visits from one dashboard, with exportable reports." },
+  { Icon: BarChart3, t: "Powerful insights", d: "Track points, redemptions, and repeat visits from one dashboard, with exportable reports." },
   { Icon: Palette, t: "Bespoke branding", d: "Your logo, your colour, your reward — customers feel like it's your own app, not a shared platform." },
 ];
 const FAQS = [
   { q: "Do my customers need to download an app?", a: "No. It runs in the browser and can be added to their home screen like an app." },
-  { q: "Can I choose my own reward?", a: "Yes — set any reward and any number of stamps." },
-  { q: "How do stamps get added?", a: "You show a short-lived QR code at the counter; the customer scans it to earn one stamp." },
-  { q: "Is there a cart or payments?", a: `No. ${PLATFORM_NAME} is purely loyalty — collect stamps, complete a card, earn a free reward.` },
+  { q: "Can I choose my own rewards?", a: "Yes — put a points price on anything you like, and set how much of a bill comes back." },
+  { q: "How do points get added?", a: "You enter the bill and show a short-lived QR; the customer scans it and earns a share of what they paid." },
+  { q: "Is there a cart or payments?", a: `No. ${PLATFORM_NAME} is purely loyalty — earn points on what you spend, then put them toward a reward.` },
 ];
 
 export default function PlatformLanding() {
@@ -106,7 +106,7 @@ export default function PlatformLanding() {
             </span>
           </h1>
           <p className="mb-7 mt-4 max-w-[480px] text-[18px] text-[var(--muted)]">
-            Reimagining the paper stamp card for the digital age — a beautiful, seamless bridge
+            Reimagining the shopkeeper's ledger for the digital age — a beautiful, seamless bridge
             between local businesses and the customers who keep coming back.
           </p>
           <div className="flex flex-col gap-3 sm:flex-row">
@@ -117,7 +117,7 @@ export default function PlatformLanding() {
             >
               <User className="mb-2 h-6 w-6" />
               <div className="font-display text-lg font-bold">Customer Login</div>
-              <div className="text-[13px] opacity-80">Track your rewards &amp; stamps</div>
+              <div className="text-[13px] opacity-80">Track your rewards &amp; points</div>
             </Link>
             <Link
               to="/business-login"
@@ -140,7 +140,7 @@ export default function PlatformLanding() {
               <QrCode className="h-5 w-5" style={{ color: "var(--plat)" }} />
             </div>
             <h3 className="font-display text-lg font-bold">Seamless scan</h3>
-            <p className="text-sm text-[var(--muted)]">Instant stamps via QR at the counter — no app to install.</p>
+            <p className="text-sm text-[var(--muted)]">Instant points via QR at the counter — no app to install.</p>
           </div>
 
           <div
@@ -246,7 +246,7 @@ export default function PlatformLanding() {
             A loyalty card that feels like your business, not a shared app.
           </h2>
           <p className="max-w-2xl text-[17px] italic opacity-90">
-            No punch cards to reprint, no third-party logo cluttering the experience — just your
+            No paper ledgers to keep, no third-party logo cluttering the experience — just your
             name, your colour, and your reward, at every single visit.
           </p>
         </div>

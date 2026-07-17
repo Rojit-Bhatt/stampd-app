@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Link, useParams } from "react-router-dom";
-import { Stamp, Users, Ticket, Wallet, Search, Download, TrendingUp, TrendingDown } from "lucide-react";
+import { Coins, Users, Gift, Wallet, Search, Download, TrendingUp, TrendingDown, Hourglass } from "lucide-react";
 import {
   ResponsiveContainer,
   LineChart,
@@ -24,14 +24,18 @@ interface AdminCustomer {
   name: string;
   email: string;
   customerNo: string;
-  stampsEarned: number;
-  validVoucherCount: number;
-  lastStampedAt: string | null;
+  pointsBalance: number;
+  lifetimePoints: number;
+  lastActivityAt: string | null;
 }
-interface Scan {
+interface LedgerRow {
   id: string;
-  timestamp: string;
-  customerName?: string;
+  createdAt: string;
+  customerName: string;
+  type: "earn" | "redeem" | "expire";
+  points: number;
+  billAmount: number | null;
+  rewardName: string;
 }
 interface DashboardMetric {
   value: number;
@@ -39,11 +43,12 @@ interface DashboardMetric {
 }
 interface DashboardStats {
   newCustomers: DashboardMetric;
-  stampsIssued: DashboardMetric;
+  pointsIssued: DashboardMetric;
   revenue: DashboardMetric;
-  activeVouchers: DashboardMetric;
-  stampVelocity: { date: string; count: number }[];
-  voucherActivity: { weekStart: string; earned: number; redeemed: number }[];
+  /** A snapshot (points sitting in balances), so it carries no trend. */
+  pointsOutstanding: DashboardMetric;
+  pointsVelocity: { date: string; points: number }[];
+  pointsActivity: { weekStart: string; earned: number; redeemed: number }[];
 }
 
 // Chart-only categorical pair — kept distinct from --brand/--ok/--err since
@@ -89,10 +94,12 @@ export default function AdminOverview() {
     },
   });
 
-  const { data: scans = [] } = useQuery<Scan[]>({
-    queryKey: ["recentScans", orgId],
+  // The outlet ledger doubles as the live feed — same rows the Transactions
+  // page shows, just the newest few.
+  const { data: ledger = [] } = useQuery<LedgerRow[]>({
+    queryKey: ["adminTransactions", orgId],
     queryFn: async () => {
-      const res = await apiRequest<{ success: boolean; data: Scan[] }>("/api/admin/recent-scans", {
+      const res = await apiRequest<{ success: boolean; data: LedgerRow[] }>("/api/admin/transactions", {
         role: "admin",
       });
       return res.data || [];
@@ -110,13 +117,11 @@ export default function AdminOverview() {
     },
   });
 
-  const required = settings?.program?.stampsRequired ?? 5;
-
   const kpis: { label: string; metric?: DashboardMetric; Icon: typeof Users }[] = [
     { label: "New customers (7d)", metric: dashboardStats?.newCustomers, Icon: Users },
-    { label: "Stamps issued (7d)", metric: dashboardStats?.stampsIssued, Icon: Stamp },
+    { label: "Points issued (7d)", metric: dashboardStats?.pointsIssued, Icon: Coins },
     { label: "Revenue (7d)", metric: dashboardStats?.revenue, Icon: Wallet },
-    { label: "Active vouchers", metric: dashboardStats?.activeVouchers, Icon: Ticket },
+    { label: "Points outstanding", metric: dashboardStats?.pointsOutstanding, Icon: Gift },
   ];
 
   const filtered = useMemo(() => {
@@ -153,7 +158,7 @@ export default function AdminOverview() {
           className="stamp-interactive rounded-full px-5 py-3 text-[15px] font-bold text-white"
           style={{ background: "var(--brand)" }}
         >
-          Generate stamp code
+          Generate earn code
         </Link>
       </div>
 
@@ -182,10 +187,10 @@ export default function AdminOverview() {
 
       <div className="mb-6 grid grid-cols-1 gap-4 lg:grid-cols-2">
         <div className="shadow-ambient rounded-3xl bg-[var(--surface)] p-6">
-          <h3 className="mb-1 font-display text-[17px] font-bold text-[var(--ink)]">Stamp velocity</h3>
-          <p className="mb-4 text-sm text-[var(--muted)]">Stamps issued per day, last 14 days.</p>
+          <h3 className="mb-1 font-display text-[17px] font-bold text-[var(--ink)]">Points velocity</h3>
+          <p className="mb-4 text-sm text-[var(--muted)]">Points issued per day, last 14 days.</p>
           <ResponsiveContainer width="100%" height={220}>
-            <LineChart data={dashboardStats?.stampVelocity ?? []} margin={{ top: 4, right: 8, left: -20, bottom: 0 }}>
+            <LineChart data={dashboardStats?.pointsVelocity ?? []} margin={{ top: 4, right: 8, left: -20, bottom: 0 }}>
               <CartesianGrid stroke="var(--line)" strokeDasharray="3 3" vertical={false} />
               <XAxis
                 dataKey="date"
@@ -195,21 +200,21 @@ export default function AdminOverview() {
                 tickLine={false}
                 minTickGap={24}
               />
-              <YAxis allowDecimals={false} tick={{ fill: "var(--muted)", fontSize: 12 }} axisLine={false} tickLine={false} width={28} />
+              <YAxis tick={{ fill: "var(--muted)", fontSize: 12 }} axisLine={false} tickLine={false} width={36} />
               <Tooltip
                 labelFormatter={(v) => shortDate(String(v))}
                 contentStyle={{ background: "var(--surface)", border: "1px solid var(--line)", borderRadius: 12 }}
               />
-              <Line type="monotone" dataKey="count" name="Stamps" stroke="var(--brand)" strokeWidth={2} dot={false} activeDot={{ r: 4 }} />
+              <Line type="monotone" dataKey="points" name="Points" stroke="var(--brand)" strokeWidth={2} dot={false} activeDot={{ r: 4 }} />
             </LineChart>
           </ResponsiveContainer>
         </div>
 
         <div className="shadow-ambient rounded-3xl bg-[var(--surface)] p-6">
-          <h3 className="mb-1 font-display text-[17px] font-bold text-[var(--ink)]">Voucher activity</h3>
+          <h3 className="mb-1 font-display text-[17px] font-bold text-[var(--ink)]">Points activity</h3>
           <p className="mb-4 text-sm text-[var(--muted)]">Earned vs. redeemed per week, last 8 weeks.</p>
           <ResponsiveContainer width="100%" height={220}>
-            <BarChart data={dashboardStats?.voucherActivity ?? []} margin={{ top: 4, right: 8, left: -20, bottom: 0 }} barGap={2}>
+            <BarChart data={dashboardStats?.pointsActivity ?? []} margin={{ top: 4, right: 8, left: -20, bottom: 0 }} barGap={2}>
               <CartesianGrid stroke="var(--line)" strokeDasharray="3 3" vertical={false} />
               <XAxis
                 dataKey="weekStart"
@@ -219,7 +224,7 @@ export default function AdminOverview() {
                 tickLine={false}
                 minTickGap={24}
               />
-              <YAxis allowDecimals={false} tick={{ fill: "var(--muted)", fontSize: 12 }} axisLine={false} tickLine={false} width={28} />
+              <YAxis tick={{ fill: "var(--muted)", fontSize: 12 }} axisLine={false} tickLine={false} width={36} />
               <Tooltip
                 labelFormatter={(v) => shortDate(String(v))}
                 contentStyle={{ background: "var(--surface)", border: "1px solid var(--line)", borderRadius: 12 }}
@@ -275,8 +280,8 @@ export default function AdminOverview() {
                   <span className="block truncate text-sm font-bold text-[var(--ink)]">{c.name}</span>
                   <span className="block truncate text-xs text-[var(--soft)]">{c.email}</span>
                 </span>
-                <span className="text-sm font-semibold text-[var(--ink)]">{c.stampsEarned}/{required}</span>
-                <span className="w-20 text-right text-[13px] text-[var(--muted)]">{lastVisit(c.lastStampedAt)}</span>
+                <span className="text-sm font-semibold text-[var(--ink)]">{c.pointsBalance}</span>
+                <span className="w-20 text-right text-[13px] text-[var(--muted)]">{lastVisit(c.lastActivityAt)}</span>
               </Link>
             ))}
           </div>
@@ -296,29 +301,37 @@ export default function AdminOverview() {
           <span className="h-2 w-2 rounded-full" style={{ background: "var(--ok)" }} />
           <h3 className="font-display text-[17px] font-bold">Live activity</h3>
         </div>
-        {scans.length === 0 ? (
+        {ledger.length === 0 ? (
           <p className="py-6 text-center text-sm text-[var(--muted)]">
-            No stamp activity yet. Generated codes appear here as customers scan them.
+            No activity yet. Points appear here as customers scan at the counter.
           </p>
         ) : (
           <div className="flex flex-col">
-            {scans.slice(0, 12).map((s) => (
-              <div
-                key={s.id}
-                className="flex items-center gap-3 border-b border-[var(--line)] py-3 last:border-b-0"
-              >
-                <span
-                  className="flex h-9 w-9 items-center justify-center rounded-xl"
-                  style={{ background: "var(--surface-container)", color: "var(--brand)" }}
+            {ledger.slice(0, 12).map((row) => {
+              const Icon = row.type === "earn" ? Coins : row.type === "redeem" ? Gift : Hourglass;
+              return (
+                <div
+                  key={row.id}
+                  className="flex items-center gap-3 border-b border-[var(--line)] py-3 last:border-b-0"
                 >
-                  <Stamp className="h-4 w-4" />
-                </span>
-                <span className="flex-1 text-sm">
-                  <b>{s.customerName || "A customer"}</b> earned a stamp
-                </span>
-                <span className="text-xs text-[var(--soft)]">{timeAgo(s.timestamp)}</span>
-              </div>
-            ))}
+                  <span
+                    className="flex h-9 w-9 items-center justify-center rounded-xl"
+                    style={{ background: "var(--surface-container)", color: "var(--brand)" }}
+                  >
+                    <Icon className="h-4 w-4" />
+                  </span>
+                  <span className="flex-1 text-sm">
+                    <b>{row.customerName || "A customer"}</b>{" "}
+                    {row.type === "earn"
+                      ? `earned ${row.points} points`
+                      : row.type === "redeem"
+                        ? `redeemed ${row.rewardName || "a reward"}`
+                        : `lost ${Math.abs(row.points)} points to expiry`}
+                  </span>
+                  <span className="text-xs text-[var(--soft)]">{timeAgo(row.createdAt)}</span>
+                </div>
+              );
+            })}
           </div>
         )}
       </div>

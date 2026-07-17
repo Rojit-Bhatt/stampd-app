@@ -6,40 +6,38 @@ import { useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "../../lib/api";
 import { useNavigate } from "react-router-dom";
 import { useTenant } from "../../context/TenantContext";
-import { StampCelebration } from "./StampCelebration";
+import { PointsCelebration } from "./PointsCelebration";
 import { tenantPath } from "../../lib/tenantPath";
+
+interface EarnResult {
+  pointsEarned: number;
+  billAmount: number;
+  balance: number;
+}
 
 export function ScannerModal({
   open,
   onClose,
   slug,
   tenantName,
-  rewardTitle,
 }: {
   open: boolean;
   onClose: () => void;
   slug: string;
   tenantName: string;
-  rewardTitle: string;
 }) {
   const { companySlug } = useTenant();
   const scannerRef = useRef<Html5Qrcode | null>(null);
   const queryClient = useQueryClient();
   const navigate = useNavigate();
-  const { tenant } = useTenant();
-  const stampsRequired = tenant?.program?.stampsRequired;
 
-  const [earnedVoucher, setEarnedVoucher] = useState<string | null>(null);
-  const [plainStamp, setPlainStamp] = useState<number | null>(null);
-  const [copied, setCopied] = useState(false);
+  const [earned, setEarned] = useState<EarnResult | null>(null);
   const [cameraError, setCameraError] = useState<string | null>(null);
   const [isBlocked, setIsBlocked] = useState(false);
 
   useEffect(() => {
     if (!open) {
-      setEarnedVoucher(null);
-      setPlainStamp(null);
-      setCopied(false);
+      setEarned(null);
       setCameraError(null);
       setIsBlocked(false);
       return;
@@ -96,7 +94,7 @@ export function ScannerModal({
     let isMounted = true;
     let qrScanner: Html5Qrcode | null = null;
 
-    if (!earnedVoucher && !plainStamp && !cameraError) {
+    if (!earned && !cameraError) {
       try {
         qrScanner = new Html5Qrcode("qr-reader-viewport");
         scannerRef.current = qrScanner;
@@ -129,39 +127,45 @@ export function ScannerModal({
               // decodedText itself for robustness (e.g. an old-style bare
               // token, in case a stale/cached QR is scanned).
               let rawToken = decodedText;
+              let isRedeem = false;
               try {
                 const url = new URL(decodedText);
                 rawToken = url.searchParams.get("token") || decodedText;
+                // Staff can put up either QR. A redeem code isn't something
+                // to claim — it opens the catalog so the customer picks what
+                // to spend on, so hand it off rather than posting an earn.
+                isRedeem = url.pathname.endsWith("/redeem");
               } catch {
                 // Not a URL — decodedText is already the raw token.
               }
 
-              const toastId = toast.loading("Stamping your card…");
+              if (isRedeem) {
+                onClose();
+                navigate(`${tenantPath(companySlug, slug, "redeem")}?token=${encodeURIComponent(rawToken)}`);
+                return;
+              }
+
+              const toastId = toast.loading("Adding your points…");
               try {
                 const response = await apiRequest<{
                   success: boolean;
                   message: string;
-                  data?: { stampsEarned: number; rewardTriggered: boolean; voucherCode?: string };
-                }>("/api/stamps/claim", {
+                  data?: EarnResult;
+                }>("/api/points/claim", {
                   method: "POST",
                   body: { token: rawToken },
                 });
 
-                if (response.success) {
-                  queryClient.invalidateQueries({ queryKey: ["stampCard"] });
-                  queryClient.invalidateQueries({ queryKey: ["vouchers"] });
-
+                if (response.success && response.data) {
+                  queryClient.invalidateQueries({ queryKey: ["pointsBalance"] });
+                  queryClient.invalidateQueries({ queryKey: ["pointsHistory"] });
                   toast.dismiss(toastId);
-                  if (response.data && response.data.rewardTriggered === true) {
-                    setEarnedVoucher(response.data.voucherCode || "CAFE-REWARD");
-                  } else {
-                    setPlainStamp(response.data?.stampsEarned ?? 1);
-                  }
+                  setEarned(response.data);
                 } else {
-                  throw new Error(response.message || "Couldn't add that stamp — try again.");
+                  throw new Error(response.message || "Couldn't add those points — try again.");
                 }
               } catch (err) {
-                toast.error((err as Error).message || "Couldn't add that stamp — try again.", { id: toastId });
+                toast.error((err as Error).message || "Couldn't add those points — try again.", { id: toastId });
                 onClose();
               }
             },
@@ -208,53 +212,31 @@ export function ScannerModal({
         }
       }
     };
-  }, [open, onClose, queryClient, earnedVoucher, plainStamp, cameraError]);
+  }, [open, onClose, queryClient, navigate, companySlug, slug, earned, cameraError]);
 
   const handleRetry = () => {
     setCameraError(null);
     setIsBlocked(false);
   };
 
-  const copyToClipboard = () => {
-    if (!earnedVoucher) return;
-    navigator.clipboard.writeText(earnedVoucher);
-    setCopied(true);
-    toast.success("Copied! Show that at the counter.");
-    setTimeout(() => setCopied(false), 2000);
-  };
-
-  const handleGoToWallet = () => {
+  const handleGoToHistory = () => {
     onClose();
-    navigate(tenantPath(companySlug, slug, "wallet"));
+    navigate(tenantPath(companySlug, slug, "history"));
   };
 
   if (!open) return null;
 
-  if (earnedVoucher) {
+  if (earned) {
     return (
-      <StampCelebration
-        rewardTriggered
-        stampsEarned={stampsRequired ?? 0}
-        rewardTitle={rewardTitle}
-        voucherCode={earnedVoucher}
-        copied={copied}
-        onCopyCode={copyToClipboard}
-        onDone={handleGoToWallet}
-        doneLabel="Go to wallet"
-        onSecondary={onClose}
-        secondaryLabel="Back to dashboard"
-      />
-    );
-  }
-
-  if (plainStamp !== null) {
-    return (
-      <StampCelebration
-        rewardTriggered={false}
-        stampsEarned={plainStamp}
-        stampsRequired={stampsRequired}
-        rewardTitle={rewardTitle}
+      <PointsCelebration
+        variant="earn"
+        points={earned.pointsEarned}
+        billAmount={earned.billAmount}
+        balance={earned.balance}
         onDone={onClose}
+        doneLabel="Done"
+        onSecondary={handleGoToHistory}
+        secondaryLabel="See my history"
       />
     );
   }
@@ -295,7 +277,7 @@ export function ScannerModal({
             {isBlocked ? (
               "Camera is blocked for this site — check your browser's address bar or settings to allow it, then try again."
             ) : (
-              "Please allow camera access to scan your stamp code."
+              "Please allow camera access to scan the counter's code."
             )}
           </p>
 
@@ -349,7 +331,7 @@ export function ScannerModal({
           <div className="mt-8 flex flex-col items-center gap-3">
             <div className="flex items-center gap-2 text-sm text-[#A3A3A3]">
               <ScanLine className="h-4 w-4 text-[#EBE6DF]" />
-              <span>Align QR inside the frame to collect a stamp</span>
+              <span>Align the counter's QR inside the frame</span>
             </div>
           </div>
 

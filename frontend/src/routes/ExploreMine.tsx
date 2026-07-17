@@ -1,6 +1,7 @@
 import { Link } from "react-router-dom";
-import { Ticket } from "lucide-react";
 import { useMyTenants, type MyTenantMembership } from "../hooks/useMyTenants";
+import { formatPoints } from "../hooks/usePoints";
+import { tenantPath } from "../lib/tenantPath";
 import { darken } from "../lib/color";
 import { Skeleton } from "../components/ui/skeleton";
 
@@ -11,7 +12,7 @@ export default function ExploreMine() {
     <div className="px-5 py-6">
       <h1 className="mb-1 font-display text-2xl font-bold text-[var(--ink)]">My Businesses</h1>
       <p className="mb-5 text-sm text-[var(--muted)]">
-        Every business you've collected a stamp at.
+        Every business you've earned points at.
       </p>
 
       {isLoading ? (
@@ -23,7 +24,7 @@ export default function ExploreMine() {
       ) : memberships.length === 0 ? (
         <div className="py-14 text-center">
           <p className="mb-4 text-sm text-[var(--muted)]">
-            You haven't joined a business yet. Find one to start collecting stamps.
+            You haven't joined a business yet. Find one to start earning points.
           </p>
           <Link
             to="/explore"
@@ -53,11 +54,9 @@ function lastVisit(iso: string | null): string {
 }
 
 function MembershipCard({ membership: m }: { membership: MyTenantMembership }) {
-  const pct = Math.min(100, Math.round((m.stampsEarned / Math.max(1, m.stampsRequired)) * 100));
-
   return (
     <Link
-      to={`/${m.slug}/dashboard`}
+      to={tenantPath(m.companySlug, m.slug, "dashboard")}
       className="stamp-interactive shadow-ambient rounded-3xl bg-[var(--surface)] p-5"
     >
       <div className="mb-3 flex items-center gap-3">
@@ -73,23 +72,21 @@ function MembershipCard({ membership: m }: { membership: MyTenantMembership }) {
         )}
         <div className="min-w-0 flex-1">
           <div className="truncate font-display text-lg font-bold text-[var(--ink)]">{m.name}</div>
-          <div className="text-xs text-[var(--muted)]">{lastVisit(m.lastStampedAt)}</div>
+          <div className="text-xs text-[var(--muted)]">{lastVisit(m.lastActivityAt)}</div>
         </div>
-        {m.validVoucherCount > 0 && (
-          <div className="flex flex-shrink-0 items-center gap-1 rounded-full bg-[var(--ok-soft)] px-2.5 py-1 text-xs font-bold text-[var(--ok)]">
-            <Ticket className="h-3 w-3" />
-            {m.validVoucherCount}
+      </div>
+      {/* No progress bar: a points balance has no target to fill toward, and
+          inventing one would be inventing a number the outlet never set. */}
+      <div className="flex items-end justify-between">
+        <div>
+          <div className="font-display text-3xl font-extrabold leading-none" style={{ color: m.branding.primaryColor }}>
+            {formatPoints(m.balance)}
           </div>
-        )}
-      </div>
-      <div className="mb-1.5 flex items-center justify-between text-sm">
-        <span className="font-semibold text-[var(--ink)]">{m.rewardTitle}</span>
-        <span className="text-[var(--muted)]">
-          {m.stampsEarned}/{m.stampsRequired}
+          <div className="mt-1 text-xs text-[var(--muted)]">points</div>
+        </div>
+        <span className="rounded-full bg-[var(--surface-container)] px-2.5 py-1 text-[11px] font-bold uppercase tracking-wider text-[var(--muted)]">
+          {m.earnPercent === 100 ? "1 pt / Rs 1" : `${m.earnPercent}% back`}
         </span>
-      </div>
-      <div className="h-1.5 w-full overflow-hidden rounded-full bg-[var(--surface-container)]">
-        <div className="h-full rounded-full" style={{ width: `${pct}%`, background: m.branding.primaryColor }} />
       </div>
     </Link>
   );

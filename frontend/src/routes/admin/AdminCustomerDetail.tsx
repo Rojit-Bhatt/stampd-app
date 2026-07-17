@@ -1,11 +1,11 @@
 import { useQuery } from "@tanstack/react-query";
 import { Link, useParams } from "react-router-dom";
-import { ChevronRight, Phone, MapPin, Ticket } from "lucide-react";
+import { ChevronRight, Phone, MapPin, Coins } from "lucide-react";
 import { apiRequest } from "../../lib/api";
-import { useAdminSettings } from "../../hooks/useAdminSettings";
 import { useAdminAuth } from "../../context/AdminAuthContext";
 import { Skeleton } from "../../components/ui/skeleton";
 import { tenantPath } from "../../lib/tenantPath";
+import { formatNpr } from "../../lib/subscription";
 
 interface AdminCustomer {
   id: string;
@@ -14,12 +14,12 @@ interface AdminCustomer {
   customerNo: string;
   phone: string;
   address: string;
-  stampsEarned: number;
-  lastStampedAt: string | null;
-  validVoucherCount: number;
-  lifetimeVoucherCount: number;
+  pointsBalance: number;
+  lifetimePoints: number;
+  lastActivityAt: string | null;
+  redemptionCount: number;
   totalSpent: number;
-  scanHistory: { id: string; timestamp: string }[];
+  history: { id: string; type: "earn" | "redeem" | "expire"; points: number; billAmount: number | null; rewardName: string; createdAt: string }[];
 }
 
 function formatVisit(iso: string): string {
@@ -37,8 +37,6 @@ function formatVisit(iso: string): string {
 export default function AdminCustomerDetail() {
   const { companySlug = "", outletSlug = "", id } = useParams();
   const slug = outletSlug;
-  const { data: settings } = useAdminSettings();
-  const required = settings?.program?.stampsRequired ?? 5;
   const { user } = useAdminAuth();
   const orgId = user?.organizationId ?? null;
 
@@ -95,10 +93,10 @@ export default function AdminCustomerDetail() {
           </div>
 
           <div className="mb-6 grid grid-cols-2 gap-4 sm:grid-cols-4">
-            <CurrentCardStat stampsEarned={customer.stampsEarned} stampsRequired={required} />
-            <Stat label="Active vouchers" value={String(customer.validVoucherCount)} />
-            <Stat label="Lifetime vouchers" value={String(customer.lifetimeVoucherCount)} />
-            <Stat label="Total spent" value={String(customer.totalSpent)} />
+            <BalanceStat balance={customer.pointsBalance} />
+            <Stat label="Lifetime points" value={String(customer.lifetimePoints)} />
+            <Stat label="Redemptions" value={String(customer.redemptionCount)} />
+            <Stat label="Total spent" value={formatNpr(customer.totalSpent)} />
           </div>
 
           <div className="mb-6 shadow-ambient rounded-3xl bg-[var(--surface)] p-5">
@@ -115,16 +113,34 @@ export default function AdminCustomerDetail() {
 
           <div className="shadow-ambient rounded-3xl bg-[var(--surface)] p-6">
             <div className="mb-4 flex items-center gap-2">
-              <Ticket className="h-4 w-4" style={{ color: "var(--brand)" }} />
-              <h3 className="font-display text-lg font-bold text-[var(--ink)]">Recent visits</h3>
+              <Coins className="h-4 w-4" style={{ color: "var(--brand)" }} />
+              <h3 className="font-display text-lg font-bold text-[var(--ink)]">Recent activity</h3>
             </div>
-            {customer.scanHistory.length === 0 ? (
-              <p className="py-4 text-sm text-[var(--muted)]">No visits yet.</p>
+            {customer.history.length === 0 ? (
+              <p className="py-4 text-sm text-[var(--muted)]">Nothing yet.</p>
             ) : (
               <div className="flex flex-col">
-                {customer.scanHistory.map((visit) => (
-                  <div key={visit.id} className="border-b border-[var(--line)] py-3 text-sm text-[var(--ink)] last:border-b-0">
-                    {formatVisit(visit.timestamp)}
+                {customer.history.map((row) => (
+                  <div
+                    key={row.id}
+                    className="flex items-center gap-3 border-b border-[var(--line)] py-3 text-sm text-[var(--ink)] last:border-b-0"
+                  >
+                    <span className="flex-1">
+                      {row.type === "earn"
+                        ? `Earned on a ${formatNpr(row.billAmount ?? 0)} bill`
+                        : row.type === "redeem"
+                          ? `Redeemed ${row.rewardName || "a reward"}`
+                          : "Points expired"}
+                    </span>
+                    <span
+                      className="font-bold"
+                      style={{ color: row.points > 0 ? "var(--ok)" : "var(--muted)" }}
+                    >
+                      {row.points > 0 ? "+" : ""}{row.points}
+                    </span>
+                    <span className="w-28 text-right text-[13px] text-[var(--muted)]">
+                      {formatVisit(row.createdAt)}
+                    </span>
                   </div>
                 ))}
               </div>
@@ -146,19 +162,14 @@ function Stat({ label, value }: { label: string; value: string }) {
 }
 
 // The one brand-tinted stat tile among otherwise-plain cards — same "one
-// accent, quiet surroundings" restraint as the reward card itself.
-function CurrentCardStat({ stampsEarned, stampsRequired }: { stampsEarned: number; stampsRequired: number }) {
-  const pct = Math.min(100, Math.round((stampsEarned / Math.max(1, stampsRequired)) * 100));
+// accent, quiet surroundings" restraint the customer's own balance card uses.
+// No progress bar: a balance has no target to fill toward.
+function BalanceStat({ balance }: { balance: number }) {
   return (
     <div className="relative overflow-hidden rounded-3xl p-5 text-white" style={{ background: "var(--brand)" }}>
-      <Ticket className="absolute -bottom-3 -right-3 h-16 w-16 opacity-15" aria-hidden="true" />
-      <div className="relative mb-1 text-[13px] opacity-80">Current card</div>
-      <div className="relative font-display text-2xl font-bold">
-        {stampsEarned}/{stampsRequired}
-      </div>
-      <div className="relative mt-3 h-1.5 w-full overflow-hidden rounded-full bg-white/25">
-        <div className="h-full rounded-full bg-white" style={{ width: `${pct}%` }} />
-      </div>
+      <Coins className="absolute -bottom-3 -right-3 h-16 w-16 opacity-15" aria-hidden="true" />
+      <div className="relative mb-1 text-[13px] opacity-80">Points balance</div>
+      <div className="relative font-display text-2xl font-bold">{balance}</div>
     </div>
   );
 }
