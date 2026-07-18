@@ -21,8 +21,43 @@ const buildAuthLink = ({ companySlug, outletSlug, path, token }) => {
   return `${APP_BASE_URL()}/${companySlug}/${outletSlug}/${path}?token=${encodeURIComponent(token)}`;
 };
 
+const FROM_ADDRESS = () => process.env.SMTP_FROM || "no-reply@stampd.co";
+
+const apiConfigured = () => Boolean(process.env.BREVO_API_KEY);
 const smtpConfigured = () => Boolean(process.env.SMTP_HOST);
 
+// Brevo's HTTPS transactional-email API (port 443) — the preferred delivery
+// path wherever it's configured. Several free hosts (Render's free web
+// services since Sep 2025, among others) block outbound SMTP ports (25, 465,
+// 587) entirely as an anti-spam measure; that block is independent of the
+// service being "asleep" or not, so it can't be worked around with a
+// keep-alive ping. Port 443 is never blocked, so this is what makes real
+// email delivery possible on a $0 host at all.
+const sendViaBrevoApi = async ({ to, subject, html }) => {
+  const res = await fetch("https://api.brevo.com/v3/smtp/email", {
+    method: "POST",
+    headers: {
+      "api-key": process.env.BREVO_API_KEY,
+      "Content-Type": "application/json",
+      Accept: "application/json"
+    },
+    body: JSON.stringify({
+      sender: { email: FROM_ADDRESS() },
+      to: [{ email: to }],
+      subject,
+      htmlContent: html
+    })
+  });
+  if (!res.ok) {
+    const body = await res.text().catch(() => "");
+    throw new Error(`Brevo API responded ${res.status}: ${body.slice(0, 300)}`);
+  }
+};
+
+// Plain SMTP (nodemailer) — still the path for local dev against a real
+// mailbox, or any host that doesn't block outbound SMTP ports. Not reachable
+// on Render's free tier (see above); kept as a fallback rather than removed,
+// since it's provider-agnostic where the Brevo API call above is not.
 let transporter = null;
 const getTransporter = () => {
   if (!transporter) {
@@ -37,22 +72,27 @@ const getTransporter = () => {
   return transporter;
 };
 
-// Single delivery interface. With no SMTP configured (dev), logs the message
-// (including any link in the html) and returns stubbed:true so the whole flow
-// is testable with zero infrastructure.
+const sendViaSmtp = async ({ to, subject, html }) => {
+  await getTransporter().sendMail({ from: FROM_ADDRESS(), to, subject, html });
+};
+
+// Single delivery interface. Tries, in order: Brevo's HTTP API (if
+// BREVO_API_KEY is set), plain SMTP (if SMTP_HOST is set), or — with neither
+// configured (dev/test) — logs the message (including any link in the html)
+// and returns stubbed:true so the whole flow is testable with zero
+// infrastructure.
 const sendEmail = async ({ to, subject, html }) => {
-  if (!smtpConfigured()) {
-    console.log(`[email:stub] to=${to} subject="${subject}"`);
-    console.log(`[email:stub] body=${html}`);
-    return { ok: true, stubbed: true };
+  if (apiConfigured()) {
+    await sendViaBrevoApi({ to, subject, html });
+    return { ok: true };
   }
-  await getTransporter().sendMail({
-    from: process.env.SMTP_FROM || "no-reply@stampd.co",
-    to,
-    subject,
-    html
-  });
-  return { ok: true };
+  if (smtpConfigured()) {
+    await sendViaSmtp({ to, subject, html });
+    return { ok: true };
+  }
+  console.log(`[email:stub] to=${to} subject="${subject}"`);
+  console.log(`[email:stub] body=${html}`);
+  return { ok: true, stubbed: true };
 };
 
 module.exports = { sendEmail, buildAuthLink };
