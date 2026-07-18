@@ -1,6 +1,0 @@
-# Cloudflare Pages SPA fallback. Any path that isn't a real static file (real
-# files always take precedence over this rule) is rewritten to the SPA shell
-# with a 200, so client-side-routed deep links — e.g. a scanned QR pointing at
-# /coffesarowar/durbarmarg/claim?token=... — load the app instead of a 404.
-# The production-host equivalent of the Vite dev server's history fallback.
-/*    /index.html   200
