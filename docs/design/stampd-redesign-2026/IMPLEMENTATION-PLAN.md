@@ -104,8 +104,44 @@ Toast restyle. PWA theme-color and icons updated to the green palette.
 
 ---
 
+---
+
+## Status — all phases complete
+
+Phases 0–8 are implemented and pushed to `redesign-2`. Phase 9 (final
+verification) is partly done: lint, build, the tenant-colour check and all 20
+backend suites are green, and the loop has been driven end-to-end against the
+real backend in a browser at 375px and 1280px. **The real-device pass on a
+phone over LAN is still outstanding and is the one thing a desktop browser
+cannot honestly stand in for.**
+
+### Bugs found and fixed along the way
+
+These were pre-existing, not introduced by the redesign:
+
+| Bug | Where | Why it mattered |
+|---|---|---|
+| Links built from the outlet slug alone | `Explore` discover cards, `AdminOverview` customer rows | An outlet slug is unique only within its company, so the path resolved to a company or to nothing. Every Discover card was a dead link. |
+| Auth guards missed a stale session | `AdminGuard`, `GlobalCustomerLayout` | Both gated on `isError`; a bad token left the console rendering indefinitely off cached data while every write failed. |
+| Redeem token expired mid-choice | `pointsService` | 30s had to cover scanning, browsing the catalog, choosing and confirming. Now 180s; earn stays 30s because it converts to a 15-minute pending claim on scan. |
+| Branding preview lied | `Branding` | It drew the customer's balance in the outlet's gradient. After the colour contract the balance is always green, so admins were shown a result they'd never get. |
+| Perpetual subscription rendered as a countdown | `SubscriptionPanel` | A grandfathered plan showed "36500 days left" beside a full bar. |
+| Value figures wearing identity colour | `ExploreMine`, `AdminCampaigns` | Balances and campaign multipliers were painted with the raw tenant hue, unchecked for contrast. |
+
+### Known gaps
+
+- **The "that's a redeem code" claim state cannot be built.**
+  `consumeDynamicQrToken` returns a bare `"Invalid QR token."` for a purpose
+  mismatch, identical to a genuinely invalid token, so the frontend cannot tell
+  them apart. All other claim failures are classified from message text for the
+  same reason. A separate task covers adding real error codes.
+- **Per-metric sparklines on the platform's flow tiles** are not built.
+  `getPlatformAnalytics` returns one shared `pointsVelocity` series, not one per
+  metric, so drawing four would mean inventing three.
+- **Dark mode** tokens exist under `.dark` but no toggle ships, as agreed.
+
 ## Open risks
 
-- **Tenant color × green.** A tenant whose brand color is itself green will collide with the value/action green. Needs a rule — likely a minimum hue separation, or the accent bar falling back to `--ink`. Flagging now; will surface a concrete proposal in Phase 0.
+- ~~**Tenant color × green.**~~ Resolved in Phase 0: a colliding green hands its *identity accent* to the ink while the value green never moves. Logo tiles and the business name keep the true brand colour. `scripts/verify-tenant-color.ts` guards it, and Branding warns the admin before they save.
 - **Design docs are static HTML mockups, not component code.** They are the reference, not a source to port. Every screen is a real build against the token system.
-- **`frontend design/`** (the 8 old reference screens) is deleted in the working tree, uncommitted, and not by me. Unresolved — confirm before it gets swept into a commit.
+- ~~**`frontend design/`**~~ Resolved: deleted deliberately and committed in `41e69d7`, with CLAUDE.md repointed at this package.
