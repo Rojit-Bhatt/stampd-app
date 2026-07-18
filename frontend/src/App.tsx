@@ -20,6 +20,7 @@ import { TenantSessionSync } from './components/customer/TenantSessionSync';
 const queryClient = new QueryClient();
 
 // Lazy load pages for route-based code splitting
+const Primitives = lazy(() => import('./routes/dev/Primitives'));
 const BusinessLanding = lazy(() => import('./routes/BusinessLanding'));
 const GlobalCustomerLogin = lazy(() => import('./routes/GlobalCustomerLogin'));
 const GlobalCustomerRegister = lazy(() => import('./routes/GlobalCustomerRegister'));
@@ -101,6 +102,9 @@ export default function App() {
         }
       >
         <Routes>
+          {/* Dev-only UI-kit harness for the redesign. Not linked from
+              anywhere; removed before the redesign merges. */}
+          {import.meta.env.DEV && <Route path="/dev/primitives" element={<Primitives />} />}
           {/* Platform (SaaS owner) — unscoped, maroon accent. */}
           <Route path="/" element={<PlatformLanding />} />
           <Route path="/platform/login" element={<PlatformLogin />} />
