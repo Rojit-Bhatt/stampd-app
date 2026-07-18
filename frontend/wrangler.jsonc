@@ -1,0 +1,17 @@
+{
+  // Cloudflare Workers Static Assets config — the current recommended way to
+  // deploy a plain SPA on Cloudflare (Pages' Git-connect wizard has been
+  // folded into the Workers dashboard for new projects; the deploy mechanism
+  // is the same "wrangler deploy" either way). Assets-only: no "main" worker
+  // script, since there's no server-side logic here — the real API lives on
+  // Render, called via VITE_API_BASE_URL at build time.
+  "name": "stampd",
+  "compatibility_date": "2025-06-05",
+  "assets": {
+    "directory": "./dist",
+    // Client-side-routed deep links (e.g. a scanned QR pointing at
+    // /coffesarowar/durbarmarg/claim?token=...) resolve to the SPA shell
+    // instead of a 404 — same job public/_redirects does for classic Pages.
+    "not_found_handling": "single-page-application"
+  }
+}
