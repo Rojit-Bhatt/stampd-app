@@ -132,7 +132,7 @@ export function TenantProvider({ children }: { children: React.ReactNode }) {
   if (status === "loading") {
     return (
       <div className="flex min-h-screen items-center justify-center bg-[var(--bg)]">
-        <div className="h-8 w-8 animate-spin rounded-full border-2 border-[var(--brand)] border-t-transparent" />
+        <div className="h-8 w-8 animate-spin rounded-full border-2 border-[var(--primary)] border-t-transparent" />
       </div>
     );
   }
@@ -154,7 +154,7 @@ export function TenantProvider({ children }: { children: React.ReactNode }) {
   if (!isAdminRoute && notFound) {
     return (
       <div className="flex min-h-screen flex-col items-center justify-center bg-[var(--bg)] px-6 text-center">
-        <div className="font-display text-[90px] font-extrabold leading-none text-[var(--plat-soft)]">
+        <div className="font-numeral text-[90px] leading-none text-[var(--line)]">
           404
         </div>
         <h2 className="mt-2 font-display text-2xl font-bold text-[var(--ink)]">

@@ -57,14 +57,14 @@ export default function VerifyEmail() {
           <p className="text-sm text-[var(--muted)]">Verifying…</p>
         ) : (
           <>
-            <h2 className="font-display text-[22px] font-extrabold text-[var(--ink)]">
+            <h2 className="font-display text-[22px] font-bold text-[var(--ink)]">
               {state === "ok" ? "Email verified" : "Verification failed"}
             </h2>
             <p className="mt-2 text-sm text-[var(--muted)]">{msg}</p>
             <Link
               to={tenantPath(companySlug, slug, "login")}
-              className="mt-5 inline-block rounded-[13px] px-6 py-3 text-sm font-bold text-white"
-              style={{ background: "var(--brand)" }}
+              className="mt-5 inline-block rounded-[var(--radius-btn)] px-6 py-3 text-sm font-bold text-white"
+              style={{ background: "var(--primary)" }}
             >
               Continue to sign in
             </Link>

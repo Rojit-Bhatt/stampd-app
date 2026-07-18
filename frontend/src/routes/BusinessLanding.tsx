@@ -27,7 +27,7 @@ export default function BusinessLanding() {
               className="h-[66px] w-[66px] rounded-[20px] bg-white object-cover shadow-lg"
             />
           ) : (
-            <div className="flex h-[66px] w-[66px] items-center justify-center rounded-[20px] bg-white font-display text-[26px] font-extrabold shadow-lg" style={{ color: "var(--brand)" }}>
+            <div className="flex h-[66px] w-[66px] items-center justify-center rounded-[20px] bg-white font-display text-[26px] font-bold shadow-lg" style={{ color: "var(--primary-deep)" }}>
               {initial}
             </div>
           )}
@@ -35,11 +35,11 @@ export default function BusinessLanding() {
 
         {/* Body */}
         <div className="flex-1 px-6 pb-8 pt-6">
-          <h1 className="font-display text-[28px] font-extrabold text-[var(--ink)]">{tenant?.name}</h1>
+          <h1 className="font-display text-[28px] font-bold text-[var(--ink)]">{tenant?.name}</h1>
           <p className="mb-6 text-[var(--muted)]">{branding?.tagline}</p>
 
-          <div className="shadow-ambient mb-6 rounded-3xl bg-[var(--surface-container)] p-5">
-            <div className="mb-1.5 text-xs font-bold uppercase tracking-wider" style={{ color: "var(--brand)" }}>
+          <div className="shadow-ambient mb-6 rounded-[var(--radius-card)] bg-[var(--surface-2)] p-5">
+            <div className="mb-1.5 text-xs font-bold uppercase tracking-wider" style={{ color: "var(--primary-deep)" }}>
               How it works
             </div>
             <p className="text-[15px] leading-relaxed text-[var(--ink)]">
@@ -50,13 +50,13 @@ export default function BusinessLanding() {
           <Link
             to={tenantPath(companySlug, slug, "register")}
             className="stamp-interactive mb-2.5 block w-full rounded-full py-4 text-center text-[16px] font-bold text-white"
-            style={{ background: "var(--brand)" }}
+            style={{ background: "var(--primary)" }}
           >
             Join &amp; start collecting
           </Link>
           <Link
             to={tenantPath(companySlug, slug, "login")}
-            className="block w-full rounded-[15px] py-3.5 text-center font-semibold text-[var(--muted)]"
+            className="block w-full rounded-[var(--radius-btn)] py-3.5 text-center font-semibold text-[var(--muted)]"
           >
             I already have an account
           </Link>

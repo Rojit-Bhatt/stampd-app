@@ -33,9 +33,9 @@ export class ErrorBoundary extends Component<Props, State> {
   public render() {
     if (this.state.hasError) {
       return (
-        <div className="flex min-h-screen items-center justify-center bg-[#121212] px-4 font-sans text-[#EBE6DF]">
+        <div className="flex min-h-screen items-center justify-center bg-[var(--ink)] px-4 font-sans text-[var(--bg)]">
           <div className="max-w-md text-center">
-            <h1 className="text-xl font-semibold tracking-tight text-[#EBE6DF]">
+            <h1 className="text-xl font-semibold tracking-tight text-[var(--bg)]">
               This page didn't load
             </h1>
             <p className="mt-2 text-sm text-[#A3A3A3]">
@@ -44,13 +44,13 @@ export class ErrorBoundary extends Component<Props, State> {
             <div className="mt-6 flex flex-wrap justify-center gap-2">
               <button
                 onClick={this.handleReset}
-                className="inline-flex items-center justify-center rounded-md bg-[#EBE6DF] text-black px-4 py-2 text-sm font-medium transition-colors hover:opacity-90"
+                className="inline-flex items-center justify-center rounded-md bg-[var(--bg)] text-black px-4 py-2 text-sm font-medium transition-colors hover:opacity-90"
               >
                 Try again
               </button>
               <a
                 href="/"
-                className="inline-flex items-center justify-center rounded-md border border-[#2D2D2D] bg-[#1A1A1A] px-4 py-2 text-sm font-medium text-[#EBE6DF] transition-colors hover:bg-[#EBE6DF] hover:text-black"
+                className="inline-flex items-center justify-center rounded-md border border-[#2D2D2D] bg-[#1A1A1A] px-4 py-2 text-sm font-medium text-[var(--bg)] transition-colors hover:bg-[var(--bg)] hover:text-black"
               >
                 Go home
               </a>

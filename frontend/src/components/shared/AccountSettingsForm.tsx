@@ -31,20 +31,20 @@ export function AccountSettingsForm({ role, onLogout }: AccountSettingsFormProps
   if (isLoading || !account) {
     return (
       <div className="flex max-w-[480px] flex-col gap-6">
-        <div className="shadow-ambient rounded-3xl bg-[var(--surface)] p-5">
+        <div className="rounded-[var(--radius-card)] border border-[var(--line)] bg-[var(--surface)] shadow-ambient p-5">
           <Skeleton className="mb-3 h-4 w-20" />
           <Skeleton className="mb-1.5 h-3 w-16" />
-          <Skeleton className="mb-3 h-11 w-full rounded-[11px]" />
+          <Skeleton className="mb-3 h-11 w-full rounded-[var(--radius-btn)]" />
           <Skeleton className="mb-3 h-3 w-40" />
-          <Skeleton className="h-10 w-28 rounded-[13px]" />
+          <Skeleton className="h-10 w-28 rounded-[var(--radius-btn)]" />
         </div>
-        <div className="shadow-ambient rounded-3xl bg-[var(--surface)] p-5">
+        <div className="rounded-[var(--radius-card)] border border-[var(--line)] bg-[var(--surface)] shadow-ambient p-5">
           <Skeleton className="mb-3 h-4 w-32" />
           <Skeleton className="mb-1.5 h-3 w-24" />
-          <Skeleton className="mb-3 h-11 w-full rounded-[11px]" />
+          <Skeleton className="mb-3 h-11 w-full rounded-[var(--radius-btn)]" />
           <Skeleton className="mb-1.5 h-3 w-24" />
-          <Skeleton className="mb-3 h-11 w-full rounded-[11px]" />
-          <Skeleton className="h-10 w-32 rounded-[13px]" />
+          <Skeleton className="mb-3 h-11 w-full rounded-[var(--radius-btn)]" />
+          <Skeleton className="h-10 w-32 rounded-[var(--radius-btn)]" />
         </div>
       </div>
     );
@@ -86,27 +86,27 @@ export function AccountSettingsForm({ role, onLogout }: AccountSettingsFormProps
 
   return (
     <div className="flex max-w-[480px] flex-col gap-6">
-      <div className="shadow-ambient rounded-3xl bg-[var(--surface)] p-5">
+      <div className="rounded-[var(--radius-card)] border border-[var(--line)] bg-[var(--surface)] shadow-ambient p-5">
         <div className="mb-3 text-sm font-bold">Profile</div>
         <label className="mb-1.5 block text-sm font-bold">Name</label>
         <input
           value={name}
           onChange={(e) => setName(e.target.value)}
-          className="mb-3 w-full rounded-[11px] border border-[var(--line)] bg-[var(--bg)] px-4 py-3 text-sm focus:border-[var(--brand)] focus:outline-none"
+          className="mb-3 w-full rounded-[var(--radius-btn)] border border-[var(--line)] bg-[var(--bg)] px-4 py-3 text-sm focus:border-[var(--primary)] focus:outline-none"
         />
         <div className="mb-3 text-[13px] text-[var(--muted)]">{account.email}</div>
         <button
           onClick={saveName}
           disabled={updateProfile.isPending || !name.trim()}
-          className="rounded-[13px] px-5 py-2.5 text-sm font-bold text-white transition-opacity hover:opacity-90 disabled:opacity-50"
-          style={{ background: "var(--brand)" }}
+          className="rounded-[var(--radius-btn)] px-5 py-2.5 text-sm font-bold text-white transition-opacity hover:opacity-90 disabled:opacity-50"
+          style={{ background: "var(--primary)" }}
         >
           {updateProfile.isPending ? "Saving…" : "Save name"}
         </button>
       </div>
 
       {role !== "platform" && (
-        <div className="shadow-ambient rounded-3xl bg-[var(--surface)] p-5">
+        <div className="rounded-[var(--radius-card)] border border-[var(--line)] bg-[var(--surface)] shadow-ambient p-5">
           <div className="mb-2 text-sm font-bold">Email verification</div>
           <div className="mb-3 text-[13px] text-[var(--muted)]">
             {account.emailVerified ? "Verified" : "Not verified"}
@@ -115,7 +115,7 @@ export function AccountSettingsForm({ role, onLogout }: AccountSettingsFormProps
             <button
               onClick={resendVerification}
               disabled={resending}
-              className="rounded-[11px] border border-[var(--line)] bg-[var(--bg)] px-4 py-2 text-sm font-bold disabled:opacity-50"
+              className="rounded-[var(--radius-btn)] border border-[var(--line)] bg-[var(--bg)] px-4 py-2 text-sm font-bold disabled:opacity-50"
             >
               {resending ? "Sending…" : "Resend verification email"}
             </button>
@@ -123,27 +123,27 @@ export function AccountSettingsForm({ role, onLogout }: AccountSettingsFormProps
         </div>
       )}
 
-      <div className="shadow-ambient rounded-3xl bg-[var(--surface)] p-5">
+      <div className="rounded-[var(--radius-card)] border border-[var(--line)] bg-[var(--surface)] shadow-ambient p-5">
         <div className="mb-3 text-sm font-bold">Change password</div>
         <label className="mb-1.5 block text-sm font-bold">Current password</label>
         <input
           type="password"
           value={currentPassword}
           onChange={(e) => setCurrentPassword(e.target.value)}
-          className="mb-3 w-full rounded-[11px] border border-[var(--line)] bg-[var(--bg)] px-4 py-3 text-sm focus:border-[var(--brand)] focus:outline-none"
+          className="mb-3 w-full rounded-[var(--radius-btn)] border border-[var(--line)] bg-[var(--bg)] px-4 py-3 text-sm focus:border-[var(--primary)] focus:outline-none"
         />
         <label className="mb-1.5 block text-sm font-bold">New password</label>
         <input
           type="password"
           value={newPassword}
           onChange={(e) => setNewPassword(e.target.value)}
-          className="mb-3 w-full rounded-[11px] border border-[var(--line)] bg-[var(--bg)] px-4 py-3 text-sm focus:border-[var(--brand)] focus:outline-none"
+          className="mb-3 w-full rounded-[var(--radius-btn)] border border-[var(--line)] bg-[var(--bg)] px-4 py-3 text-sm focus:border-[var(--primary)] focus:outline-none"
         />
         <button
           onClick={savePassword}
           disabled={changePassword.isPending || !currentPassword || !newPassword}
-          className="rounded-[13px] px-5 py-2.5 text-sm font-bold text-white transition-opacity hover:opacity-90 disabled:opacity-50"
-          style={{ background: "var(--brand)" }}
+          className="rounded-[var(--radius-btn)] px-5 py-2.5 text-sm font-bold text-white transition-opacity hover:opacity-90 disabled:opacity-50"
+          style={{ background: "var(--primary)" }}
         >
           {changePassword.isPending ? "Saving…" : "Update password"}
         </button>
@@ -152,7 +152,7 @@ export function AccountSettingsForm({ role, onLogout }: AccountSettingsFormProps
       {onLogout && (
         <button
           onClick={onLogout}
-          className="flex items-center justify-center gap-2 rounded-[13px] border border-[var(--line)] bg-[var(--surface)] py-3 text-sm font-bold text-[var(--muted)] transition-colors hover:text-[var(--ink)]"
+          className="flex items-center justify-center gap-2 rounded-[var(--radius-btn)] border border-[var(--line)] bg-[var(--surface)] py-3 text-sm font-bold text-[var(--muted)] transition-colors hover:text-[var(--ink)]"
         >
           <LogOut className="h-4 w-4" />
           Log out

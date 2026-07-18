@@ -61,8 +61,8 @@ export function AdminGuard({ children }: { children: React.ReactNode }) {
 
   if (isLoading || (user && user.role === "business_admin" && settingsLoading && !suspended && !suspendedLatched)) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-[#121212]">
-        <div className="text-xs font-bold uppercase tracking-[0.2em] text-[#EBE6DF] animate-pulse">
+      <div className="flex min-h-screen items-center justify-center bg-[var(--bg)]">
+        <div className="text-xs font-bold uppercase tracking-[0.2em] text-[var(--muted)] animate-pulse">
           Verifying credentials...
         </div>
       </div>

@@ -52,7 +52,7 @@ export default function GlobalCustomerRegister() {
   if (registeredEmail) {
     return (
       <Shell>
-        <h1 className="font-display text-[25px] font-extrabold text-[var(--ink)]">Check your email</h1>
+        <h1 className="font-display text-[25px] font-bold text-[var(--ink)]">Check your email</h1>
         <p className="mb-6 mt-2 text-sm text-[var(--muted)]">
           We sent a verification link to <b className="text-[var(--ink)]">{registeredEmail}</b>. Open it
           to start collecting points.
@@ -69,13 +69,13 @@ export default function GlobalCustomerRegister() {
               toast.error("Couldn't resend that — try again in a bit.");
             }
           }}
-          className="w-full rounded-[15px] py-4 text-[15px] font-bold text-white"
-          style={{ background: "var(--brand)" }}
+          className="w-full rounded-[var(--radius-btn)] py-4 text-[15px] font-bold text-white"
+          style={{ background: "var(--primary)" }}
         >
           Resend email
         </button>
         <p className="mt-6 text-center text-[13px] text-[var(--muted)]">
-          <Link to="/customer-login" className="font-bold text-[var(--brand)] hover:underline">
+          <Link to="/customer-login" className="font-bold text-[var(--primary-deep)] hover:underline">
             Go to sign in
           </Link>
         </p>
@@ -85,7 +85,7 @@ export default function GlobalCustomerRegister() {
 
   return (
     <Shell>
-      <h1 className="font-display text-[25px] font-extrabold text-[var(--ink)]">Create your account</h1>
+      <h1 className="font-display text-[25px] font-bold text-[var(--ink)]">Create your account</h1>
       <p className="mb-6 mt-1 text-sm text-[var(--muted)]">
         One account works at every business on {PLATFORM_NAME}.
       </p>
@@ -137,7 +137,7 @@ export default function GlobalCustomerRegister() {
           type="submit"
           disabled={isSubmitting}
           className="stamp-interactive mt-2 w-full rounded-full py-4 text-[15px] font-bold text-white disabled:opacity-50"
-          style={{ background: "var(--brand)" }}
+          style={{ background: "var(--primary)" }}
         >
           {isSubmitting ? "Please wait…" : "Create account"}
         </button>
@@ -145,7 +145,7 @@ export default function GlobalCustomerRegister() {
 
       <p className="mt-6 text-center text-[13px] text-[var(--muted)]">
         Already a member?{" "}
-        <Link to="/customer-login" className="font-bold text-[var(--brand)] hover:underline">
+        <Link to="/customer-login" className="font-bold text-[var(--primary-deep)] hover:underline">
           Sign in
         </Link>
       </p>
@@ -168,7 +168,7 @@ function Field({ label, icon, children }: { label: string; icon: React.ReactNode
   return (
     <label className="block">
       <span className="mb-1.5 block text-[13px] font-semibold text-[var(--ink)]">{label}</span>
-      <div className="flex items-center gap-3 rounded-[13px] border border-[var(--line)] bg-[var(--bg)] px-4 py-3.5 transition-colors focus-within:border-[var(--brand)]">
+      <div className="flex items-center gap-3 rounded-[var(--radius-btn)] border border-[var(--line)] bg-[var(--bg)] px-4 py-3.5 transition-colors focus-within:border-[var(--primary)]">
         <span>{icon}</span>
         {children}
       </div>
