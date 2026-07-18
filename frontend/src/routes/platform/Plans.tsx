@@ -98,13 +98,13 @@ export default function Plans() {
       <div className="mb-6 flex flex-wrap items-end justify-between gap-3">
         <div>
           <div className="mb-1 text-[11px] font-bold uppercase tracking-[0.15em] text-[var(--soft)]">Revenue settings</div>
-          <h1 className="font-display text-[30px] font-extrabold text-[var(--ink)]">Subscription plans</h1>
+          <h1 className="font-display text-[30px] font-bold text-[var(--ink)]">Subscription plans</h1>
           <p className="text-[var(--muted)]">Configure tiers and business limits. Changes affect new activations immediately.</p>
         </div>
         <button
           onClick={() => setCreating((c) => !c)}
           className="stamp-interactive rounded-full px-5 py-3 text-[15px] font-bold text-white"
-          style={{ background: "var(--plat)" }}
+          style={{ background: "var(--primary)" }}
         >
           + Create new plan
         </button>
@@ -133,25 +133,25 @@ export default function Plans() {
 
       {isLoading ? (
         <div className="grid gap-4 md:grid-cols-3">
-          {Array.from({ length: 3 }).map((_, i) => <Skeleton key={i} className="h-96 rounded-3xl" />)}
+          {Array.from({ length: 3 }).map((_, i) => <Skeleton key={i} className="h-96 rounded-[var(--radius-card)]" />)}
         </div>
       ) : (
         <div className="grid gap-4 md:grid-cols-3">
           {activePlans.map((p) => (
             <div
               key={p.id}
-              className="flex flex-col rounded-3xl p-6 shadow-ambient"
-              style={p.isMostPopular ? { background: "var(--plat)", color: "white" } : { background: "var(--surface)" }}
+              className="flex flex-col rounded-[var(--radius-card)] p-6 shadow-ambient"
+              style={p.isMostPopular ? { background: "var(--primary)", color: "white" } : { background: "var(--surface)" }}
             >
               <span
                 className="mb-3 inline-block w-fit rounded-full px-2.5 py-1 text-[11px] font-bold uppercase tracking-wider"
-                style={p.isMostPopular ? { background: "rgba(255,255,255,0.16)", color: "white" } : { background: "var(--surface-container-high)", color: "var(--soft)" }}
+                style={p.isMostPopular ? { background: "rgba(255,255,255,0.16)", color: "white" } : { background: "var(--line)", color: "var(--soft)" }}
               >
                 {p.isMostPopular ? "Most popular" : p.slug}
               </span>
               <h3 className="font-display text-xl font-bold">{p.name}</h3>
               <div className="mt-1 mb-4">
-                <span className="font-display text-[34px] font-extrabold">{formatNpr(p.priceNpr)}</span>
+                <span className="font-display text-[34px] font-bold">{formatNpr(p.priceNpr)}</span>
                 <span className={`ml-1 text-sm ${p.isMostPopular ? "text-white/70" : "text-[var(--muted)]"}`}>/yr</span>
               </div>
               <ul className="mb-6 flex flex-1 flex-col gap-2 text-sm">
@@ -164,10 +164,10 @@ export default function Plans() {
               </ul>
               <button
                 onClick={() => startEdit(p)}
-                className="rounded-[13px] border py-2.5 text-sm font-bold"
+                className="rounded-[var(--radius-btn)] border py-2.5 text-sm font-bold"
                 style={
                   p.isMostPopular
-                    ? { background: "white", color: "var(--plat)", borderColor: "transparent" }
+                    ? { background: "white", color: "var(--primary-deep)", borderColor: "transparent" }
                     : { borderColor: "var(--line)", color: "var(--ink)" }
                 }
               >
@@ -202,7 +202,7 @@ export default function Plans() {
         </div>
       )}
 
-      <div className="mt-8 shadow-ambient overflow-hidden rounded-3xl bg-[var(--surface)]">
+      <div className="mt-8 shadow-ambient overflow-hidden rounded-[var(--radius-card)] bg-[var(--surface)]">
         <div className="grid grid-cols-[2fr_1fr_1fr_1fr_1fr] border-b border-[var(--line)] px-5 py-3 text-[11px] font-bold uppercase tracking-wider text-[var(--soft)]">
           <span>Plan name</span>
           <span>Status</span>
@@ -222,11 +222,11 @@ export default function Plans() {
             <span className="flex gap-3">
               {p.isActive ? (
                 <>
-                  <button onClick={() => startEdit(p)} className="text-xs font-bold text-[var(--plat)] hover:underline">Edit</button>
+                  <button onClick={() => startEdit(p)} className="text-xs font-bold text-[var(--primary-deep)] hover:underline">Edit</button>
                   <button onClick={() => archive.mutate(p.slug)} className="text-xs font-bold text-[var(--muted)] hover:underline">Archive</button>
                 </>
               ) : (
-                <button onClick={() => restore.mutate(p.slug)} className="text-xs font-bold text-[var(--plat)] hover:underline">Restore</button>
+                <button onClick={() => restore.mutate(p.slug)} className="text-xs font-bold text-[var(--primary-deep)] hover:underline">Restore</button>
               )}
             </span>
           </div>
@@ -248,20 +248,20 @@ function PlanForm({
   showSlug?: boolean;
 }) {
   return (
-    <div className="mb-6 max-w-xl rounded-3xl bg-[var(--surface)] p-6 shadow-ambient">
+    <div className="mb-6 max-w-xl rounded-[var(--radius-card)] bg-[var(--surface)] p-6 shadow-ambient">
       <div className="flex flex-col gap-3">
         <input
           value={form.name}
           onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
           placeholder="Plan name (e.g. Growth)"
-          className="w-full rounded-[11px] border border-[var(--line)] bg-[var(--bg)] px-4 py-3 text-sm focus:border-[var(--plat)] focus:outline-none"
+          className="w-full rounded-[var(--radius-btn)] border border-[var(--line)] bg-[var(--bg)] px-4 py-3 text-sm focus:border-[var(--primary)] focus:outline-none"
         />
         {showSlug && (
           <input
             value={form.slug}
             onChange={(e) => setForm((f) => ({ ...f, slug: e.target.value }))}
             placeholder="slug (e.g. growth)"
-            className="w-full rounded-[11px] border border-[var(--line)] bg-[var(--bg)] px-4 py-3 text-sm focus:border-[var(--plat)] focus:outline-none"
+            className="w-full rounded-[var(--radius-btn)] border border-[var(--line)] bg-[var(--bg)] px-4 py-3 text-sm focus:border-[var(--primary)] focus:outline-none"
           />
         )}
         <div className="grid grid-cols-2 gap-3">
@@ -270,14 +270,14 @@ function PlanForm({
             onChange={(e) => setForm((f) => ({ ...f, priceNpr: e.target.value }))}
             placeholder="Price (NPR/yr)"
             type="number"
-            className="w-full rounded-[11px] border border-[var(--line)] bg-[var(--bg)] px-4 py-3 text-sm focus:border-[var(--plat)] focus:outline-none"
+            className="w-full rounded-[var(--radius-btn)] border border-[var(--line)] bg-[var(--bg)] px-4 py-3 text-sm focus:border-[var(--primary)] focus:outline-none"
           />
           <input
             value={form.businessLimit}
             onChange={(e) => setForm((f) => ({ ...f, businessLimit: e.target.value }))}
             placeholder="Business limit"
             type="number"
-            className="w-full rounded-[11px] border border-[var(--line)] bg-[var(--bg)] px-4 py-3 text-sm focus:border-[var(--plat)] focus:outline-none"
+            className="w-full rounded-[var(--radius-btn)] border border-[var(--line)] bg-[var(--bg)] px-4 py-3 text-sm focus:border-[var(--primary)] focus:outline-none"
           />
         </div>
         <textarea
@@ -285,7 +285,7 @@ function PlanForm({
           onChange={(e) => setForm((f) => ({ ...f, features: e.target.value }))}
           placeholder={"One feature per line"}
           rows={4}
-          className="w-full rounded-[11px] border border-[var(--line)] bg-[var(--bg)] px-4 py-3 text-sm focus:border-[var(--plat)] focus:outline-none"
+          className="w-full rounded-[var(--radius-btn)] border border-[var(--line)] bg-[var(--bg)] px-4 py-3 text-sm focus:border-[var(--primary)] focus:outline-none"
         />
         <label className="flex items-center gap-2 text-sm font-semibold text-[var(--ink)]">
           <input
@@ -299,12 +299,12 @@ function PlanForm({
           <button
             onClick={onSubmit}
             disabled={busy || !form.name || (showSlug && !form.slug) || !form.priceNpr || !form.businessLimit}
-            className="stamp-interactive rounded-[13px] px-5 py-3 text-sm font-bold text-white disabled:opacity-50"
-            style={{ background: "var(--plat)" }}
+            className="stamp-interactive rounded-[var(--radius-btn)] px-5 py-3 text-sm font-bold text-white disabled:opacity-50"
+            style={{ background: "var(--primary)" }}
           >
             {busy ? "Saving…" : submitLabel}
           </button>
-          <button onClick={onCancel} className="rounded-[13px] border border-[var(--line)] px-5 py-3 text-sm font-bold text-[var(--ink)]">
+          <button onClick={onCancel} className="rounded-[var(--radius-btn)] border border-[var(--line)] px-5 py-3 text-sm font-bold text-[var(--ink)]">
             Cancel
           </button>
         </div>

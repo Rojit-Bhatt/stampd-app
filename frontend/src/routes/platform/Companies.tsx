@@ -92,7 +92,7 @@ export default function Companies() {
     <div>
       <div className="mb-6 flex flex-wrap items-end justify-between gap-3">
         <div>
-          <h1 className="font-display text-[30px] font-extrabold text-[var(--ink)]">Companies</h1>
+          <h1 className="font-display text-[30px] font-bold text-[var(--ink)]">Companies</h1>
           <div className="text-[var(--muted)]">
             {isLoading ? (
               <Skeleton className="inline-block h-4 w-40 align-middle" />
@@ -105,7 +105,7 @@ export default function Companies() {
           <Link
             to="register"
             className="stamp-interactive rounded-full px-5 py-3 text-[15px] font-bold text-white"
-            style={{ background: "var(--plat)" }}
+            style={{ background: "var(--primary)" }}
           >
             + Register a company
           </Link>
@@ -114,7 +114,7 @@ export default function Companies() {
 
       <div className="mb-6 grid grid-cols-2 gap-4 md:grid-cols-4">
         {stats.map((s) => (
-          <div key={s.label} className="shadow-ambient rounded-3xl bg-[var(--surface)] p-5">
+          <div key={s.label} className="rounded-[var(--radius-card)] border border-[var(--line)] bg-[var(--surface)] shadow-ambient p-5">
             <div className="mb-1.5 text-[13px] text-[var(--muted)]">{s.label}</div>
             {isLoading ? <Skeleton className="h-[26px] w-10" /> : <div className="font-display text-[26px] font-bold">{s.val}</div>}
           </div>
@@ -128,7 +128,7 @@ export default function Companies() {
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             placeholder="Search companies or outlets…"
-            className="w-full rounded-full border border-[var(--line)] bg-[var(--surface)] py-2.5 pl-10 pr-4 text-sm focus:border-[var(--plat)] focus:outline-none"
+            className="w-full rounded-full border border-[var(--line)] bg-[var(--surface)] py-2.5 pl-10 pr-4 text-sm focus:border-[var(--primary)] focus:outline-none"
           />
         </div>
         <div className="flex gap-1.5 rounded-full border border-[var(--line)] bg-[var(--surface)] p-1">
@@ -137,7 +137,7 @@ export default function Companies() {
               key={s}
               onClick={() => setStatus(s)}
               className="rounded-full px-3.5 py-1.5 text-[13px] font-bold capitalize transition-colors"
-              style={status === s ? { background: "var(--plat)", color: "white" } : { color: "var(--muted)" }}
+              style={status === s ? { background: "var(--primary)", color: "white" } : { color: "var(--muted)" }}
             >
               {s}
             </button>
@@ -147,16 +147,16 @@ export default function Companies() {
 
       <div className="flex flex-col gap-3">
         {isLoading ? (
-          Array.from({ length: 3 }).map((_, i) => <Skeleton key={i} className="h-20 rounded-3xl" />)
+          Array.from({ length: 3 }).map((_, i) => <Skeleton key={i} className="h-20 rounded-[var(--radius-card)]" />)
         ) : filtered.length === 0 ? (
-          <div className="rounded-3xl bg-[var(--surface)] px-5 py-10 text-center text-sm text-[var(--muted)] shadow-ambient">
+          <div className="rounded-[var(--radius-card)] bg-[var(--surface)] px-5 py-10 text-center text-sm text-[var(--muted)] shadow-ambient">
             {companies.length === 0 ? "No companies yet. Register your first." : "No companies match your search."}
           </div>
         ) : (
           filtered.map((c) => {
             const open = expanded.has(c.id);
             return (
-              <div key={c.id} className="shadow-ambient overflow-hidden rounded-3xl bg-[var(--surface)]">
+              <div key={c.id} className="shadow-ambient overflow-hidden rounded-[var(--radius-card)] bg-[var(--surface)]">
                 <div className="flex items-center gap-3 px-5 py-4">
                   <button
                     onClick={() => toggle(c.id)}
@@ -168,7 +168,7 @@ export default function Companies() {
                       style={{ transform: open ? "rotate(90deg)" : undefined }}
                     />
                     <span
-                      className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-[10px] text-xs font-extrabold text-white"
+                      className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-[10px] text-xs font-bold text-white"
                       style={{ background: c.branding?.primaryColor || "var(--brand)" }}
                     >
                       {c.name.charAt(0).toUpperCase()}

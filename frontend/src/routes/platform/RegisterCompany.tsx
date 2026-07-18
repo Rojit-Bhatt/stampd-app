@@ -72,22 +72,22 @@ export default function RegisterCompany() {
         <Link to="/platform" className="mb-3.5 inline-block text-[13px] text-[var(--muted)]">
           ← Companies
         </Link>
-        <div className="shadow-ambient rounded-3xl border border-[#CBE4D6] bg-[var(--ok-soft)] p-8 text-center">
+        <div className="shadow-ambient rounded-[var(--radius-card)] border border-[#CBE4D6] bg-[var(--ok-soft)] p-8 text-center">
           <div
             className="mx-auto mb-4 flex h-15 w-15 items-center justify-center rounded-full text-white"
             style={{ width: 60, height: 60, background: "var(--ok)" }}
           >
             <Check className="h-7 w-7" />
           </div>
-          <h2 className="font-display text-[22px] font-extrabold text-[var(--ink)]">
+          <h2 className="font-display text-[22px] font-bold text-[var(--ink)]">
             {done.name} is live!
           </h2>
           <p className="mx-auto mb-4 mt-1 max-w-sm text-[var(--muted)]">
             We've emailed {done.ownerEmail || "the owner"} a link to verify their address. They sign
             in here once they have — then they can add their outlets.
           </p>
-          <div className="mb-4 flex items-center justify-between gap-2.5 rounded-[12px] border border-[var(--line)] bg-white px-4 py-3">
-            <span className="truncate font-mono text-sm" style={{ color: "var(--plat)" }}>
+          <div className="mb-4 flex items-center justify-between gap-2.5 rounded-[var(--radius-btn)] border border-[var(--line)] bg-white px-4 py-3">
+            <span className="truncate font-mono text-sm" style={{ color: "var(--primary-deep)" }}>
               {url}
             </span>
             <button
@@ -97,7 +97,7 @@ export default function RegisterCompany() {
                 setTimeout(() => setCopied(false), 1500);
               }}
               className="stamp-interactive flex flex-shrink-0 items-center gap-1.5 rounded-full px-3.5 py-2 text-xs font-bold text-white"
-              style={{ background: "var(--plat)" }}
+              style={{ background: "var(--primary)" }}
             >
               <Copy className="h-3.5 w-3.5" /> {copied ? "Copied" : "Copy link"}
             </button>
@@ -112,7 +112,7 @@ export default function RegisterCompany() {
             <button
               onClick={reset}
               className="stamp-interactive rounded-full px-5 py-3 text-sm font-bold text-white"
-              style={{ background: "var(--plat)" }}
+              style={{ background: "var(--primary)" }}
             >
               Onboard another
             </button>
@@ -127,7 +127,7 @@ export default function RegisterCompany() {
       <Link to="/platform" className="mb-3.5 inline-block text-[13px] text-[var(--muted)]">
         ← Companies
       </Link>
-      <h1 className="font-display text-[28px] font-extrabold text-[var(--ink)]">
+      <h1 className="font-display text-[28px] font-bold text-[var(--ink)]">
         Register a new company
       </h1>
       <p className="mb-6 text-[var(--muted)]">
@@ -141,10 +141,10 @@ export default function RegisterCompany() {
             value={form.name}
             onChange={(e) => onName(e.target.value)}
             placeholder="e.g. Maple & Bloom"
-            className="mb-4 w-full rounded-[11px] border border-[var(--line)] bg-[var(--bg)] px-4 py-3 text-sm focus:border-[var(--plat)] focus:outline-none"
+            className="mb-4 w-full rounded-[var(--radius-btn)] border border-[var(--line)] bg-[var(--bg)] px-4 py-3 text-sm focus:border-[var(--primary)] focus:outline-none"
           />
           <Label>URL handle</Label>
-          <div className="flex items-center rounded-[11px] border border-[var(--line)] bg-[var(--bg)] px-4">
+          <div className="flex items-center rounded-[var(--radius-btn)] border border-[var(--line)] bg-[var(--bg)] px-4">
             <span className="font-mono text-sm text-[var(--soft)]">{PLATFORM_NAME.toLowerCase()}.app/</span>
             <input
               value={form.slug}
@@ -164,20 +164,20 @@ export default function RegisterCompany() {
               value={form.ownerName}
               onChange={(e) => set("ownerName", e.target.value)}
               placeholder="Owner name"
-              className="rounded-[11px] border border-[var(--line)] bg-[var(--bg)] px-4 py-3 text-sm focus:border-[var(--plat)] focus:outline-none"
+              className="rounded-[var(--radius-btn)] border border-[var(--line)] bg-[var(--bg)] px-4 py-3 text-sm focus:border-[var(--primary)] focus:outline-none"
             />
             <input
               value={form.ownerEmail}
               onChange={(e) => set("ownerEmail", e.target.value)}
               placeholder="Owner email"
-              className="rounded-[11px] border border-[var(--line)] bg-[var(--bg)] px-4 py-3 text-sm focus:border-[var(--plat)] focus:outline-none"
+              className="rounded-[var(--radius-btn)] border border-[var(--line)] bg-[var(--bg)] px-4 py-3 text-sm focus:border-[var(--primary)] focus:outline-none"
             />
             <input
               type="password"
               value={form.ownerPassword}
               onChange={(e) => set("ownerPassword", e.target.value)}
               placeholder="Temporary password"
-              className="rounded-[11px] border border-[var(--line)] bg-[var(--bg)] px-4 py-3 text-sm focus:border-[var(--plat)] focus:outline-none"
+              className="rounded-[var(--radius-btn)] border border-[var(--line)] bg-[var(--bg)] px-4 py-3 text-sm focus:border-[var(--primary)] focus:outline-none"
             />
           </div>
         </Card>
@@ -186,7 +186,7 @@ export default function RegisterCompany() {
           onClick={submit}
           disabled={busy}
           className="stamp-interactive rounded-full py-4 text-[16px] font-bold text-white disabled:opacity-50"
-          style={{ background: "var(--plat)" }}
+          style={{ background: "var(--primary)" }}
         >
           {busy ? "Creating…" : "Create company & owner"}
         </button>
@@ -197,7 +197,7 @@ export default function RegisterCompany() {
 
 function Card({ title, children }: { title: string; children: React.ReactNode }) {
   return (
-    <div className="shadow-ambient rounded-3xl bg-[var(--surface)] p-6">
+    <div className="rounded-[var(--radius-card)] border border-[var(--line)] bg-[var(--surface)] shadow-ambient p-6">
       <div className="mb-3.5 text-xs font-bold uppercase tracking-wider text-[var(--soft)]">{title}</div>
       {children}
     </div>

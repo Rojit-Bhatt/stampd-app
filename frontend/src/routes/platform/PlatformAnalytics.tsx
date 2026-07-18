@@ -72,7 +72,7 @@ export default function PlatformAnalytics() {
     ? [
         { label: "New customers (7d)", val: stats.newCustomers.value, trend: stats.newCustomers.trend },
         { label: "Points issued (7d)", val: stats.pointsIssued.value, trend: stats.pointsIssued.trend },
-        { label: "Revenue (7d)", val: stats.revenue.value, trend: stats.revenue.trend },
+        { label: "Revenue (7d)", val: `Rs ${stats.revenue.value.toLocaleString("en-IN")}`, trend: stats.revenue.trend },
         { label: "Redemptions (7d)", val: stats.redemptions.value, trend: stats.redemptions.trend },
       ]
     : [];
@@ -94,45 +94,86 @@ export default function PlatformAnalytics() {
 
   return (
     <div>
-      <h1 className="font-display text-[30px] font-extrabold text-[var(--ink)]">Analytics</h1>
+      <h1 className="font-display text-[28px] font-bold text-[var(--ink)]">Analytics</h1>
       <p className="mb-6 text-[var(--muted)]">Rolled up across every business on the platform.</p>
 
-      <div className="mb-6 grid grid-cols-3 gap-4">
-        {isLoading
-          ? Array.from({ length: 3 }).map((_, i) => (
-              <div key={i} className="shadow-ambient rounded-3xl bg-[var(--surface)] p-5">
-                <Skeleton className="mb-1.5 h-3.5 w-20" />
-                <Skeleton className="h-6 w-10" />
-              </div>
-            ))
-          : totalTiles.map((t) => (
-              <div key={t.label} className="shadow-ambient rounded-3xl bg-[var(--surface)] p-5">
-                <div className="mb-1.5 text-[13px] text-[var(--muted)]">{t.label}</div>
-                <div className="font-display text-[26px] font-bold">{t.val}</div>
-              </div>
-            ))}
-      </div>
-
-      <div className="mb-6 grid grid-cols-2 gap-4 md:grid-cols-4">
-        {isLoading
-          ? Array.from({ length: 4 }).map((_, i) => (
-              <div key={i} className="shadow-ambient rounded-3xl bg-[var(--surface)] p-5">
-                <Skeleton className="mb-1.5 h-3.5 w-20" />
-                <Skeleton className="h-6 w-10" />
-              </div>
-            ))
-          : trendTiles.map((t) => (
-              <div key={t.label} className="shadow-ambient rounded-3xl bg-[var(--surface)] p-5">
-                <div className="mb-1.5 text-[13px] text-[var(--muted)]">{t.label}</div>
-                <div className="font-display text-[26px] font-bold">
-                  {t.val}
-                  <TrendBadge trend={t.trend} />
+      {/* TWO METRIC FAMILIES, DRAWN DIFFERENTLY ON PURPOSE.
+          Point-in-time totals answer "how much exists"; weekly flows answer
+          "how fast is it moving". They were previously identical cards
+          distinguished only by whether a trend badge happened to be present,
+          which is what made the two kinds of number get read as one. */}
+      <section className="mb-7">
+        <div className="mb-3 flex items-baseline gap-2">
+          <h2 className="text-[10px] font-bold uppercase tracking-[0.16em] text-[var(--soft)]">
+            Right now
+          </h2>
+          <span className="text-[11px] text-[var(--soft)]">snapshot totals — no trend</span>
+        </div>
+        <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+          {isLoading
+            ? Array.from({ length: 3 }).map((_, i) => (
+                <div key={i} className="rounded-[var(--radius-card)] border border-[var(--line)] bg-[var(--surface)] p-5">
+                  <Skeleton className="mb-2 h-3 w-20" />
+                  <Skeleton className="h-8 w-12" />
                 </div>
-              </div>
-            ))}
-      </div>
+              ))
+            : totalTiles.map((t) => (
+                <div
+                  key={t.label}
+                  className="rounded-[var(--radius-card)] border border-[var(--line)] bg-[var(--surface)] p-5"
+                >
+                  <div className="text-[10px] font-bold uppercase tracking-[0.14em] text-[var(--soft)]">
+                    {t.label}
+                  </div>
+                  <div className="mt-1.5 font-numeral text-[34px] leading-none text-[var(--ink)]">
+                    {t.val}
+                  </div>
+                </div>
+              ))}
+        </div>
+      </section>
 
-      <div className="shadow-ambient mb-6 rounded-3xl bg-[var(--surface)] p-6">
+      <section className="mb-7">
+        <div className="mb-3 flex items-baseline gap-2">
+          <h2 className="text-[10px] font-bold uppercase tracking-[0.16em] text-[var(--soft)]">
+            This week
+          </h2>
+          <span className="text-[11px] text-[var(--soft)]">flow — week over week</span>
+        </div>
+        <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+          {isLoading
+            ? Array.from({ length: 4 }).map((_, i) => (
+                <div key={i} className="rounded-[var(--radius-card)] bg-[var(--surface)] p-5 pl-6">
+                  <Skeleton className="mb-2 h-3 w-24" />
+                  <Skeleton className="h-8 w-14" />
+                </div>
+              ))
+            : trendTiles.map((t) => (
+                <div
+                  key={t.label}
+                  className="relative overflow-hidden rounded-[var(--radius-card)] border border-[var(--line)] bg-[var(--surface)] p-5 pl-6"
+                >
+                  {/* The green left tab is the family marker — a flow metric
+                      is something moving, and moving is what green means. */}
+                  <span
+                    aria-hidden="true"
+                    className="absolute inset-y-0 left-0 w-1 bg-[var(--primary)]"
+                  />
+                  <div className="text-[10px] font-bold uppercase tracking-[0.14em] text-[var(--soft)]">
+                    {t.label}
+                  </div>
+                  <div className="mt-1.5 flex items-baseline gap-2">
+                    <span className="font-numeral text-[34px] leading-none text-[var(--ink)]">
+                      {t.val}
+                    </span>
+                    <TrendBadge trend={t.trend} />
+                  </div>
+                </div>
+              ))}
+        </div>
+      </section>
+
+      <div className="mb-6 rounded-[var(--radius-card)] border border-[var(--line)] bg-[var(--surface)] p-6 shadow-ambient">
         <h3 className="mb-1 font-display text-lg font-bold text-[var(--ink)]">Company report</h3>
         <p className="mb-4 text-[13px] text-[var(--muted)]">
           One row per company for the selected range — new customers, points issued/redeemed, revenue, redemptions.
@@ -144,7 +185,7 @@ export default function PlatformAnalytics() {
               type="date"
               value={startDate}
               onChange={(e) => setStartDate(e.target.value)}
-              className="rounded-[11px] border border-[var(--line)] bg-[var(--bg)] px-4 py-2.5 text-sm focus:border-[var(--plat)] focus:outline-none"
+              className="rounded-[var(--radius-btn)] border border-[var(--line)] bg-[var(--surface)] px-4 py-2.5 text-sm focus:border-[var(--primary)] focus:outline-none"
             />
           </label>
           <label className="block">
@@ -153,20 +194,20 @@ export default function PlatformAnalytics() {
               type="date"
               value={endDate}
               onChange={(e) => setEndDate(e.target.value)}
-              className="rounded-[11px] border border-[var(--line)] bg-[var(--bg)] px-4 py-2.5 text-sm focus:border-[var(--plat)] focus:outline-none"
+              className="rounded-[var(--radius-btn)] border border-[var(--line)] bg-[var(--surface)] px-4 py-2.5 text-sm focus:border-[var(--primary)] focus:outline-none"
             />
           </label>
           <button
             onClick={downloadCompaniesReport}
-            className="inline-flex items-center gap-1.5 rounded-[12px] px-5 py-2.5 text-sm font-bold text-white"
-            style={{ background: "var(--plat)" }}
+            className="inline-flex items-center gap-1.5 rounded-[var(--radius-btn)] px-5 py-2.5 text-sm font-bold text-white"
+            style={{ background: "var(--primary)" }}
           >
             <Download className="h-4 w-4" /> Download Excel
           </button>
         </div>
       </div>
 
-      <div className="shadow-ambient rounded-3xl bg-[var(--surface)] p-6">
+      <div className="rounded-[var(--radius-card)] border border-[var(--line)] bg-[var(--surface)] p-6 shadow-ambient">
         <h3 className="mb-1 font-display text-lg font-bold text-[var(--ink)]">Points velocity</h3>
         <p className="mb-4 text-[13px] text-[var(--muted)]">Points issued per day across every business, last 14 days.</p>
         {isLoading || !stats ? (
@@ -178,7 +219,7 @@ export default function PlatformAnalytics() {
               <XAxis dataKey="label" tick={{ fontSize: 12 }} stroke="var(--soft)" />
               <YAxis tick={{ fontSize: 12 }} stroke="var(--soft)" />
               <Tooltip />
-              <Line type="monotone" dataKey="points" stroke="var(--plat)" strokeWidth={2} dot={false} />
+              <Line type="monotone" dataKey="points" stroke="var(--primary)" strokeWidth={2} dot={false} />
             </LineChart>
           </ResponsiveContainer>
         )}

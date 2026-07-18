@@ -23,7 +23,7 @@ interface SubscriptionKey {
 const STATUS_COLOR: Record<string, { bg: string; fg: string }> = {
   unused: { bg: "var(--info-soft)", fg: "var(--info)" },
   redeemed: { bg: "var(--ok-soft)", fg: "var(--ok)" },
-  revoked: { bg: "var(--surface-container-high)", fg: "var(--soft)" },
+  revoked: { bg: "var(--line)", fg: "var(--soft)" },
 };
 
 export default function SubscriptionKeys() {
@@ -70,19 +70,19 @@ export default function SubscriptionKeys() {
 
   return (
     <div>
-      <h1 className="font-display text-[30px] font-extrabold text-[var(--ink)]">Subscription keys</h1>
+      <h1 className="font-display text-[30px] font-bold text-[var(--ink)]">Subscription keys</h1>
       <p className="mb-6 text-[var(--muted)]">
         Generate a key after confirming payment with a business over phone/email, then hand it over the same way.
         No payment gateway is wired up — activation is entirely manual.
       </p>
 
-      <div className="mb-6 max-w-lg rounded-3xl bg-[var(--surface)] p-6 shadow-ambient">
+      <div className="mb-6 max-w-lg rounded-[var(--radius-card)] bg-[var(--surface)] p-6 shadow-ambient">
         <h3 className="mb-4 font-display text-lg font-bold text-[var(--ink)]">Generate a key</h3>
         <div className="flex flex-col gap-3">
           <select
             value={planSlug}
             onChange={(e) => setPlanSlug(e.target.value)}
-            className="w-full rounded-[11px] border border-[var(--line)] bg-[var(--bg)] px-4 py-3 text-sm focus:border-[var(--plat)] focus:outline-none"
+            className="w-full rounded-[var(--radius-btn)] border border-[var(--line)] bg-[var(--bg)] px-4 py-3 text-sm focus:border-[var(--primary)] focus:outline-none"
           >
             <option value="">Select a plan…</option>
             {plans.map((p) => (
@@ -93,26 +93,26 @@ export default function SubscriptionKeys() {
             value={note}
             onChange={(e) => setNote(e.target.value)}
             placeholder="Note (e.g. which business, invoice ref)"
-            className="w-full rounded-[11px] border border-[var(--line)] bg-[var(--bg)] px-4 py-3 text-sm focus:border-[var(--plat)] focus:outline-none"
+            className="w-full rounded-[var(--radius-btn)] border border-[var(--line)] bg-[var(--bg)] px-4 py-3 text-sm focus:border-[var(--primary)] focus:outline-none"
           />
           <button
             onClick={() => generate.mutate()}
             disabled={generate.isPending || !planSlug}
-            className="stamp-interactive rounded-[13px] py-3 text-sm font-bold text-white disabled:opacity-50"
-            style={{ background: "var(--plat)" }}
+            className="stamp-interactive rounded-[var(--radius-btn)] py-3 text-sm font-bold text-white disabled:opacity-50"
+            style={{ background: "var(--primary)" }}
           >
             {generate.isPending ? "Generating…" : "Generate key"}
           </button>
 
           {lastGenerated && (
-            <div className="rounded-[13px] border border-[var(--ok-soft)] bg-[var(--ok-soft)] px-4 py-3 text-sm" style={{ color: "var(--ok)" }}>
+            <div className="rounded-[var(--radius-btn)] border border-[var(--ok-soft)] bg-[var(--ok-soft)] px-4 py-3 text-sm" style={{ color: "var(--ok)" }}>
               Give this code to the business: <span className="font-mono font-bold">{lastGenerated}</span>
             </div>
           )}
         </div>
       </div>
 
-      <div className="shadow-ambient overflow-hidden rounded-3xl bg-[var(--surface)]">
+      <div className="shadow-ambient overflow-hidden rounded-[var(--radius-card)] bg-[var(--surface)]">
         <div className="grid grid-cols-[1.4fr_1fr_1fr_1.4fr_auto] border-b border-[var(--line)] px-5 py-3 text-[11px] font-bold uppercase tracking-wider text-[var(--soft)]">
           <span>Code</span>
           <span>Plan</span>
