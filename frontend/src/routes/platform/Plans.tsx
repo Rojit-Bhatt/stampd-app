@@ -11,14 +11,14 @@ interface Plan {
   slug: string;
   name: string;
   priceNpr: number;
-  businessLimit: number;
+  outletLimit: number;
   features: string[];
   isMostPopular: boolean;
   isActive: boolean;
   sortOrder: number;
 }
 
-const EMPTY_FORM = { name: "", slug: "", priceNpr: "", businessLimit: "", features: "", isMostPopular: false };
+const EMPTY_FORM = { name: "", slug: "", priceNpr: "", outletLimit: "", features: "", isMostPopular: false };
 type FormState = typeof EMPTY_FORM;
 
 export default function Plans() {
@@ -82,7 +82,7 @@ export default function Plans() {
       name: p.name,
       slug: p.slug,
       priceNpr: String(p.priceNpr),
-      businessLimit: String(p.businessLimit),
+      outletLimit: String(p.outletLimit),
       features: p.features.join("\n"),
       isMostPopular: p.isMostPopular,
     });
@@ -99,7 +99,7 @@ export default function Plans() {
         <div>
           <div className="mb-1 text-[11px] font-bold uppercase tracking-[0.15em] text-[var(--soft)]">Revenue settings</div>
           <h1 className="font-display text-[30px] font-bold text-[var(--ink)]">Subscription plans</h1>
-          <p className="text-[var(--muted)]">Configure tiers and business limits. Changes affect new activations immediately.</p>
+          <p className="text-[var(--muted)]">Configure tiers and outlet limits. Changes affect new activations immediately.</p>
         </div>
         <button
           onClick={() => setCreating((c) => !c)}
@@ -120,7 +120,7 @@ export default function Plans() {
               name: createForm.name,
               slug: createForm.slug,
               priceNpr: Number(createForm.priceNpr),
-              businessLimit: Number(createForm.businessLimit),
+              outletLimit: Number(createForm.outletLimit),
               features: parseFeatures(createForm.features),
               isMostPopular: createForm.isMostPopular,
             })
@@ -190,7 +190,7 @@ export default function Plans() {
                 body: {
                   name: editForm.name,
                   priceNpr: Number(editForm.priceNpr),
-                  businessLimit: Number(editForm.businessLimit),
+                  outletLimit: Number(editForm.outletLimit),
                   features: parseFeatures(editForm.features),
                   isMostPopular: editForm.isMostPopular,
                 },
@@ -207,7 +207,7 @@ export default function Plans() {
           <span>Plan name</span>
           <span>Status</span>
           <span>Price</span>
-          <span>Business limit</span>
+          <span>Outlet limit</span>
           <span>Actions</span>
         </div>
         {[...activePlans, ...archivedPlans].map((p) => (
@@ -218,7 +218,7 @@ export default function Plans() {
               {p.isActive ? "Active" : "Archived"}
             </span>
             <span>{formatNpr(p.priceNpr)}</span>
-            <span>{p.businessLimit}</span>
+            <span>{p.outletLimit === 1 ? "1 outlet" : `${p.outletLimit} outlets`}</span>
             <span className="flex gap-3">
               {p.isActive ? (
                 <>
@@ -273,9 +273,9 @@ function PlanForm({
             className="w-full rounded-[var(--radius-btn)] border border-[var(--line)] bg-[var(--bg)] px-4 py-3 text-sm focus:border-[var(--primary)] focus:outline-none"
           />
           <input
-            value={form.businessLimit}
-            onChange={(e) => setForm((f) => ({ ...f, businessLimit: e.target.value }))}
-            placeholder="Business limit"
+            value={form.outletLimit}
+            onChange={(e) => setForm((f) => ({ ...f, outletLimit: e.target.value }))}
+            placeholder="Outlet limit"
             type="number"
             className="w-full rounded-[var(--radius-btn)] border border-[var(--line)] bg-[var(--bg)] px-4 py-3 text-sm focus:border-[var(--primary)] focus:outline-none"
           />
@@ -298,7 +298,7 @@ function PlanForm({
         <div className="flex gap-3">
           <button
             onClick={onSubmit}
-            disabled={busy || !form.name || (showSlug && !form.slug) || !form.priceNpr || !form.businessLimit}
+            disabled={busy || !form.name || (showSlug && !form.slug) || !form.priceNpr || !form.outletLimit}
             className="stamp-interactive rounded-[var(--radius-btn)] px-5 py-3 text-sm font-bold text-white disabled:opacity-50"
             style={{ background: "var(--primary)" }}
           >

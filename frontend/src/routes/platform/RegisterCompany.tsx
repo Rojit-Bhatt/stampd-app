@@ -22,6 +22,11 @@ export default function RegisterCompany() {
     ownerName: "",
     ownerEmail: "",
     ownerPassword: "",
+    // "" means "use the platform default". These become the company's
+    // programDefaults — the value every outlet under it inherits — so a
+    // blank here is a fallback, not an override.
+    earnPercent: "",
+    pointsExpiryDays: "",
   });
   const [slugEdited, setSlugEdited] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -41,9 +46,20 @@ export default function RegisterCompany() {
     }
     setBusy(true);
     try {
+      const { earnPercent, pointsExpiryDays, ...rest } = form;
+      // Only send the fields that were actually filled in; anything omitted
+      // falls back to the platform default server-side.
+      const programDefaults: Record<string, number> = {};
+      if (earnPercent !== "") programDefaults.earnPercent = Number(earnPercent);
+      if (pointsExpiryDays !== "") programDefaults.pointsExpiryDays = Number(pointsExpiryDays);
+
       const res = await apiRequest<{ success: boolean; company: { name: string } }>(
         "/api/platform/companies",
-        { method: "POST", role: "platform", body: form },
+        {
+          method: "POST",
+          role: "platform",
+          body: Object.keys(programDefaults).length ? { ...rest, programDefaults } : rest,
+        },
       );
       qc.invalidateQueries({ queryKey: ["platformCompanies"] });
       setDone({ name: res.company.name, ownerEmail: form.ownerEmail });
@@ -56,7 +72,10 @@ export default function RegisterCompany() {
   };
 
   const reset = () => {
-    setForm({ name: "", slug: "", ownerName: "", ownerEmail: "", ownerPassword: "" });
+    setForm({
+      name: "", slug: "", ownerName: "", ownerEmail: "", ownerPassword: "",
+      earnPercent: "", pointsExpiryDays: "",
+    });
     setSlugEdited(false);
     setDone(null);
   };
@@ -155,6 +174,41 @@ export default function RegisterCompany() {
               placeholder="maplebloom"
               className="flex-1 bg-transparent px-1 py-3 font-mono text-sm focus:outline-none"
             />
+          </div>
+        </Card>
+
+        <Card title="Loyalty program">
+          <p className="mb-3 text-[13px] text-[var(--muted)]">
+            The defaults every outlet under this company inherits. Each outlet can override them
+            later from its own console.
+          </p>
+          <div className="flex flex-col gap-3">
+            <label className="block">
+              <span className="mb-1.5 block text-[12px] font-semibold text-[var(--soft)]">
+                Earn rate — % of the bill back as points
+              </span>
+              <input
+                value={form.earnPercent}
+                onChange={(e) => set("earnPercent", e.target.value)}
+                placeholder="100 (platform default)"
+                type="number"
+                min={0}
+                className="w-full rounded-[var(--radius-btn)] border border-[var(--line)] bg-[var(--bg)] px-4 py-3 text-sm focus:border-[var(--primary)] focus:outline-none"
+              />
+            </label>
+            <label className="block">
+              <span className="mb-1.5 block text-[12px] font-semibold text-[var(--soft)]">
+                Points expiry — days of inactivity
+              </span>
+              <input
+                value={form.pointsExpiryDays}
+                onChange={(e) => set("pointsExpiryDays", e.target.value)}
+                placeholder="0 (never expire)"
+                type="number"
+                min={0}
+                className="w-full rounded-[var(--radius-btn)] border border-[var(--line)] bg-[var(--bg)] px-4 py-3 text-sm focus:border-[var(--primary)] focus:outline-none"
+              />
+            </label>
           </div>
         </Card>
 

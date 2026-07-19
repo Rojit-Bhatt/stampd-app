@@ -8,6 +8,7 @@ const { toPoints } = require("../utils/pointsMath");
 const { generateAuthToken } = require("../utils/tokenUtils");
 const { BUSINESS_CATEGORIES } = require("../config/platform");
 const { logAction } = require("./platformAuditService");
+const { sanitizeProgramInput } = require("./programService");
 const companyService = require("./companyService");
 const { startTrialSubscription } = require("./subscriptionService");
 
@@ -66,6 +67,10 @@ const buildCompanyStats = async (company) => {
     slug: company.slug,
     status: company.status,
     branding: company.branding,
+    // The values every outlet under this company inherits. Exposed so the
+    // platform console can show what they currently are — a PATCH endpoint
+    // with no way to read the present value is a form you fill in blind.
+    programDefaults: company.programDefaults,
     owner: owner ? { name: owner.name, email: owner.email, emailVerified: owner.emailVerified } : null,
     outlets: outletRows.sort((a, b) => a.name.localeCompare(b.name)),
     outletCount: outletRows.filter((o) => o.status !== "archived").length,
@@ -118,9 +123,9 @@ const listCompanies = async () => {
 // The platform registers a company and its owner; the company then registers
 // its own outlets. Every new company starts on a trial subscription, so it
 // can stand up its first outlet immediately.
-const registerCompany = async ({ name, slug, ownerName, ownerEmail, ownerPassword, phone, actorId, actorName }) => {
+const registerCompany = async ({ name, slug, ownerName, ownerEmail, ownerPassword, phone, programDefaults, actorId, actorName }) => {
   const { company, owner } = await companyService.createCompany({
-    name, slug, ownerName, ownerEmail, ownerPassword, phone
+    name, slug, ownerName, ownerEmail, ownerPassword, phone, programDefaults
   });
 
   await startTrialSubscription(company._id);
@@ -148,7 +153,7 @@ const getCompanyById = async (id) => {
   return { success: true, company: await buildCompanyStats(company) };
 };
 
-const updateCompany = async (id, { name, status, ownerEmail, actorId, actorName }) => {
+const updateCompany = async (id, { name, status, ownerEmail, programDefaults, actorId, actorName }) => {
   const company = await Company.findOne({ _id: id });
   if (!company) throw createHttpError("Company not found.", 404);
 
@@ -156,9 +161,21 @@ const updateCompany = async (id, { name, status, ownerEmail, actorId, actorName 
     throw createHttpError("status must be either 'active' or 'suspended'.", 400);
   }
 
+  // The inheritance root, editable after registration — without this a
+  // company's earn rate was fixed at creation and could never be changed by
+  // anyone, so every outlet under it inherited 100% forever.
+  const program = sanitizeProgramInput(programDefaults, { label: "programDefaults" });
+
   const updates = {};
   if (name !== undefined) updates.name = name.trim();
   if (status !== undefined) updates.status = status;
+  if (program) {
+    // Merged, not replaced: a caller sending only earnPercent must not wipe
+    // pointsExpiryDays. Assigned as a whole object because the mock DB turns
+    // a dotted $set into a literal "programDefaults.earnPercent" key rather
+    // than nesting (see programService's note on nested paths).
+    updates.programDefaults = { ...company.programDefaults, ...program };
+  }
 
   const updated = Object.keys(updates).length
     ? await Company.findOneAndUpdate({ _id: id }, { $set: updates }, { new: true })
@@ -190,6 +207,11 @@ const updateCompany = async (id, { name, status, ownerEmail, actorId, actorName 
   const changeParts = [];
   if (updates.name !== undefined) changeParts.push(`name → "${updates.name}"`);
   if (ownerEmailChanged) changeParts.push(`owner email → ${ownerResult.email}`);
+  if (program) {
+    changeParts.push(
+      `program defaults → ${Object.entries(program).map(([k, v]) => `${k}=${v}`).join(", ")}`,
+    );
+  }
 
   if (status !== undefined) {
     await logAction({

@@ -27,6 +27,8 @@ export interface Company {
   slug: string;
   status: "active" | "suspended";
   branding: { primaryColor: string };
+  /** The values every outlet under this company inherits when it hasn't set its own. */
+  programDefaults?: { earnPercent: number; pointsExpiryDays: number };
   owner: { name: string; email: string; emailVerified: boolean } | null;
   outlets: Outlet[];
   outletCount: number;

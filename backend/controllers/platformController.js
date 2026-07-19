@@ -39,7 +39,7 @@ const getCompanies = async (req, res, next) => {
 
 const postCompany = async (req, res, next) => {
   try {
-    const { name, slug, ownerName, ownerEmail, ownerPassword, phone } = req.body;
+    const { name, slug, ownerName, ownerEmail, ownerPassword, phone, programDefaults } = req.body;
     const actor = await User.findOne({ _id: req.user.id });
     const result = await registerCompany({
       name,
@@ -48,6 +48,7 @@ const postCompany = async (req, res, next) => {
       ownerEmail,
       ownerPassword,
       phone,
+      programDefaults,
       actorId: req.user.id,
       actorName: actor ? actor.name : "Unknown"
     });
@@ -68,12 +69,13 @@ const getCompany = async (req, res, next) => {
 
 const patchCompany = async (req, res, next) => {
   try {
-    const { name, status, ownerEmail } = req.body;
+    const { name, status, ownerEmail, programDefaults } = req.body;
     const actor = await User.findOne({ _id: req.user.id });
     const result = await updateCompany(req.params.id, {
       name,
       status,
       ownerEmail,
+      programDefaults,
       actorId: req.user.id,
       actorName: actor ? actor.name : "Unknown"
     });

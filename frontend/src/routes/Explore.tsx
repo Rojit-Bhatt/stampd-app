@@ -10,6 +10,7 @@ import { BUSINESS_CATEGORIES, type BusinessCategory } from "../hooks/useAdminSet
 import { distanceKm } from "../lib/geo";
 import { darken } from "../lib/color";
 import { Skeleton } from "../components/ui/skeleton";
+import { InstallAppPrompt } from "../components/customer/InstallAppPrompt";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 
@@ -87,6 +88,10 @@ export default function Explore() {
 
   return (
     <div className="mx-auto w-full max-w-5xl px-5 py-6">
+      {/* Only renders when the browser says the app is actually installable
+          and the customer hasn't dismissed it. */}
+      <InstallAppPrompt className="mb-6" />
+
       {myTenants.length > 0 && (
         <section className="mb-7">
           <h2 className="mb-3 font-display text-lg font-bold text-[var(--ink)]">My places</h2>

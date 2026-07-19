@@ -15,9 +15,9 @@ const { bootServer } = require("./helpers/bootServer");
 async function main() {
   const { baseUrl, stop } = await bootServer({ port: 5027 });
   let failures = 0;
-  const check = (name, cond) => {
+  const check = (name, cond, extra) => {
     if (cond) console.log(`PASS ${name}`);
-    else { console.error(`FAIL ${name}`); failures++; }
+    else { console.error(`FAIL ${name}`, extra !== undefined ? JSON.stringify(extra) : ""); failures++; }
   };
   const api = (path, { method = "GET", token, body } = {}) => {
     const headers = { "Content-Type": "application/json" };
@@ -39,6 +39,20 @@ async function main() {
     const growth = (publicPlans.body?.plans || []).find((p) => p.slug === "growth");
     check("growth is flagged isMostPopular", growth?.isMostPopular === true);
     check("growth priceNpr is a plain number (2499)", growth?.priceNpr === 2499);
+
+    // The outlet limit must be exposed under exactly this name. The platform
+    // console's Plans page had been reading `businessLimit` — a field that
+    // never existed — so the column rendered blank, creating a plan was
+    // rejected outright, and editing a limit returned 200 while silently
+    // changing nothing. Every other test here already spoke `outletLimit`,
+    // which is why the API looked fine while the UI was broken; this asserts
+    // the wire name the frontend actually depends on.
+    check("plans expose the limit as `outletLimit`", growth?.outletLimit === 3, growth);
+    check(
+      "and NOT under any other name",
+      growth?.businessLimit === undefined && growth?.limit === undefined,
+      growth,
+    );
 
     // 2. Owner login, create a new plan.
     const ownerLogin = await api("/api/platform/login", {
@@ -63,7 +77,7 @@ async function main() {
     });
     check("duplicate slug rejected -> 409", dup.status === 409);
 
-    // 4. Owner edits the plan (price + businessLimit).
+    // 4. Owner edits the plan (price + outletLimit).
     const edited = await api("/api/platform/plans/starter-test", {
       method: "PATCH",
       token: ownerToken,

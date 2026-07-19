@@ -23,6 +23,11 @@ interface Outlet {
 const EMPTY_FORM = {
   name: "", slug: "", category: "cafe",
   adminName: "", adminEmail: "", adminPassword: "",
+  // "" means inherit the company default. Deliberately not 0 or the
+  // company's number: an empty box is how this outlet says "whatever my
+  // company says", and 0 is a real, different setting (a program that
+  // awards nothing).
+  earnPercent: "",
 };
 
 export default function CompanyDashboard() {
@@ -32,6 +37,17 @@ export default function CompanyDashboard() {
   const [form, setForm] = useState(EMPTY_FORM);
   const [limitInfo, setLimitInfo] = useState<string | null>(null);
   const [pendingArchive, setPendingArchive] = useState<Outlet | null>(null);
+
+  // The company's own defaults, so the form can show what "inherit" will
+  // actually resolve to rather than making the owner guess.
+  const { data: companyInfo } = useQuery<{ programDefaults?: { earnPercent: number; pointsExpiryDays: number } }>({
+    queryKey: ["companyMe"],
+    queryFn: async () => {
+      const res = await apiRequest<{ success: boolean; company: any }>("/api/company/me", { role: "company" });
+      return res.company || {};
+    },
+  });
+  const defaultEarn = companyInfo?.programDefaults?.earnPercent ?? 100;
 
   const { data: outlets = [], isLoading } = useQuery<Outlet[]>({
     queryKey: ["companyOutlets"],
@@ -45,8 +61,14 @@ export default function CompanyDashboard() {
   });
 
   const create = useMutation({
-    mutationFn: (body: typeof EMPTY_FORM) =>
-      apiRequest("/api/company/outlets", { method: "POST", role: "company", body }),
+    mutationFn: ({ earnPercent, ...rest }: typeof EMPTY_FORM) =>
+      apiRequest("/api/company/outlets", {
+        method: "POST",
+        role: "company",
+        // Only send an override when one was actually typed — omitting the
+        // field entirely is what leaves the outlet inheriting.
+        body: earnPercent === "" ? rest : { ...rest, program: { earnPercent: Number(earnPercent) } },
+      }),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["companyOutlets"] });
       toast.success("Outlet created — its admin has a verification email.");
@@ -162,6 +184,28 @@ export default function CompanyDashboard() {
                 <option key={c} value={c}>{CATEGORY_LABELS[c]}</option>
               ))}
             </select>
+
+            <div className="mt-1 border-t border-[var(--line)] pt-3">
+              <span className="mb-2 block text-[12px] font-bold uppercase tracking-wider text-[var(--soft)]">
+                Earn rate
+              </span>
+              <div className="flex items-center gap-2">
+                <input
+                  value={form.earnPercent}
+                  onChange={(e) => setForm((f) => ({ ...f, earnPercent: e.target.value }))}
+                  placeholder={String(defaultEarn)}
+                  type="number"
+                  min={0}
+                  className="w-28 rounded-[var(--radius-btn)] border border-[var(--line)] bg-[var(--bg)] px-4 py-3 text-sm focus:border-[var(--primary)] focus:outline-none"
+                />
+                <span className="text-sm text-[var(--muted)]">% of the bill back as points</span>
+              </div>
+              <p className="mt-1.5 text-[12px] text-[var(--soft)]">
+                {form.earnPercent === ""
+                  ? `Leave blank to use your company default (${defaultEarn}%). You can change it per outlet later.`
+                  : `This outlet overrides the company default of ${defaultEarn}%.`}
+              </p>
+            </div>
 
             <div className="mt-1 border-t border-[var(--line)] pt-3">
               <span className="mb-2 block text-[12px] font-bold uppercase tracking-wider text-[var(--soft)]">

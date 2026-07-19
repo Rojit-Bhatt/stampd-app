@@ -9,6 +9,7 @@ const { formatAuthPayload } = require("./authService");
 const { sendEmail } = require("./emailService");
 const { assertCanAddOutlet } = require("./subscriptionService");
 const { DEFAULT_PROGRAM, BUSINESS_CATEGORIES, isReservedSlug } = require("../config/platform");
+const { sanitizeProgramInput } = require("./programService");
 
 const SALT_ROUNDS = 10;
 const VERIFY_TTL_MS = 24 * 60 * 60 * 1000;
@@ -96,10 +97,15 @@ const formatOutlet = (organization) => ({
 // Registers a company + its owner's AdminAccount. Platform-admin only — a
 // company never self-registers. Both the company slug and the owner email
 // are validated before anything is written.
-const createCompany = async ({ name, slug, ownerName, ownerEmail, ownerPassword, phone }) => {
+const createCompany = async ({ name, slug, ownerName, ownerEmail, ownerPassword, phone, programDefaults }) => {
   if (!name || !slug || !ownerName || !ownerEmail || !ownerPassword) {
     throw createHttpError("name, slug, ownerName, ownerEmail, and ownerPassword are required.", 400);
   }
+
+  // Optional: whatever isn't supplied falls back to the platform default.
+  // These are the inheritance ROOT — every outlet under this company reads
+  // through to them — so they can't be null (see sanitizeProgramInput).
+  const program = sanitizeProgramInput(programDefaults, { label: "programDefaults" });
 
   const normalizedSlug = normalizeSlug(slug);
   if (!normalizedSlug) throw createHttpError("A valid slug is required.", 400);
@@ -117,7 +123,7 @@ const createCompany = async ({ name, slug, ownerName, ownerEmail, ownerPassword,
     name: name.trim(),
     slug: normalizedSlug,
     branding: { logoUrl: "", primaryColor: "#7c3f1d" },
-    programDefaults: { ...DEFAULT_PROGRAM }
+    programDefaults: { ...DEFAULT_PROGRAM, ...(program || {}) }
   });
 
   const owner = await AdminAccount.create({
@@ -140,10 +146,15 @@ const createCompany = async ({ name, slug, ownerName, ownerEmail, ownerPassword,
 // supplied by the company owner. The password is hashed fresh here and lives
 // only on this outlet's AdminAccount — outlets deliberately never share a
 // credential with their company or with each other.
-const createOutlet = async ({ companyId, name, slug, category, adminName, adminEmail, adminPassword }) => {
+const createOutlet = async ({ companyId, name, slug, category, adminName, adminEmail, adminPassword, program }) => {
   if (!name || !slug || !adminName || !adminEmail || !adminPassword) {
     throw createHttpError("name, slug, adminName, adminEmail, and adminPassword are required.", 400);
   }
+
+  // Optional per-outlet overrides at creation time. null is allowed and
+  // meaningful here — it's how a field says "inherit from the company" —
+  // which is the opposite of what it means on Company.programDefaults.
+  const programOverrides = sanitizeProgramInput(program, { allowNull: true, label: "program" });
 
   await assertCanAddOutlet(companyId);
 
@@ -171,9 +182,10 @@ const createOutlet = async ({ companyId, name, slug, category, adminName, adminE
     slug: normalizedSlug,
     category: safeCategory,
     branding: { tagline: "", logoUrl: "", bannerUrl: "", primaryColor: "#7c3f1d" },
-    // All nulls — this outlet inherits the company's defaults until it
-    // explicitly overrides a field. See programService.resolveProgram.
-    program: { earnPercent: null, pointsExpiryDays: null }
+    // Nulls mean "inherit the company's default" — the state an outlet is in
+    // unless the owner set an override on the creation form. See
+    // programService.resolveProgram.
+    program: { earnPercent: null, pointsExpiryDays: null, ...(programOverrides || {}) }
   });
 
   const adminAccount = await AdminAccount.create({

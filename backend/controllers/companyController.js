@@ -31,9 +31,9 @@ const getOutlets = async (req, res, next) => {
 
 const postOutlet = async (req, res, next) => {
   try {
-    const { name, slug, category, adminName, adminEmail, adminPassword } = req.body;
+    const { name, slug, category, adminName, adminEmail, adminPassword, program } = req.body;
     const { organization } = await createOutlet({
-      companyId: req.companyId, name, slug, category, adminName, adminEmail, adminPassword
+      companyId: req.companyId, name, slug, category, adminName, adminEmail, adminPassword, program
     });
     const company = await getCompany(req.companyId);
     res.status(201).json({
