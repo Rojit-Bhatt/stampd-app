@@ -11,10 +11,7 @@
       "name": "backend",
       "runtimeExecutable": "npm",
       "runtimeArgs": ["run", "dev", "-w", "backend"],
-      "port": 5001,
-      "env": {
-        "MONGODB_URI": ""
-      }
+      "port": 5001
     }
   ],
   "autoVerify": true
