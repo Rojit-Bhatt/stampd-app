@@ -4,6 +4,8 @@ import { TrendingUp, TrendingDown, Download } from "lucide-react";
 import { ResponsiveContainer, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip } from "recharts";
 import { apiRequest, apiUrl } from "../../lib/api";
 import { Skeleton } from "../../components/ui/skeleton";
+import { DateRangeFilter, defaultDateRange, type DateRangeValue } from "../../components/shared/DateRangeFilter";
+import { Button } from "@/components/ui/button";
 
 interface DashboardMetric {
   value: number;
@@ -22,12 +24,6 @@ interface PlatformAnalyticsData {
   pointsVelocity: { date: string; points: number }[];
 }
 
-function defaultRange() {
-  const end = new Date();
-  const start = new Date(end.getTime() - 30 * 24 * 60 * 60 * 1000);
-  return { start: start.toISOString().slice(0, 10), end: end.toISOString().slice(0, 10) };
-}
-
 const shortDate = (iso: string) => new Date(iso).toLocaleDateString(undefined, { month: "short", day: "numeric" });
 
 function TrendBadge({ trend }: { trend: number | null }) {
@@ -42,9 +38,8 @@ function TrendBadge({ trend }: { trend: number | null }) {
 }
 
 export default function PlatformAnalytics() {
-  const initial = defaultRange();
-  const [startDate, setStartDate] = useState(initial.start);
-  const [endDate, setEndDate] = useState(initial.end);
+  const [range, setRange] = useState<DateRangeValue>(defaultDateRange(30));
+  const { startDate, endDate } = range;
 
   const { data: stats, isLoading } = useQuery<PlatformAnalyticsData>({
     queryKey: ["platformAnalytics"],
@@ -178,32 +173,11 @@ export default function PlatformAnalytics() {
         <p className="mb-4 text-[13px] text-[var(--muted)]">
           One row per company for the selected range — new customers, points issued/redeemed, revenue, redemptions.
         </p>
-        <div className="flex flex-wrap items-end gap-4">
-          <label className="block">
-            <span className="mb-1.5 block text-sm font-bold">Start date</span>
-            <input
-              type="date"
-              value={startDate}
-              onChange={(e) => setStartDate(e.target.value)}
-              className="rounded-[var(--radius-btn)] border border-[var(--line)] bg-[var(--surface)] px-4 py-2.5 text-sm focus:border-[var(--primary)] focus:outline-none"
-            />
-          </label>
-          <label className="block">
-            <span className="mb-1.5 block text-sm font-bold">End date</span>
-            <input
-              type="date"
-              value={endDate}
-              onChange={(e) => setEndDate(e.target.value)}
-              className="rounded-[var(--radius-btn)] border border-[var(--line)] bg-[var(--surface)] px-4 py-2.5 text-sm focus:border-[var(--primary)] focus:outline-none"
-            />
-          </label>
-          <button
-            onClick={downloadCompaniesReport}
-            className="inline-flex items-center gap-1.5 rounded-[var(--radius-btn)] px-5 py-2.5 text-sm font-bold text-white"
-            style={{ background: "var(--primary)" }}
-          >
-            <Download className="h-4 w-4" /> Download Excel
-          </button>
+        <div className="flex flex-wrap items-end justify-between gap-4">
+          <DateRangeFilter value={range} onChange={setRange} />
+          <Button onClick={downloadCompaniesReport}>
+            <Download /> Download Excel
+          </Button>
         </div>
       </div>
 

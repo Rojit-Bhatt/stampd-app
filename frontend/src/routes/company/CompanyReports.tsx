@@ -1,7 +1,9 @@
+import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { apiRequest } from "../../lib/api";
 import { formatNpr } from "../../lib/subscription";
 import { Skeleton } from "../../components/ui/skeleton";
+import { DateRangeFilter, defaultDateRange, type DateRangeValue } from "../../components/shared/DateRangeFilter";
 
 interface OutletRow {
   outletId: string;
@@ -11,7 +13,6 @@ interface OutletRow {
   customersCount: number;
   transactions: number;
   pointsIssued: number;
-  pointsIssuedThisWeek: number;
   pointsRedeemed: number;
   redemptionCount: number;
   revenue: number;
@@ -19,12 +20,12 @@ interface OutletRow {
 
 interface Rollup {
   success: boolean;
+  range: { start: string; end: string };
   totals: {
     outletCount: number;
     customersCount: number;
     transactions: number;
     pointsIssued: number;
-    pointsIssuedThisWeek: number;
     pointsRedeemed: number;
     redemptionCount: number;
     revenue: number;
@@ -36,13 +37,21 @@ interface Rollup {
 // single outlet's console can see its siblings' numbers, which is why this
 // reads from /api/company rather than /api/admin.
 export default function CompanyReports() {
+  const [range, setRange] = useState<DateRangeValue>(defaultDateRange(30));
+
   const { data, isLoading } = useQuery<Rollup>({
-    queryKey: ["companyRollup"],
-    queryFn: () => apiRequest<Rollup>("/api/company/reports/rollup", { role: "company" }),
+    queryKey: ["companyRollup", range.startDate, range.endDate],
+    queryFn: () =>
+      apiRequest<Rollup>(
+        `/api/company/reports/rollup?startDate=${range.startDate}&endDate=${range.endDate}`,
+        { role: "company" },
+      ),
   });
 
   const totals = data?.totals;
   const tiles = [
+    // A snapshot of who exists, not a flow — never affected by the range,
+    // so it doesn't belong next to figures that move when the range does.
     { label: "Outlets", val: totals ? String(totals.outletCount) : "—" },
     { label: "Customers", val: totals ? String(totals.customersCount) : "—" },
     { label: "Points issued", val: totals ? String(totals.pointsIssued) : "—" },
@@ -51,8 +60,12 @@ export default function CompanyReports() {
 
   return (
     <div>
-      <h1 className="font-display text-[30px] font-bold text-[var(--ink)]">Reports</h1>
-      <p className="mb-6 text-[var(--muted)]">Every outlet you run, side by side. Only you see this.</p>
+      <h1 className="font-display text-[28px] font-bold text-[var(--ink)]">Reports</h1>
+      <p className="mb-6 mt-1 text-[var(--muted)]">Every outlet you run, side by side. Only you see this.</p>
+
+      <div className="mb-6">
+        <DateRangeFilter value={range} onChange={setRange} />
+      </div>
 
       <div className="mb-6 grid grid-cols-2 gap-4 md:grid-cols-4">
         {tiles.map((t) => (
@@ -102,6 +115,13 @@ export default function CompanyReports() {
           ))
         )}
       </div>
+
+      {data?.range && (
+        <p className="mt-4 text-xs text-[var(--soft)]">
+          Showing {new Date(data.range.start).toLocaleDateString()} –{" "}
+          {new Date(data.range.end).toLocaleDateString()}.
+        </p>
+      )}
     </div>
   );
 }
