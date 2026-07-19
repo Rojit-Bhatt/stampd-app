@@ -26,7 +26,7 @@ export function CompanyLayout() {
   if (!account) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-[var(--bg)]">
-        <div className="h-8 w-8 animate-spin rounded-full border-2 border-[var(--brand)] border-t-transparent" />
+        <div className="h-8 w-8 animate-spin rounded-full border-2 border-[var(--primary)] border-t-transparent" />
       </div>
     );
   }
@@ -51,10 +51,10 @@ export function CompanyLayout() {
               to={to}
               end={end}
               className={({ isActive }) =>
-                `relative flex items-center gap-3 rounded-2xl px-3.5 py-2.5 text-[14px] font-semibold transition-colors ${
+                `relative flex items-center gap-3 rounded-[var(--radius-btn)] px-3.5 py-2.5 text-[14px] font-semibold transition-colors ${
                   isActive
-                    ? "bg-[var(--surface-container)] text-[var(--brand)] after:absolute after:right-0 after:top-1/2 after:h-4 after:w-[3px] after:-translate-y-1/2 after:rounded-full after:bg-[var(--brand)]"
-                    : "text-[var(--ink)] hover:bg-[var(--surface-container)]"
+                    ? "bg-[var(--primary-soft)] text-[var(--primary-deep)]"
+                    : "text-[var(--muted)] hover:bg-[var(--surface-2)] hover:text-[var(--ink)]"
                 }`
               }
             >
@@ -71,7 +71,7 @@ export function CompanyLayout() {
             email={account.email}
             settingsPath="/company"
             onLogout={logout}
-            accent="var(--brand)"
+            accent="var(--primary)"
             dropUp
           />
         </div>

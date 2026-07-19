@@ -104,7 +104,7 @@ export default function CompanyDashboard() {
     <div>
       <div className="mb-6 flex flex-wrap items-end justify-between gap-3">
         <div>
-          <h1 className="font-display text-[30px] font-extrabold text-[var(--ink)]">Your outlets</h1>
+          <h1 className="font-display text-[30px] font-bold text-[var(--ink)]">Your outlets</h1>
           <p className="text-[var(--muted)]">
             {company ? `${company.name} — ` : ""}
             {active.length} active outlet{active.length === 1 ? "" : "s"}, all from one login.
@@ -113,7 +113,7 @@ export default function CompanyDashboard() {
         <button
           onClick={() => { setShowForm((s) => !s); setLimitInfo(null); }}
           className="stamp-interactive rounded-full px-5 py-3 text-[15px] font-bold text-white"
-          style={{ background: "var(--brand)" }}
+          style={{ background: "var(--primary)" }}
         >
           + Add an outlet
         </button>
@@ -129,7 +129,7 @@ export default function CompanyDashboard() {
       )}
 
       {showForm && (
-        <div className="mb-6 max-w-lg rounded-3xl bg-[var(--surface)] p-6 shadow-ambient">
+        <div className="mb-6 max-w-lg rounded-[var(--radius-card)] bg-[var(--surface)] p-6 shadow-ambient">
           <h3 className="mb-1 font-display text-lg font-bold text-[var(--ink)]">New outlet</h3>
           <p className="mb-4 text-[13px] text-[var(--muted)]">
             Each outlet gets its own sign-in. Whoever runs it verifies the email once, then uses
@@ -140,7 +140,7 @@ export default function CompanyDashboard() {
               value={form.name}
               onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
               placeholder="Outlet name (e.g. Durbarmarg)"
-              className="w-full rounded-[11px] border border-[var(--line)] bg-[var(--bg)] px-4 py-3 text-sm focus:border-[var(--brand)] focus:outline-none"
+              className="w-full rounded-[var(--radius-btn)] border border-[var(--line)] bg-[var(--bg)] px-4 py-3 text-sm focus:border-[var(--primary)] focus:outline-none"
             />
             <label className="block">
               <span className="mb-1 block text-[12px] font-semibold text-[var(--soft)]">
@@ -150,13 +150,13 @@ export default function CompanyDashboard() {
                 value={form.slug}
                 onChange={(e) => setForm((f) => ({ ...f, slug: e.target.value }))}
                 placeholder="url-slug"
-                className="w-full rounded-[11px] border border-[var(--line)] bg-[var(--bg)] px-4 py-3 text-sm focus:border-[var(--brand)] focus:outline-none"
+                className="w-full rounded-[var(--radius-btn)] border border-[var(--line)] bg-[var(--bg)] px-4 py-3 text-sm focus:border-[var(--primary)] focus:outline-none"
               />
             </label>
             <select
               value={form.category}
               onChange={(e) => setForm((f) => ({ ...f, category: e.target.value }))}
-              className="w-full rounded-[11px] border border-[var(--line)] bg-[var(--bg)] px-4 py-3 text-sm focus:border-[var(--brand)] focus:outline-none"
+              className="w-full rounded-[var(--radius-btn)] border border-[var(--line)] bg-[var(--bg)] px-4 py-3 text-sm focus:border-[var(--primary)] focus:outline-none"
             >
               {BUSINESS_CATEGORIES.map((c) => (
                 <option key={c} value={c}>{CATEGORY_LABELS[c]}</option>
@@ -172,21 +172,21 @@ export default function CompanyDashboard() {
                   value={form.adminName}
                   onChange={(e) => setForm((f) => ({ ...f, adminName: e.target.value }))}
                   placeholder="Manager's name"
-                  className="w-full rounded-[11px] border border-[var(--line)] bg-[var(--bg)] px-4 py-3 text-sm focus:border-[var(--brand)] focus:outline-none"
+                  className="w-full rounded-[var(--radius-btn)] border border-[var(--line)] bg-[var(--bg)] px-4 py-3 text-sm focus:border-[var(--primary)] focus:outline-none"
                 />
                 <input
                   value={form.adminEmail}
                   onChange={(e) => setForm((f) => ({ ...f, adminEmail: e.target.value }))}
                   placeholder="Manager's email"
                   type="email"
-                  className="w-full rounded-[11px] border border-[var(--line)] bg-[var(--bg)] px-4 py-3 text-sm focus:border-[var(--brand)] focus:outline-none"
+                  className="w-full rounded-[var(--radius-btn)] border border-[var(--line)] bg-[var(--bg)] px-4 py-3 text-sm focus:border-[var(--primary)] focus:outline-none"
                 />
                 <input
                   value={form.adminPassword}
                   onChange={(e) => setForm((f) => ({ ...f, adminPassword: e.target.value }))}
                   placeholder="Temporary password"
                   type="password"
-                  className="w-full rounded-[11px] border border-[var(--line)] bg-[var(--bg)] px-4 py-3 text-sm focus:border-[var(--brand)] focus:outline-none"
+                  className="w-full rounded-[var(--radius-btn)] border border-[var(--line)] bg-[var(--bg)] px-4 py-3 text-sm focus:border-[var(--primary)] focus:outline-none"
                 />
               </div>
             </div>
@@ -194,8 +194,8 @@ export default function CompanyDashboard() {
             <button
               onClick={() => create.mutate(form)}
               disabled={create.isPending || !form.name || !form.slug || !form.adminName || !form.adminEmail || !form.adminPassword}
-              className="stamp-interactive rounded-[13px] py-3 text-sm font-bold text-white disabled:opacity-50"
-              style={{ background: "var(--brand)" }}
+              className="stamp-interactive rounded-[var(--radius-btn)] py-3 text-sm font-bold text-white disabled:opacity-50"
+              style={{ background: "var(--primary)" }}
             >
               {create.isPending ? "Creating…" : "Create outlet"}
             </button>
@@ -205,19 +205,19 @@ export default function CompanyDashboard() {
 
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
         {isLoading ? (
-          Array.from({ length: 3 }).map((_, i) => <Skeleton key={i} className="h-40 rounded-3xl" />)
+          Array.from({ length: 3 }).map((_, i) => <Skeleton key={i} className="h-40 rounded-[var(--radius-card)]" />)
         ) : outlets.length === 0 ? (
-          <div className="col-span-full rounded-3xl bg-[var(--surface)] p-10 text-center text-sm text-[var(--muted)] shadow-ambient">
+          <div className="col-span-full rounded-[var(--radius-card)] bg-[var(--surface)] p-10 text-center text-sm text-[var(--muted)] shadow-ambient">
             No outlets yet — add your first above.
           </div>
         ) : (
           outlets.map((o) => {
             const archived = o.status === "archived";
             return (
-              <div key={o.id} className={`rounded-3xl bg-[var(--surface)] p-5 shadow-ambient ${archived ? "opacity-60" : ""}`}>
+              <div key={o.id} className={`rounded-[var(--radius-card)] bg-[var(--surface)] p-5 shadow-ambient ${archived ? "opacity-60" : ""}`}>
                 <div className="mb-3 flex items-center gap-3">
                   <span
-                    className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-[10px] text-sm font-extrabold text-white"
+                    className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-[10px] text-sm font-bold text-white"
                     style={{ background: o.branding?.primaryColor || "var(--brand)" }}
                   >
                     {o.name.charAt(0).toUpperCase()}
@@ -234,13 +234,15 @@ export default function CompanyDashboard() {
                   <span
                     className="rounded-full px-2.5 py-1 font-bold"
                     style={{
-                      background: archived ? "var(--surface-container-high)" : o.status === "active" ? "var(--ok-soft)" : "var(--warn-soft)",
+                      background: archived ? "var(--line)" : o.status === "active" ? "var(--ok-soft)" : "var(--warn-soft)",
                       color: archived ? "var(--soft)" : o.status === "active" ? "var(--ok)" : "var(--warn)",
                     }}
                   >
                     {o.status}
                   </span>
-                  <span>{o.customersCount} customers</span>
+                  <span>
+                    {o.customersCount} customer{o.customersCount === 1 ? "" : "s"}
+                  </span>
                 </div>
 
                 {o.admin && !o.admin.emailVerified && !archived && (
@@ -253,7 +255,7 @@ export default function CompanyDashboard() {
                   {archived ? (
                     <button
                       onClick={() => restore.mutate(o.id)}
-                      className="flex-1 rounded-[11px] border border-[var(--line)] py-2 text-xs font-bold hover:bg-[var(--bg)]"
+                      className="flex-1 rounded-[var(--radius-btn)] border border-[var(--line)] py-2 text-xs font-bold hover:bg-[var(--bg)]"
                     >
                       Restore
                     </button>
@@ -261,14 +263,14 @@ export default function CompanyDashboard() {
                     <>
                       <button
                         onClick={() => enterOutlet(o)}
-                        className="stamp-interactive flex-1 rounded-[11px] py-2 text-xs font-bold text-white"
-                        style={{ background: "var(--brand)" }}
+                        className="stamp-interactive flex-1 rounded-[var(--radius-btn)] py-2 text-xs font-bold text-white"
+                        style={{ background: "var(--primary)" }}
                       >
                         Open console
                       </button>
                       <button
                         onClick={() => setPendingArchive(o)}
-                        className="rounded-[11px] border border-[var(--line)] px-3 py-2 text-xs font-bold text-[var(--muted)] hover:bg-[var(--bg)]"
+                        className="rounded-[var(--radius-btn)] border border-[var(--line)] px-3 py-2 text-xs font-bold text-[var(--muted)] hover:bg-[var(--bg)]"
                       >
                         Archive
                       </button>

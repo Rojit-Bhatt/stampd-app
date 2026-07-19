@@ -55,7 +55,8 @@ const downloadCustomers = async (req, res, next) => {
 
 const downloadTransactions = async (req, res, next) => {
   try {
-    const buffer = await buildTransactionsWorkbook(req.user.organizationId);
+    const { startDate, endDate } = req.query;
+    const buffer = await buildTransactionsWorkbook(req.user.organizationId, { startDate, endDate });
     res.setHeader("Content-Type", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
     res.setHeader("Content-Disposition", "attachment; filename=\"transactions-report.xlsx\"");
     res.send(buffer);

@@ -1,6 +1,7 @@
 import { useState } from "react";
 import toast from "react-hot-toast";
 import { useCustomerAuth } from "../../context/CustomerAuthContext";
+import { Button } from "@/components/ui/button";
 
 // Shown after a Google sign-in when the customer has no phone yet. Phone is a
 // required field on customer accounts, but Google returns only an email — so
@@ -29,10 +30,10 @@ export function PhoneStepModal({ onDone }: { onDone: () => void }) {
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
-      <div className="w-full max-w-sm rounded-[18px] bg-[var(--surface)] p-6">
+      <div className="w-full max-w-sm rounded-[var(--radius-card)] border border-[var(--line)] bg-[var(--surface)] p-6 shadow-modal">
         <h3 className="font-display text-lg font-bold text-[var(--ink)]">One more thing</h3>
         <p className="mt-1 text-sm text-[var(--muted)]">Add your phone number to finish.</p>
-        <div className="mt-4 flex items-center rounded-[11px] border border-[var(--line)] bg-[var(--bg)] px-3">
+        <div className="mt-4 flex items-center rounded-[var(--radius-btn)] border border-[var(--line)] bg-[var(--surface)] px-3">
           <span className="text-sm text-[var(--soft)]">+977</span>
           <input
             value={phone}
@@ -42,14 +43,9 @@ export function PhoneStepModal({ onDone }: { onDone: () => void }) {
             className="flex-1 bg-transparent px-2 py-3 text-sm text-[var(--ink)] focus:outline-none"
           />
         </div>
-        <button
-          disabled={busy}
-          onClick={save}
-          className="mt-4 w-full rounded-[12px] py-3 font-bold text-white disabled:opacity-50"
-          style={{ background: "var(--brand)" }}
-        >
+        <Button disabled={busy} onClick={save} size="lg" className="mt-4 w-full">
           {busy ? "Saving…" : "Finish"}
-        </button>
+        </Button>
       </div>
     </div>
   );

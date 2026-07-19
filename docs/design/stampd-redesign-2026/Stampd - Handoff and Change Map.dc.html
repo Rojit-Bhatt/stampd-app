@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<meta name="design_doc_mode" content="canvas">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@400;500;600;700;800&family=DM+Serif+Display&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  * { box-sizing: border-box; }
+  body { margin: 0; background: #656a67; -webkit-font-smoothing: antialiased; font-family: "Inter", sans-serif; }
+  .disp { font-family: "Space Grotesk", sans-serif; }
+  .serif { font-family: "DM Serif Display", serif; }
+  .mono { font-family: "IBM Plex Mono", monospace; }
+  .lab { font-size: 11px; font-weight: 700; letter-spacing: .16em; text-transform: uppercase; }
+  .sec { display:flex; align-items:center; gap:12px; margin:0 0 20px; }
+  .secn { font-family:"DM Serif Display",serif; font-size:15px; color:#0FA968; }
+  .sect { font-family:"Space Grotesk",sans-serif; font-size:20px; font-weight:700; color:#14201C; margin:0; }
+  .rule { flex:1; height:1px; background:#E4E9E6; }
+  .card { background:#fff; border:1px solid #E4E9E6; border-radius:16px; padding:20px; }
+  th, td { text-align:left; padding:10px 12px; font-size:13px; border-bottom:1px solid #EEF1EF; vertical-align:top; }
+  th { font-size:10px; letter-spacing:.1em; text-transform:uppercase; color:#8B9A93; font-weight:700; }
+  .flag { display:inline-block; font-size:10px; font-weight:700; letter-spacing:.06em; text-transform:uppercase; padding:2px 7px; border-radius:5px; }
+</style>
+</helmet>
+
+<div style="width:1240px; background:#F7F8F7; color:#14201C; border-radius:16px; overflow:hidden; box-shadow:0 50px 100px -40px rgba(0,0,0,.6); padding:48px 56px 72px;">
+
+  <div style="max-width:800px;margin-bottom:38px;">
+    <div class="lab" style="color:#8B9A93;">Stampd · Engineer handoff & change map</div>
+    <h1 class="serif" style="font-size:40px;margin:12px 0 12px;line-height:1.05;">What changed, and how to build it</h1>
+    <p style="font-size:15px;line-height:1.65;color:#5C6B64;margin:0;">The redesign keeps the <strong>Stampd</strong> name and original logo but drops the stamp metaphor entirely: points are a numeric, fractional, spendable currency. Backend, data model, routes and business logic are unchanged — this is the visual + interaction layer. Structural changes and any interaction that <em>replaces</em> today's flow are flagged below for your approval before implementation.</p>
+  </div>
+
+  <!-- DIRECTION -->
+  <div class="sec"><span class="secn">01</span><h2 class="sect">Design direction</h2><span class="rule"></span></div>
+  <div style="display:flex;gap:16px;flex-wrap:wrap;margin-bottom:38px;">
+    <div class="card" style="flex:1;min-width:340px;"><div class="lab" style="color:#0FA968;margin-bottom:8px;">Identity</div><p style="font-size:13.5px;line-height:1.6;color:#5C6B64;margin:0;"><strong style="color:#14201C;">Stampd — "editorial ledger."</strong> Points read like money in a beautifully-kept passbook. Serif numerals (DM Serif Display) are the loudest thing on every screen; hairline rules replace boxed grids; green means value and action. Deliberately not a generic RMS look.</p></div>
+    <div class="card" style="flex:1;min-width:340px;"><div class="lab" style="color:#0FA968;margin-bottom:8px;">Who / what for</div><p style="font-size:13.5px;line-height:1.6;color:#5C6B64;margin:0;">Customer app: mid-range Android first, PWA, floating nav, tenant-themed. Two desktop consoles that feel different on purpose — outlet = fast counter hub, platform = dense dark data desk. Platform identity is fixed and never tenant-themed.</p></div>
+  </div>
+
+  <!-- CHANGE MAP -->
+  <div class="sec"><span class="secn">02</span><h2 class="sect">Structural change map</h2><span class="rule"></span></div>
+  <div style="margin-bottom:14px;display:flex;gap:10px;">
+    <span class="flag" style="background:#E6F7EF;color:#0B7A4B;">RESKIN</span><span style="font-size:12px;color:#8B9A93;">same flow, new look</span>
+    <span class="flag" style="background:#FBF0D6;color:#8A5A12;">APPROVE</span><span style="font-size:12px;color:#8B9A93;">replaces an existing interaction — needs your sign-off</span>
+  </div>
+  <div class="card" style="padding:4px 8px;margin-bottom:38px;">
+    <table style="width:100%;border-collapse:collapse;">
+      <tr><th style="width:210px;">Surface / file</th><th style="width:90px;">Type</th><th>Change vs today · what it replaces</th></tr>
+      <tr><td>Outlet nav<br><span class="mono" style="font-size:10px;color:#8B9A93;">AdminLayout.tsx</span></td><td><span class="flag" style="background:#FBF0D6;color:#8A5A12;">APPROVE</span></td><td>250px flat sidebar → <strong>hub dashboard + rail (OB×OA)</strong>. Earn/Redeem become primary actions on the overview and pinned in the rail. No nav item removed.</td></tr>
+      <tr><td>Platform nav<br><span class="mono" style="font-size:10px;color:#8B9A93;">PlatformLayout.tsx</span></td><td><span class="flag" style="background:#FBF0D6;color:#8A5A12;">APPROVE</span></td><td>Identical sidebar → <strong>top-bar + contextual sub-nav (PB) + ⌘K</strong>, dark chrome. Adds Overview dashboard with charts.</td></tr>
+      <tr><td>Celebration<br><span class="mono" style="font-size:10px;color:#8B9A93;">PointsCelebration.tsx</span></td><td><span class="flag" style="background:#FBF0D6;color:#8A5A12;">APPROVE</span></td><td>One shared variant-switch → <strong>two distinct moments</strong>: earn "coin lands", redeem "the exchange" (voucher flip). Both keep reduced-motion.</td></tr>
+      <tr><td>Platform analytics<br><span class="mono" style="font-size:10px;color:#8B9A93;">PlatformAnalytics.tsx</span></td><td><span class="flag" style="background:#FBF0D6;color:#8A5A12;">APPROVE</span></td><td>Two metric families drawn <strong>differently</strong>: point-in-time = plain cards, no trend; weekly-flow = green left-tab + sparkline + WoW. Ends the "same-looking numbers" problem.</td></tr>
+      <tr><td>Subscription<br><span class="mono" style="font-size:10px;color:#8B9A93;">SubscriptionPanel.tsx</span></td><td><span class="flag" style="background:#FBF0D6;color:#8A5A12;">APPROVE</span></td><td>Plain code box → <strong>3-step trust flow</strong> + segmented <span class="mono" style="font-size:11px;">KEY-••••</span> key input, "issued only by Stampd / no card details" reassurance, success state with new expiry.</td></tr>
+      <tr><td>Customer bottom nav<br><span class="mono" style="font-size:10px;color:#8B9A93;">BottomNav / CustomerLayout</span></td><td><span class="flag" style="background:#E6F7EF;color:#0B7A4B;">RESKIN</span></td><td>Fixed bar → <strong>floating pill</strong>, tabs + centre scan FAB kept 1:1.</td></tr>
+      <tr><td>Outlet dashboard<br><span class="mono" style="font-size:10px;color:#8B9A93;">CustomerDashboard.tsx</span></td><td><span class="flag" style="background:#E6F7EF;color:#0B7A4B;">RESKIN</span></td><td>Same content, new tenant-color rule: <strong>identity = tenant hue, value = green</strong>. Balance card gains a thin tenant accent bar.</td></tr>
+      <tr><td>Explore / ledger / claim / QR</td><td><span class="flag" style="background:#E6F7EF;color:#0B7A4B;">RESKIN</span></td><td>Flows unchanged. Ledger stays append-only; "already-fulfilled" still reads as success; no fabricated ratings/deals.</td></tr>
+      <tr><td>Landing page<br><span class="mono" style="font-size:10px;color:#8B9A93;">PlatformLanding.tsx</span></td><td><span class="flag" style="background:#FBF0D6;color:#8A5A12;">APPROVE</span></td><td>Full rebuild around the real loop + "made for Nepal". New copy and IA (not a reskin).</td></tr>
+    </table>
+  </div>
+
+  <!-- FILE INDEX -->
+  <div class="sec"><span class="secn">03</span><h2 class="sect">What's in the package</h2><span class="rule"></span></div>
+  <div class="card" style="padding:4px 8px;margin-bottom:38px;">
+    <table style="width:100%;border-collapse:collapse;">
+      <tr><th style="width:300px;">File</th><th>Covers</th></tr>
+      <tr><td class="mono" style="font-size:12px;">Brand Directions</td><td>The 3 explored concepts; Stampd chosen (1a palette + 1b serif numerals)</td></tr>
+      <tr><td class="mono" style="font-size:12px;">Stampd - Foundations</td><td>Tokens (light+dark), type scale, spacing/radii/elevation, motion, tenant-color contract, component specs, primitives to add</td></tr>
+      <tr><td class="mono" style="font-size:12px;">Stampd - Core Loop</td><td>Staff Generate/Redeem QR, claim happy path + 6 failure states, both celebrations, animation specs</td></tr>
+      <tr><td class="mono" style="font-size:12px;">Stampd - Customer App</td><td>Explore, My Businesses, outlet dashboard (light+dark), points ledger, floating nav</td></tr>
+      <tr><td class="mono" style="font-size:12px;">Stampd - Navigation Concepts</td><td>OA/OB/OC + PA/PB/PC options and the picks (OB×OA, PB)</td></tr>
+      <tr><td class="mono" style="font-size:12px;">Stampd - Consoles</td><td>Outlet overview (hub+rail) and platform overview (top-bar + two metric families)</td></tr>
+      <tr><td class="mono" style="font-size:12px;">Stampd - Company Console</td><td>Outlets rollup + subscription key-redemption trust flow</td></tr>
+      <tr><td class="mono" style="font-size:12px;">Stampd - Landing Page</td><td>Marketing site rebuild</td></tr>
+      <tr><td class="mono" style="font-size:12px;">Stampd - Handoff and Change Map</td><td>This document</td></tr>
+    </table>
+  </div>
+
+  <!-- BUILD NOTES -->
+  <div class="sec"><span class="secn">04</span><h2 class="sect">Implementation notes</h2><span class="rule"></span></div>
+  <div style="display:flex;gap:16px;flex-wrap:wrap;margin-bottom:16px;">
+    <div class="card" style="flex:1;min-width:300px;"><div class="lab" style="color:#0FA968;margin-bottom:8px;">Tokens</div><p style="font-size:13px;color:#5C6B64;line-height:1.6;margin:0;">Replace legacy warm-cream vars in <span class="mono" style="font-size:11px;">index.css</span> with the Stampd light+dark sets (Foundations §01). Keep the CSS-var architecture; add a <span class="mono" style="font-size:11px;">.dark</span> scope.</p></div>
+    <div class="card" style="flex:1;min-width:300px;"><div class="lab" style="color:#0FA968;margin-bottom:8px;">Tenant color</div><p style="font-size:13px;color:#5C6B64;line-height:1.6;margin:0;">Keep TenantProvider injecting <span class="mono" style="font-size:11px;">--tenant</span>; add a contrast helper deriving <span class="mono" style="font-size:11px;">--tenant-ink</span>/<span class="mono" style="font-size:11px;">--tenant-on</span> (≥4.5:1). Value/actions read <span class="mono" style="font-size:11px;">--primary</span>, never <span class="mono" style="font-size:11px;">--tenant</span>.</p></div>
+    <div class="card" style="flex:1;min-width:300px;"><div class="lab" style="color:#0FA968;margin-bottom:8px;">Motion & a11y</div><p style="font-size:13px;color:#5C6B64;line-height:1.6;margin:0;">motion springs per Foundations §05, every animation branched on <span class="mono" style="font-size:11px;">useReducedMotion</span>. 44px min targets, real focus rings, contrast held.</p></div>
+    <div class="card" style="flex:1;min-width:300px;"><div class="lab" style="color:#0FA968;margin-bottom:8px;">Primitives</div><p style="font-size:13px;color:#5C6B64;line-height:1.6;margin:0;">Add deliberately: tabs, dropdown-menu, table, badge, progress, segmented-control, command, select. Charts = Recharts; toasts = react-hot-toast (already in).</p></div>
+  </div>
+
+  <div class="card" style="background:#14201C;border:none;color:#E9F0EC;">
+    <div class="lab" style="color:#34D399;margin-bottom:8px;">Decisions awaiting your sign-off</div>
+    <p style="font-size:13.5px;color:#C9D6CF;line-height:1.7;margin:0;">1) Keep the <strong style="color:#fff;">Stampd</strong> name and original logo; drop only the stamp metaphor. &nbsp; 2) The five <span style="color:#E0A63C;font-weight:700;">APPROVE</span> flow changes above. &nbsp; 3) Nav picks confirmed: outlet <strong style="color:#fff;">OB×OA</strong>, platform <strong style="color:#fff;">PB</strong>. &nbsp; Everything else is a like-for-like reskin with no behavioural change.</p>
+  </div>
+
+</div>
+</x-dc>
+</body>
+</html>

@@ -102,7 +102,12 @@ const getHistory = async (req, res, next) => {
 // The admin-facing outlet ledger — every movement, every customer.
 const getTransactions = async (req, res, next) => {
   try {
-    const result = await getOutletTransactions(req.user.organizationId);
+    const { startDate, endDate } = req.query;
+    const result = await getOutletTransactions(req.user.organizationId, {
+      limit: startDate || endDate ? 5000 : undefined,
+      startDate,
+      endDate
+    });
     res.status(200).json(result);
   } catch (error) {
     next(error);

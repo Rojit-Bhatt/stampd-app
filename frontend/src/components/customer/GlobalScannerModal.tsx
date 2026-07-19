@@ -172,32 +172,32 @@ export function GlobalScannerModal({ open, onClose }: { open: boolean; onClose: 
       role="dialog"
       aria-modal="true"
       aria-label="Scan a business's counter QR code"
-      className="fixed inset-0 z-50 bg-[#121212]/98 flex items-center justify-center font-sans text-[#EBE6DF]"
+      className="fixed inset-0 z-50 bg-[#0C110F]/98 flex items-center justify-center font-sans text-[#E9F0EC]"
     >
       <button
         type="button"
         onClick={onClose}
         aria-label="Close"
-        className="absolute right-5 top-5 z-10 grid h-10 w-10 place-items-center border border-[#2D2D2D] bg-[#1A1A1A] text-[#EBE6DF] hover:bg-[#EBE6DF] hover:text-black transition-colors rounded-[20px]"
+        className="absolute right-5 top-5 z-10 grid h-10 w-10 place-items-center border border-[#223029] bg-[#141B18] text-[#E9F0EC] hover:bg-[#E9F0EC] hover:text-black transition-colors rounded-[var(--radius-btn)]"
       >
         <X className="h-5 w-5" strokeWidth={2} />
       </button>
 
       {cameraError ? (
-        <div className="flex h-full flex-col items-center justify-center px-6 text-[#EBE6DF] w-full max-w-sm text-center">
-          <div className="relative mx-auto flex h-20 w-20 items-center justify-center border border-[#2D2D2D] bg-[#1A1A1A] text-[#EBE6DF] rounded-[24px]">
+        <div className="flex h-full flex-col items-center justify-center px-6 text-[#E9F0EC] w-full max-w-sm text-center">
+          <div className="relative mx-auto flex h-20 w-20 items-center justify-center border border-[#223029] bg-[#141B18] text-[#E9F0EC] rounded-[var(--radius-card)]">
             {isBlocked ? (
               <CameraOff className="h-10 w-10 text-amber-500/90 animate-pulse" strokeWidth={1.5} />
             ) : (
-              <ScanLine className="h-10 w-10 text-[#EBE6DF]" strokeWidth={1.5} />
+              <ScanLine className="h-10 w-10 text-[#E9F0EC]" strokeWidth={1.5} />
             )}
           </div>
 
-          <h2 className="mt-6 text-2xl font-normal text-[#EBE6DF] font-serif">
+          <h2 className="mt-6 text-2xl font-normal text-[#E9F0EC] font-display">
             {isBlocked ? "Camera Access Blocked" : "Camera Access Needed"}
           </h2>
 
-          <p className="mt-3 text-sm text-[#A3A3A3] leading-relaxed">
+          <p className="mt-3 text-sm text-[#8DA79A] leading-relaxed">
             {isBlocked
               ? "Camera is blocked for this site — check your browser's address bar or settings to allow it, then try again."
               : "Please allow camera access to scan a business's QR code."}
@@ -207,7 +207,7 @@ export function GlobalScannerModal({ open, onClose }: { open: boolean; onClose: 
             <button
               type="button"
               onClick={handleRetry}
-              className="flex w-full items-center justify-center gap-2 bg-[#EBE6DF] py-4 text-sm font-bold uppercase tracking-wider text-black border border-[#EBE6DF] hover:opacity-90 active:scale-98 transition-all rounded-[24px]"
+              className="flex w-full items-center justify-center gap-2 rounded-[var(--radius-btn)] bg-[#0FA968] py-4 text-sm font-bold text-white transition-colors hover:bg-[#0B7A4B] active:scale-[0.97]"
             >
               {isBlocked ? "Enable Camera" : "Try Again"}
             </button>
@@ -215,34 +215,34 @@ export function GlobalScannerModal({ open, onClose }: { open: boolean; onClose: 
             <button
               type="button"
               onClick={onClose}
-              className="w-full border border-[#2D2D2D] bg-[#1A1A1A] py-3 text-xs font-bold uppercase tracking-[0.18em] text-[#EBE6DF] transition-colors hover:bg-[#EBE6DF] hover:text-black rounded-[24px]"
+              className="w-full border border-[#223029] bg-[#141B18] py-3 text-xs font-bold uppercase tracking-[0.18em] text-[#E9F0EC] transition-colors hover:bg-[#E9F0EC] hover:text-black rounded-[var(--radius-card)]"
             >
               Cancel
             </button>
           </div>
         </div>
       ) : (
-        <div className="flex h-full flex-col items-center justify-center px-6 text-[#EBE6DF] w-full">
+        <div className="flex h-full flex-col items-center justify-center px-6 text-[#E9F0EC] w-full">
           <div className="mb-6 text-center">
-            <p className="text-[10px] uppercase tracking-[0.28em] text-[#A3A3A3] font-bold">
+            <p className="text-[10px] uppercase tracking-[0.28em] text-[#8DA79A] font-bold">
               Scan any business
             </p>
-            <h2 className="mt-1 text-2xl font-normal text-[#EBE6DF] font-serif">Scan Counter QR</h2>
+            <h2 className="mt-1 text-2xl font-normal text-[#E9F0EC] font-display">Scan Counter QR</h2>
           </div>
 
-          <div className="relative aspect-square w-full max-w-[300px] overflow-hidden border border-[#2D2D2D] bg-[#1A1A1A] rounded-[40px]">
+          <div className="relative aspect-square w-full max-w-[300px] overflow-hidden border border-[#223029] bg-[#141B18] rounded-[var(--radius-card)]">
             <div
               id="global-qr-reader-viewport"
               className="absolute inset-0 h-full w-full overflow-hidden [&>video]:h-full [&>video]:w-full [&>video]:object-cover"
             />
             <div className="pointer-events-none absolute inset-0 grid place-items-center opacity-25">
-              <QrCode className="h-12 w-12 text-[#EBE6DF]" strokeWidth={1.2} />
+              <QrCode className="h-12 w-12 text-[#E9F0EC]" strokeWidth={1.2} />
             </div>
           </div>
 
           <div className="mt-8 flex flex-col items-center gap-3">
-            <div className="flex items-center gap-2 text-sm text-[#A3A3A3]">
-              <ScanLine className="h-4 w-4 text-[#EBE6DF]" />
+            <div className="flex items-center gap-2 text-sm text-[#8DA79A]">
+              <ScanLine className="h-4 w-4 text-[#E9F0EC]" />
               <span>Align QR inside the frame</span>
             </div>
           </div>
@@ -250,7 +250,7 @@ export function GlobalScannerModal({ open, onClose }: { open: boolean; onClose: 
           <button
             type="button"
             onClick={onClose}
-            className="mt-10 border border-[#2D2D2D] bg-[#1A1A1A] px-6 py-2.5 text-xs font-bold uppercase tracking-[0.18em] text-[#EBE6DF] transition-colors hover:bg-[#EBE6DF] hover:text-black rounded-[24px]"
+            className="mt-10 border border-[#223029] bg-[#141B18] px-6 py-2.5 text-xs font-bold uppercase tracking-[0.18em] text-[#E9F0EC] transition-colors hover:bg-[#E9F0EC] hover:text-black rounded-[var(--radius-card)]"
           >
             Cancel
           </button>

@@ -11,6 +11,7 @@ import { apiRequest } from "../../lib/api";
 import { PhoneStepModal } from "./PhoneStepModal";
 import toast from "react-hot-toast";
 import { tenantPath } from "../../lib/tenantPath";
+import { Button } from "@/components/ui/button";
 
 type Mode = "login" | "register";
 
@@ -107,12 +108,12 @@ export function AuthView({ mode }: { mode: Mode }) {
   if (registeredEmail) {
     return (
       <Shell initial={initial}>
-        <h1 className="font-display text-[25px] font-extrabold text-[var(--ink)]">Check your email</h1>
+        <h1 className="font-display text-[25px] font-bold text-[var(--ink)]">Check your email</h1>
         <p className="mb-6 mt-2 text-sm text-[var(--muted)]">
           We sent a verification link to <b className="text-[var(--ink)]">{registeredEmail}</b>. Open it
           to start collecting points.
         </p>
-        <button
+        <Button
           onClick={async () => {
             try {
               await apiRequest("/api/customer-auth/resend-verification", {
@@ -124,13 +125,13 @@ export function AuthView({ mode }: { mode: Mode }) {
               toast.error("Couldn't resend that — try again in a bit.");
             }
           }}
-          className="w-full rounded-[15px] py-4 text-[15px] font-bold text-white"
-          style={{ background: "var(--brand)" }}
+          className="w-full"
+          size="lg"
         >
           Resend email
-        </button>
+        </Button>
         <p className="mt-6 text-center text-[13px] text-[var(--muted)]">
-          <Link to={tenantPath(companySlug, slug, "login")} className="font-bold text-[var(--brand)] hover:underline">
+          <Link to={tenantPath(companySlug, slug, "login")} className="font-bold text-[var(--primary-deep)] hover:underline">
             Go to sign in
           </Link>
         </p>
@@ -140,7 +141,7 @@ export function AuthView({ mode }: { mode: Mode }) {
 
   return (
     <Shell initial={initial}>
-      <h1 className="font-display text-[25px] font-extrabold text-[var(--ink)]">
+      <h1 className="font-display text-[25px] font-bold text-[var(--ink)]">
         {isLogin ? "Welcome back" : "Create your account"}
       </h1>
       <p className="mb-6 mt-1 text-sm text-[var(--muted)]">
@@ -253,7 +254,7 @@ export function AuthView({ mode }: { mode: Mode }) {
         {isLogin ? "New here? " : "Already a member? "}
         <Link
           to={isLogin ? tenantPath(companySlug, slug, "register") : tenantPath(companySlug, slug, "login")}
-          className="font-bold text-[var(--brand)] hover:underline"
+          className="font-bold text-[var(--primary-deep)] hover:underline"
         >
           {isLogin ? "Create an account" : "Sign in"}
         </Link>
@@ -269,8 +270,8 @@ function Shell({ initial, children }: { initial: string; children: React.ReactNo
     <div className="flex min-h-screen w-full items-center justify-center bg-[var(--bg)] px-4 py-10">
       <div className="w-full max-w-sm">
         <div
-          className="mb-4 flex h-14 w-14 items-center justify-center rounded-[17px] font-display text-[22px] font-extrabold text-white"
-          style={{ background: "var(--brand)" }}
+          className="mb-4 flex h-14 w-14 items-center justify-center rounded-[var(--radius-card)] font-display text-[22px] font-bold"
+          style={{ background: "var(--brand)", color: "var(--brand-on)" }}
         >
           {initial}
         </div>
@@ -292,7 +293,7 @@ function Field({
   return (
     <label className="block">
       <span className="mb-1.5 block text-[13px] font-semibold text-[var(--ink)]">{label}</span>
-      <div className="flex items-center gap-3 rounded-[13px] border border-[var(--line)] bg-[var(--bg)] px-4 py-3.5 transition-colors focus-within:border-[var(--brand)]">
+      <div className="flex items-center gap-3 rounded-[var(--radius-btn)] border border-[var(--line)] bg-[var(--surface)] px-4 py-3.5 transition-colors focus-within:border-[var(--primary)]">
         <span>{icon}</span>
         {children}
       </div>
@@ -319,14 +320,9 @@ function EyeToggle({ show, onClick }: { show: boolean; onClick: () => void }) {
 
 function SubmitButton({ loading, label }: { loading: boolean; label: string }) {
   return (
-    <button
-      type="submit"
-      disabled={loading}
-      className="stamp-interactive mt-2 w-full rounded-full py-4 text-[15px] font-bold text-white disabled:opacity-50"
-      style={{ background: "var(--brand)" }}
-    >
+    <Button type="submit" disabled={loading} size="lg" className="mt-2 w-full">
       {loading ? "Please wait…" : label}
-    </button>
+    </Button>
   );
 }
 

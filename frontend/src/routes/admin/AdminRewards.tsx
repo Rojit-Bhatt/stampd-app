@@ -52,7 +52,7 @@ function RewardFields({ draft, onChange }: { draft: RewardDraft; onChange: (n: R
           value={draft.name}
           onChange={(e) => onChange({ ...draft, name: e.target.value })}
           placeholder="Name (e.g. Tote Bag)"
-          className="rounded-[11px] border border-[var(--line)] bg-[var(--bg)] px-3.5 py-2.5 text-sm focus:border-[var(--brand)] focus:outline-none"
+          className="rounded-[11px] border border-[var(--line)] bg-[var(--bg)] px-3.5 py-2.5 text-sm focus:border-[var(--primary)] focus:outline-none"
         />
         <label className="flex items-center gap-2 rounded-[11px] border border-[var(--line)] bg-[var(--bg)] px-3.5 py-2.5">
           <input
@@ -69,13 +69,13 @@ function RewardFields({ draft, onChange }: { draft: RewardDraft; onChange: (n: R
         value={draft.description}
         onChange={(e) => onChange({ ...draft, description: e.target.value })}
         placeholder="Description (shown to customers)"
-        className="rounded-[11px] border border-[var(--line)] bg-[var(--bg)] px-3.5 py-2.5 text-sm focus:border-[var(--brand)] focus:outline-none"
+        className="rounded-[11px] border border-[var(--line)] bg-[var(--bg)] px-3.5 py-2.5 text-sm focus:border-[var(--primary)] focus:outline-none"
       />
       <input
         value={draft.imageUrl}
         onChange={(e) => onChange({ ...draft, imageUrl: e.target.value })}
         placeholder="Image URL (optional)"
-        className="rounded-[11px] border border-[var(--line)] bg-[var(--bg)] px-3.5 py-2.5 text-sm focus:border-[var(--brand)] focus:outline-none"
+        className="rounded-[11px] border border-[var(--line)] bg-[var(--bg)] px-3.5 py-2.5 text-sm focus:border-[var(--primary)] focus:outline-none"
       />
     </div>
   );
@@ -116,14 +116,14 @@ export default function AdminRewards() {
     <div className="max-w-[760px]">
       <div className="mb-6 flex flex-wrap items-end justify-between gap-3">
         <div>
-          <h1 className="font-display text-[30px] font-extrabold text-[var(--ink)]">Rewards</h1>
+          <h1 className="font-display text-[30px] font-bold text-[var(--ink)]">Rewards</h1>
           <p className="text-[var(--muted)]">What customers can put their points toward.</p>
         </div>
         {!adding && (
           <button
             onClick={() => setAdding(true)}
             className="stamp-interactive flex items-center gap-2 rounded-full px-5 py-3 text-[15px] font-bold text-white"
-            style={{ background: "var(--brand)" }}
+            style={{ background: "var(--primary)" }}
           >
             <Plus className="h-4 w-4" />
             New reward
@@ -132,7 +132,7 @@ export default function AdminRewards() {
       </div>
 
       {adding && (
-        <div className="shadow-ambient mb-4 rounded-3xl bg-[var(--surface)] p-5">
+        <div className="shadow-ambient mb-4 rounded-[var(--radius-card)] bg-[var(--surface)] p-5">
           <RewardFields draft={draft} onChange={setDraft} />
           <div className="mt-3 flex gap-2">
             <button
@@ -148,7 +148,7 @@ export default function AdminRewards() {
               }}
               disabled={create.isPending}
               className="stamp-interactive rounded-full px-5 py-2.5 text-sm font-bold text-white disabled:opacity-50"
-              style={{ background: "var(--brand)" }}
+              style={{ background: "var(--primary)" }}
             >
               {create.isPending ? "Saving…" : "Save reward"}
             </button>
@@ -166,16 +166,16 @@ export default function AdminRewards() {
         Points-only rewards
       </h2>
       {isLoading ? (
-        <Skeleton className="mb-6 h-20 rounded-3xl" />
+        <Skeleton className="mb-6 h-20 rounded-[var(--radius-card)]" />
       ) : rewards.length === 0 ? (
-        <div className="shadow-ambient mb-6 rounded-3xl bg-[var(--surface)] px-5 py-8 text-center text-sm text-[var(--muted)]">
+        <div className="shadow-ambient mb-6 rounded-[var(--radius-card)] bg-[var(--surface)] px-5 py-8 text-center text-sm text-[var(--muted)]">
           Nothing here yet — a tote bag, a free upgrade, anything you don't sell but would hand over for points.
         </div>
       ) : (
         <div className="mb-6 flex flex-col gap-3">
           {rewards.map((r) =>
             editingId === r.id ? (
-              <div key={r.id} className="shadow-ambient rounded-3xl bg-[var(--surface)] p-5">
+              <div key={r.id} className="rounded-[var(--radius-card)] border border-[var(--line)] bg-[var(--surface)] shadow-ambient p-5">
                 <RewardFields draft={editDraft} onChange={setEditDraft} />
                 <div className="mt-3 flex gap-2">
                   <button
@@ -189,7 +189,7 @@ export default function AdminRewards() {
                       }
                     }}
                     className="stamp-interactive flex items-center gap-1.5 rounded-full px-5 py-2.5 text-sm font-bold text-white"
-                    style={{ background: "var(--brand)" }}
+                    style={{ background: "var(--primary)" }}
                   >
                     <Check className="h-4 w-4" />
                     Save
@@ -206,12 +206,12 @@ export default function AdminRewards() {
             ) : (
               <div
                 key={r.id}
-                className="shadow-ambient flex items-center gap-3.5 rounded-3xl bg-[var(--surface)] px-5 py-4"
+                className="flex items-center gap-3.5 rounded-[var(--radius-card)] border border-[var(--line)] bg-[var(--surface)] shadow-ambient px-5 py-4"
                 style={{ opacity: r.isActive ? 1 : 0.55 }}
               >
                 <span
-                  className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-2xl"
-                  style={{ background: "var(--surface-container)", color: "var(--brand)" }}
+                  className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-[var(--radius-btn)]"
+                  style={{ background: "var(--surface-2)", color: "var(--primary-deep)" }}
                 >
                   <Gift className="h-4 w-4" />
                 </span>
@@ -221,7 +221,7 @@ export default function AdminRewards() {
                     <div className="truncate text-[13px] text-[var(--muted)]">{r.description}</div>
                   )}
                 </div>
-                <span className="flex-shrink-0 font-display text-lg font-bold" style={{ color: "var(--brand)" }}>
+                <span className="flex-shrink-0 font-display text-lg font-bold" style={{ color: "var(--primary-deep)" }}>
                   {formatPoints(r.pointsPrice)}
                 </span>
                 <button
@@ -263,12 +263,12 @@ export default function AdminRewards() {
       </h2>
       <Link
         to={tenantPath(companySlug, outletSlug, "admin/menu")}
-        className="shadow-ambient stamp-interactive flex items-center justify-between gap-3 rounded-3xl bg-[var(--surface)] px-5 py-4 text-sm"
+        className="shadow-ambient stamp-interactive flex items-center justify-between gap-3 rounded-[var(--radius-card)] bg-[var(--surface)] px-5 py-4 text-sm"
       >
         <span className="text-[var(--muted)]">
           Give a menu item a points price right on the Menu page — it shows up here automatically.
         </span>
-        <span className="flex-shrink-0 font-bold" style={{ color: "var(--brand)" }}>
+        <span className="flex-shrink-0 font-bold" style={{ color: "var(--primary-deep)" }}>
           Go to Menu →
         </span>
       </Link>

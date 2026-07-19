@@ -42,9 +42,9 @@ export function MenuImportPreviewModal({ open, onOpenChange, preview, onApprove,
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-[560px] max-h-[85vh] overflow-y-auto shadow-ambient rounded-3xl border border-[var(--line)] bg-[var(--surface)] p-6 shadow-xl">
+      <DialogContent className="max-w-[560px] max-h-[85vh] overflow-y-auto shadow-ambient rounded-[var(--radius-card)] border border-[var(--line)] bg-[var(--surface)] p-6 shadow-xl">
         <DialogHeader className="gap-1.5 text-left">
-          <DialogTitle className="font-display text-lg font-extrabold text-[var(--ink)]">
+          <DialogTitle className="font-display text-lg font-bold text-[var(--ink)]">
             Review this import
           </DialogTitle>
           <DialogDescription className="text-sm text-[var(--muted)]">
@@ -55,7 +55,7 @@ export function MenuImportPreviewModal({ open, onOpenChange, preview, onApprove,
 
         <div className="mt-3 flex flex-col gap-4">
           {newRows.length > 0 && (
-            <section className="rounded-2xl border border-[#CBE4D6] bg-[var(--ok-soft)] p-4">
+            <section className="rounded-[var(--radius-btn)] border border-[#CBE4D6] bg-[var(--ok-soft)] p-4">
               <div className="mb-2 text-sm font-bold" style={{ color: "var(--ok)" }}>
                 We found {newRows.length} brand new item{newRows.length === 1 ? "" : "s"} to add
               </div>
@@ -74,7 +74,7 @@ export function MenuImportPreviewModal({ open, onOpenChange, preview, onApprove,
           )}
 
           {changedRows.length > 0 && (
-            <section className="rounded-2xl border border-[#EBDCAE] bg-[var(--warn-soft)] p-4">
+            <section className="rounded-[var(--radius-btn)] border border-[#EBDCAE] bg-[var(--warn-soft)] p-4">
               <div className="mb-2 text-sm font-bold" style={{ color: "var(--warn)" }}>
                 We found {changedRows.length} item{changedRows.length === 1 ? "" : "s"} with changes
               </div>
@@ -115,14 +115,14 @@ export function MenuImportPreviewModal({ open, onOpenChange, preview, onApprove,
           )}
 
           {preview.summary.unchangedCount > 0 && (
-            <div className="rounded-2xl border border-[var(--line)] bg-[var(--bg)] p-4 text-sm text-[var(--muted)]">
+            <div className="rounded-[var(--radius-btn)] border border-[var(--line)] bg-[var(--bg)] p-4 text-sm text-[var(--muted)]">
               We found {preview.summary.unchangedCount} item{preview.summary.unchangedCount === 1 ? "" : "s"} that
               {preview.summary.unchangedCount === 1 ? " is" : " are"} exactly the same — no changes needed.
             </div>
           )}
 
           {approveCount === 0 && preview.summary.unchangedCount === 0 && (
-            <div className="rounded-2xl border border-dashed border-[var(--line)] p-6 text-center text-sm text-[var(--muted)]">
+            <div className="rounded-[var(--radius-btn)] border border-dashed border-[var(--line)] p-6 text-center text-sm text-[var(--muted)]">
               Nothing usable was found in this file.
             </div>
           )}
@@ -139,7 +139,7 @@ export function MenuImportPreviewModal({ open, onOpenChange, preview, onApprove,
             onClick={onApprove}
             disabled={approveCount === 0 || approving}
             className="rounded-[12px] px-4 py-2.5 text-sm font-bold text-white transition-opacity hover:opacity-90 disabled:opacity-50"
-            style={{ background: "var(--brand)" }}
+            style={{ background: "var(--primary)" }}
           >
             {approving ? "Saving…" : `Approve and save (${approveCount})`}
           </button>

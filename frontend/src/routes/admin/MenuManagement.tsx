@@ -167,11 +167,11 @@ export default function MenuManagement() {
 
   return (
     <div className="max-w-[860px]">
-      <h1 className="font-display text-[28px] font-extrabold text-[var(--ink)]">Menu</h1>
+      <h1 className="font-display text-[28px] font-bold text-[var(--ink)]">Menu</h1>
       <p className="mb-5 text-[var(--muted)]">A display-only menu customers can browse in the app.</p>
 
       {/* Toggle */}
-      <div className="mb-5 flex items-center justify-between shadow-ambient rounded-3xl bg-[var(--surface)] p-5">
+      <div className="mb-5 flex items-center justify-between rounded-[var(--radius-card)] border border-[var(--line)] bg-[var(--surface)] shadow-ambient p-5">
         <div>
           <div className="text-[15px] font-bold">Show menu to customers</div>
           <div className="text-[13px] text-[var(--muted)]">
@@ -193,7 +193,7 @@ export default function MenuManagement() {
       </div>
 
       {/* Import from Excel */}
-      <div className="mb-6 shadow-ambient rounded-3xl bg-[var(--surface)] p-5">
+      <div className="mb-6 rounded-[var(--radius-card)] border border-[var(--line)] bg-[var(--surface)] shadow-ambient p-5">
         <div className="mb-1 text-sm font-bold">Import from Excel</div>
         <p className="mb-3 text-[13px] text-[var(--muted)]">
           Columns: Name (required), Price, Points Price, Category, Description. You'll review what will change before anything is saved.
@@ -212,13 +212,13 @@ export default function MenuManagement() {
             if (file) previewFile(file);
           }}
           onClick={() => fileInputRef.current?.click()}
-          className="flex cursor-pointer flex-col items-center justify-center gap-2 rounded-2xl border-2 border-dashed px-6 py-8 text-center transition-colors"
+          className="flex cursor-pointer flex-col items-center justify-center gap-2 rounded-[var(--radius-btn)] border-2 border-dashed px-6 py-8 text-center transition-colors"
           style={{
             borderColor: dragActive ? "var(--brand)" : "var(--line)",
             background: dragActive ? "var(--plat-soft)" : "var(--bg)",
           }}
         >
-          <UploadCloud className="h-6 w-6" style={{ color: "var(--brand)" }} />
+          <UploadCloud className="h-6 w-6" style={{ color: "var(--primary-deep)" }} />
           <div className="text-sm font-bold text-[var(--ink)]">
             {previewing ? "Reading your file…" : "Drag your .xlsx file here, or click to choose one"}
           </div>
@@ -244,14 +244,14 @@ export default function MenuManagement() {
       </div>
 
       {/* Add item */}
-      <div className="mb-6 shadow-ambient rounded-3xl bg-[var(--surface)] p-5">
+      <div className="mb-6 rounded-[var(--radius-card)] border border-[var(--line)] bg-[var(--surface)] shadow-ambient p-5">
         <div className="mb-3 text-sm font-bold">Add an item</div>
         <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2">
           <input
             value={draft.name}
             onChange={(e) => setDraft({ ...draft, name: e.target.value })}
             placeholder="Name"
-            className="rounded-[11px] border border-[var(--line)] bg-[var(--bg)] px-3.5 py-2.5 text-sm focus:border-[var(--brand)] focus:outline-none"
+            className="rounded-[11px] border border-[var(--line)] bg-[var(--bg)] px-3.5 py-2.5 text-sm focus:border-[var(--primary)] focus:outline-none"
           />
           <input
             type="number"
@@ -260,26 +260,26 @@ export default function MenuManagement() {
             value={draft.price}
             onChange={(e) => setDraft({ ...draft, price: e.target.value })}
             placeholder="Price"
-            className="rounded-[11px] border border-[var(--line)] bg-[var(--bg)] px-3.5 py-2.5 text-sm focus:border-[var(--brand)] focus:outline-none"
+            className="rounded-[11px] border border-[var(--line)] bg-[var(--bg)] px-3.5 py-2.5 text-sm focus:border-[var(--primary)] focus:outline-none"
           />
           <input
             value={draft.category}
             onChange={(e) => setDraft({ ...draft, category: e.target.value })}
             placeholder="Category"
-            className="rounded-[11px] border border-[var(--line)] bg-[var(--bg)] px-3.5 py-2.5 text-sm focus:border-[var(--brand)] focus:outline-none"
+            className="rounded-[11px] border border-[var(--line)] bg-[var(--bg)] px-3.5 py-2.5 text-sm focus:border-[var(--primary)] focus:outline-none"
           />
           <input
             value={draft.description}
             onChange={(e) => setDraft({ ...draft, description: e.target.value })}
             placeholder="Description"
-            className="rounded-[11px] border border-[var(--line)] bg-[var(--bg)] px-3.5 py-2.5 text-sm focus:border-[var(--brand)] focus:outline-none"
+            className="rounded-[11px] border border-[var(--line)] bg-[var(--bg)] px-3.5 py-2.5 text-sm focus:border-[var(--primary)] focus:outline-none"
           />
         </div>
         <button
           onClick={() => draft.name.trim() && createItem.mutate(draft)}
           disabled={createItem.isPending || !draft.name.trim()}
           className="mt-3 inline-flex items-center gap-1.5 rounded-[11px] px-4 py-2.5 text-sm font-bold text-white transition-opacity hover:opacity-90 disabled:opacity-50"
-          style={{ background: "var(--brand)" }}
+          style={{ background: "var(--primary)" }}
         >
           <Plus className="h-4 w-4" /> Add item
         </button>
@@ -299,7 +299,7 @@ export default function MenuManagement() {
         <select
           value={categoryFilter}
           onChange={(e) => setCategoryFilter(e.target.value)}
-          className="rounded-[11px] border border-[var(--line)] bg-[var(--surface)] px-3.5 py-2.5 text-sm focus:border-[var(--brand)] focus:outline-none"
+          className="rounded-[11px] border border-[var(--line)] bg-[var(--surface)] px-3.5 py-2.5 text-sm focus:border-[var(--primary)] focus:outline-none"
         >
           <option value="All">All categories</option>
           {categories.map((c) => (
@@ -311,7 +311,7 @@ export default function MenuManagement() {
         <select
           value={statusFilter}
           onChange={(e) => setStatusFilter(e.target.value as typeof statusFilter)}
-          className="rounded-[11px] border border-[var(--line)] bg-[var(--surface)] px-3.5 py-2.5 text-sm focus:border-[var(--brand)] focus:outline-none"
+          className="rounded-[11px] border border-[var(--line)] bg-[var(--surface)] px-3.5 py-2.5 text-sm focus:border-[var(--primary)] focus:outline-none"
         >
           <option value="All">All statuses</option>
           <option value="Available">Available</option>
@@ -322,7 +322,7 @@ export default function MenuManagement() {
       {/* List */}
       <div style={{ opacity: menuEnabled ? 1 : 0.55 }}>
         {isLoading ? (
-          <div className="overflow-hidden shadow-ambient rounded-3xl bg-[var(--surface)]">
+          <div className="overflow-hidden rounded-[var(--radius-card)] border border-[var(--line)] bg-[var(--surface)] shadow-ambient">
             {Array.from({ length: 4 }).map((_, i) => (
               <div key={i} className="flex items-center gap-3 border-b border-[var(--line)] px-4 py-3.5 last:border-b-0">
                 <div className="min-w-0 flex-1">
@@ -338,7 +338,7 @@ export default function MenuManagement() {
             {items.length === 0 ? "No menu items yet. Add your first above." : "No items match these filters."}
           </div>
         ) : (
-          <div className="overflow-hidden shadow-ambient rounded-3xl bg-[var(--surface)]">
+          <div className="overflow-hidden rounded-[var(--radius-card)] border border-[var(--line)] bg-[var(--surface)] shadow-ambient">
             {filteredItems.map((i) => (
               <div
                 key={itemId(i)}

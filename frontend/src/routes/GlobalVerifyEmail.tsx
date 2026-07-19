@@ -68,7 +68,7 @@ export default function GlobalVerifyEmail() {
           <p className="text-sm text-[var(--muted)]">Verifying…</p>
         ) : (
           <>
-            <h2 className="font-display text-[22px] font-extrabold text-[var(--ink)]">
+            <h2 className="font-display text-[22px] font-bold text-[var(--ink)]">
               {state === "ok" ? "Email verified" : "Verification failed"}
             </h2>
             <p className="mt-2 text-sm text-[var(--muted)]">{msg}</p>
@@ -78,7 +78,7 @@ export default function GlobalVerifyEmail() {
                 {fulfilled.map((f) => (
                   <div
                     key={f.organizationId}
-                    className="rounded-[14px] border border-[var(--line)] bg-[var(--surface)] p-3.5 text-sm"
+                    className="rounded-[var(--radius-btn)] border border-[var(--line)] bg-[var(--surface)] p-3.5 text-sm"
                   >
                     <span className="font-bold text-[var(--ink)]">{f.organizationName}</span>
                     <span className="text-[var(--muted)]">
@@ -92,8 +92,8 @@ export default function GlobalVerifyEmail() {
 
             <Link
               to="/"
-              className="mt-5 inline-block rounded-[13px] px-6 py-3 text-sm font-bold text-white"
-              style={{ background: "var(--brand)" }}
+              className="mt-5 inline-block rounded-[var(--radius-btn)] px-6 py-3 text-sm font-bold text-white"
+              style={{ background: "var(--primary)" }}
             >
               Continue
             </Link>

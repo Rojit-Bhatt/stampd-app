@@ -1,12 +1,15 @@
 import { useEffect, useRef, useState } from "react";
-import { useParams, useSearchParams, Link, useNavigate } from "react-router-dom";
-import { Mail, Lock, User, Phone } from "lucide-react";
+import { useParams, useSearchParams, useNavigate } from "react-router-dom";
+import { Mail, Lock, User, Phone, Timer, AlertTriangle, Check, WifiOff } from "lucide-react";
 import toast from "react-hot-toast";
 import { apiRequest } from "../lib/api";
 import { useTenant } from "../context/TenantContext";
 import { useCustomerAuth } from "../context/CustomerAuthContext";
-import { PointsCelebration } from "../components/customer/PointsCelebration";
+import { EarnCelebration } from "../components/customer/EarnCelebration";
+import { ClaimStateScreen } from "../components/customer/ClaimStateScreen";
+import { formatPoints } from "../hooks/usePoints";
 import { tenantPath } from "../lib/tenantPath";
+import { Button } from "@/components/ui/button";
 
 type Stage =
   | "resolving"
@@ -16,6 +19,29 @@ type Stage =
   | "awaiting-verification"
   | "success"
   | "error";
+
+// Why a claim failed, so each ending gets the sentence and next step it
+// actually needs. A 30-second single-use code scanned on mobile data at a
+// counter fails in ordinary ways, and "something went wrong" leaves the
+// customer unsure whether to re-scan, ask staff, or wait.
+//
+// These are classified from the server's message text because the backend
+// returns a bare 400 for most of them; only "already-added" carries a real
+// code (CLAIM_ALREADY_FULFILLED). Adding codes backend-side would make this
+// robust — until then, an unrecognised message falls through to "unknown",
+// which still renders a sane screen rather than guessing wrong.
+type ClaimFailure = "expired" | "already-used" | "already-added" | "offline" | "unknown";
+
+function classifyFailure(err: Error & { code?: string }): ClaimFailure {
+  if (err.code === "CLAIM_ALREADY_FULFILLED") return "already-added";
+  // A fetch that never reached the server — the claim itself is untouched and
+  // still held, so this must not read as "your points are gone".
+  if (!navigator.onLine || err.name === "TypeError") return "offline";
+  const msg = (err.message || "").toLowerCase();
+  if (msg.includes("expired")) return "expired";
+  if (msg.includes("already been used")) return "already-used";
+  return "unknown";
+}
 
 interface ClaimResult {
   pointsEarned: number;
@@ -52,6 +78,7 @@ export default function ClaimLanding() {
 
   const [stage, setStage] = useState<Stage>("resolving");
   const [errorMsg, setErrorMsg] = useState("");
+  const [failure, setFailure] = useState<ClaimFailure>("unknown");
   const [pendingClaimId, setPendingClaimId] = useState<string | null>(null);
   // Proof that WE are the tab that scanned the QR. The claim id alone is not
   // proof — it's a guessable ObjectId — so every call that binds or reads the
@@ -77,8 +104,10 @@ export default function ClaimLanding() {
         setStage("checking");
       })
       .catch((e) => {
+        const err = e as Error & { code?: string };
+        setFailure(classifyFailure(err));
         setStage("error");
-        setErrorMsg((e as Error).message || "This code is invalid or has expired.");
+        setErrorMsg(err.message || "This code is invalid or has expired.");
       });
   }, [params]);
 
@@ -143,6 +172,7 @@ export default function ClaimLanding() {
         // claim that, from the customer's side, succeeded.
         const shown = await checkStatus(claimId);
         if (!shown) {
+          setFailure("already-added");
           setStage("error");
           setErrorMsg("Your points were already added — check your balance on the dashboard.");
         }
@@ -152,6 +182,7 @@ export default function ClaimLanding() {
       if (message.toLowerCase().includes("verify your email")) {
         setStage("awaiting-verification");
       } else {
+        setFailure(classifyFailure(err));
         setStage("error");
         setErrorMsg(message || "Could not add your points.");
       }
@@ -206,47 +237,121 @@ export default function ClaimLanding() {
   if (stage === "resolving" || stage === "checking" || stage === "fulfilling") {
     return (
       <div className="flex min-h-screen items-center justify-center bg-[var(--bg)]">
-        <div className="h-8 w-8 animate-spin rounded-full border-2 border-[var(--brand)] border-t-transparent" />
+        <div className="h-8 w-8 animate-spin rounded-full border-2 border-[var(--primary)] border-t-transparent" />
       </div>
     );
   }
 
   if (stage === "error") {
+    const home = tenantPath(companySlug, slug);
+    const backLabel = `Back to ${tenant?.name || "home"}`;
+
+    // Already added is a SUCCESS, not a failure: most often autoFulfill fired
+    // the instant verification landed, moments before this tab (backgrounded
+    // while the customer was in their email app) resumed. Styling it red for
+    // something that worked would be a lie.
+    if (failure === "already-added") {
+      return (
+        <ClaimStateScreen
+          icon={<Check className="h-6 w-6" />}
+          tone="good"
+          title="Already added"
+          body={
+            result?.pointsEarned
+              ? `Your ${formatPoints(result.pointsEarned)} points landed a moment ago — no need to scan again.`
+              : "These points landed a moment ago — no need to scan again."
+          }
+          figure={
+            result?.balance !== undefined
+              ? { label: "Balance", value: formatPoints(result.balance) }
+              : undefined
+          }
+          primary={{ label: "See my points", to: tenantPath(companySlug, slug, "dashboard") }}
+        />
+      );
+    }
+
+    if (failure === "expired") {
+      return (
+        <ClaimStateScreen
+          icon={<Timer className="h-6 w-6" />}
+          tone="warn"
+          title="Code expired"
+          body="This code timed out after 30 seconds. Ask staff to generate a fresh one — it's quick."
+          primary={{ label: backLabel, to: home }}
+        />
+      );
+    }
+
+    if (failure === "already-used") {
+      return (
+        <ClaimStateScreen
+          icon={<AlertTriangle className="h-6 w-6" />}
+          tone="warn"
+          title="This code was already scanned"
+          body="Each code works once, for one person. Ask staff for a new one for your bill."
+          primary={{ label: backLabel, to: home }}
+        />
+      );
+    }
+
+    if (failure === "offline") {
+      return (
+        <ClaimStateScreen
+          icon={<WifiOff className="h-6 w-6" />}
+          tone="neutral"
+          title="Lost connection"
+          body="We couldn't reach the counter. Your claim is safe — it's held for 15 minutes. Reconnect and we'll finish it."
+          primary={{
+            label: "Try again now",
+            onClick: () => {
+              if (pendingClaimId) {
+                setStage("fulfilling");
+              } else {
+                window.location.reload();
+              }
+            },
+          }}
+          secondary={{ label: backLabel, to: home }}
+        />
+      );
+    }
+
     return (
-      <div className="flex min-h-screen flex-col items-center justify-center bg-[var(--bg)] px-6 text-center">
-        <h2 className="font-display text-xl font-bold text-[var(--ink)]">Couldn't add your points</h2>
-        <p className="mt-2 max-w-sm text-sm text-[var(--muted)]">{errorMsg}</p>
-        <Link
-          to={tenantPath(companySlug, slug)}
-          className="mt-6 rounded-[13px] px-6 py-3 text-sm font-bold text-white"
-          style={{ background: "var(--brand)" }}
-        >
-          Back to {tenant?.name || "home"}
-        </Link>
-      </div>
+      <ClaimStateScreen
+        icon={<AlertTriangle className="h-6 w-6" />}
+        tone="bad"
+        title="Couldn't add your points"
+        body={errorMsg}
+        primary={{ label: backLabel, to: home }}
+      />
     );
   }
 
   if (stage === "awaiting-verification") {
     return (
-      <div className="flex min-h-screen flex-col items-center justify-center bg-[var(--bg)] px-6 text-center">
-        <Mail className="h-10 w-10 text-[var(--brand)]" />
-        <h2 className="mt-4 font-display text-xl font-bold text-[var(--ink)]">Check your email</h2>
-        <p className="mt-2 max-w-sm text-sm text-[var(--muted)]">
-          Click the verification link we sent you — your points at {tenant?.name} will be added
-          automatically the moment you do, even from another device.
-        </p>
-      </div>
+      <ClaimStateScreen
+        icon={<Mail className="h-6 w-6" />}
+        tone="neutral"
+        title="Check your email"
+        body={
+          <>
+            Your points at {tenant?.name} are held for you. Tap the link we sent and they add
+            automatically — even on another device.
+          </>
+        }
+        footnote="Held for 15 minutes. You can close this page."
+      />
     );
   }
 
   if (stage === "success" && result) {
     return (
-      <PointsCelebration
-        variant="earn"
+      <EarnCelebration
         points={result.pointsEarned}
         billAmount={result.billAmount}
         balance={result.balance}
+        outletName={tenant?.name}
         multiplier={result.multiplier}
         campaignName={result.campaignName}
         onDone={() => navigate(tenantPath(companySlug, slug, "dashboard"))}
@@ -259,17 +364,22 @@ export default function ClaimLanding() {
   return (
     <div className="flex min-h-screen w-full items-center justify-center bg-[var(--bg)] px-4 py-10">
       <div className="w-full max-w-sm">
+        {/* Tenant identity: the logo tile keeps the outlet's true brand colour.
+            The points figure below is green, because that's value. */}
         <div
-          className="mb-4 flex h-14 w-14 items-center justify-center rounded-[17px] font-display text-[22px] font-extrabold text-white"
-          style={{ background: "var(--brand)" }}
+          className="mb-4 flex h-14 w-14 items-center justify-center rounded-[var(--radius-card)] font-display text-[22px] font-bold"
+          style={{ background: "var(--brand)", color: "var(--brand-on)" }}
         >
           {(tenant?.name || "?").charAt(0).toUpperCase()}
         </div>
-        <h1 className="font-display text-[22px] font-extrabold text-[var(--ink)]">
-          Scan to collect at {tenant?.name}
+
+        <h1 className="font-display text-[22px] font-bold leading-tight text-[var(--ink)]">
+          Collect your points at {tenant?.name}
         </h1>
-        <p className="mb-6 mt-1 text-sm text-[var(--muted)]">
-          {mode === "login" ? "Sign in to add your points." : "Create an account to add your points."}
+        <p className="mb-6 mt-1.5 text-sm text-[var(--muted)]">
+          {mode === "login"
+            ? "Sign in to add them to your balance."
+            : "Create an account to add them to your balance."}
         </p>
 
         {mode === "login" ? (
@@ -282,7 +392,7 @@ export default function ClaimLanding() {
           {mode === "login" ? "New here? " : "Already have an account? "}
           <button
             onClick={() => setMode(mode === "login" ? "register" : "login")}
-            className="font-bold text-[var(--brand)] hover:underline"
+            className="font-bold text-[var(--primary-deep)] hover:underline"
           >
             {mode === "login" ? "Create an account" : "Sign in"}
           </button>
@@ -329,14 +439,14 @@ function ClaimLoginForm({
           className="w-full bg-transparent text-sm text-[var(--ink)] placeholder:text-[var(--soft)] focus:outline-none"
         />
       </ClaimField>
-      <button
+      <Button
         type="submit"
         disabled={busy}
-        className="mt-2 w-full rounded-[15px] py-4 text-[15px] font-bold text-white transition-opacity hover:opacity-90 disabled:opacity-50"
-        style={{ background: "var(--brand)" }}
+        size="lg"
+        className="mt-2 w-full"
       >
         {busy ? "Please wait…" : "Sign in & add points"}
-      </button>
+      </Button>
     </form>
   );
 }
@@ -404,21 +514,21 @@ function ClaimRegisterForm({
           className="w-full bg-transparent text-sm text-[var(--ink)] placeholder:text-[var(--soft)] focus:outline-none"
         />
       </ClaimField>
-      <button
+      <Button
         type="submit"
         disabled={busy}
-        className="mt-2 w-full rounded-[15px] py-4 text-[15px] font-bold text-white transition-opacity hover:opacity-90 disabled:opacity-50"
-        style={{ background: "var(--brand)" }}
+        size="lg"
+        className="mt-2 w-full"
       >
         {busy ? "Please wait…" : "Create account"}
-      </button>
+      </Button>
     </form>
   );
 }
 
 function ClaimField({ icon, children }: { icon: React.ReactNode; children: React.ReactNode }) {
   return (
-    <div className="flex items-center gap-3 rounded-[13px] border border-[var(--line)] bg-[var(--bg)] px-4 py-3.5 transition-colors focus-within:border-[var(--brand)]">
+    <div className="flex items-center gap-3 rounded-[var(--radius-btn)] border border-[var(--line)] bg-[var(--surface)] px-4 py-3.5 transition-colors focus-within:border-[var(--primary)]">
       <span>{icon}</span>
       {children}
     </div>

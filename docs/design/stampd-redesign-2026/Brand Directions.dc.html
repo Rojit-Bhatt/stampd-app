@@ -1,0 +1,333 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<meta name="design_doc_mode" content="canvas">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@400;500;600;700;800&family=DM+Serif+Display&family=Sora:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  * { box-sizing: border-box; }
+  body { margin: 0; background: #6b6b70; -webkit-font-smoothing: antialiased; font-family: "Inter", sans-serif; }
+  a { color: inherit; }
+  @keyframes coinPop { 0% { transform: scale(0); } 60% { transform: scale(1.16); } 100% { transform: scale(1); } }
+  @keyframes rise { 0% { opacity: 0; transform: translateY(10px); } 100% { opacity: 1; transform: translateY(0); } }
+  .tnum { font-variant-numeric: tabular-nums; }
+</style>
+</helmet>
+
+<div style="padding: 56px 64px 120px; font-family: 'Inter', sans-serif;">
+
+  <!-- ============ TURN 1 ============ -->
+  <section style="max-width: 2400px;">
+    <div style="max-width: 720px; margin-bottom: 48px;">
+      <div style="font-size: 12px; font-weight: 700; letter-spacing: 0.18em; text-transform: uppercase; color: #d7d7db;">Turn 1 · Brand & visual direction</div>
+      <h1 style="font-family: 'Sora', sans-serif; font-size: 34px; font-weight: 700; color: #fff; margin: 12px 0 14px; line-height: 1.15;">Three ways to say "points are money"</h1>
+      <p style="font-size: 15px; line-height: 1.6; color: #e6e6ea; margin: 0;">Each direction is a full point of view — name, palette (light + dark), type pairing, and how it survives an arbitrary tenant color — shown on the two screens that decide everything: the <strong>earn celebration</strong> (the emotional peak) and the <strong>outlet dashboard</strong> (the customer's home). None use the old stamp/cream language. Reply with an id (e.g. <strong>1a</strong>) to pick one; I'll build the full token system + component specs + every surface on it next. Mixing is fine — "1a's palette, 1c's numerals."</p>
+    </div>
+
+    <div style="display: flex; flex-wrap: wrap; gap: 40px; align-items: flex-start;">
+
+      <!-- ================= 1a · STAMPD ================= -->
+      <div id="1a" style="position: relative; width: 720px; background: #fff; border-radius: 28px; padding: 32px; box-shadow: 0 40px 80px -30px rgba(0,0,0,.5);">
+        <div style="position: absolute; top: 20px; right: 24px; font-family: 'IBM Plex Mono', monospace; font-size: 13px; font-weight: 600; color: #0FA968; background: #E6F7EF; padding: 4px 10px; border-radius: 8px;">1a</div>
+
+        <div style="font-family: 'Space Grotesk', sans-serif; font-size: 30px; font-weight: 700; letter-spacing: -0.02em; color: #14201C;">Stampd<span style="color:#0FA968;">.</span></div>
+        <div style="font-size: 14px; font-weight: 600; color: #0FA968; margin-top: 2px;">"Every rupee, remembered."</div>
+        <p style="font-size: 13.5px; line-height: 1.55; color: #5C6B64; margin: 12px 0 0; max-width: 620px;">A calm <strong>fintech passbook</strong>. Points read like a bank balance — big tabular monospace figures, credit-green for value gained, a rational cool-neutral canvas. Trustworthy, legible on a cheap screen, quietly premium. The ledger is the star.</p>
+
+        <!-- spec strip -->
+        <div style="display: flex; gap: 24px; flex-wrap: wrap; margin: 20px 0 24px; padding: 16px; background: #F7F8F7; border: 1px solid #E4E9E6; border-radius: 14px;">
+          <div>
+            <div style="font-size: 10px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: #8B9A93; margin-bottom: 7px;">Palette</div>
+            <div style="display: flex; gap: 6px;">
+              <span style="width: 26px; height: 26px; border-radius: 7px; background: #0FA968; border: 1px solid rgba(0,0,0,.06);"></span>
+              <span style="width: 26px; height: 26px; border-radius: 7px; background: #0B7A4B;"></span>
+              <span style="width: 26px; height: 26px; border-radius: 7px; background: #14201C;"></span>
+              <span style="width: 26px; height: 26px; border-radius: 7px; background: #5C6B64;"></span>
+              <span style="width: 26px; height: 26px; border-radius: 7px; background: #F7F8F7; border: 1px solid #E4E9E6;"></span>
+              <span style="width: 26px; height: 26px; border-radius: 7px; background: #0C110F;"></span>
+              <span style="width: 26px; height: 26px; border-radius: 7px; background: #34D399;"></span>
+            </div>
+          </div>
+          <div>
+            <div style="font-size: 10px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: #8B9A93; margin-bottom: 7px;">Type</div>
+            <div style="font-family: 'Space Grotesk', sans-serif; font-size: 17px; color: #14201C; line-height: 1;">Space Grotesk</div>
+            <div style="font-size: 12px; color: #5C6B64; margin-top: 3px;">Inter body · <span style="font-family:'IBM Plex Mono',monospace;">Plex Mono</span> figures</div>
+          </div>
+          <div style="max-width: 220px;">
+            <div style="font-size: 10px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: #8B9A93; margin-bottom: 7px;">Tenant color</div>
+            <div style="font-size: 12px; color: #5C6B64; line-height: 1.45;">Green is Stampd's own. Tenant hue tints only the balance card header + accents, auto-darkened to hit 4.5:1.</div>
+          </div>
+        </div>
+
+        <div style="display: flex; gap: 28px; flex-wrap: wrap;">
+          <!-- DASHBOARD -->
+          <div style="width: 300px; background: #0b0b0c; border-radius: 44px; padding: 9px; box-shadow: 0 24px 48px -20px rgba(0,0,0,.4);">
+            <div style="border-radius: 36px; overflow: hidden; height: 600px; position: relative; background: #F7F8F7; display: flex; flex-direction: column;">
+              <div style="display: flex; justify-content: space-between; align-items: center; padding: 12px 22px 6px; font-size: 12px; font-weight: 600; color: #14201C;"><span class="tnum">9:41</span><span style="font-size:10px; letter-spacing:1px;">▪ ▪ ▪ ▮</span></div>
+              <!-- app bar -->
+              <div style="display: flex; align-items: center; justify-content: space-between; padding: 6px 20px 14px;">
+                <div style="font-family: 'Space Grotesk', sans-serif; font-weight: 700; font-size: 19px; color: #14201C;">Stampd<span style="color:#0FA968;">.</span></div>
+                <div style="display: flex; gap: 10px; align-items: center;">
+                  <span style="width: 34px; height: 34px; border-radius: 10px; background: #14201C; color: #fff; display: flex; align-items: center; justify-content: center; font-size: 15px;">⌗</span>
+                  <span style="width: 34px; height: 34px; border-radius: 50%; background: #DCE3DF; color:#14201C; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 13px;">A</span>
+                </div>
+              </div>
+              <div style="flex: 1; overflow: hidden; padding: 0 20px;">
+                <div style="font-family: 'Space Grotesk', sans-serif; font-size: 21px; font-weight: 700; color: #14201C; letter-spacing: -0.01em;">Welcome back, Aarav</div>
+                <div style="font-size: 12.5px; color: #5C6B64; margin-top: 2px;">You can redeem 2 rewards right now</div>
+                <!-- campaign -->
+                <div style="display: flex; align-items: center; gap: 9px; background: #0FA968; color: #fff; border-radius: 14px; padding: 10px 12px; margin-top: 14px;">
+                  <span style="width: 26px; height: 26px; border-radius: 50%; background: rgba(255,255,255,.22); display: flex; align-items: center; justify-content: center; font-size: 13px;">⚡</span>
+                  <div style="line-height: 1.2;"><div style="font-size: 12.5px; font-weight: 700;">2× points on right now</div><div style="font-size: 11px; opacity: .85;">Weekend Boost</div></div>
+                </div>
+                <!-- balance card -->
+                <div style="background: #14201C; border-radius: 20px; padding: 18px; margin-top: 14px; color: #fff;">
+                  <div style="font-size: 10px; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; color: #8DA79A;">Balance · Roastery Lane</div>
+                  <div style="display: flex; align-items: baseline; gap: 6px; margin-top: 8px;"><span class="tnum" style="font-family: 'IBM Plex Mono', monospace; font-size: 44px; font-weight: 600; color: #34D399; line-height: 1;">128.5</span><span style="font-size: 13px; color: #8DA79A; font-weight: 600;">pts</span></div>
+                  <div style="display: inline-flex; align-items: center; gap: 6px; margin-top: 12px; background: rgba(255,255,255,.08); border: 1px solid rgba(255,255,255,.12); border-radius: 999px; padding: 4px 11px; font-size: 11px; color: #C9D6CF; font-weight: 500;">Expires 12 Aug · 34 days left</div>
+                </div>
+                <!-- redeem list -->
+                <div style="background: #fff; border: 1px solid #E4E9E6; border-radius: 18px; padding: 15px; margin-top: 14px;">
+                  <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;"><span style="font-size: 10px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: #8B9A93;">Redeem your points</span><span style="font-size: 11px; font-weight: 700; color: #0FA968;">History</span></div>
+                  <div style="display: flex; flex-direction: column; gap: 11px;">
+                    <div style="display: flex; align-items: center; gap: 10px;"><span style="width: 30px; height: 30px; border-radius: 50%; background: #E6F7EF; color: #0B7A4B; display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 700;">Rs</span><span style="flex: 1; font-size: 13px; font-weight: 600; color: #14201C;">Free Filter Coffee</span><span class="tnum" style="font-family: 'IBM Plex Mono', monospace; font-size: 13px; font-weight: 600; color: #0FA968;">80</span></div>
+                    <div style="display: flex; align-items: center; gap: 10px;"><span style="width: 30px; height: 30px; border-radius: 50%; background: #E6F7EF; color: #0B7A4B; display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 700;">Rs</span><span style="flex: 1; font-size: 13px; font-weight: 600; color: #14201C;">Almond Croissant</span><span class="tnum" style="font-family: 'IBM Plex Mono', monospace; font-size: 13px; font-weight: 600; color: #0FA968;">120</span></div>
+                    <div style="display: flex; align-items: center; gap: 10px; opacity: .5;"><span style="width: 30px; height: 30px; border-radius: 50%; background: #EDEFEE; color: #8B9A93; display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 700;">Rs</span><span style="flex: 1; font-size: 13px; font-weight: 600; color: #14201C;">Cold Brew</span><span class="tnum" style="font-family: 'IBM Plex Mono', monospace; font-size: 13px; font-weight: 600; color: #8B9A93;">150</span></div>
+                  </div>
+                </div>
+              </div>
+              <!-- bottom nav -->
+              <div style="display: flex; justify-content: space-around; align-items: center; padding: 10px 16px 20px; background: #fff; border-top: 1px solid #E4E9E6;">
+                <span style="font-size: 10px; font-weight: 700; color: #14201C;">Home</span>
+                <span style="font-size: 10px; font-weight: 600; color: #A6B2AC;">Rewards</span>
+                <span style="width: 46px; height: 46px; border-radius: 15px; background: #0FA968; color: #fff; display: flex; align-items: center; justify-content: center; font-size: 20px; margin-top: -22px; box-shadow: 0 8px 18px -6px rgba(15,169,104,.6);">⌗</span>
+                <span style="font-size: 10px; font-weight: 600; color: #A6B2AC;">History</span>
+                <span style="font-size: 10px; font-weight: 600; color: #A6B2AC;">Profile</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- CELEBRATION -->
+          <div style="width: 300px; background: #0b0b0c; border-radius: 44px; padding: 9px; box-shadow: 0 24px 48px -20px rgba(0,0,0,.4);">
+            <div style="border-radius: 36px; overflow: hidden; height: 600px; position: relative; background: #0C110F; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 30px 26px; text-align: center;">
+              <div style="position: absolute; top: 0; left: 0; right: 0; display: flex; justify-content: space-between; padding: 12px 22px; font-size: 12px; font-weight: 600; color: #E9F0EC;"><span class="tnum">9:41</span><span style="font-size:10px;">▪ ▪ ▪ ▮</span></div>
+              <div style="width: 84px; height: 84px; border-radius: 50%; background: #0FA968; display: flex; align-items: center; justify-content: center; animation: coinPop .5s cubic-bezier(.34,1.56,.64,1) both; box-shadow: 0 0 0 10px rgba(15,169,104,.14);"><span style="color: #fff; font-size: 30px; font-weight: 700; font-family: 'Space Grotesk', sans-serif;">Rs</span></div>
+              <div style="font-family: 'Space Grotesk', sans-serif; font-size: 26px; font-weight: 700; color: #E9F0EC; margin-top: 24px;">Points earned</div>
+              <div class="tnum" style="font-family: 'IBM Plex Mono', monospace; font-size: 62px; font-weight: 600; color: #34D399; line-height: 1; margin-top: 10px; animation: rise .5s .18s both;">+10.5</div>
+              <div style="font-size: 13px; color: #8DA79A; margin-top: 8px; animation: rise .5s .24s both;">on a Rs 105 bill</div>
+              <div style="display: inline-flex; align-items: center; gap: 7px; margin-top: 14px; background: #0FA968; color: #fff; border-radius: 999px; padding: 6px 14px; font-size: 12px; font-weight: 700; animation: rise .5s .3s both;"><span>⚡</span>2× — Weekend Boost</div>
+              <div style="width: 100%; background: #141B18; border: 1px solid #223029; border-radius: 18px; padding: 15px; margin-top: 26px; animation: rise .5s .36s both;">
+                <div style="font-size: 10px; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; color: #6E8578;">Your balance</div>
+                <div class="tnum" style="font-family: 'IBM Plex Mono', monospace; font-size: 28px; font-weight: 600; color: #E9F0EC; margin-top: 4px;">138.5</div>
+              </div>
+              <div style="width: 100%; margin-top: 22px; background: #0FA968; color: #fff; border-radius: 14px; padding: 15px; font-size: 14px; font-weight: 700; animation: rise .5s .42s both;">Go to dashboard →</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ================= 1b · SONA ================= -->
+      <div id="1b" style="position: relative; width: 720px; background: #fff; border-radius: 28px; padding: 32px; box-shadow: 0 40px 80px -30px rgba(0,0,0,.5);">
+        <div style="position: absolute; top: 20px; right: 24px; font-family: 'IBM Plex Mono', monospace; font-size: 13px; font-weight: 600; color: #B67A0C; background: #FBF0D6; padding: 4px 10px; border-radius: 8px;">1b</div>
+
+        <div style="font-family: 'DM Serif Display', serif; font-size: 32px; color: #241C10;">Sona</div>
+        <div style="font-size: 14px; font-weight: 600; color: #B67A0C; margin-top: 2px;">"Turn spending into gold."</div>
+        <p style="font-size: 13.5px; line-height: 1.55; color: #6B5E48; margin: 12px 0 0; max-width: 620px;"><em>Sona</em> means gold. Points are treated as something precious and earned — warm, editorial, human. A vivid marigold accent (a nod to Nepal without cliché) over rich espresso-ink in dark mode and neutral warm ivory in light. Serif display gives it craft; it feels like belonging, not a database.</p>
+
+        <div style="display: flex; gap: 24px; flex-wrap: wrap; margin: 20px 0 24px; padding: 16px; background: #FBF7F0; border: 1px solid #ECE4D6; border-radius: 14px;">
+          <div>
+            <div style="font-size: 10px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: #A79A80; margin-bottom: 7px;">Palette</div>
+            <div style="display: flex; gap: 6px;">
+              <span style="width: 26px; height: 26px; border-radius: 7px; background: #F0B429;"></span>
+              <span style="width: 26px; height: 26px; border-radius: 7px; background: #B67A0C;"></span>
+              <span style="width: 26px; height: 26px; border-radius: 7px; background: #241C10;"></span>
+              <span style="width: 26px; height: 26px; border-radius: 7px; background: #6B5E48;"></span>
+              <span style="width: 26px; height: 26px; border-radius: 7px; background: #FBF7F0; border: 1px solid #ECE4D6;"></span>
+              <span style="width: 26px; height: 26px; border-radius: 7px; background: #17120B;"></span>
+              <span style="width: 26px; height: 26px; border-radius: 7px; background: #F4ECDD;"></span>
+            </div>
+          </div>
+          <div>
+            <div style="font-size: 10px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: #A79A80; margin-bottom: 7px;">Type</div>
+            <div style="font-family: 'DM Serif Display', serif; font-size: 19px; color: #241C10; line-height: 1;">DM Serif Display</div>
+            <div style="font-size: 12px; color: #6B5E48; margin-top: 3px;">Inter body & figures</div>
+          </div>
+          <div style="max-width: 220px;">
+            <div style="font-size: 10px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: #A79A80; margin-bottom: 7px;">Tenant color</div>
+            <div style="font-size: 12px; color: #6B5E48; line-height: 1.45;">Gold is Sona's own. Tenant hue owns the balance card gradient; a neutral scrim guarantees text contrast over any color.</div>
+          </div>
+        </div>
+
+        <div style="display: flex; gap: 28px; flex-wrap: wrap;">
+          <!-- DASHBOARD -->
+          <div style="width: 300px; background: #0b0b0c; border-radius: 44px; padding: 9px; box-shadow: 0 24px 48px -20px rgba(0,0,0,.4);">
+            <div style="border-radius: 36px; overflow: hidden; height: 600px; position: relative; background: #FBF7F0; display: flex; flex-direction: column;">
+              <div style="display: flex; justify-content: space-between; align-items: center; padding: 12px 22px 6px; font-size: 12px; font-weight: 600; color: #241C10;"><span class="tnum">9:41</span><span style="font-size:10px; letter-spacing:1px;">▪ ▪ ▪ ▮</span></div>
+              <div style="display: flex; align-items: center; justify-content: space-between; padding: 6px 20px 14px;">
+                <div style="font-family: 'DM Serif Display', serif; font-size: 22px; color: #241C10;">Sona</div>
+                <div style="display: flex; gap: 10px; align-items: center;">
+                  <span style="width: 34px; height: 34px; border-radius: 12px; background: #241C10; color: #F0B429; display: flex; align-items: center; justify-content: center; font-size: 15px;">⌗</span>
+                  <span style="width: 34px; height: 34px; border-radius: 50%; background: #EFE6D3; color:#241C10; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 13px;">A</span>
+                </div>
+              </div>
+              <div style="flex: 1; overflow: hidden; padding: 0 20px;">
+                <div style="font-family: 'DM Serif Display', serif; font-size: 24px; color: #241C10; line-height: 1.1;">Welcome back, Aarav</div>
+                <div style="font-size: 12.5px; color: #6B5E48; margin-top: 4px;">You can redeem 2 rewards right now</div>
+                <div style="display: flex; align-items: center; gap: 9px; background: #241C10; color: #F4ECDD; border-radius: 16px; padding: 10px 12px; margin-top: 14px;">
+                  <span style="width: 26px; height: 26px; border-radius: 50%; background: #F0B429; color:#241C10; display: flex; align-items: center; justify-content: center; font-size: 13px;">⚡</span>
+                  <div style="line-height: 1.2;"><div style="font-size: 12.5px; font-weight: 700; color:#F0B429;">2× points on right now</div><div style="font-size: 11px; opacity: .8;">Weekend Boost</div></div>
+                </div>
+                <!-- balance card: tenant-tinted gradient -->
+                <div style="border-radius: 22px; padding: 18px; margin-top: 14px; color: #241C10; background: linear-gradient(135deg, #F0B429, #E89A0C);">
+                  <div style="font-size: 10px; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; color: #6B4E0C;">Balance · Roastery Lane</div>
+                  <div style="display: flex; align-items: baseline; gap: 6px; margin-top: 8px;"><span class="tnum" style="font-family: 'DM Serif Display', serif; font-size: 46px; line-height: 1; color: #241C10;">128.5</span><span style="font-size: 13px; color: #6B4E0C; font-weight: 700;">pts</span></div>
+                  <div style="display: inline-flex; align-items: center; gap: 6px; margin-top: 12px; background: rgba(36,28,16,.12); border-radius: 999px; padding: 4px 11px; font-size: 11px; color: #3A2E14; font-weight: 600;">Expires 12 Aug · 34 days left</div>
+                </div>
+                <div style="background: #fff; border: 1px solid #ECE4D6; border-radius: 20px; padding: 15px; margin-top: 14px;">
+                  <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;"><span style="font-size: 10px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: #A79A80;">Redeem your points</span><span style="font-size: 11px; font-weight: 700; color: #B67A0C;">History</span></div>
+                  <div style="display: flex; flex-direction: column; gap: 11px;">
+                    <div style="display: flex; align-items: center; gap: 10px;"><span style="width: 30px; height: 30px; border-radius: 50%; background: #FBF0D6; color: #B67A0C; display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 700;">Rs</span><span style="flex: 1; font-size: 13px; font-weight: 600; color: #241C10;">Free Filter Coffee</span><span class="tnum" style="font-size: 13px; font-weight: 700; color: #B67A0C;">80</span></div>
+                    <div style="display: flex; align-items: center; gap: 10px;"><span style="width: 30px; height: 30px; border-radius: 50%; background: #FBF0D6; color: #B67A0C; display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 700;">Rs</span><span style="flex: 1; font-size: 13px; font-weight: 600; color: #241C10;">Almond Croissant</span><span class="tnum" style="font-size: 13px; font-weight: 700; color: #B67A0C;">120</span></div>
+                    <div style="display: flex; align-items: center; gap: 10px; opacity: .5;"><span style="width: 30px; height: 30px; border-radius: 50%; background: #EFEAE0; color: #A79A80; display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 700;">Rs</span><span style="flex: 1; font-size: 13px; font-weight: 600; color: #241C10;">Cold Brew</span><span class="tnum" style="font-size: 13px; font-weight: 700; color: #A79A80;">150</span></div>
+                  </div>
+                </div>
+              </div>
+              <div style="display: flex; justify-content: space-around; align-items: center; padding: 10px 16px 20px; background: #fff; border-top: 1px solid #ECE4D6;">
+                <span style="font-size: 10px; font-weight: 700; color: #241C10;">Home</span>
+                <span style="font-size: 10px; font-weight: 600; color: #B8AC96;">Rewards</span>
+                <span style="width: 46px; height: 46px; border-radius: 16px; background: #241C10; color: #F0B429; display: flex; align-items: center; justify-content: center; font-size: 20px; margin-top: -22px; box-shadow: 0 8px 18px -6px rgba(36,28,16,.5);">⌗</span>
+                <span style="font-size: 10px; font-weight: 600; color: #B8AC96;">History</span>
+                <span style="font-size: 10px; font-weight: 600; color: #B8AC96;">Profile</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- CELEBRATION -->
+          <div style="width: 300px; background: #0b0b0c; border-radius: 44px; padding: 9px; box-shadow: 0 24px 48px -20px rgba(0,0,0,.4);">
+            <div style="border-radius: 36px; overflow: hidden; height: 600px; position: relative; background: #17120B; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 30px 26px; text-align: center;">
+              <div style="position: absolute; top: 0; left: 0; right: 0; display: flex; justify-content: space-between; padding: 12px 22px; font-size: 12px; font-weight: 600; color: #F4ECDD;"><span class="tnum">9:41</span><span style="font-size:10px;">▪ ▪ ▪ ▮</span></div>
+              <div style="width: 88px; height: 88px; border-radius: 50%; background: linear-gradient(135deg,#F0B429,#E89A0C); display: flex; align-items: center; justify-content: center; animation: coinPop .5s cubic-bezier(.34,1.56,.64,1) both; box-shadow: 0 0 0 10px rgba(240,180,41,.14);"><span style="color: #241C10; font-size: 30px; font-family: 'DM Serif Display', serif;">Rs</span></div>
+              <div style="font-family: 'DM Serif Display', serif; font-size: 28px; color: #F4ECDD; margin-top: 24px;">Points earned</div>
+              <div class="tnum" style="font-family: 'DM Serif Display', serif; font-size: 66px; color: #F0B429; line-height: 1; margin-top: 8px; animation: rise .5s .18s both;">+10.5</div>
+              <div style="font-size: 13px; color: #A99A7C; margin-top: 8px; animation: rise .5s .24s both;">on a Rs 105 bill</div>
+              <div style="display: inline-flex; align-items: center; gap: 7px; margin-top: 14px; background: #F0B429; color: #241C10; border-radius: 999px; padding: 6px 14px; font-size: 12px; font-weight: 700; animation: rise .5s .3s both;"><span>⚡</span>2× — Weekend Boost</div>
+              <div style="width: 100%; background: #211A11; border: 1px solid #3A2E1A; border-radius: 18px; padding: 15px; margin-top: 26px; animation: rise .5s .36s both;">
+                <div style="font-size: 10px; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; color: #8A7A5C;">Your balance</div>
+                <div class="tnum" style="font-family: 'DM Serif Display', serif; font-size: 30px; color: #F4ECDD; margin-top: 4px;">138.5</div>
+              </div>
+              <div style="width: 100%; margin-top: 22px; background: #F0B429; color: #241C10; border-radius: 14px; padding: 15px; font-size: 14px; font-weight: 700; animation: rise .5s .42s both;">Go to dashboard →</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ================= 1c · MOHAR ================= -->
+      <div id="1c" style="position: relative; width: 720px; background: #fff; border-radius: 28px; padding: 32px; box-shadow: 0 40px 80px -30px rgba(0,0,0,.5);">
+        <div style="position: absolute; top: 20px; right: 24px; font-family: 'IBM Plex Mono', monospace; font-size: 13px; font-weight: 600; color: #3A7A00; background: #EEF9D6; padding: 4px 10px; border-radius: 8px;">1c</div>
+
+        <div style="font-family: 'Sora', sans-serif; font-size: 30px; font-weight: 800; letter-spacing: -0.03em; color: #0A0B0A;">Mohar</div>
+        <div style="font-size: 14px; font-weight: 600; color: #3A7A00; margin-top: 2px;">"Money that moves."</div>
+        <p style="font-size: 13.5px; line-height: 1.55; color: #4B4E48; margin: 12px 0 0; max-width: 620px;">A <em>mohar</em> is a historic Nepali coin. High-energy and kinetic — near-black canvas, one electric accent, oversized geometric numerals built to animate. Designed around the earn/redeem <strong>moment</strong>: the number is the show. Young, confident, unmistakably a currency you spend.</p>
+
+        <div style="display: flex; gap: 24px; flex-wrap: wrap; margin: 20px 0 24px; padding: 16px; background: #F2F3F0; border: 1px solid #E1E4DD; border-radius: 14px;">
+          <div>
+            <div style="font-size: 10px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: #8B8F87; margin-bottom: 7px;">Palette</div>
+            <div style="display: flex; gap: 6px;">
+              <span style="width: 26px; height: 26px; border-radius: 7px; background: #C4F82A;"></span>
+              <span style="width: 26px; height: 26px; border-radius: 7px; background: #0A0B0A;"></span>
+              <span style="width: 26px; height: 26px; border-radius: 7px; background: #4B4E48;"></span>
+              <span style="width: 26px; height: 26px; border-radius: 7px; background: #F2F3F0; border: 1px solid #E1E4DD;"></span>
+              <span style="width: 26px; height: 26px; border-radius: 7px; background: #141414;"></span>
+              <span style="width: 26px; height: 26px; border-radius: 7px; background: #CCFF33;"></span>
+            </div>
+          </div>
+          <div>
+            <div style="font-size: 10px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: #8B8F87; margin-bottom: 7px;">Type</div>
+            <div style="font-family: 'Sora', sans-serif; font-weight: 800; font-size: 18px; color: #0A0B0A; line-height: 1;">Sora</div>
+            <div style="font-size: 12px; color: #4B4E48; margin-top: 3px;">Inter body · tabular figures</div>
+          </div>
+          <div style="max-width: 220px;">
+            <div style="font-size: 10px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: #8B8F87; margin-bottom: 7px;">Tenant color</div>
+            <div style="font-size: 12px; color: #4B4E48; line-height: 1.45;">Lime is Mohar's own signal color. Tenant hue becomes a glow/border accent; core UI stays black-on-white for contrast safety.</div>
+          </div>
+        </div>
+
+        <div style="display: flex; gap: 28px; flex-wrap: wrap;">
+          <!-- DASHBOARD -->
+          <div style="width: 300px; background: #0b0b0c; border-radius: 44px; padding: 9px; box-shadow: 0 24px 48px -20px rgba(0,0,0,.4);">
+            <div style="border-radius: 36px; overflow: hidden; height: 600px; position: relative; background: #F2F3F0; display: flex; flex-direction: column;">
+              <div style="display: flex; justify-content: space-between; align-items: center; padding: 12px 22px 6px; font-size: 12px; font-weight: 600; color: #0A0B0A;"><span class="tnum">9:41</span><span style="font-size:10px; letter-spacing:1px;">▪ ▪ ▪ ▮</span></div>
+              <div style="display: flex; align-items: center; justify-content: space-between; padding: 6px 20px 14px;">
+                <div style="font-family: 'Sora', sans-serif; font-weight: 800; font-size: 19px; letter-spacing: -0.03em; color: #0A0B0A;">Mohar</div>
+                <div style="display: flex; gap: 10px; align-items: center;">
+                  <span style="width: 34px; height: 34px; border-radius: 11px; background: #0A0B0A; color: #C4F82A; display: flex; align-items: center; justify-content: center; font-size: 15px;">⌗</span>
+                  <span style="width: 34px; height: 34px; border-radius: 50%; background: #E0E3DC; color:#0A0B0A; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 13px;">A</span>
+                </div>
+              </div>
+              <div style="flex: 1; overflow: hidden; padding: 0 20px;">
+                <div style="font-family: 'Sora', sans-serif; font-size: 21px; font-weight: 700; letter-spacing: -0.02em; color: #0A0B0A;">Welcome back, Aarav</div>
+                <div style="font-size: 12.5px; color: #4B4E48; margin-top: 2px;">You can redeem 2 rewards right now</div>
+                <div style="display: flex; align-items: center; gap: 9px; background: #C4F82A; color: #0A0B0A; border-radius: 14px; padding: 10px 12px; margin-top: 14px;">
+                  <span style="width: 26px; height: 26px; border-radius: 50%; background: #0A0B0A; color:#C4F82A; display: flex; align-items: center; justify-content: center; font-size: 13px;">⚡</span>
+                  <div style="line-height: 1.2;"><div style="font-size: 12.5px; font-weight: 800;">2× points on right now</div><div style="font-size: 11px; opacity: .7;">Weekend Boost</div></div>
+                </div>
+                <!-- balance card -->
+                <div style="background: #0A0B0A; border-radius: 20px; padding: 18px; margin-top: 14px; color: #fff; position: relative; overflow: hidden;">
+                  <div style="position:absolute; right:-30px; top:-30px; width:120px; height:120px; border-radius:50%; background:rgba(196,248,42,.14);"></div>
+                  <div style="font-size: 10px; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; color: #8A8F82;">Balance · Roastery Lane</div>
+                  <div style="display: flex; align-items: baseline; gap: 6px; margin-top: 8px;"><span class="tnum" style="font-family: 'Sora', sans-serif; font-weight: 800; font-size: 46px; color: #C4F82A; line-height: 1; letter-spacing:-0.03em;">128.5</span><span style="font-size: 13px; color: #8A8F82; font-weight: 700;">pts</span></div>
+                  <div style="display: inline-flex; align-items: center; gap: 6px; margin-top: 12px; background: rgba(255,255,255,.08); border: 1px solid rgba(196,248,42,.3); border-radius: 999px; padding: 4px 11px; font-size: 11px; color: #DDE7C9; font-weight: 500;">Expires 12 Aug · 34 days left</div>
+                </div>
+                <div style="background: #fff; border: 1px solid #E1E4DD; border-radius: 18px; padding: 15px; margin-top: 14px;">
+                  <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;"><span style="font-size: 10px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: #8B8F87;">Redeem your points</span><span style="font-size: 11px; font-weight: 700; color: #3A7A00;">History</span></div>
+                  <div style="display: flex; flex-direction: column; gap: 11px;">
+                    <div style="display: flex; align-items: center; gap: 10px;"><span style="width: 30px; height: 30px; border-radius: 50%; background: #EEF9D6; color: #3A7A00; display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 800;">Rs</span><span style="flex: 1; font-size: 13px; font-weight: 700; color: #0A0B0A;">Free Filter Coffee</span><span class="tnum" style="font-size: 13px; font-weight: 800; color: #0A0B0A;">80</span></div>
+                    <div style="display: flex; align-items: center; gap: 10px;"><span style="width: 30px; height: 30px; border-radius: 50%; background: #EEF9D6; color: #3A7A00; display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 800;">Rs</span><span style="flex: 1; font-size: 13px; font-weight: 700; color: #0A0B0A;">Almond Croissant</span><span class="tnum" style="font-size: 13px; font-weight: 800; color: #0A0B0A;">120</span></div>
+                    <div style="display: flex; align-items: center; gap: 10px; opacity: .45;"><span style="width: 30px; height: 30px; border-radius: 50%; background: #ECEEE7; color: #8B8F87; display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 800;">Rs</span><span style="flex: 1; font-size: 13px; font-weight: 700; color: #0A0B0A;">Cold Brew</span><span class="tnum" style="font-size: 13px; font-weight: 800; color: #8B8F87;">150</span></div>
+                  </div>
+                </div>
+              </div>
+              <div style="display: flex; justify-content: space-around; align-items: center; padding: 10px 16px 20px; background: #0A0B0A;">
+                <span style="font-size: 10px; font-weight: 800; color: #C4F82A;">Home</span>
+                <span style="font-size: 10px; font-weight: 600; color: #7A7F74;">Rewards</span>
+                <span style="width: 46px; height: 46px; border-radius: 15px; background: #C4F82A; color: #0A0B0A; display: flex; align-items: center; justify-content: center; font-size: 20px; margin-top: -22px; box-shadow: 0 8px 20px -4px rgba(196,248,42,.5);">⌗</span>
+                <span style="font-size: 10px; font-weight: 600; color: #7A7F74;">History</span>
+                <span style="font-size: 10px; font-weight: 600; color: #7A7F74;">Profile</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- CELEBRATION -->
+          <div style="width: 300px; background: #0b0b0c; border-radius: 44px; padding: 9px; box-shadow: 0 24px 48px -20px rgba(0,0,0,.4);">
+            <div style="border-radius: 36px; overflow: hidden; height: 600px; position: relative; background: #0A0A0A; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 30px 26px; text-align: center;">
+              <div style="position: absolute; top: 0; left: 0; right: 0; display: flex; justify-content: space-between; padding: 12px 22px; font-size: 12px; font-weight: 600; color: #F5F5F0;"><span class="tnum">9:41</span><span style="font-size:10px;">▪ ▪ ▪ ▮</span></div>
+              <div style="position:absolute; width:230px; height:230px; border-radius:50%; background:radial-gradient(circle, rgba(196,248,42,.16), transparent 70%);"></div>
+              <div style="width: 84px; height: 84px; border-radius: 50%; background: #C4F82A; display: flex; align-items: center; justify-content: center; animation: coinPop .5s cubic-bezier(.34,1.56,.64,1) both; box-shadow: 0 0 40px rgba(196,248,42,.5);"><span style="color: #0A0A0A; font-size: 30px; font-weight: 800; font-family: 'Sora', sans-serif;">Rs</span></div>
+              <div style="font-family: 'Sora', sans-serif; font-size: 24px; font-weight: 700; color: #F5F5F0; margin-top: 24px; letter-spacing: -0.02em; position: relative;">Points earned</div>
+              <div class="tnum" style="font-family: 'Sora', sans-serif; font-weight: 800; font-size: 70px; color: #CCFF33; line-height: 1; margin-top: 6px; letter-spacing: -0.04em; animation: rise .5s .18s both; position: relative;">+10.5</div>
+              <div style="font-size: 13px; color: #8A8F82; margin-top: 8px; animation: rise .5s .24s both; position: relative;">on a Rs 105 bill</div>
+              <div style="display: inline-flex; align-items: center; gap: 7px; margin-top: 14px; background: #C4F82A; color: #0A0A0A; border-radius: 999px; padding: 6px 14px; font-size: 12px; font-weight: 800; animation: rise .5s .3s both; position: relative;"><span>⚡</span>2× — Weekend Boost</div>
+              <div style="width: 100%; background: #141414; border: 1px solid #2A2A2A; border-radius: 18px; padding: 15px; margin-top: 26px; animation: rise .5s .36s both; position: relative;">
+                <div style="font-size: 10px; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; color: #767A70;">Your balance</div>
+                <div class="tnum" style="font-family: 'Sora', sans-serif; font-weight: 800; font-size: 30px; color: #F5F5F0; margin-top: 4px;">138.5</div>
+              </div>
+              <div style="width: 100%; margin-top: 22px; background: #C4F82A; color: #0A0A0A; border-radius: 14px; padding: 15px; font-size: 14px; font-weight: 800; animation: rise .5s .42s both; position: relative;">Go to dashboard →</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </section>
+</div>
+</x-dc>
+</body>
+</html>

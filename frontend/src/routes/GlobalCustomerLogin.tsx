@@ -67,7 +67,7 @@ export default function GlobalCustomerLogin() {
       <div className="w-full max-w-sm">
         <StampdLogo size={56} tile className="mb-4" />
 
-        <h1 className="font-display text-[25px] font-extrabold text-[var(--ink)]">Welcome back</h1>
+        <h1 className="font-display text-[25px] font-bold text-[var(--ink)]">Welcome back</h1>
         <p className="mb-6 mt-1 text-sm text-[var(--muted)]">
           Sign in once to see every business you're a member of.
         </p>
@@ -75,7 +75,7 @@ export default function GlobalCustomerLogin() {
         <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col gap-3">
           <label className="block">
             <span className="mb-1.5 block text-[13px] font-semibold text-[var(--ink)]">Email</span>
-            <div className="flex items-center gap-3 rounded-[13px] border border-[var(--line)] bg-[var(--bg)] px-4 py-3.5 transition-colors focus-within:border-[var(--brand)]">
+            <div className="flex items-center gap-3 rounded-[var(--radius-btn)] border border-[var(--line)] bg-[var(--bg)] px-4 py-3.5 transition-colors focus-within:border-[var(--primary)]">
               <Mail className="h-4 w-4 text-[var(--soft)]" />
               <input
                 type="email"
@@ -89,7 +89,7 @@ export default function GlobalCustomerLogin() {
 
           <label className="block">
             <span className="mb-1.5 block text-[13px] font-semibold text-[var(--ink)]">Password</span>
-            <div className="flex items-center gap-3 rounded-[13px] border border-[var(--line)] bg-[var(--bg)] px-4 py-3.5 transition-colors focus-within:border-[var(--brand)]">
+            <div className="flex items-center gap-3 rounded-[var(--radius-btn)] border border-[var(--line)] bg-[var(--bg)] px-4 py-3.5 transition-colors focus-within:border-[var(--primary)]">
               <Lock className="h-4 w-4 text-[var(--soft)]" />
               <input
                 type={showPass ? "text" : "password"}
@@ -113,7 +113,7 @@ export default function GlobalCustomerLogin() {
             type="submit"
             disabled={isSubmitting}
             className="stamp-interactive mt-2 w-full rounded-full py-4 text-[15px] font-bold text-white disabled:opacity-50"
-            style={{ background: "var(--brand)" }}
+            style={{ background: "var(--primary)" }}
           >
             {isSubmitting ? "Please wait…" : "Sign in"}
           </button>
@@ -132,7 +132,7 @@ export default function GlobalCustomerLogin() {
 
         <p className="mt-6 text-center text-[13px] text-[var(--muted)]">
           New here?{" "}
-          <Link to="/customer-register" className="font-bold text-[var(--brand)] hover:underline">
+          <Link to="/customer-register" className="font-bold text-[var(--primary-deep)] hover:underline">
             Create an account
           </Link>
         </p>

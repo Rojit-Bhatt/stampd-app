@@ -55,7 +55,7 @@ function CampaignFields({
           value={draft.name}
           onChange={(e) => onChange({ ...draft, name: e.target.value })}
           placeholder="Name (e.g. Double Weekend)"
-          className="rounded-[11px] border border-[var(--line)] bg-[var(--bg)] px-3.5 py-2.5 text-sm focus:border-[var(--brand)] focus:outline-none"
+          className="rounded-[11px] border border-[var(--line)] bg-[var(--bg)] px-3.5 py-2.5 text-sm focus:border-[var(--primary)] focus:outline-none"
         />
         <label className="flex items-center gap-2 rounded-[11px] border border-[var(--line)] bg-[var(--bg)] px-3.5 py-2.5">
           <input
@@ -74,7 +74,7 @@ function CampaignFields({
         value={draft.description}
         onChange={(e) => onChange({ ...draft, description: e.target.value })}
         placeholder="Description (shown to customers)"
-        className="rounded-[11px] border border-[var(--line)] bg-[var(--bg)] px-3.5 py-2.5 text-sm focus:border-[var(--brand)] focus:outline-none"
+        className="rounded-[11px] border border-[var(--line)] bg-[var(--bg)] px-3.5 py-2.5 text-sm focus:border-[var(--primary)] focus:outline-none"
       />
 
       <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2">
@@ -84,7 +84,7 @@ function CampaignFields({
             type="datetime-local"
             value={toLocalInput(draft.startAt)}
             onChange={(e) => onChange({ ...draft, startAt: fromLocalInput(e.target.value) || draft.startAt })}
-            className="mt-1 w-full rounded-[11px] border border-[var(--line)] bg-[var(--bg)] px-3.5 py-2.5 text-sm font-normal normal-case tracking-normal text-[var(--ink)] focus:border-[var(--brand)] focus:outline-none"
+            className="mt-1 w-full rounded-[11px] border border-[var(--line)] bg-[var(--bg)] px-3.5 py-2.5 text-sm font-normal normal-case tracking-normal text-[var(--ink)] focus:border-[var(--primary)] focus:outline-none"
           />
         </label>
         <label className="text-xs font-bold uppercase tracking-wider text-[var(--soft)]">
@@ -93,7 +93,7 @@ function CampaignFields({
             type="datetime-local"
             value={toLocalInput(draft.endAt)}
             onChange={(e) => onChange({ ...draft, endAt: fromLocalInput(e.target.value) })}
-            className="mt-1 w-full rounded-[11px] border border-[var(--line)] bg-[var(--bg)] px-3.5 py-2.5 text-sm font-normal normal-case tracking-normal text-[var(--ink)] focus:border-[var(--brand)] focus:outline-none"
+            className="mt-1 w-full rounded-[11px] border border-[var(--line)] bg-[var(--bg)] px-3.5 py-2.5 text-sm font-normal normal-case tracking-normal text-[var(--ink)] focus:border-[var(--primary)] focus:outline-none"
           />
         </label>
       </div>
@@ -113,8 +113,8 @@ function CampaignFields({
                 className="rounded-full px-3 py-1.5 text-[13px] font-bold transition-colors"
                 style={
                   on
-                    ? { background: "var(--brand)", color: "#fff" }
-                    : { background: "var(--surface-container)", color: "var(--muted)" }
+                    ? { background: "var(--primary)", color: "#fff" }
+                    : { background: "var(--surface-2)", color: "var(--muted)" }
                 }
               >
                 {label}
@@ -191,7 +191,7 @@ export default function AdminCampaigns() {
     <div className="max-w-[760px]">
       <div className="mb-6 flex flex-wrap items-end justify-between gap-3">
         <div>
-          <h1 className="font-display text-[30px] font-extrabold text-[var(--ink)]">Campaigns</h1>
+          <h1 className="font-display text-[30px] font-bold text-[var(--ink)]">Campaigns</h1>
           <p className="text-[var(--muted)]">
             Multiply what a bill earns for a while.
             {liveCount > 0 ? ` ${liveCount} running right now.` : ""}
@@ -201,7 +201,7 @@ export default function AdminCampaigns() {
           <button
             onClick={() => setAdding(true)}
             className="stamp-interactive flex items-center gap-2 rounded-full px-5 py-3 text-[15px] font-bold text-white"
-            style={{ background: "var(--brand)" }}
+            style={{ background: "var(--primary)" }}
           >
             <Plus className="h-4 w-4" />
             New campaign
@@ -220,14 +220,14 @@ export default function AdminCampaigns() {
       </div>
 
       {adding && (
-        <div className="shadow-ambient mb-4 rounded-3xl bg-[var(--surface)] p-5">
+        <div className="shadow-ambient mb-4 rounded-[var(--radius-card)] bg-[var(--surface)] p-5">
           <CampaignFields draft={draft} onChange={setDraft} />
           <div className="mt-3 flex gap-2">
             <button
               onClick={submitNew}
               disabled={create.isPending}
               className="stamp-interactive rounded-full px-5 py-2.5 text-sm font-bold text-white disabled:opacity-50"
-              style={{ background: "var(--brand)" }}
+              style={{ background: "var(--primary)" }}
             >
               {create.isPending ? "Saving…" : "Save campaign"}
             </button>
@@ -243,24 +243,24 @@ export default function AdminCampaigns() {
 
       {isLoading ? (
         <div className="flex flex-col gap-3">
-          {Array.from({ length: 2 }).map((_, i) => <Skeleton key={i} className="h-24 rounded-3xl" />)}
+          {Array.from({ length: 2 }).map((_, i) => <Skeleton key={i} className="h-24 rounded-[var(--radius-card)]" />)}
         </div>
       ) : campaigns.length === 0 ? (
-        <div className="shadow-ambient rounded-3xl bg-[var(--surface)] px-5 py-10 text-center text-sm text-[var(--muted)]">
+        <div className="rounded-[var(--radius-card)] border border-[var(--line)] bg-[var(--surface)] shadow-ambient px-5 py-10 text-center text-sm text-[var(--muted)]">
           No campaigns yet. Run one to give more points for a weekend, a festival, a slow Tuesday.
         </div>
       ) : (
         <div className="flex flex-col gap-3">
           {campaigns.map((c) =>
             editingId === c.id ? (
-              <div key={c.id} className="shadow-ambient rounded-3xl bg-[var(--surface)] p-5">
+              <div key={c.id} className="rounded-[var(--radius-card)] border border-[var(--line)] bg-[var(--surface)] shadow-ambient p-5">
                 <CampaignFields draft={editDraft} onChange={setEditDraft} />
                 <div className="mt-3 flex gap-2">
                   <button
                     onClick={() => submitEdit(c.id)}
                     disabled={update.isPending}
                     className="stamp-interactive flex items-center gap-1.5 rounded-full px-5 py-2.5 text-sm font-bold text-white disabled:opacity-50"
-                    style={{ background: "var(--brand)" }}
+                    style={{ background: "var(--primary)" }}
                   >
                     <Check className="h-4 w-4" />
                     Save
@@ -277,13 +277,13 @@ export default function AdminCampaigns() {
             ) : (
               <div
                 key={c.id}
-                className="shadow-ambient flex items-center gap-4 rounded-3xl bg-[var(--surface)] px-5 py-4"
+                className="flex items-center gap-4 rounded-[var(--radius-card)] border border-[var(--line)] bg-[var(--surface)] px-5 py-4 shadow-ambient"
                 style={{ opacity: c.isActive ? 1 : 0.6 }}
               >
                 <span
-                  className="flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-2xl font-display text-sm font-extrabold"
+                  className="flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-[var(--radius-btn)] font-numeral text-lg leading-none"
                   style={{
-                    background: c.isLive ? "var(--brand)" : "var(--surface-container)",
+                    background: c.isLive ? "var(--primary)" : "var(--surface-2)",
                     color: c.isLive ? "#fff" : "var(--soft)",
                   }}
                 >
@@ -302,11 +302,11 @@ export default function AdminCampaigns() {
                         Live
                       </span>
                     ) : !c.isActive ? (
-                      <span className="flex-shrink-0 rounded-full bg-[var(--surface-container)] px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-[var(--soft)]">
+                      <span className="flex-shrink-0 rounded-full bg-[var(--surface-2)] px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-[var(--soft)]">
                         Paused
                       </span>
                     ) : (
-                      <span className="flex-shrink-0 rounded-full bg-[var(--surface-container)] px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-[var(--soft)]">
+                      <span className="flex-shrink-0 rounded-full bg-[var(--surface-2)] px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-[var(--soft)]">
                         Scheduled
                       </span>
                     )}

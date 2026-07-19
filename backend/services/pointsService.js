@@ -11,8 +11,24 @@ const User = require("../models/User");
 const { resolveProgram } = require("./programService");
 const { resolveActiveMultiplier } = require("./campaignService");
 const { earnCenti, toPoints } = require("../utils/pointsMath");
+const { resolveDateRange } = require("../utils/dateRange");
 
+// An EARN token only has to survive being scanned: the instant it is, it
+// converts into a PendingClaim that lives 15 minutes, which is what actually
+// gives the customer time to sign in. 30 seconds is plenty, and short is the
+// point — it's what stops a screenshotted code being re-scanned later.
+//
+// A REDEEM token has no such conversion. It is consumed at the moment the
+// customer confirms a reward, so the same 30 seconds has to cover scanning,
+// reading the catalog, choosing, and confirming — on a phone, at a counter.
+// That is not enough time, and the window expiring mid-choice spends nothing
+// but makes the customer start over. The token stays single-use and
+// staff-initiated either way, so the longer life costs nothing.
 const TOKEN_TTL_SECONDS = 30;
+const REDEEM_TOKEN_TTL_SECONDS = 180;
+const ttlForPurpose = (purpose) =>
+  purpose === "redeem" ? REDEEM_TOKEN_TTL_SECONDS : TOKEN_TTL_SECONDS;
+
 const DAY_MS = 24 * 60 * 60 * 1000;
 
 const createHttpError = (message, statusCode) => {
@@ -219,7 +235,7 @@ const generateRedeemToken = async (adminUserId, organizationId) => {
 
   return {
     success: true,
-    data: { token, purpose: "redeem", expiresInSeconds: TOKEN_TTL_SECONDS }
+    data: { token, purpose: "redeem", expiresInSeconds: REDEEM_TOKEN_TTL_SECONDS }
   };
 };
 
@@ -228,7 +244,10 @@ const generateRedeemToken = async (adminUserId, organizationId) => {
 // session (caller manages the transaction).
 const consumeDynamicQrToken = async ({ token, organizationId, session, purpose = "earn" }) => {
   const now = new Date();
-  const tokenExpiryCutoff = new Date(now.getTime() - TOKEN_TTL_SECONDS * 1000);
+  // Keyed off the purpose the caller is consuming AS, which is the same
+  // purpose the token was minted with — a mismatch is rejected below before
+  // expiry is ever judged, so a redeem token can't borrow the earn window.
+  const tokenExpiryCutoff = new Date(now.getTime() - ttlForPurpose(purpose) * 1000);
 
   const usedToken = await DynamicQRToken.findOne({ token, isUsed: true }).session(session);
   if (usedToken) {
@@ -600,8 +619,20 @@ const getPointsHistoryByUserId = async (userId, organizationId, limit = 50) => {
 };
 
 // The outlet's whole ledger, newest first — the admin transaction history.
-const getOutletTransactions = async (organizationId, { limit = 100 } = {}) => {
-  const rows = await PointsTransaction.find({ organizationId }).sort({ createdAt: -1 });
+// startDate/endDate are both optional and, deliberately, do nothing unless
+// at least one is passed: AdminOverview's live-activity feed polls this with
+// neither, and must keep seeing the true most-recent rows, not a trailing-
+// 30-day window it never asked for. The Transactions page and its Excel
+// export are the only callers that ever pass a range.
+const getOutletTransactions = async (organizationId, { limit = 100, startDate, endDate } = {}) => {
+  let rows = await PointsTransaction.find({ organizationId }).sort({ createdAt: -1 });
+  if (startDate || endDate) {
+    const { start, end } = resolveDateRange(startDate, endDate);
+    rows = rows.filter((t) => {
+      const createdAt = new Date(t.createdAt);
+      return createdAt >= start && createdAt <= end;
+    });
+  }
   const capped = rows.slice(0, limit);
 
   const userIds = [...new Set(capped.map((r) => r.userId.toString()))];

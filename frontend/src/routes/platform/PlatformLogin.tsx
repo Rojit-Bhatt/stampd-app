@@ -51,17 +51,17 @@ export default function PlatformLogin() {
       <div className="w-full max-w-sm">
         <div className="mb-6 text-center">
           <StampdLogo size={44} tile className="mx-auto mb-3.5" />
-          <h1 className="font-display text-2xl font-extrabold text-[var(--ink)]">Platform admin</h1>
+          <h1 className="font-display text-2xl font-bold text-[var(--ink)]">Platform admin</h1>
           <p className="mt-1 text-sm text-[var(--muted)]">Sign in to your control panel</p>
         </div>
 
-        <div className="rounded-3xl border border-[var(--line)] bg-[var(--surface)] p-6 shadow-ambient">
+        <div className="rounded-[var(--radius-card)] border border-[var(--line)] bg-[var(--surface)] p-6 shadow-ambient">
           <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col gap-3">
             <input
               type="email"
               placeholder="Email"
               {...register("email")}
-              className="rounded-[12px] border border-[var(--line)] bg-[var(--bg)] px-4 py-3.5 text-sm focus:border-[var(--plat)] focus:outline-none"
+              className="rounded-[var(--radius-btn)] border border-[var(--line)] bg-[var(--bg)] px-4 py-3.5 text-sm focus:border-[var(--primary)] focus:outline-none"
             />
             {errors.email && (
               <p className="pl-1 text-xs font-semibold text-[var(--err)]">{errors.email.message}</p>
@@ -70,7 +70,7 @@ export default function PlatformLogin() {
               type="password"
               placeholder="Password"
               {...register("password")}
-              className="rounded-[12px] border border-[var(--line)] bg-[var(--bg)] px-4 py-3.5 text-sm focus:border-[var(--plat)] focus:outline-none"
+              className="rounded-[var(--radius-btn)] border border-[var(--line)] bg-[var(--bg)] px-4 py-3.5 text-sm focus:border-[var(--primary)] focus:outline-none"
             />
             {errors.password && (
               <p className="pl-1 text-xs font-semibold text-[var(--err)]">{errors.password.message}</p>
@@ -78,8 +78,8 @@ export default function PlatformLogin() {
             <button
               type="submit"
               disabled={busy || isLoading}
-              className="mt-2 w-full rounded-[13px] py-4 text-[15px] font-bold text-white transition-opacity hover:opacity-90 disabled:opacity-50"
-              style={{ background: "var(--plat)" }}
+              className="mt-2 w-full rounded-[var(--radius-btn)] py-4 text-[15px] font-bold text-white transition-opacity hover:opacity-90 disabled:opacity-50"
+              style={{ background: "var(--primary)" }}
             >
               {busy ? "Signing you in…" : "Sign in"}
             </button>

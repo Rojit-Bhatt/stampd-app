@@ -51,14 +51,14 @@ export default function AdminResetPassword() {
       <div className="flex min-h-screen items-center justify-center bg-[var(--bg)] px-4">
         <div className="w-full max-w-sm text-center">
           <StampdLogo size={44} tile className="mx-auto mb-3.5" />
-          <h1 className="font-display text-[22px] font-extrabold text-[var(--ink)]">Link incomplete</h1>
+          <h1 className="font-display text-[22px] font-bold text-[var(--ink)]">Link incomplete</h1>
           <p className="mt-2 text-sm text-[var(--muted)]">
             This link is missing its token — request a fresh one.
           </p>
           <Link
             to="/admin-forgot-password"
-            className="stamp-interactive mt-5 inline-block rounded-[13px] px-6 py-3 text-sm font-bold text-white"
-            style={{ background: "var(--brand)" }}
+            className="stamp-interactive mt-5 inline-block rounded-[var(--radius-btn)] px-6 py-3 text-sm font-bold text-white"
+            style={{ background: "var(--primary)" }}
           >
             Request a new link
           </Link>
@@ -72,10 +72,10 @@ export default function AdminResetPassword() {
       <div className="w-full max-w-sm">
         <div className="mb-6 text-center">
           <StampdLogo size={44} tile className="mx-auto mb-3.5" />
-          <h1 className="font-display text-2xl font-extrabold text-[var(--ink)]">Set a new password</h1>
+          <h1 className="font-display text-2xl font-bold text-[var(--ink)]">Set a new password</h1>
         </div>
 
-        <div className="rounded-3xl border border-[var(--line)] bg-[var(--surface)] p-6 shadow-ambient">
+        <div className="rounded-[var(--radius-card)] border border-[var(--line)] bg-[var(--surface)] p-6 shadow-ambient">
           <form onSubmit={submit} className="flex flex-col gap-3">
             <input
               type="password"
@@ -84,7 +84,7 @@ export default function AdminResetPassword() {
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               placeholder="New password"
-              className="rounded-[12px] border border-[var(--line)] bg-[var(--bg)] px-4 py-3.5 text-sm focus:border-[var(--brand)] focus:outline-none"
+              className="rounded-[var(--radius-btn)] border border-[var(--line)] bg-[var(--bg)] px-4 py-3.5 text-sm focus:border-[var(--primary)] focus:outline-none"
             />
             <input
               type="password"
@@ -93,13 +93,13 @@ export default function AdminResetPassword() {
               value={confirm}
               onChange={(e) => setConfirm(e.target.value)}
               placeholder="Confirm new password"
-              className="rounded-[12px] border border-[var(--line)] bg-[var(--bg)] px-4 py-3.5 text-sm focus:border-[var(--brand)] focus:outline-none"
+              className="rounded-[var(--radius-btn)] border border-[var(--line)] bg-[var(--bg)] px-4 py-3.5 text-sm focus:border-[var(--primary)] focus:outline-none"
             />
             <button
               type="submit"
               disabled={busy}
-              className="mt-1 w-full rounded-[13px] py-4 text-[15px] font-bold text-white transition-opacity hover:opacity-90 disabled:opacity-50"
-              style={{ background: "var(--brand)" }}
+              className="mt-1 w-full rounded-[var(--radius-btn)] py-4 text-[15px] font-bold text-white transition-opacity hover:opacity-90 disabled:opacity-50"
+              style={{ background: "var(--primary)" }}
             >
               {busy ? "Saving…" : "Set password"}
             </button>

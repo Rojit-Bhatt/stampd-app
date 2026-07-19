@@ -39,7 +39,7 @@ export default function ResetPassword() {
   return (
     <div className="flex min-h-screen items-center justify-center bg-[var(--bg)] px-4">
       <div className="w-full max-w-sm">
-        <h2 className="font-display text-[22px] font-extrabold text-[var(--ink)]">Choose a new password</h2>
+        <h2 className="font-display text-[22px] font-bold text-[var(--ink)]">Choose a new password</h2>
         <form onSubmit={submit} className="mt-4 flex flex-col gap-3">
           <input
             type="password"
@@ -47,7 +47,7 @@ export default function ResetPassword() {
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             placeholder="New password"
-            className="rounded-[13px] border border-[var(--line)] bg-[var(--bg)] px-4 py-3.5 text-sm text-[var(--ink)] focus:border-[var(--brand)] focus:outline-none"
+            className="rounded-[var(--radius-btn)] border border-[var(--line)] bg-[var(--bg)] px-4 py-3.5 text-sm text-[var(--ink)] focus:border-[var(--primary)] focus:outline-none"
           />
           <input
             type="password"
@@ -55,12 +55,12 @@ export default function ResetPassword() {
             value={confirm}
             onChange={(e) => setConfirm(e.target.value)}
             placeholder="Confirm password"
-            className="rounded-[13px] border border-[var(--line)] bg-[var(--bg)] px-4 py-3.5 text-sm text-[var(--ink)] focus:border-[var(--brand)] focus:outline-none"
+            className="rounded-[var(--radius-btn)] border border-[var(--line)] bg-[var(--bg)] px-4 py-3.5 text-sm text-[var(--ink)] focus:border-[var(--primary)] focus:outline-none"
           />
           <button
             disabled={busy}
-            className="rounded-[15px] py-4 text-[15px] font-bold text-white disabled:opacity-50"
-            style={{ background: "var(--brand)" }}
+            className="rounded-[var(--radius-btn)] py-4 text-[15px] font-bold text-white disabled:opacity-50"
+            style={{ background: "var(--primary)" }}
           >
             {busy ? "Updating…" : "Update password"}
           </button>

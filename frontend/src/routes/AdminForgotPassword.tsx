@@ -38,13 +38,13 @@ export default function AdminForgotPassword() {
       <div className="w-full max-w-sm">
         <div className="mb-6 text-center">
           <StampdLogo size={44} tile className="mx-auto mb-3.5" />
-          <h1 className="font-display text-2xl font-extrabold text-[var(--ink)]">Reset your password</h1>
+          <h1 className="font-display text-2xl font-bold text-[var(--ink)]">Reset your password</h1>
           <p className="mt-1 text-sm text-[var(--muted)]">
             We'll email you a link to set a new one.
           </p>
         </div>
 
-        <div className="rounded-3xl border border-[var(--line)] bg-[var(--surface)] p-6 shadow-ambient">
+        <div className="rounded-[var(--radius-card)] border border-[var(--line)] bg-[var(--surface)] p-6 shadow-ambient">
           {sent ? (
             <p className="text-center text-sm text-[var(--muted)]">
               If <span className="font-bold text-[var(--ink)]">{email}</span> is registered, a reset
@@ -59,13 +59,13 @@ export default function AdminForgotPassword() {
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder="Email"
-                className="rounded-[12px] border border-[var(--line)] bg-[var(--bg)] px-4 py-3.5 text-sm focus:border-[var(--brand)] focus:outline-none"
+                className="rounded-[var(--radius-btn)] border border-[var(--line)] bg-[var(--bg)] px-4 py-3.5 text-sm focus:border-[var(--primary)] focus:outline-none"
               />
               <button
                 type="submit"
                 disabled={busy}
-                className="mt-1 w-full rounded-[13px] py-4 text-[15px] font-bold text-white transition-opacity hover:opacity-90 disabled:opacity-50"
-                style={{ background: "var(--brand)" }}
+                className="mt-1 w-full rounded-[var(--radius-btn)] py-4 text-[15px] font-bold text-white transition-opacity hover:opacity-90 disabled:opacity-50"
+                style={{ background: "var(--primary)" }}
               >
                 {busy ? "Sending…" : "Send reset link"}
               </button>

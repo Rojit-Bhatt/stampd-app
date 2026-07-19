@@ -1,0 +1,219 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<meta name="design_doc_mode" content="canvas">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@400;500;600;700;800&family=DM+Serif+Display:ital@0;1&display=swap" rel="stylesheet">
+<style>
+  * { box-sizing: border-box; }
+  body { margin: 0; background: #656a67; -webkit-font-smoothing: antialiased; font-family: "Inter", sans-serif; }
+  a { color: inherit; text-decoration: none; }
+  .disp { font-family: "Space Grotesk", sans-serif; }
+  .serif { font-family: "DM Serif Display", serif; }
+  .num { font-family: "DM Serif Display", serif; }
+  .lab { font-size: 11px; font-weight: 700; letter-spacing: .16em; text-transform: uppercase; }
+  .wrap { max-width: 1140px; margin: 0 auto; }
+</style>
+</helmet>
+
+<div style="width:1240px; background:#F7F8F7; color:#14201C; border-radius:16px; overflow:hidden; box-shadow:0 50px 100px -40px rgba(0,0,0,.6);">
+
+  <!-- HEADER -->
+  <header style="position:sticky;top:0;z-index:10;background:rgba(247,248,247,.9);backdrop-filter:blur(8px);border-bottom:1px solid #E4E9E6;">
+    <div class="wrap" style="display:flex;align-items:center;gap:34px;padding:16px 32px;">
+      <div style="display:flex;align-items:center;gap:9px;"><span style="width:28px;height:28px;border-radius:8px;background:#0FA968;color:#fff;display:flex;align-items:center;justify-content:center;font-weight:700;" class="disp">S</span><span class="disp" style="font-size:21px;font-weight:700;color:#14201C;">Stampd</span></div>
+      <nav style="display:flex;gap:26px;font-size:13.5px;font-weight:600;color:#5C6B64;">
+        <span>How it works</span><span>For businesses</span><span>Made for Nepal</span><span>Questions</span>
+      </nav>
+      <div style="margin-left:auto;display:flex;gap:10px;align-items:center;">
+        <span style="font-size:13.5px;font-weight:700;color:#14201C;">Log in</span>
+        <span style="background:#0FA968;color:#fff;border-radius:10px;padding:9px 16px;font-size:13.5px;font-weight:700;">Start your program</span>
+      </div>
+    </div>
+  </header>
+
+  <!-- HERO -->
+  <section class="wrap" style="display:grid;grid-template-columns:1.05fr .95fr;gap:48px;align-items:center;padding:64px 32px 56px;">
+    <div>
+      <span class="lab" style="color:#0B7A4B;background:#E6F7EF;padding:6px 12px;border-radius:999px;">Loyalty for local Nepal</span>
+      <h1 class="serif" style="font-size:56px;line-height:1.06;margin:20px 0 0;letter-spacing:-.01em;">Turn every rupee into a reason to <span style="font-style:italic;color:#0FA968;">come back.</span></h1>
+      <p style="font-size:18px;line-height:1.6;color:#5C6B64;margin:20px 0 0;max-width:480px;">Stampd gives your cafe a points program that works like money — customers earn a share of every bill and spend it right back at your counter. No app to install, no punch cards, no hardware. Live in minutes.</p>
+      <div style="display:flex;gap:12px;margin-top:28px;">
+        <span style="background:#0FA968;color:#fff;border-radius:12px;padding:15px 24px;font-size:15px;font-weight:700;">Start your program →</span>
+        <span style="border:1px solid #CBD3CE;color:#14201C;border-radius:12px;padding:15px 24px;font-size:15px;font-weight:700;background:#fff;">See a live demo</span>
+      </div>
+      <div style="display:flex;gap:26px;margin-top:34px;border-top:1px solid #E4E9E6;padding-top:22px;">
+        <div><div class="num" style="font-size:30px;">10%</div><div style="font-size:12px;color:#8B9A93;">of a bill back, your call</div></div>
+        <div><div class="num" style="font-size:30px;">30s</div><div style="font-size:12px;color:#8B9A93;">single-use earn code</div></div>
+        <div><div class="num" style="font-size:30px;color:#0FA968;">0</div><div style="font-size:12px;color:#8B9A93;">app installs needed</div></div>
+      </div>
+    </div>
+    <!-- product visual: the earn moment -->
+    <div style="position:relative;display:flex;justify-content:center;">
+      <div style="position:absolute;top:20px;left:0;background:#fff;border:1px solid #E4E9E6;border-radius:16px;padding:14px;width:190px;box-shadow:0 24px 50px -24px rgba(0,0,0,.3);transform:rotate(-4deg);">
+        <div class="lab" style="color:#8B9A93;">Staff · counter</div>
+        <div style="width:120px;height:120px;margin:10px auto 0;border-radius:12px;background:#fff;border:1px solid #E4E9E6;position:relative;">
+          <div style="position:absolute;top:10px;left:10px;width:30px;height:30px;border:5px solid #14201C;border-radius:5px;"></div>
+          <div style="position:absolute;top:10px;right:10px;width:30px;height:30px;border:5px solid #14201C;border-radius:5px;"></div>
+          <div style="position:absolute;bottom:10px;left:10px;width:30px;height:30px;border:5px solid #14201C;border-radius:5px;"></div>
+          <div style="position:absolute;top:55px;left:58px;width:9px;height:9px;background:#14201C;"></div>
+          <div style="position:absolute;top:72px;left:72px;width:9px;height:9px;background:#14201C;"></div>
+          <div style="position:absolute;bottom:22px;right:24px;width:9px;height:9px;background:#14201C;"></div>
+        </div>
+        <div style="text-align:center;font-size:11px;font-weight:700;margin-top:8px;">Scan to earn points</div>
+      </div>
+      <!-- phone -->
+      <div style="width:250px;background:#0b0b0c;border-radius:38px;padding:8px;box-shadow:0 40px 70px -30px rgba(0,0,0,.5);margin-left:70px;margin-top:30px;">
+        <div style="border-radius:30px;overflow:hidden;height:480px;background:#0C110F;display:flex;flex-direction:column;padding:22px 20px;">
+          <div style="display:flex;align-items:center;justify-content:space-between;"><div style="display:flex;align-items:center;gap:7px;"><span style="width:22px;height:22px;border-radius:6px;background:#0FA968;color:#fff;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:12px;" class="disp">S</span><span class="disp" style="color:#E9F0EC;font-weight:700;font-size:15px;">Stampd</span></div><span style="width:26px;height:26px;border-radius:50%;background:#1B241F;"></span></div>
+          <div class="disp" style="font-size:19px;font-weight:700;color:#E9F0EC;margin-top:20px;">Your places</div>
+          <div style="font-size:12px;color:#8DA79A;margin-top:2px;">Points waiting at spots you love</div>
+          <div style="background:#141B18;border:1px solid #223029;border-radius:16px;padding:16px;margin-top:14px;">
+            <div style="display:flex;align-items:center;gap:10px;"><span style="width:30px;height:30px;border-radius:9px;background:#0FA968;color:#fff;display:flex;align-items:center;justify-content:center;font-weight:700;" class="disp">C</span><span style="font-size:13px;font-weight:700;color:#E9F0EC;">Your café</span></div>
+            <div class="num" style="font-size:38px;color:#34D399;line-height:1;margin-top:10px;">240</div>
+            <div class="lab" style="color:#6E8578;margin-top:2px;">points to spend</div>
+          </div>
+          <div style="background:#141B18;border:1px solid #223029;border-radius:16px;padding:14px;margin-top:10px;">
+            <div class="lab" style="color:#6E8578;margin-bottom:8px;">Treat yourself</div>
+            <div style="display:flex;align-items:center;gap:9px;margin-bottom:8px;"><span style="width:26px;height:26px;border-radius:50%;background:#0FA968;color:#fff;display:flex;align-items:center;justify-content:center;font-size:11px;">◆</span><span style="flex:1;font-size:12.5px;color:#E9F0EC;font-weight:600;">Free coffee</span><span class="num" style="font-size:14px;color:#34D399;">80</span></div>
+            <div style="display:flex;align-items:center;gap:9px;"><span style="width:26px;height:26px;border-radius:50%;background:#0FA968;color:#fff;display:flex;align-items:center;justify-content:center;font-size:11px;">◆</span><span style="flex:1;font-size:12.5px;color:#E9F0EC;font-weight:600;">Slice of cake</span><span class="num" style="font-size:14px;color:#34D399;">120</span></div>
+          </div>
+          <div style="margin-top:auto;text-align:center;font-size:11px;color:#6E8578;">Scan &middot; earn &middot; treat yourself</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- THE LOOP -->
+  <section style="background:#fff;border-top:1px solid #E4E9E6;border-bottom:1px solid #E4E9E6;">
+    <div class="wrap" style="padding:56px 32px;">
+      <div style="display:flex;align-items:center;gap:12px;margin-bottom:28px;"><span class="serif" style="font-size:14px;color:#0FA968;">01</span><span class="lab" style="color:#8B9A93;">The whole loop</span><span style="flex:1;height:1px;background:#E4E9E6;"></span></div>
+      <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:0;">
+        <div style="padding:0 22px 0 0;border-right:1px solid #E4E9E6;">
+          <div class="num" style="font-size:40px;color:#CBD3CE;">1</div>
+          <div class="disp" style="font-size:17px;font-weight:700;margin-top:8px;">Enter the bill</div>
+          <p style="font-size:13.5px;color:#5C6B64;line-height:1.55;margin-top:6px;">Staff types what the customer paid. Points are a share of it — you set the percent.</p>
+        </div>
+        <div style="padding:0 22px;border-right:1px solid #E4E9E6;">
+          <div class="num" style="font-size:40px;color:#CBD3CE;">2</div>
+          <div class="disp" style="font-size:17px;font-weight:700;margin-top:8px;">Customer scans</div>
+          <p style="font-size:13.5px;color:#5C6B64;line-height:1.55;margin-top:6px;">Their own phone camera opens the claim page. No app, no account hunting.</p>
+        </div>
+        <div style="padding:0 22px;border-right:1px solid #E4E9E6;">
+          <div class="num" style="font-size:40px;color:#0FA968;">3</div>
+          <div class="disp" style="font-size:17px;font-weight:700;margin-top:8px;">Points land</div>
+          <p style="font-size:13.5px;color:#5C6B64;line-height:1.55;margin-top:6px;">Instantly, with a little celebration. Fractional points, so Rs 105 = 10.5.</p>
+        </div>
+        <div style="padding:0 0 0 22px;">
+          <div class="num" style="font-size:40px;color:#CBD3CE;">4</div>
+          <div class="disp" style="font-size:17px;font-weight:700;margin-top:8px;">They spend it here</div>
+          <p style="font-size:13.5px;color:#5C6B64;line-height:1.55;margin-top:6px;">On rewards you choose — and a real reason to walk back through your door.</p>
+        </div>
+      </div>
+      <div style="margin-top:28px;display:flex;align-items:center;gap:10px;background:#F7F8F7;border-radius:14px;padding:14px 18px;">
+        <span style="width:28px;height:28px;border-radius:8px;background:#14201C;color:#fff;display:flex;align-items:center;justify-content:center;font-size:13px;flex-shrink:0;">⚿</span>
+        <span style="font-size:13.5px;color:#5C6B64;"><strong style="color:#14201C;">Points stay where they're earned.</strong> Each outlet keeps its own balances — even between two branches of the same chain — so customers always know exactly where their points live.</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- FOR BUSINESSES -->
+  <section class="wrap" style="padding:56px 32px;">
+    <div style="display:flex;align-items:center;gap:12px;margin-bottom:28px;"><span class="serif" style="font-size:14px;color:#0FA968;">02</span><span class="lab" style="color:#8B9A93;">Built for the counter</span><span style="flex:1;height:1px;background:#E4E9E6;"></span></div>
+    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:16px;">
+      <div style="background:#fff;border:1px solid #E4E9E6;border-radius:16px;padding:22px;">
+        <div style="width:36px;height:36px;border-radius:10px;background:#E6F7EF;color:#0B7A4B;display:flex;align-items:center;justify-content:center;">◆</div>
+        <div class="disp" style="font-size:17px;font-weight:700;margin-top:14px;">Points as a share of the bill</div>
+        <p style="font-size:13.5px;color:#5C6B64;line-height:1.55;margin-top:6px;">Set 5%, 10%, whatever fits your margins. Inherited from sensible defaults, overridable per outlet.</p>
+      </div>
+      <div style="background:#fff;border:1px solid #E4E9E6;border-radius:16px;padding:22px;">
+        <div style="width:36px;height:36px;border-radius:10px;background:#E6F7EF;color:#0B7A4B;display:flex;align-items:center;justify-content:center;">⚡</div>
+        <div class="disp" style="font-size:17px;font-weight:700;margin-top:14px;">Double-point campaigns</div>
+        <p style="font-size:13.5px;color:#5C6B64;line-height:1.55;margin-top:6px;">Run a 2× weekend or a quiet-Tuesday boost. Pick the days; it goes live on its own, in Nepal time.</p>
+      </div>
+      <div style="background:#fff;border:1px solid #E4E9E6;border-radius:16px;padding:22px;">
+        <div style="width:36px;height:36px;border-radius:10px;background:#E6F7EF;color:#0B7A4B;display:flex;align-items:center;justify-content:center;">◐</div>
+        <div class="disp" style="font-size:17px;font-weight:700;margin-top:14px;">Your brand, not ours</div>
+        <p style="font-size:13.5px;color:#5C6B64;line-height:1.55;margin-top:6px;">Your logo and colour theme the whole customer experience. It feels like your app, not a shared one.</p>
+      </div>
+      <div style="background:#fff;border:1px solid #E4E9E6;border-radius:16px;padding:22px;">
+        <div style="width:36px;height:36px;border-radius:10px;background:#E6F7EF;color:#0B7A4B;display:flex;align-items:center;justify-content:center;">▦</div>
+        <div class="disp" style="font-size:17px;font-weight:700;margin-top:14px;">A ledger you can trust</div>
+        <p style="font-size:13.5px;color:#5C6B64;line-height:1.55;margin-top:6px;">Every earn and spend is a row that never changes. Balances always equal the history. Export any date range.</p>
+      </div>
+      <div style="background:#fff;border:1px solid #E4E9E6;border-radius:16px;padding:22px;">
+        <div style="width:36px;height:36px;border-radius:10px;background:#E6F7EF;color:#0B7A4B;display:flex;align-items:center;justify-content:center;">◉</div>
+        <div class="disp" style="font-size:17px;font-weight:700;margin-top:14px;">One chain, many outlets</div>
+        <p style="font-size:13.5px;color:#5C6B64;line-height:1.55;margin-top:6px;">Run several branches from one login, each isolated. See a private group rollup no single outlet can.</p>
+      </div>
+      <div style="background:#fff;border:1px solid #E4E9E6;border-radius:16px;padding:22px;">
+        <div style="width:36px;height:36px;border-radius:10px;background:#E6F7EF;color:#0B7A4B;display:flex;align-items:center;justify-content:center;">☖</div>
+        <div class="disp" style="font-size:17px;font-weight:700;margin-top:14px;">Staff-safe by design</div>
+        <p style="font-size:13.5px;color:#5C6B64;line-height:1.55;margin-top:6px;">Codes are single-use and expire in 30 seconds. A customer can never move their own balance.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- MADE FOR NEPAL -->
+  <section style="background:#14201C;color:#E9F0EC;">
+    <div class="wrap" style="padding:56px 32px;display:grid;grid-template-columns:1fr 1fr;gap:40px;align-items:center;">
+      <div>
+        <span class="lab" style="color:#34D399;">Made for Nepal</span>
+        <h2 class="serif" style="font-size:36px;line-height:1.1;margin:14px 0 0;">Built for a mid-range Android on café Wi-Fi.</h2>
+        <p style="font-size:15px;line-height:1.6;color:#A9BDB2;margin-top:16px;max-width:440px;">Rs everywhere. Fast on slow networks and small screens. Campaigns judged in Nepal time. It installs to the home screen like an app — because for your customers, it is one.</p>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:12px;">
+        <div style="display:flex;gap:14px;align-items:center;background:#1B241F;border:1px solid #223029;border-radius:14px;padding:16px;"><span class="num" style="font-size:28px;color:#34D399;">Rs</span><span style="font-size:14px;color:#C9D6CF;">Rupees, decimals handled gracefully — 10.5 points is 10.5, not rounded away.</span></div>
+        <div style="display:flex;gap:14px;align-items:center;background:#1B241F;border:1px solid #223029;border-radius:14px;padding:16px;"><span class="num" style="font-size:28px;color:#34D399;">+5¾</span><span style="font-size:14px;color:#C9D6CF;">UTC+5:45 aware — campaign days start and end on Nepal time, not a server's.</span></div>
+        <div style="display:flex;gap:14px;align-items:center;background:#1B241F;border:1px solid #223029;border-radius:14px;padding:16px;"><span class="num" style="font-size:28px;color:#34D399;">PWA</span><span style="font-size:14px;color:#C9D6CF;">Add to home screen, works offline-first for the shell, live for the data.</span></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- FAQ -->
+  <section class="wrap" style="padding:56px 32px;max-width:820px;">
+    <h2 class="serif" style="font-size:30px;text-align:center;margin:0 0 26px;">Questions, answered</h2>
+    <div style="display:flex;flex-direction:column;gap:2px;">
+      <div style="background:#fff;border:1px solid #E4E9E6;border-radius:14px;padding:18px 20px;"><div style="font-size:15px;font-weight:700;">Do my customers need to download an app?</div><div style="font-size:13.5px;color:#5C6B64;margin-top:5px;">No. It runs in the browser and adds to the home screen like an app.</div></div>
+      <div style="background:#fff;border:1px solid #E4E9E6;border-radius:14px;padding:18px 20px;"><div style="font-size:15px;font-weight:700;">Can I choose my own rewards?</div><div style="font-size:13.5px;color:#5C6B64;margin-top:5px;">Yes — put a points price on any menu item or a standalone reward, and set how much of a bill comes back.</div></div>
+      <div style="background:#fff;border:1px solid #E4E9E6;border-radius:14px;padding:18px 20px;"><div style="font-size:15px;font-weight:700;">Is there a payment gateway?</div><div style="font-size:13.5px;color:#5C6B64;margin-top:5px;">No. Stampd is purely loyalty. Subscriptions are arranged with us directly and activated with a key.</div></div>
+    </div>
+  </section>
+
+  <!-- CTA -->
+  <section class="wrap" style="padding:0 32px 56px;">
+    <div style="background:linear-gradient(135deg,#0FA968,#0B7A4B);border-radius:24px;padding:48px;color:#fff;">
+      <h2 class="serif" style="font-size:34px;margin:0;max-width:560px;line-height:1.1;">Give people a reason to choose you again.</h2>
+      <p style="font-size:16px;opacity:.9;margin:12px 0 24px;max-width:520px;">Set up your program in minutes. No hardware, no app store, no risk.</p>
+      <div style="display:flex;gap:12px;"><span style="background:#fff;color:#0B7A4B;border-radius:12px;padding:14px 24px;font-size:15px;font-weight:700;">Start your program</span><span style="border:1px solid rgba(255,255,255,.5);border-radius:12px;padding:14px 24px;font-size:15px;font-weight:700;">Talk to us</span></div>
+    </div>
+  </section>
+
+  <!-- FOOTER: three entry points -->
+  <footer style="background:#fff;border-top:1px solid #E4E9E6;">
+    <div class="wrap" style="padding:40px 32px;display:flex;justify-content:space-between;gap:30px;flex-wrap:wrap;">
+      <div style="max-width:280px;">
+        <div style="display:flex;align-items:center;gap:8px;"><span style="width:24px;height:24px;border-radius:7px;background:#0FA968;color:#fff;display:flex;align-items:center;justify-content:center;font-weight:700;" class="disp">S</span><span class="disp" style="font-size:18px;font-weight:700;">Stampd</span></div>
+        <p style="font-size:13px;color:#8B9A93;margin-top:10px;line-height:1.5;">Points that work like money, for local business in Nepal.</p>
+      </div>
+      <div style="display:flex;gap:12px;">
+        <div style="border:1px solid #E4E9E6;border-radius:12px;padding:14px 18px;min-width:150px;"><div class="lab" style="color:#8B9A93;">Customers</div><div style="font-size:14px;font-weight:700;margin-top:4px;color:#0FA968;">Customer login →</div></div>
+        <div style="border:1px solid #E4E9E6;border-radius:12px;padding:14px 18px;min-width:150px;"><div class="lab" style="color:#8B9A93;">Businesses</div><div style="font-size:14px;font-weight:700;margin-top:4px;color:#0FA968;">Staff & owner login →</div></div>
+        <div style="border:1px solid #E4E9E6;border-radius:12px;padding:14px 18px;min-width:150px;"><div class="lab" style="color:#8B9A93;">Platform</div><div style="font-size:14px;font-weight:700;margin-top:4px;color:#14201C;">Platform admin →</div></div>
+      </div>
+    </div>
+    <div class="wrap" style="padding:0 32px 28px;"><div style="border-top:1px solid #E4E9E6;padding-top:16px;font-size:12px;color:#8B9A93;">© 2026 Stampd. All rights reserved.</div></div>
+  </footer>
+
+</div>
+</x-dc>
+</body>
+</html>

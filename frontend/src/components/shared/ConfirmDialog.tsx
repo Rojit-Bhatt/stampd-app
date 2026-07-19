@@ -30,9 +30,9 @@ export function ConfirmDialog({
 }: ConfirmDialogProps) {
   return (
     <AlertDialog open={open} onOpenChange={onOpenChange}>
-      <AlertDialogContent className="max-w-[420px] shadow-ambient rounded-3xl bg-[var(--surface)] p-6 shadow-xl">
+      <AlertDialogContent className="max-w-[420px] rounded-[var(--radius-card)] border border-[var(--line)] bg-[var(--surface)] shadow-ambient p-6 shadow-xl">
         <AlertDialogHeader className="gap-1.5">
-          <AlertDialogTitle className="font-display text-lg font-extrabold text-[var(--ink)]">
+          <AlertDialogTitle className="font-display text-lg font-bold text-[var(--ink)]">
             {title}
           </AlertDialogTitle>
           <AlertDialogDescription className="text-sm text-[var(--muted)]">
@@ -42,7 +42,7 @@ export function ConfirmDialog({
         <AlertDialogFooter className="mt-2 flex flex-row justify-end gap-2">
           <button
             onClick={() => onOpenChange(false)}
-            className="rounded-[12px] border border-[var(--line)] bg-[var(--bg)] px-4 py-2.5 text-sm font-bold text-[var(--ink)] hover:bg-[var(--line)]"
+            className="rounded-[var(--radius-btn)] border border-[var(--line)] bg-[var(--bg)] px-4 py-2.5 text-sm font-bold text-[var(--ink)] hover:bg-[var(--line)]"
           >
             {cancelLabel}
           </button>
@@ -51,7 +51,7 @@ export function ConfirmDialog({
               onConfirm();
               onOpenChange(false);
             }}
-            className="rounded-[12px] px-4 py-2.5 text-sm font-bold text-white transition-opacity hover:opacity-90"
+            className="rounded-[var(--radius-btn)] px-4 py-2.5 text-sm font-bold text-white transition-opacity hover:opacity-90"
             style={{ background: confirmColor }}
           >
             {confirmLabel}

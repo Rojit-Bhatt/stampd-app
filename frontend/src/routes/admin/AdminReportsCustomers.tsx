@@ -18,14 +18,14 @@ export default function AdminReportsCustomers() {
 
   return (
     <div className="max-w-[560px]">
-      <h1 className="font-display text-[28px] font-extrabold text-[var(--ink)]">Customer report</h1>
+      <h1 className="font-display text-[28px] font-bold text-[var(--ink)]">Customer report</h1>
       <p className="mb-6 text-[var(--muted)]">
         Download every customer's contact info, points balance, and lifetime totals as an Excel file.
       </p>
       <button
         onClick={download}
         className="inline-flex items-center gap-1.5 rounded-[12px] px-5 py-3 text-sm font-bold text-white"
-        style={{ background: "var(--brand)" }}
+        style={{ background: "var(--primary)" }}
       >
         <Download className="h-4 w-4" /> Download Excel
       </button>

@@ -5,6 +5,8 @@ import { Settings, LogOut } from "lucide-react";
 interface AccountMenuProps {
   initial: string;
   name: string;
+  /** Hide the name/email below xl — for horizontal bars where space is tight. */
+  compact?: boolean;
   email?: string;
   settingsPath: string;
   onLogout: () => void;
@@ -12,7 +14,7 @@ interface AccountMenuProps {
   dropUp?: boolean;
 }
 
-export function AccountMenu({ initial, name, email, settingsPath, onLogout, accent, dropUp }: AccountMenuProps) {
+export function AccountMenu({ initial, name, email, settingsPath, onLogout, accent, dropUp, compact }: AccountMenuProps) {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
 
@@ -29,15 +31,15 @@ export function AccountMenu({ initial, name, email, settingsPath, onLogout, acce
     <div className="relative" ref={ref}>
       <button
         onClick={() => setOpen((o) => !o)}
-        className="flex w-full items-center gap-2.5 rounded-[11px] px-2 py-2 text-left transition-colors hover:bg-[var(--bg)]"
+        className="flex w-full items-center gap-2.5 rounded-[var(--radius-btn)] px-2 py-2 text-left transition-colors hover:bg-[var(--bg)]"
       >
         <span
-          className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-[10px] font-display text-sm font-extrabold text-white"
+          className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-[10px] font-display text-sm font-bold text-white"
           style={{ background: accent || "var(--brand)" }}
         >
           {initial}
         </span>
-        <span className="min-w-0 flex-1">
+        <span className={`min-w-0 flex-1 ${compact ? "hidden xl:block" : ""}`}>
           <span className="block truncate text-[13px] font-bold">{name}</span>
           {email && <span className="block truncate text-[11px] text-[var(--soft)]">{email}</span>}
         </span>
@@ -45,7 +47,7 @@ export function AccountMenu({ initial, name, email, settingsPath, onLogout, acce
 
       {open && (
         <div
-          className={`absolute left-0 z-10 w-full min-w-[180px] overflow-hidden rounded-[12px] border border-[var(--line)] bg-[var(--surface)] shadow-lg ${
+          className={`absolute left-0 z-10 w-full min-w-[180px] overflow-hidden rounded-[var(--radius-btn)] border border-[var(--line)] bg-[var(--surface)] shadow-lg ${
             dropUp ? "bottom-full mb-2" : "top-full mt-2"
           }`}
         >

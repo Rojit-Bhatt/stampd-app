@@ -18,13 +18,13 @@ export default defineConfig({
         name: "Stampd",
         short_name: "Stampd",
         description: "Your points at every place you visit — scan, earn, redeem.",
-        // Dark ink status bar (always readable) over the app's warm-cream
+        // Dark ink status bar (always readable) over the app's off-white
         // splash. The one installed "Stampd" app opens to /explore — the
         // customer's list of every place they've joined — not any single
         // outlet (outlet slugs aren't unique platform-wide, so there is no
         // one outlet a global install could point at).
-        theme_color: "#1F1B18",
-        background_color: "#F3ECE2",
+        theme_color: "#14201C",
+        background_color: "#F7F8F7",
         display: "standalone",
         start_url: "/explore",
         scope: "/",

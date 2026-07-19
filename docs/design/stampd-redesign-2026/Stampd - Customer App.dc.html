@@ -1,0 +1,258 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<meta name="design_doc_mode" content="canvas">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@400;500;600;700;800&family=DM+Serif+Display&display=swap" rel="stylesheet">
+<style>
+  * { box-sizing: border-box; }
+  body { margin: 0; background: #656a67; -webkit-font-smoothing: antialiased; font-family: "Inter", sans-serif; }
+  .tnum { font-variant-numeric: tabular-nums; }
+  .num { font-family: "DM Serif Display", serif; }
+  .disp { font-family: "Space Grotesk", sans-serif; }
+  .lab { font-size: 10px; font-weight: 700; letter-spacing: .12em; text-transform: uppercase; }
+  .cap { font-family:"Space Grotesk",sans-serif; font-size:13px; font-weight:600; color:#d9dbd7; margin:0 0 10px; }
+  .hs::-webkit-scrollbar { display:none; }
+</style>
+</helmet>
+
+<div style="padding: 56px 64px 140px; color:#14201C;">
+
+  <div style="max-width: 860px; margin-bottom: 40px;">
+    <div class="lab" style="color:#cfd2ce;">Stampd · Customer app</div>
+    <h1 class="disp" style="font-size: 36px; font-weight: 700; color:#fff; margin: 12px 0 12px; letter-spacing:-.02em;">Genuinely good on a Rs-8,000 phone</h1>
+    <p style="font-size: 15px; line-height: 1.65; color:#e8eae7; margin:0;">The cross-tenant home (<strong>Explore</strong> + <strong>My Businesses</strong>) carries Stampd's own green identity. Inside an outlet, the subtree is <strong>tenant-themed</strong>. The rule that keeps any brand color safe: <strong>tenant hue owns identity</strong> (logo tiles, business name, banners, a thin card accent); <strong>green owns value &amp; actions</strong> (the points figure, the scan button, earn/redeem). So a customer never loses the "how much can I spend" signal, whatever color the cafe picked — and the hue is auto-darkened to hit 4.5:1 (or flips to ink text if it's too light).</p>
+  </div>
+
+  <!-- ============ GLOBAL (Stampd green) ============ -->
+  <h2 class="disp" style="font-size:20px;font-weight:700;color:#fff;margin:0 0 4px;">Cross-tenant · Stampd identity</h2>
+  <p style="color:#dfe1de;font-size:13px;margin:0 0 22px;">Slug-less. No fabricated ratings or deals — sorted by real distance, else genuine recent activity.</p>
+
+  <div style="display:flex; gap:30px; flex-wrap:wrap; align-items:flex-start;">
+
+    <!-- EXPLORE -->
+    <div>
+      <div class="cap">Explore — directory</div>
+      <div style="width:300px; background:#0b0b0c; border-radius:44px; padding:9px; box-shadow:0 24px 48px -22px rgba(0,0,0,.45);">
+        <div style="border-radius:36px; overflow:hidden; height:620px; background:#F7F8F7; display:flex; flex-direction:column;">
+          <div style="display:flex; justify-content:space-between; padding:12px 20px 6px; font-size:12px; font-weight:600;"><span class="tnum">9:41</span><span style="font-size:10px;">▪ ▪ ▪ ▮</span></div>
+          <div style="display:flex; align-items:center; justify-content:space-between; padding:4px 20px 12px;">
+            <div style="display:flex;align-items:center;gap:7px;"><span style="width:22px;height:22px;border-radius:7px;background:#0FA968;display:flex;align-items:center;justify-content:center;color:#fff;font-weight:700;font-size:13px;">S</span><span class="disp" style="font-weight:700;font-size:18px;color:#0FA968;">Stampd</span></div>
+            <div style="display:flex;gap:8px;">
+              <span style="width:32px;height:32px;border-radius:50%;background:#EEF1EF;display:flex;align-items:center;justify-content:center;font-size:13px;">⌗</span>
+              <span style="width:32px;height:32px;border-radius:50%;background:#EEF1EF;display:flex;align-items:center;justify-content:center;font-size:13px;">◔</span>
+              <span style="width:32px;height:32px;border-radius:50%;background:#0FA968;color:#fff;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:12px;">A</span>
+            </div>
+          </div>
+          <div style="flex:1;overflow:hidden;padding:0 20px;">
+            <div class="disp" style="font-size:16px;font-weight:700;margin-bottom:10px;">My Places</div>
+            <div class="hs" style="display:flex;gap:12px;overflow-x:auto;padding-bottom:4px;">
+              <div style="min-width:150px;background:#fff;border:1px solid #E4E9E6;border-radius:20px;padding:14px;">
+                <div style="width:36px;height:36px;border-radius:12px;background:#B8460C;color:#fff;display:flex;align-items:center;justify-content:center;font-weight:700;">R</div>
+                <div style="font-size:13px;font-weight:700;margin-top:10px;">Roastery Lane</div>
+                <div class="num" style="font-size:17px;color:#0FA968;margin-top:2px;">138.5 <span style="font-family:Inter;font-size:11px;color:#8B9A93;font-weight:600;">pts</span></div>
+              </div>
+              <div style="min-width:150px;background:#fff;border:1px solid #E4E9E6;border-radius:20px;padding:14px;">
+                <div style="width:36px;height:36px;border-radius:12px;background:#3D6BE5;color:#fff;display:flex;align-items:center;justify-content:center;font-weight:700;">M</div>
+                <div style="font-size:13px;font-weight:700;margin-top:10px;">Momo House</div>
+                <div class="num" style="font-size:17px;color:#0FA968;margin-top:2px;">54 <span style="font-family:Inter;font-size:11px;color:#8B9A93;font-weight:600;">pts</span></div>
+              </div>
+            </div>
+            <div class="disp" style="font-size:16px;font-weight:700;margin:16px 0 10px;">Discover</div>
+            <div style="display:flex;align-items:center;gap:8px;background:#EEF1EF;border-radius:14px;padding:11px 14px;"><span style="color:#8B9A93;">⌕</span><span style="font-size:13px;color:#8B9A93;">Search businesses…</span></div>
+            <div class="hs" style="display:flex;gap:8px;overflow-x:auto;margin-top:12px;">
+              <span style="flex-shrink:0;background:#0FA968;color:#fff;border-radius:999px;padding:7px 14px;font-size:12px;font-weight:700;">All</span>
+              <span style="flex-shrink:0;background:#EEF1EF;color:#5C6B64;border-radius:999px;padding:7px 14px;font-size:12px;font-weight:700;">Cafe</span>
+              <span style="flex-shrink:0;background:#EEF1EF;color:#5C6B64;border-radius:999px;padding:7px 14px;font-size:12px;font-weight:700;">Restaurant</span>
+              <span style="flex-shrink:0;background:#EEF1EF;color:#5C6B64;border-radius:999px;padding:7px 14px;font-size:12px;font-weight:700;">Bakery</span>
+            </div>
+            <div style="background:#fff;border:1px solid #E4E9E6;border-radius:22px;overflow:hidden;margin-top:14px;">
+              <div style="height:96px;background:linear-gradient(150deg,#B8460C,#7A2E08);display:flex;align-items:flex-end;padding:12px;"><span style="width:38px;height:38px;border-radius:12px;background:#fff;color:#B8460C;display:flex;align-items:center;justify-content:center;font-weight:700;" class="disp">R</span></div>
+              <div style="padding:12px 14px;"><div class="disp" style="font-size:15px;font-weight:700;">Roastery Lane</div><div style="display:flex;gap:6px;margin-top:6px;"><span class="lab" style="background:#EEF1EF;color:#14201C;padding:3px 7px;border-radius:5px;">1.2 km</span><span class="lab" style="background:#EEF1EF;color:#14201C;padding:3px 7px;border-radius:5px;">Cafe</span></div></div>
+            </div>
+          </div>
+          <div style="display:flex;justify-content:space-around;padding:10px 24px;margin:8px 16px 16px;background:#fff;border:1px solid #E4E9E6;border-radius:999px;box-shadow:0 14px 30px -14px rgba(15,169,104,.35);">
+            <span style="display:flex;flex-direction:column;align-items:center;gap:3px;color:#0FA968;"><span>◎</span><span class="lab">Home</span></span>
+            <span style="display:flex;flex-direction:column;align-items:center;gap:3px;color:#A6B2AC;"><span>▦</span><span class="lab">My Businesses</span></span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- MY BUSINESSES -->
+    <div>
+      <div class="cap">My Businesses — every balance</div>
+      <div style="width:300px; background:#0b0b0c; border-radius:44px; padding:9px; box-shadow:0 24px 48px -22px rgba(0,0,0,.45);">
+        <div style="border-radius:36px; overflow:hidden; height:620px; background:#F7F8F7; display:flex; flex-direction:column;">
+          <div style="display:flex; justify-content:space-between; padding:12px 20px 6px; font-size:12px; font-weight:600;"><span class="tnum">9:41</span><span style="font-size:10px;">▪ ▪ ▪ ▮</span></div>
+          <div style="flex:1;overflow:hidden;padding:8px 20px 0;">
+            <div class="disp" style="font-size:22px;font-weight:700;">My Businesses</div>
+            <div style="font-size:13px;color:#5C6B64;margin-top:2px;">Every business you've earned points at.</div>
+            <div style="background:#fff;border:1px solid #E4E9E6;border-radius:22px;padding:18px;margin-top:16px;box-shadow:0 12px 32px -20px rgba(15,169,104,.18);">
+              <div style="display:flex;align-items:center;gap:12px;">
+                <div style="width:44px;height:44px;border-radius:14px;background:linear-gradient(150deg,#B8460C,#7A2E08);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:700;" class="disp">R</div>
+                <div style="flex:1;min-width:0;"><div class="disp" style="font-size:16px;font-weight:700;">Roastery Lane</div><div style="font-size:12px;color:#8B9A93;">Last visit today</div></div>
+              </div>
+              <div class="num" style="font-size:40px;color:#0FA968;line-height:1;margin-top:14px;">138.5</div>
+              <div class="lab" style="color:#8B9A93;margin-top:3px;">points · here only</div>
+            </div>
+            <div style="background:#fff;border:1px solid #E4E9E6;border-radius:22px;padding:18px;margin-top:14px;box-shadow:0 12px 32px -20px rgba(15,169,104,.18);">
+              <div style="display:flex;align-items:center;gap:12px;">
+                <div style="width:44px;height:44px;border-radius:14px;background:linear-gradient(150deg,#3D6BE5,#25409A);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:700;" class="disp">M</div>
+                <div style="flex:1;min-width:0;"><div class="disp" style="font-size:16px;font-weight:700;">Momo House</div><div style="font-size:12px;color:#8B9A93;">Last visit 3 days ago</div></div>
+              </div>
+              <div class="num" style="font-size:40px;color:#0FA968;line-height:1;margin-top:14px;">54</div>
+              <div class="lab" style="color:#8B9A93;margin-top:3px;">points · here only</div>
+            </div>
+          </div>
+          <div style="display:flex;justify-content:space-around;padding:10px 24px;margin:8px 16px 16px;background:#fff;border:1px solid #E4E9E6;border-radius:999px;box-shadow:0 14px 30px -14px rgba(15,169,104,.35);">
+            <span style="display:flex;flex-direction:column;align-items:center;gap:3px;color:#A6B2AC;"><span>◎</span><span class="lab">Home</span></span>
+            <span style="display:flex;flex-direction:column;align-items:center;gap:3px;color:#0FA968;"><span>▦</span><span class="lab">My Businesses</span></span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============ IN-OUTLET (tenant-themed) ============ -->
+  <h2 class="disp" style="font-size:20px;font-weight:700;color:#fff;margin:48px 0 4px;">Inside an outlet · tenant-themed</h2>
+  <p style="color:#dfe1de;font-size:13px;margin:0 0 22px;">Roastery Lane's brand color is <span style="color:#F0A882;font-weight:700;">#B8460C</span> — it owns identity; the balance stays green.</p>
+
+  <div style="display:flex; gap:30px; flex-wrap:wrap; align-items:flex-start;">
+
+    <!-- DASHBOARD LIGHT -->
+    <div>
+      <div class="cap">Outlet dashboard — light</div>
+      <div style="width:300px; background:#0b0b0c; border-radius:44px; padding:9px; box-shadow:0 24px 48px -22px rgba(0,0,0,.45);">
+        <div style="border-radius:36px; overflow:hidden; height:620px; background:#F7F8F7; display:flex; flex-direction:column;">
+          <div style="display:flex; justify-content:space-between; padding:12px 20px 6px; font-size:12px; font-weight:600;"><span class="tnum">9:41</span><span style="font-size:10px;">▪ ▪ ▪ ▮</span></div>
+          <div style="display:flex; align-items:center; justify-content:space-between; padding:4px 20px 10px;">
+            <div style="display:flex;align-items:center;gap:8px;"><span style="width:26px;height:26px;border-radius:8px;background:#B8460C;color:#fff;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:13px;">R</span><span class="disp" style="font-weight:700;font-size:15px;color:#B8460C;">Roastery Lane</span></div>
+            <span style="width:30px;height:30px;border-radius:50%;background:#EEF1EF;display:flex;align-items:center;justify-content:center;font-size:12px;">◔</span>
+          </div>
+          <div style="flex:1;overflow:hidden;padding:0 20px;">
+            <div class="disp" style="font-size:20px;font-weight:700;">Welcome back, Aarav</div>
+            <div style="font-size:12.5px;color:#5C6B64;margin-top:2px;">You can redeem 2 rewards right now</div>
+            <div style="display:flex;align-items:center;gap:9px;background:#0FA968;color:#fff;border-radius:14px;padding:10px 12px;margin-top:12px;"><span style="width:24px;height:24px;border-radius:50%;background:rgba(255,255,255,.22);display:flex;align-items:center;justify-content:center;font-size:12px;">⚡</span><div style="line-height:1.2;"><div style="font-size:12px;font-weight:700;">2× points on right now</div><div style="font-size:11px;opacity:.85;">Weekend Boost</div></div></div>
+            <!-- balance card with tenant accent bar -->
+            <div style="background:#fff;border:1px solid #E4E9E6;border-radius:22px;margin-top:12px;overflow:hidden;box-shadow:0 12px 32px -20px rgba(15,169,104,.18);">
+              <div style="height:5px;background:#B8460C;"></div>
+              <div style="padding:16px 18px;">
+                <div class="disp" style="font-size:14px;font-weight:700;color:#B8460C;">Roastery Lane</div>
+                <div style="font-size:12px;color:#5C6B64;">Your points</div>
+                <div class="num" style="font-size:42px;color:#0FA968;line-height:1;margin-top:6px;">138.5</div>
+                <div style="background:#FBF0D6;color:#8A5A12;border-radius:12px;padding:9px 12px;font-size:12px;font-weight:600;margin-top:12px;">Expiring in 28 days — any visit resets the clock.</div>
+              </div>
+            </div>
+            <div style="background:#fff;border:1px solid #E4E9E6;border-radius:20px;padding:15px;margin-top:12px;">
+              <div style="display:flex;justify-content:space-between;margin-bottom:10px;"><span class="lab" style="color:#8B9A93;">Redeem your points</span><span style="font-size:11px;font-weight:700;color:#0FA968;">History</span></div>
+              <div style="display:flex;align-items:center;gap:10px;margin-bottom:9px;"><span style="width:28px;height:28px;border-radius:50%;background:#0FA968;color:#fff;display:flex;align-items:center;justify-content:center;font-size:12px;">◆</span><span style="flex:1;font-size:12.5px;font-weight:600;">Free Filter Coffee</span><span class="num" style="font-size:14px;color:#0FA968;">80</span></div>
+              <div style="display:flex;align-items:center;gap:10px;"><span style="width:28px;height:28px;border-radius:50%;background:#0FA968;color:#fff;display:flex;align-items:center;justify-content:center;font-size:12px;">◆</span><span style="flex:1;font-size:12.5px;font-weight:600;">Almond Croissant</span><span class="num" style="font-size:14px;color:#0FA968;">120</span></div>
+            </div>
+          </div>
+          <!-- bottom nav w/ green FAB -->
+          <div style="position:relative;display:flex;justify-content:space-around;align-items:center;padding:10px 18px;margin:8px 16px 16px;background:#fff;border:1px solid #E4E9E6;border-radius:999px;box-shadow:0 14px 30px -14px rgba(15,169,104,.35);">
+            <span style="display:flex;flex-direction:column;align-items:center;gap:2px;color:#0FA968;"><span>☕</span><span class="lab">Card</span></span>
+            <span style="display:flex;flex-direction:column;align-items:center;gap:2px;color:#A6B2AC;"><span>🍽</span><span class="lab">Menu</span></span>
+            <span style="position:relative;width:56px;height:44px;flex-shrink:0;display:flex;justify-content:center;"><span style="position:absolute;top:-26px;width:56px;height:56px;border-radius:18px;background:#0FA968;color:#fff;display:flex;align-items:center;justify-content:center;font-size:22px;box-shadow:0 10px 22px -6px rgba(15,169,104,.6);">⌗</span></span>
+            <span style="display:flex;flex-direction:column;align-items:center;gap:2px;color:#A6B2AC;"><span>◉</span><span class="lab">Points</span></span>
+            <span style="display:flex;flex-direction:column;align-items:center;gap:2px;color:#A6B2AC;"><span>⚙</span><span class="lab">Settings</span></span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- DASHBOARD DARK -->
+    <div>
+      <div class="cap">Outlet dashboard — dark</div>
+      <div style="width:300px; background:#0b0b0c; border-radius:44px; padding:9px; box-shadow:0 24px 48px -22px rgba(0,0,0,.45);">
+        <div style="border-radius:36px; overflow:hidden; height:620px; background:#0C110F; display:flex; flex-direction:column;">
+          <div style="display:flex; justify-content:space-between; padding:12px 20px 6px; font-size:12px; font-weight:600; color:#E9F0EC;"><span class="tnum">9:41</span><span style="font-size:10px;">▪ ▪ ▪ ▮</span></div>
+          <div style="display:flex; align-items:center; justify-content:space-between; padding:4px 20px 10px;">
+            <div style="display:flex;align-items:center;gap:8px;"><span style="width:26px;height:26px;border-radius:8px;background:#E8703A;color:#160b05;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:13px;">R</span><span class="disp" style="font-weight:700;font-size:15px;color:#F0A882;">Roastery Lane</span></div>
+            <span style="width:30px;height:30px;border-radius:50%;background:#1B241F;color:#8DA79A;display:flex;align-items:center;justify-content:center;font-size:12px;">◔</span>
+          </div>
+          <div style="flex:1;overflow:hidden;padding:0 20px;">
+            <div class="disp" style="font-size:20px;font-weight:700;color:#E9F0EC;">Welcome back, Aarav</div>
+            <div style="font-size:12.5px;color:#8DA79A;margin-top:2px;">You can redeem 2 rewards right now</div>
+            <div style="display:flex;align-items:center;gap:9px;background:#0FA968;color:#fff;border-radius:14px;padding:10px 12px;margin-top:12px;"><span style="width:24px;height:24px;border-radius:50%;background:rgba(255,255,255,.22);display:flex;align-items:center;justify-content:center;font-size:12px;">⚡</span><div style="line-height:1.2;"><div style="font-size:12px;font-weight:700;">2× points on right now</div><div style="font-size:11px;opacity:.85;">Weekend Boost</div></div></div>
+            <div style="background:#141B18;border:1px solid #223029;border-radius:22px;margin-top:12px;overflow:hidden;">
+              <div style="height:5px;background:#E8703A;"></div>
+              <div style="padding:16px 18px;">
+                <div class="disp" style="font-size:14px;font-weight:700;color:#F0A882;">Roastery Lane</div>
+                <div style="font-size:12px;color:#8DA79A;">Your points</div>
+                <div class="num" style="font-size:42px;color:#34D399;line-height:1;margin-top:6px;">138.5</div>
+                <div style="background:rgba(201,138,18,.16);color:#E0A63C;border-radius:12px;padding:9px 12px;font-size:12px;font-weight:600;margin-top:12px;">Expiring in 28 days — any visit resets the clock.</div>
+              </div>
+            </div>
+            <div style="background:#141B18;border:1px solid #223029;border-radius:20px;padding:15px;margin-top:12px;">
+              <div style="display:flex;justify-content:space-between;margin-bottom:10px;"><span class="lab" style="color:#6E8578;">Redeem your points</span><span style="font-size:11px;font-weight:700;color:#34D399;">History</span></div>
+              <div style="display:flex;align-items:center;gap:10px;margin-bottom:9px;"><span style="width:28px;height:28px;border-radius:50%;background:#0FA968;color:#fff;display:flex;align-items:center;justify-content:center;font-size:12px;">◆</span><span style="flex:1;font-size:12.5px;font-weight:600;color:#E9F0EC;">Free Filter Coffee</span><span class="num" style="font-size:14px;color:#34D399;">80</span></div>
+              <div style="display:flex;align-items:center;gap:10px;"><span style="width:28px;height:28px;border-radius:50%;background:#0FA968;color:#fff;display:flex;align-items:center;justify-content:center;font-size:12px;">◆</span><span style="flex:1;font-size:12.5px;font-weight:600;color:#E9F0EC;">Almond Croissant</span><span class="num" style="font-size:14px;color:#34D399;">120</span></div>
+            </div>
+          </div>
+          <div style="position:relative;display:flex;justify-content:space-around;align-items:center;padding:10px 18px;margin:8px 16px 16px;background:#141B18;border:1px solid #223029;border-radius:999px;box-shadow:0 14px 30px -14px rgba(0,0,0,.5);">
+            <span style="display:flex;flex-direction:column;align-items:center;gap:2px;color:#34D399;"><span>☕</span><span class="lab">Card</span></span>
+            <span style="display:flex;flex-direction:column;align-items:center;gap:2px;color:#6E8578;"><span>🍽</span><span class="lab">Menu</span></span>
+            <span style="position:relative;width:56px;height:44px;flex-shrink:0;display:flex;justify-content:center;"><span style="position:absolute;top:-26px;width:56px;height:56px;border-radius:18px;background:#0FA968;color:#fff;display:flex;align-items:center;justify-content:center;font-size:22px;box-shadow:0 10px 22px -6px rgba(15,169,104,.5);">⌗</span></span>
+            <span style="display:flex;flex-direction:column;align-items:center;gap:2px;color:#6E8578;"><span>◉</span><span class="lab">Points</span></span>
+            <span style="display:flex;flex-direction:column;align-items:center;gap:2px;color:#6E8578;"><span>⚙</span><span class="lab">Settings</span></span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- POINTS HISTORY / LEDGER -->
+    <div>
+      <div class="cap">Points history — the ledger</div>
+      <div style="width:300px; background:#0b0b0c; border-radius:44px; padding:9px; box-shadow:0 24px 48px -22px rgba(0,0,0,.45);">
+        <div style="border-radius:36px; overflow:hidden; height:620px; background:#F7F8F7; display:flex; flex-direction:column;">
+          <div style="display:flex; justify-content:space-between; padding:12px 20px 6px; font-size:12px; font-weight:600;"><span class="tnum">9:41</span><span style="font-size:10px;">▪ ▪ ▪ ▮</span></div>
+          <div style="flex:1;overflow:hidden;padding:8px 20px 0;">
+            <div class="disp" style="font-size:22px;font-weight:700;">Your points</div>
+            <div style="font-size:12.5px;color:#5C6B64;margin-top:2px;">Everything earned and spent at Roastery Lane.</div>
+            <div style="background:#fff;border:1px solid #E4E9E6;border-radius:20px;padding:16px;text-align:center;margin-top:14px;box-shadow:0 12px 32px -20px rgba(15,169,104,.18);">
+              <div class="lab" style="color:#8B9A93;">Balance</div>
+              <div class="num" style="font-size:40px;color:#0FA968;line-height:1;margin-top:4px;">138.5</div>
+            </div>
+            <div style="display:flex;flex-direction:column;gap:9px;margin-top:14px;">
+              <div style="display:flex;align-items:center;gap:11px;background:#fff;border:1px solid #E4E9E6;border-radius:16px;padding:12px;">
+                <span style="width:32px;height:32px;border-radius:50%;background:#E6F7EF;color:#0B7A4B;display:flex;align-items:center;justify-content:center;font-size:13px;">◉</span>
+                <div style="flex:1;min-width:0;"><div style="font-size:13px;font-weight:700;">Earned</div><div style="font-size:11px;color:#8B9A93;">Aug 8, 2:14 PM · Rs 105 · Weekend Boost (2×)</div></div>
+                <div style="text-align:right;"><div class="num" style="font-size:15px;color:#0B7A4B;">+10.5</div><div style="font-size:10px;color:#8B9A93;">138.5 left</div></div>
+              </div>
+              <div style="display:flex;align-items:center;gap:11px;background:#fff;border:1px solid #E4E9E6;border-radius:16px;padding:12px;">
+                <span style="width:32px;height:32px;border-radius:50%;background:#F7EFEA;color:#B8460C;display:flex;align-items:center;justify-content:center;font-size:13px;">◆</span>
+                <div style="flex:1;min-width:0;"><div style="font-size:13px;font-weight:700;">Redeemed</div><div style="font-size:11px;color:#8B9A93;">Aug 6, 6:40 PM · Almond Croissant</div></div>
+                <div style="text-align:right;"><div class="num" style="font-size:15px;color:#B8460C;">−120</div><div style="font-size:10px;color:#8B9A93;">128 left</div></div>
+              </div>
+              <div style="display:flex;align-items:center;gap:11px;background:#fff;border:1px solid #E4E9E6;border-radius:16px;padding:12px;">
+                <span style="width:32px;height:32px;border-radius:50%;background:#E6F7EF;color:#0B7A4B;display:flex;align-items:center;justify-content:center;font-size:13px;">◉</span>
+                <div style="flex:1;min-width:0;"><div style="font-size:13px;font-weight:700;">Earned</div><div style="font-size:11px;color:#8B9A93;">Aug 6, 6:38 PM · on a Rs 820 bill</div></div>
+                <div style="text-align:right;"><div class="num" style="font-size:15px;color:#0B7A4B;">+82</div><div style="font-size:10px;color:#8B9A93;">248 left</div></div>
+              </div>
+              <div style="display:flex;align-items:center;gap:11px;background:#fff;border:1px solid #E4E9E6;border-radius:16px;padding:12px;opacity:.75;">
+                <span style="width:32px;height:32px;border-radius:50%;background:#EEF1EF;color:#8B9A93;display:flex;align-items:center;justify-content:center;font-size:13px;">⌛</span>
+                <div style="flex:1;min-width:0;"><div style="font-size:13px;font-weight:700;">Expired</div><div style="font-size:11px;color:#8B9A93;">Jul 20 · after a long gap between visits</div></div>
+                <div style="text-align:right;"><div class="num" style="font-size:15px;color:#8B9A93;">−5</div><div style="font-size:10px;color:#8B9A93;">166 left</div></div>
+              </div>
+            </div>
+          </div>
+          <div style="text-align:center;padding:10px;background:#fff;border-top:1px solid #E4E9E6;font-size:11px;color:#8B9A93;">Append-only — corrections are new rows, never edits.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div>
+</x-dc>
+</body>
+</html>

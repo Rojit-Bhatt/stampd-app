@@ -53,37 +53,37 @@ function EventFields({
         value={draft.title}
         onChange={(e) => onChange({ ...draft, title: e.target.value })}
         placeholder="Title"
-        className="rounded-[11px] border border-[var(--line)] bg-[var(--bg)] px-3.5 py-2.5 text-sm focus:border-[var(--brand)] focus:outline-none"
+        className="rounded-[11px] border border-[var(--line)] bg-[var(--bg)] px-3.5 py-2.5 text-sm focus:border-[var(--primary)] focus:outline-none"
       />
       <input
         type="date"
         value={draft.date}
         onChange={(e) => onChange({ ...draft, date: e.target.value })}
-        className="rounded-[11px] border border-[var(--line)] bg-[var(--bg)] px-3.5 py-2.5 text-sm focus:border-[var(--brand)] focus:outline-none"
+        className="rounded-[11px] border border-[var(--line)] bg-[var(--bg)] px-3.5 py-2.5 text-sm focus:border-[var(--primary)] focus:outline-none"
       />
       <input
         value={draft.time}
         onChange={(e) => onChange({ ...draft, time: e.target.value })}
         placeholder="Time (e.g. 7:00 PM)"
-        className="rounded-[11px] border border-[var(--line)] bg-[var(--bg)] px-3.5 py-2.5 text-sm focus:border-[var(--brand)] focus:outline-none"
+        className="rounded-[11px] border border-[var(--line)] bg-[var(--bg)] px-3.5 py-2.5 text-sm focus:border-[var(--primary)] focus:outline-none"
       />
       <input
         value={draft.location}
         onChange={(e) => onChange({ ...draft, location: e.target.value })}
         placeholder="Location"
-        className="rounded-[11px] border border-[var(--line)] bg-[var(--bg)] px-3.5 py-2.5 text-sm focus:border-[var(--brand)] focus:outline-none"
+        className="rounded-[11px] border border-[var(--line)] bg-[var(--bg)] px-3.5 py-2.5 text-sm focus:border-[var(--primary)] focus:outline-none"
       />
       <input
         value={draft.description}
         onChange={(e) => onChange({ ...draft, description: e.target.value })}
         placeholder="Description"
-        className="rounded-[11px] border border-[var(--line)] bg-[var(--bg)] px-3.5 py-2.5 text-sm focus:border-[var(--brand)] focus:outline-none sm:col-span-2"
+        className="rounded-[11px] border border-[var(--line)] bg-[var(--bg)] px-3.5 py-2.5 text-sm focus:border-[var(--primary)] focus:outline-none sm:col-span-2"
       />
       <input
         value={draft.imageUrl}
         onChange={(e) => onChange({ ...draft, imageUrl: e.target.value })}
         placeholder="Image URL"
-        className="rounded-[11px] border border-[var(--line)] bg-[var(--bg)] px-3.5 py-2.5 text-sm focus:border-[var(--brand)] focus:outline-none sm:col-span-2"
+        className="rounded-[11px] border border-[var(--line)] bg-[var(--bg)] px-3.5 py-2.5 text-sm focus:border-[var(--primary)] focus:outline-none sm:col-span-2"
       />
     </div>
   );
@@ -144,25 +144,25 @@ export default function AdminEvents() {
 
   return (
     <div className="max-w-[720px]">
-      <h1 className="font-display text-[28px] font-extrabold text-[var(--ink)]">Events</h1>
+      <h1 className="font-display text-[28px] font-bold text-[var(--ink)]">Events</h1>
       <p className="mb-5 text-[var(--muted)]">Announce upcoming events to your customers.</p>
 
       {/* Add event */}
-      <div className="mb-6 shadow-ambient rounded-3xl bg-[var(--surface)] p-5">
+      <div className="mb-6 rounded-[var(--radius-card)] border border-[var(--line)] bg-[var(--surface)] shadow-ambient p-5">
         <div className="mb-3 text-sm font-bold">Add an event</div>
         <EventFields draft={draft} onChange={setDraft} />
         <button
           onClick={() => draft.title.trim() && draft.date && createEvent.mutate(draft)}
           disabled={createEvent.isPending || !draft.title.trim() || !draft.date}
           className="mt-3 inline-flex items-center gap-1.5 rounded-[11px] px-4 py-2.5 text-sm font-bold text-white transition-opacity hover:opacity-90 disabled:opacity-50"
-          style={{ background: "var(--brand)" }}
+          style={{ background: "var(--primary)" }}
         >
           <Plus className="h-4 w-4" /> Add event
         </button>
       </div>
 
       {/* List */}
-      <div className="overflow-hidden shadow-ambient rounded-3xl bg-[var(--surface)]">
+      <div className="overflow-hidden rounded-[var(--radius-card)] border border-[var(--line)] bg-[var(--surface)] shadow-ambient">
         {isLoading ? (
           Array.from({ length: 3 }).map((_, i) => (
             <div key={i} className="flex items-center gap-3 border-b border-[var(--line)] px-4 py-3.5 last:border-b-0">
@@ -188,7 +188,7 @@ export default function AdminEvents() {
                       onClick={() => patchEvent.mutate({ id, body: editDraft })}
                       disabled={patchEvent.isPending}
                       className="inline-flex items-center gap-1.5 rounded-[11px] px-3.5 py-2 text-sm font-bold text-white disabled:opacity-50"
-                      style={{ background: "var(--brand)" }}
+                      style={{ background: "var(--primary)" }}
                     >
                       <Check className="h-4 w-4" /> Save
                     </button>

@@ -8,8 +8,25 @@ import { useCustomerAuth } from "../context/CustomerAuthContext";
 import { usePointsBalance, useRewardCatalog, formatPoints } from "../hooks/usePoints";
 import { apiRequest } from "../lib/api";
 import { tenantPath } from "../lib/tenantPath";
-import { PointsCelebration } from "../components/customer/PointsCelebration";
+import { RedeemCelebration } from "../components/customer/RedeemCelebration";
 import { Skeleton } from "../components/ui/skeleton";
+import { Progress } from "@/components/ui/progress";
+import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+} from "@/components/ui/dialog";
+
+/** A catalog row awaiting confirmation. */
+interface PendingReward {
+  id: string;
+  name: string;
+  pointsPrice: number;
+}
 
 interface RedeemResult {
   success: boolean;
@@ -32,6 +49,7 @@ export default function RedeemLanding() {
   const { data: points, isLoading: balanceLoading } = usePointsBalance();
   const { data: catalog = [], isLoading: catalogLoading } = useRewardCatalog();
   const [redeeming, setRedeeming] = useState<string | null>(null);
+  const [pending, setPending] = useState<PendingReward | null>(null);
   const [result, setResult] = useState<RedeemResult["data"] | null>(null);
 
   const balance = points?.balance ?? 0;
@@ -52,13 +70,9 @@ export default function RedeemLanding() {
         <p className="mb-5 text-sm text-[var(--muted)]">
           Your points live with your account — sign in and scan again.
         </p>
-        <Link
-          to="/customer-login"
-          className="stamp-interactive inline-block rounded-full px-6 py-3 text-sm font-bold text-white"
-          style={{ background: "var(--brand)" }}
-        >
-          Sign in
-        </Link>
+        <Button asChild size="lg">
+          <Link to="/customer-login">Sign in</Link>
+        </Button>
       </Shell>
     );
   }
@@ -71,6 +85,7 @@ export default function RedeemLanding() {
         body: { token, itemId },
       });
       setResult(res.data);
+      setPending(null);
       qc.invalidateQueries({ queryKey: ["pointsBalance"] });
       qc.invalidateQueries({ queryKey: ["pointsHistory"] });
     } catch (err: any) {
@@ -82,11 +97,14 @@ export default function RedeemLanding() {
 
   if (result) {
     return (
-      <PointsCelebration
-        variant="redeem"
+      <RedeemCelebration
         points={result.pointsSpent}
         rewardName={result.rewardName}
         balance={result.balance}
+        // Derived, not read from the balance query: that query is invalidated
+        // by the redemption, so reading it here would race the refetch and
+        // sometimes tick down from the figure we're already showing.
+        balanceBefore={result.balance + result.pointsSpent}
         onDone={() => navigate(tenantPath(companySlug, outletSlug, "dashboard"))}
         doneLabel="Back to my points"
       />
@@ -97,51 +115,76 @@ export default function RedeemLanding() {
 
   return (
     <Shell title={`Redeem at ${tenant?.name ?? "this outlet"}`} backTo={tenantPath(companySlug, outletSlug, "dashboard")}>
-      <div className="mb-5 rounded-3xl bg-[var(--surface-container)] px-5 py-4 text-center">
-        <div className="text-xs font-bold uppercase tracking-wider text-[var(--soft)]">Your balance</div>
-        <div className="mt-1 font-display text-3xl font-extrabold" style={{ color: "var(--brand)" }}>
-          {loading ? <Skeleton className="mx-auto h-8 w-24" /> : formatPoints(balance)}
+      {/* Balance is value, so it's green and set in the numeral face — the
+          same treatment it gets everywhere else in the app. */}
+      <div className="mb-5 rounded-[var(--radius-card)] border border-[var(--line)] bg-[var(--surface)] px-5 py-4 text-center shadow-ambient">
+        <div className="text-[10px] font-bold uppercase tracking-[0.16em] text-[var(--soft)]">
+          Your balance
+        </div>
+        <div className="mt-1 font-numeral text-4xl leading-none text-[var(--primary)]">
+          {loading ? <Skeleton className="mx-auto h-9 w-24" /> : formatPoints(balance)}
         </div>
       </div>
 
       {loading ? (
         <div className="flex flex-col gap-2.5">
-          {Array.from({ length: 3 }).map((_, i) => <Skeleton key={i} className="h-16 rounded-3xl" />)}
+          {Array.from({ length: 3 }).map((_, i) => (
+            <Skeleton key={i} className="h-[72px] rounded-[var(--radius-card)]" />
+          ))}
         </div>
       ) : catalog.length === 0 ? (
-        <p className="text-sm text-[var(--muted)]">
-          This outlet hasn't put any rewards up yet. Your points keep adding up in the meantime.
-        </p>
+        <div className="rounded-[var(--radius-card)] border border-[var(--line)] bg-[var(--surface)] px-5 py-8 text-center">
+          <Gift className="mx-auto h-7 w-7 text-[var(--soft)]" strokeWidth={1.5} />
+          <p className="mt-3 text-sm text-[var(--muted)]">
+            This outlet hasn't put any rewards up yet. Your points keep adding up in the meantime.
+          </p>
+        </div>
       ) : (
         <div className="flex flex-col gap-2.5">
           {catalog.map((item) => {
             const canAfford = item.pointsPrice <= balance;
-            const busy = redeeming === item.id;
+            const short = item.pointsPrice - balance;
             return (
               <button
                 key={item.id}
-                onClick={() => redeem(item.id)}
+                onClick={() => setPending(item)}
                 disabled={!canAfford || Boolean(redeeming)}
-                className="stamp-interactive flex items-center gap-3 rounded-3xl border border-[var(--line)] bg-[var(--surface)] px-4 py-3.5 text-left disabled:cursor-not-allowed disabled:opacity-55"
+                className="stamp-interactive flex items-center gap-3.5 rounded-[var(--radius-card)] border border-[var(--line)] bg-[var(--surface)] px-4 py-3.5 text-left disabled:cursor-not-allowed disabled:opacity-70"
               >
                 <span
-                  className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-full"
+                  className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full"
                   style={{
-                    background: canAfford ? "var(--brand)" : "var(--surface-container)",
-                    color: canAfford ? "#fff" : "var(--soft)",
+                    background: canAfford ? "var(--primary-soft)" : "var(--surface-2)",
+                    color: canAfford ? "var(--primary-deep)" : "var(--soft)",
                   }}
                 >
-                  {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Gift className="h-4 w-4" />}
+                  <Gift className="h-4.5 w-4.5" />
                 </span>
+
                 <span className="min-w-0 flex-1">
-                  <span className="block truncate text-sm font-bold text-[var(--ink)]">{item.name}</span>
+                  <span className="block truncate text-sm font-bold text-[var(--ink)]">
+                    {item.name}
+                  </span>
                   <span className="block truncate text-[13px] text-[var(--muted)]">
                     {canAfford
                       ? item.description || "Ready to redeem"
-                      : `${formatPoints(item.pointsPrice - balance)} more points needed`}
+                      : `${formatPoints(short)} more points needed`}
                   </span>
+                  {/* How close they are, for anything they can't afford yet.
+                      An out-of-reach reward is a reason to come back, not a
+                      dead row — but it must never look redeemable. */}
+                  {!canAfford && (
+                    <Progress
+                      value={(balance / item.pointsPrice) * 100}
+                      className="mt-2 h-1.5"
+                    />
+                  )}
                 </span>
-                <span className="flex-shrink-0 text-sm font-bold" style={{ color: canAfford ? "var(--brand)" : "var(--soft)" }}>
+
+                <span
+                  className="flex-shrink-0 font-numeral text-2xl leading-none"
+                  style={{ color: canAfford ? "var(--primary)" : "var(--soft)" }}
+                >
                   {formatPoints(item.pointsPrice)}
                 </span>
               </button>
@@ -153,6 +196,66 @@ export default function RedeemLanding() {
       <p className="mt-5 text-center text-xs text-[var(--muted)]">
         Pick one while you're at the counter — this code is good for one redemption.
       </p>
+
+      {/* Spending points is irreversible and the balance is the whole point of
+          the program, so it gets an explicit confirm showing the cost and what
+          they'll have left. Previously one tap spent the points outright. */}
+      <Dialog open={Boolean(pending)} onOpenChange={(open) => !open && setPending(null)}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle className="font-display text-xl font-bold">
+              Redeem {pending?.name}?
+            </DialogTitle>
+            <DialogDescription>
+              This spends points from your {tenant?.name ?? "outlet"} balance. You can't undo it.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="my-1 grid grid-cols-2 gap-3">
+            <div className="rounded-[var(--radius-btn)] bg-[var(--surface-2)] px-4 py-3">
+              <div className="text-[10px] font-bold uppercase tracking-[0.14em] text-[var(--soft)]">
+                Cost
+              </div>
+              <div className="mt-0.5 font-numeral text-2xl leading-none text-[var(--ink)]">
+                {pending ? formatPoints(pending.pointsPrice) : ""}
+              </div>
+            </div>
+            <div className="rounded-[var(--radius-btn)] bg-[var(--surface-2)] px-4 py-3">
+              <div className="text-[10px] font-bold uppercase tracking-[0.14em] text-[var(--soft)]">
+                Balance after
+              </div>
+              <div className="mt-0.5 font-numeral text-2xl leading-none text-[var(--ink)]">
+                {pending ? formatPoints(balance - pending.pointsPrice) : ""}
+              </div>
+            </div>
+          </div>
+
+          <DialogFooter className="gap-2 sm:flex-col">
+            <Button
+              size="lg"
+              className="w-full"
+              disabled={Boolean(redeeming)}
+              onClick={() => pending && redeem(pending.id)}
+            >
+              {redeeming ? (
+                <>
+                  <Loader2 className="animate-spin" /> Redeeming…
+                </>
+              ) : (
+                "Confirm redemption"
+              )}
+            </Button>
+            <Button
+              variant="ghost"
+              className="w-full"
+              disabled={Boolean(redeeming)}
+              onClick={() => setPending(null)}
+            >
+              Cancel
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </Shell>
   );
 }
@@ -175,7 +278,7 @@ function Shell({
         >
           <ChevronLeft className="h-4 w-4" /> Back
         </Link>
-        <h1 className="mb-5 font-display text-2xl font-extrabold text-[var(--ink)]">{title}</h1>
+        <h1 className="mb-5 font-display text-2xl font-bold text-[var(--ink)]">{title}</h1>
         {children}
       </div>
     </div>

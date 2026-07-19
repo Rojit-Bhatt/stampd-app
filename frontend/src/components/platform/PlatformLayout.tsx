@@ -1,42 +1,99 @@
-import { useEffect } from "react";
-import { NavLink, Outlet, useNavigate } from "react-router-dom";
-import { Building2, PlusCircle, Phone, BarChart3, History, Users, Tag, KeyRound } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
+import { NavLink, Outlet, useNavigate, useLocation } from "react-router-dom";
+import { useQuery } from "@tanstack/react-query";
+import { Building2, Search, LayoutGrid, Settings2 } from "lucide-react";
+
 import { usePlatformAuth } from "../../context/PlatformAuthContext";
 import { PLATFORM_NAME } from "../../lib/platform";
 import { useAccount } from "../../hooks/useAccount";
 import { AccountMenu } from "../shared/AccountMenu";
 import { StampdLogo } from "../shared/StampdLogo";
+import { apiRequest } from "../../lib/api";
+import {
+  CommandDialog,
+  CommandInput,
+  CommandList,
+  CommandEmpty,
+  CommandGroup,
+  CommandItem,
+  CommandShortcut,
+} from "../ui/command";
 
-interface NavEntry {
+interface SubTab {
   to: string;
   end?: boolean;
   label: string;
-  Icon: typeof Building2;
+  ownerOnly?: boolean;
 }
 
-const BASE_NAV: NavEntry[] = [
-  { to: "", end: true, label: "Companies", Icon: Building2 },
-  { to: "analytics", label: "Analytics", Icon: BarChart3 },
-  { to: "audit-log", label: "Activity", Icon: History },
-  { to: "contact", label: "Contact", Icon: Phone },
-];
-// Registering a company and managing the platform team are both
-// owner-only on the backend (isPlatformOwner) — hidden from a support
-// admin's nav rather than left visible only to fail on submit.
-const OWNER_ONLY_NAV: NavEntry[] = [
-  { to: "register", label: "Register company", Icon: PlusCircle },
-  { to: "team", label: "Team", Icon: Users },
-  { to: "plans", label: "Plans", Icon: Tag },
-  { to: "subscription-keys", label: "Subscription Keys", Icon: KeyRound },
+interface Section {
+  id: string;
+  label: string;
+  /** Any path starting with one of these belongs to this section. */
+  match: string[];
+  tabs: SubTab[];
+  ownerOnly?: boolean;
+}
+
+// Two tiers instead of one flat rail of nine. The top row is what you're
+// working ON; the row under it is what you can do there, so nav depth reads
+// as a breadcrumb and tables get the full width of the window.
+//
+// Registering a company, the team, plans and keys are all owner-only on the
+// backend (isPlatformOwner) — hidden from a support admin rather than left
+// visible only to fail on submit.
+const SECTIONS: Section[] = [
+  {
+    id: "companies",
+    label: "Companies",
+    match: ["/platform", "/platform/register", "/platform/company"],
+    tabs: [
+      { to: "/platform", end: true, label: "All companies" },
+      { to: "/platform/register", label: "Register", ownerOnly: true },
+    ],
+  },
+  {
+    id: "analytics",
+    label: "Analytics",
+    match: ["/platform/analytics"],
+    tabs: [{ to: "/platform/analytics", end: true, label: "Overview" }],
+  },
+  {
+    id: "billing",
+    label: "Billing",
+    match: ["/platform/plans", "/platform/subscription-keys"],
+    ownerOnly: true,
+    tabs: [
+      { to: "/platform/plans", label: "Plans", ownerOnly: true },
+      { to: "/platform/subscription-keys", label: "Subscription keys", ownerOnly: true },
+    ],
+  },
+  {
+    id: "config",
+    label: "Config",
+    match: ["/platform/team", "/platform/contact", "/platform/audit-log", "/platform/settings"],
+    tabs: [
+      { to: "/platform/team", label: "Team", ownerOnly: true },
+      { to: "/platform/contact", label: "Contact" },
+      { to: "/platform/audit-log", label: "Activity log" },
+    ],
+  },
 ];
 
-// Guarded desktop shell for the platform super-admin. Accent (--plat)
-// aliases the single shared --brand token — the platform console is not
-// tenant-facing but still uses the one Stampd identity, not a separate one.
+interface CompanyRow {
+  id: string;
+  name: string;
+  slug: string;
+}
+
 export function PlatformLayout() {
   const { user, isLoading, logout } = usePlatformAuth();
   const navigate = useNavigate();
+  const location = useLocation();
   const { data: account } = useAccount("platform");
+  const [paletteOpen, setPaletteOpen] = useState(false);
+
+  const isOwner = user?.platformRole === "owner";
 
   useEffect(() => {
     if (!isLoading && (!user || user.role !== "platform")) {
@@ -44,66 +101,194 @@ export function PlatformLayout() {
     }
   }, [user, isLoading, navigate]);
 
+  // Cmd/Ctrl-K from anywhere in the console. This is a tool someone lives in
+  // all day across dozens of companies, so jumping beats clicking.
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key.toLowerCase() === "k" && (e.metaKey || e.ctrlKey)) {
+        e.preventDefault();
+        setPaletteOpen((v) => !v);
+      }
+    };
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, []);
+
+  const { data: companies = [] } = useQuery<CompanyRow[]>({
+    queryKey: ["platformCompanies"],
+    queryFn: async () => {
+      const res = await apiRequest<{ success: boolean; companies: CompanyRow[] }>(
+        "/api/platform/companies",
+        { role: "platform" },
+      );
+      return res.companies || [];
+    },
+    enabled: Boolean(user),
+  });
+
+  const visibleSections = useMemo(
+    () => SECTIONS.filter((s) => !s.ownerOnly || isOwner),
+    [isOwner],
+  );
+
+  // Longest match wins, so /platform/register picks Companies rather than
+  // falling back to the bare /platform prefix.
+  const activeSection = useMemo(() => {
+    let best: Section | null = null;
+    let bestLen = -1;
+    for (const s of visibleSections) {
+      for (const m of s.match) {
+        if ((location.pathname === m || location.pathname.startsWith(m + "/")) && m.length > bestLen) {
+          best = s;
+          bestLen = m.length;
+        }
+      }
+    }
+    return best ?? visibleSections[0];
+  }, [location.pathname, visibleSections]);
+
   if (isLoading || !user || user.role !== "platform") {
     return (
       <div className="flex min-h-screen items-center justify-center bg-[var(--bg)]">
-        <div className="h-8 w-8 animate-spin rounded-full border-2 border-[var(--plat)] border-t-transparent" />
+        <div className="h-8 w-8 animate-spin rounded-full border-2 border-[var(--primary)] border-t-transparent" />
       </div>
     );
   }
 
-  const nav = user.platformRole === "owner" ? [...BASE_NAV, ...OWNER_ONLY_NAV] : BASE_NAV;
+  const subTabs = (activeSection?.tabs ?? []).filter((t) => !t.ownerOnly || isOwner);
 
   return (
-    <div className="flex min-h-screen bg-[var(--bg)] text-[var(--ink)]">
-      <aside className="sticky top-0 flex h-screen w-[250px] flex-shrink-0 flex-col border-r border-[var(--line)] bg-[var(--surface)] px-4 py-6">
-        <div className="mb-6 flex items-center gap-2.5 px-2">
-          <StampdLogo size={36} tile />
-          <div>
-            <div className="font-display text-[16px] font-bold leading-none">{PLATFORM_NAME}</div>
-            <div className="text-[11px] text-[var(--soft)]">Platform console</div>
+    <div className="flex min-h-screen flex-col bg-[var(--bg)] text-[var(--ink)]">
+      {/* Dark chrome, on purpose: this console is not a tenant's and should
+          never be mistaken for one. The outlet console is light and warm;
+          this one is a data desk. */}
+      <header className="sticky top-0 z-30 bg-[var(--ink)] text-[#E9F0EC]">
+        <div className="mx-auto flex w-full max-w-[1400px] items-center gap-4 px-6 py-3">
+          <NavLink to="/platform" className="flex flex-shrink-0 items-center gap-2.5">
+            <StampdLogo size={26} />
+            <span className="hidden font-display text-base font-bold lg:inline">{PLATFORM_NAME}</span>
+            <span className="hidden rounded-full bg-white/10 px-2 py-0.5 text-[10px] font-bold uppercase tracking-[0.14em] text-[#8DA79A] xl:inline">
+              Platform
+            </span>
+          </NavLink>
+
+          <nav className="hide-scrollbar ml-2 flex min-w-0 flex-1 items-center gap-1 overflow-x-auto">
+            {visibleSections.map((s) => {
+              const active = s.id === activeSection?.id;
+              return (
+                <NavLink
+                  key={s.id}
+                  to={s.tabs[0].to}
+                  end={s.tabs[0].end}
+                  className={`whitespace-nowrap rounded-[var(--radius-btn)] px-3 py-2 text-sm font-semibold transition-colors ${
+                    active ? "bg-white/12 text-white" : "text-[#8DA79A] hover:text-white"
+                  }`}
+                >
+                  {s.label}
+                </NavLink>
+              );
+            })}
+          </nav>
+
+          <button
+            onClick={() => setPaletteOpen(true)}
+            className="flex flex-shrink-0 items-center gap-2 rounded-[var(--radius-btn)] bg-white/10 px-3 py-2 text-sm text-[#8DA79A] transition-colors hover:text-white"
+          >
+            <Search className="h-4 w-4" />
+            <span className="hidden lg:inline">Search</span>
+            <CommandShortcut className="hidden text-[#6E8578] lg:inline">⌘K</CommandShortcut>
+          </button>
+
+          <div className="flex-shrink-0">
+            <AccountMenu
+              initial={(account?.name || user.name).charAt(0).toUpperCase()}
+              name={account?.name || user.name}
+              settingsPath="/platform/settings"
+              onLogout={() => {
+                logout();
+                navigate("/platform/login");
+              }}
+              accent="var(--primary)"
+              compact
+            />
           </div>
         </div>
 
-        <nav className="flex flex-col gap-0.5">
-          {nav.map(({ to, end, label, Icon }) => (
-            <NavLink
-              key={to || "businesses"}
-              to={to}
-              end={end}
-              className={({ isActive }) =>
-                `relative flex items-center gap-3 rounded-2xl px-3.5 py-2.5 text-[14px] font-semibold transition-colors ${
-                  isActive
-                    ? "bg-[var(--surface-container)] text-[var(--plat)] after:absolute after:right-0 after:top-1/2 after:h-4 after:w-[3px] after:-translate-y-1/2 after:rounded-full after:bg-[var(--plat)]"
-                    : "text-[var(--ink)] hover:bg-[var(--surface-container)]"
-                }`
-              }
-            >
-              <Icon className="h-4 w-4" />
-              {label}
-            </NavLink>
-          ))}
-        </nav>
+        {/* Contextual sub-nav. Hidden when a section has only one place to
+            be — a single tab is decoration, not navigation. */}
+        {subTabs.length > 1 && (
+          <div className="border-t border-white/10">
+            <div className="hide-scrollbar mx-auto flex w-full max-w-[1400px] items-center gap-5 overflow-x-auto px-6">
+              {subTabs.map((t) => (
+                <NavLink
+                  key={t.to}
+                  to={t.to}
+                  end={t.end}
+                  className={({ isActive }) =>
+                    `whitespace-nowrap border-b-2 py-2.5 text-[13px] font-semibold transition-colors ${
+                      isActive
+                        ? "border-[var(--primary)] text-white"
+                        : "border-transparent text-[#8DA79A] hover:text-white"
+                    }`
+                  }
+                >
+                  {t.label}
+                </NavLink>
+              ))}
+            </div>
+          </div>
+        )}
+      </header>
 
-        <div className="mt-auto border-t border-[var(--line)] pt-3">
-          <AccountMenu
-            initial={(account?.name || user.name).charAt(0).toUpperCase()}
-            name={account?.name || user.name}
-            settingsPath="/platform/settings"
-            onLogout={() => {
-              logout();
-              navigate("/platform/login");
-            }}
-            accent="var(--plat)"
-            dropUp
-          />
-        </div>
-      </aside>
-
-      <main className="max-w-[1180px] flex-1 px-10 py-9">
+      <main className="mx-auto w-full max-w-[1400px] flex-1 px-6 py-8">
         <Outlet />
       </main>
+
+      <CommandDialog open={paletteOpen} onOpenChange={setPaletteOpen}>
+        <CommandInput placeholder="Jump to a company or screen…" />
+        <CommandList>
+          <CommandEmpty>Nothing matches that.</CommandEmpty>
+          {companies.length > 0 && (
+            <CommandGroup heading="Companies">
+              {companies.map((c) => (
+                <CommandItem
+                  key={c.id}
+                  value={`${c.name} ${c.slug}`}
+                  onSelect={() => {
+                    setPaletteOpen(false);
+                    navigate(`/platform/company/${c.id}`);
+                  }}
+                >
+                  <Building2 />
+                  {c.name}
+                  <CommandShortcut className="font-mono">{c.slug}</CommandShortcut>
+                </CommandItem>
+              ))}
+            </CommandGroup>
+          )}
+          <CommandGroup heading="Screens">
+            {visibleSections.flatMap((s) =>
+              s.tabs
+                .filter((t) => !t.ownerOnly || isOwner)
+                .map((t) => (
+                  <CommandItem
+                    key={t.to}
+                    value={`${s.label} ${t.label}`}
+                    onSelect={() => {
+                      setPaletteOpen(false);
+                      navigate(t.to);
+                    }}
+                  >
+                    {s.id === "config" ? <Settings2 /> : <LayoutGrid />}
+                    {s.label} · {t.label}
+                  </CommandItem>
+                )),
+            )}
+          </CommandGroup>
+        </CommandList>
+      </CommandDialog>
     </div>
   );
 }
+
 export default PlatformLayout;

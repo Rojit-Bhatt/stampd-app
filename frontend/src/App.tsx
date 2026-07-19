@@ -101,7 +101,7 @@ export default function App() {
         }
       >
         <Routes>
-          {/* Platform (SaaS owner) — unscoped, maroon accent. */}
+          {/* Platform (SaaS owner) — unscoped, never tenant-themed. */}
           <Route path="/" element={<PlatformLanding />} />
           <Route path="/platform/login" element={<PlatformLogin />} />
           <Route path="/business-login" element={<Navigate to="/admin-login" replace />} />
@@ -227,18 +227,21 @@ export default function App() {
               )}
               <Toaster
                 position="bottom-right"
+                // Clears the customer app's floating bottom nav, which
+                // occupies this exact corner on a phone.
+                containerStyle={{ bottom: "calc(5.5rem + env(safe-area-inset-bottom))" }}
                 toastOptions={{
                   style: {
                     background: "var(--surface)",
                     color: "var(--ink)",
                     border: "1px solid var(--line)",
-                    borderRadius: "12px",
+                    borderRadius: "var(--radius-btn)",
                     padding: "10px 14px",
                     fontSize: "13px",
-                    boxShadow: "0 12px 28px -12px rgba(36,30,27,0.18)",
+                    boxShadow: "0 12px 28px -12px rgba(20,32,28,0.18)",
                   },
                   success: {
-                    iconTheme: { primary: "var(--ink)", secondary: "var(--surface)" },
+                    iconTheme: { primary: "var(--primary)", secondary: "var(--surface)" },
                   },
                   error: {
                     iconTheme: { primary: "var(--muted)", secondary: "var(--surface)" },

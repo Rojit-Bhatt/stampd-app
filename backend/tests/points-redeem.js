@@ -138,6 +138,35 @@ async function main() {
     const balance = await api("/api/points/balance", { token: customerToken });
     check("the balance equals the sum of the ledger", ledgerSum === balance.body?.data?.balance, { ledgerSum, balance: balance.body?.data?.balance });
 
+    // A redeem token is consumed at the moment the customer confirms a
+    // reward, so its life has to cover scanning, reading the catalog,
+    // choosing and confirming — on a phone, at a counter. An earn token only
+    // has to survive being scanned, because it converts to a 15-minute
+    // PendingClaim the instant it is. Same 30s for both is what made the
+    // redeem window expire mid-choice.
+    console.log("\n== Redeem tokens outlive earn tokens ==");
+    const redeemWindow = await redeemQr(adminToken);
+    const earnWindow = await api("/api/admin/generate-qr", {
+      method: "POST",
+      token: adminToken,
+      body: { billAmount: 100 },
+    });
+    check(
+      "an earn code still expires in 30s",
+      earnWindow.body?.data?.expiresInSeconds === 30,
+      earnWindow.body?.data,
+    );
+    check(
+      "a redeem code gets a longer window than an earn code",
+      redeemWindow.body?.data?.expiresInSeconds > earnWindow.body?.data?.expiresInSeconds,
+      { redeem: redeemWindow.body?.data?.expiresInSeconds, earn: earnWindow.body?.data?.expiresInSeconds },
+    );
+    check(
+      "long enough to browse a catalog and confirm",
+      redeemWindow.body?.data?.expiresInSeconds >= 120,
+      redeemWindow.body?.data,
+    );
+
     console.log("\n== The admin ledger ==");
     const txns = await api("/api/admin/transactions", { token: adminToken });
     const mine = (txns.body?.data || []).filter((t) => t.customerName === "Redeem Tester");

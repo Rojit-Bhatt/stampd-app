@@ -84,7 +84,7 @@ export default function CompanyDetail() {
             <Skeleton className="h-3.5 w-32" />
           </div>
         </div>
-        <Skeleton className="h-40 rounded-3xl" />
+        <Skeleton className="h-40 rounded-[var(--radius-card)]" />
       </div>
     );
   }
@@ -107,13 +107,13 @@ export default function CompanyDetail() {
 
       <div className="mb-6 flex flex-wrap items-center gap-4">
         <div
-          className="flex items-center justify-center rounded-[16px] font-display text-[22px] font-extrabold text-white"
+          className="flex items-center justify-center rounded-[16px] font-display text-[22px] font-bold text-white"
           style={{ width: 60, height: 60, background: brand }}
         >
           {company.name.charAt(0).toUpperCase()}
         </div>
         <div className="flex-1">
-          <h1 className="font-display text-[28px] font-extrabold text-[var(--ink)]">{company.name}</h1>
+          <h1 className="font-display text-[28px] font-bold text-[var(--ink)]">{company.name}</h1>
           <span className="font-mono text-[13px] text-[var(--soft)]">/{company.slug}</span>
           <span
             className="ml-2 rounded-full px-2.5 py-1 text-[12px] font-bold"
@@ -129,7 +129,7 @@ export default function CompanyDetail() {
           <button
             onClick={() => setConfirmOpen(true)}
             disabled={setStatus.isPending}
-            className="rounded-[12px] border bg-white px-4 py-2.5 font-bold disabled:opacity-50"
+            className="rounded-[var(--radius-btn)] border bg-white px-4 py-2.5 font-bold disabled:opacity-50"
             style={{
               borderColor: suspended ? "var(--ok-soft)" : "var(--warn-soft)",
               color: suspended ? "var(--ok)" : "var(--warn)",
@@ -148,14 +148,14 @@ export default function CompanyDetail() {
 
       <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
         {stats.map((s) => (
-          <div key={s.label} className="shadow-ambient rounded-3xl bg-[var(--surface)] p-5">
+          <div key={s.label} className="rounded-[var(--radius-card)] border border-[var(--line)] bg-[var(--surface)] shadow-ambient p-5">
             <div className="mb-1.5 text-[13px] text-[var(--muted)]">{s.label}</div>
-            <div className="font-display text-[24px] font-extrabold">{s.val}</div>
+            <div className="font-display text-[24px] font-bold">{s.val}</div>
           </div>
         ))}
       </div>
 
-      <div className="mt-5 shadow-ambient overflow-hidden rounded-3xl bg-[var(--surface)]">
+      <div className="mt-5 shadow-ambient overflow-hidden rounded-[var(--radius-card)] bg-[var(--surface)]">
         <div className="border-b border-[var(--line)] px-5 py-3.5">
           <h3 className="font-display text-lg font-bold text-[var(--ink)]">Outlets</h3>
           <p className="text-[13px] text-[var(--muted)]">This company registers its own — you can still step in.</p>
@@ -195,7 +195,7 @@ export default function CompanyDetail() {
       </div>
 
       {form && isOwner && (
-        <div className="mt-5 shadow-ambient rounded-3xl bg-[var(--surface)] p-6">
+        <div className="mt-5 rounded-[var(--radius-card)] border border-[var(--line)] bg-[var(--surface)] shadow-ambient p-6">
           <h3 className="mb-4 font-display text-lg font-bold text-[var(--ink)]">Edit company</h3>
           <div className="flex flex-col gap-4">
             <div>
@@ -203,7 +203,7 @@ export default function CompanyDetail() {
               <input
                 value={form.name}
                 onChange={(e) => setForm((f) => (f ? { ...f, name: e.target.value } : f))}
-                className="w-full rounded-[11px] border border-[var(--line)] bg-[var(--bg)] px-4 py-3 text-sm focus:border-[var(--plat)] focus:outline-none"
+                className="w-full rounded-[var(--radius-btn)] border border-[var(--line)] bg-[var(--bg)] px-4 py-3 text-sm focus:border-[var(--primary)] focus:outline-none"
               />
             </div>
             <div className="border-t border-[var(--line)] pt-4">
@@ -217,14 +217,14 @@ export default function CompanyDetail() {
                 value={form.ownerEmail}
                 onChange={(e) => setForm((f) => (f ? { ...f, ownerEmail: e.target.value } : f))}
                 placeholder="leave blank to keep the current email"
-                className="w-full rounded-[11px] border border-[var(--line)] bg-[var(--bg)] px-4 py-3 text-sm focus:border-[var(--plat)] focus:outline-none"
+                className="w-full rounded-[var(--radius-btn)] border border-[var(--line)] bg-[var(--bg)] px-4 py-3 text-sm focus:border-[var(--primary)] focus:outline-none"
               />
             </div>
             <button
               onClick={saveDetails}
               disabled={update.isPending}
-              className="stamp-interactive rounded-[13px] py-3 text-sm font-bold text-white disabled:opacity-50"
-              style={{ background: "var(--plat)" }}
+              className="stamp-interactive rounded-[var(--radius-btn)] py-3 text-sm font-bold text-white disabled:opacity-50"
+              style={{ background: "var(--primary)" }}
             >
               {update.isPending ? "Saving…" : "Save changes"}
             </button>

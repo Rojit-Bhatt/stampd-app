@@ -1,41 +1,43 @@
 import { Link } from "react-router-dom";
+import { Store } from "lucide-react";
+
 import { useMyTenants, type MyTenantMembership } from "../hooks/useMyTenants";
 import { formatPoints } from "../hooks/usePoints";
 import { tenantPath } from "../lib/tenantPath";
 import { darken } from "../lib/color";
 import { Skeleton } from "../components/ui/skeleton";
+import { Button } from "@/components/ui/button";
 
 export default function ExploreMine() {
   const { data: memberships = [], isLoading } = useMyTenants();
 
   return (
-    <div className="px-5 py-6">
-      <h1 className="mb-1 font-display text-2xl font-bold text-[var(--ink)]">My Businesses</h1>
-      <p className="mb-5 text-sm text-[var(--muted)]">
-        Every business you've earned points at.
-      </p>
+    <div className="mx-auto w-full max-w-3xl px-5 py-6">
+      <header className="mb-5">
+        <h1 className="font-display text-2xl font-bold text-[var(--ink)]">My businesses</h1>
+        <p className="mt-0.5 text-sm text-[var(--muted)]">
+          Every business you've earned points at.
+        </p>
+      </header>
 
       {isLoading ? (
-        <div className="flex flex-col gap-4">
+        <div className="grid gap-4 sm:grid-cols-2">
           {Array.from({ length: 2 }).map((_, i) => (
-            <Skeleton key={i} className="h-[120px] w-full rounded-3xl" />
+            <Skeleton key={i} className="h-[132px] w-full rounded-[var(--radius-card)]" />
           ))}
         </div>
       ) : memberships.length === 0 ? (
-        <div className="py-14 text-center">
-          <p className="mb-4 text-sm text-[var(--muted)]">
+        <div className="rounded-[var(--radius-card)] border border-[var(--line)] bg-[var(--surface)] px-5 py-12 text-center shadow-ambient">
+          <Store className="mx-auto h-7 w-7 text-[var(--soft)]" strokeWidth={1.5} />
+          <p className="mb-5 mt-3 text-sm text-[var(--muted)]">
             You haven't joined a business yet. Find one to start earning points.
           </p>
-          <Link
-            to="/explore"
-            className="stamp-interactive inline-block rounded-full px-6 py-3 text-sm font-bold text-white"
-            style={{ background: "var(--brand)" }}
-          >
-            Explore businesses
-          </Link>
+          <Button asChild size="lg">
+            <Link to="/explore">Explore businesses</Link>
+          </Button>
         </div>
       ) : (
-        <div className="flex flex-col gap-4">
+        <div className="grid gap-4 sm:grid-cols-2">
           {memberships.map((m) => (
             <MembershipCard key={m.organizationId} membership={m} />
           ))}
@@ -57,31 +59,48 @@ function MembershipCard({ membership: m }: { membership: MyTenantMembership }) {
   return (
     <Link
       to={tenantPath(m.companySlug, m.slug, "dashboard")}
-      className="stamp-interactive shadow-ambient rounded-3xl bg-[var(--surface)] p-5"
+      className="stamp-interactive flex flex-col rounded-[var(--radius-card)] border border-[var(--line)] bg-[var(--surface)] p-5 shadow-ambient"
     >
-      <div className="mb-3 flex items-center gap-3">
+      <div className="mb-4 flex items-center gap-3">
+        {/* The logo tile is the outlet's identity and keeps its true colour. */}
         {m.branding.logoUrl ? (
-          <img src={m.branding.logoUrl} alt="" className="h-11 w-11 rounded-2xl object-cover" />
+          <img
+            src={m.branding.logoUrl}
+            alt=""
+            className="h-11 w-11 flex-shrink-0 rounded-[var(--radius-field)] object-cover"
+          />
         ) : (
           <div
-            className="flex h-11 w-11 items-center justify-center rounded-2xl font-display text-lg font-bold text-white"
-            style={{ background: `linear-gradient(150deg, ${m.branding.primaryColor}, ${darken(m.branding.primaryColor)})` }}
+            className="flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-[var(--radius-field)] font-display text-lg font-bold text-white"
+            style={{
+              background: `linear-gradient(150deg, ${m.branding.primaryColor}, ${darken(m.branding.primaryColor)})`,
+            }}
           >
             {m.name.charAt(0).toUpperCase()}
           </div>
         )}
         <div className="min-w-0 flex-1">
-          <div className="truncate font-display text-lg font-bold text-[var(--ink)]">{m.name}</div>
+          <div className="truncate font-display text-base font-bold text-[var(--ink)]">
+            {m.name}
+          </div>
           <div className="text-xs text-[var(--muted)]">{lastVisit(m.lastActivityAt)}</div>
         </div>
       </div>
+
       {/* No progress bar: a points balance has no target to fill toward, and
-          inventing one would be inventing a number the outlet never set. */}
-      <div>
-        <div className="font-display text-3xl font-extrabold leading-none" style={{ color: m.branding.primaryColor }}>
+          inventing one would be inventing a number the outlet never set.
+
+          The figure is green, not the outlet's colour. It used to be painted
+          with branding.primaryColor raw — an unchecked tenant hue on the one
+          number the customer is here to read. */}
+      <div className="mt-auto flex items-baseline gap-1.5">
+        <span className="font-numeral text-[34px] leading-none text-[var(--primary)]">
           {formatPoints(m.balance)}
-        </div>
-        <div className="mt-1 text-xs text-[var(--muted)]">points</div>
+        </span>
+        {/* Points never pool across outlets — earned at one counter, spent at
+            that same counter. Saying so here stops a customer expecting a
+            balance to follow them to a sibling branch. */}
+        <span className="text-xs text-[var(--soft)]">points · here only</span>
       </div>
     </Link>
   );

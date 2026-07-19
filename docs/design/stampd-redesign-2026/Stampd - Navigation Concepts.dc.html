@@ -1,0 +1,243 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<meta name="design_doc_mode" content="canvas">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@400;500;600;700;800&family=DM+Serif+Display&display=swap" rel="stylesheet">
+<style>
+  * { box-sizing: border-box; }
+  body { margin: 0; background: #656a67; -webkit-font-smoothing: antialiased; font-family: "Inter", sans-serif; }
+  .disp { font-family: "Space Grotesk", sans-serif; }
+  .num { font-family: "DM Serif Display", serif; }
+  .lab { font-size: 10px; font-weight: 700; letter-spacing: .12em; text-transform: uppercase; }
+  .card { background:#fff; border-radius:24px; padding:24px; box-shadow:0 30px 60px -30px rgba(0,0,0,.5); position:relative; }
+  .id { position:absolute; top:18px; right:20px; font-family:"Space Grotesk",sans-serif; font-size:12px; font-weight:700; color:#0FA968; background:#E6F7EF; padding:4px 9px; border-radius:7px; }
+  .rec { position:absolute; top:18px; right:60px; font-size:10px; font-weight:700; letter-spacing:.08em; text-transform:uppercase; color:#fff; background:#0FA968; padding:5px 9px; border-radius:7px; }
+  .nm { font-family:"Space Grotesk",sans-serif; font-size:19px; font-weight:700; color:#14201C; }
+  .po { font-size:13px; line-height:1.5; color:#5C6B64; margin:6px 0 18px; max-width:330px; }
+  .ni { display:flex; align-items:center; gap:10px; padding:9px 12px; border-radius:12px; font-size:12.5px; font-weight:600; color:#5C6B64; }
+  .ni.on { background:#EEF1EF; color:#14201C; }
+  .gl { width:18px; height:18px; border-radius:5px; background:#DCE3DF; flex-shrink:0; }
+</style>
+</helmet>
+
+<div style="padding:56px 64px 140px; color:#14201C;">
+  <div style="max-width:900px; margin-bottom:16px;">
+    <div class="lab" style="color:#cfd2ce;">Stampd · Navigation — pick one per console</div>
+    <h1 class="disp" style="font-size:36px; font-weight:700; color:#fff; margin:12px 0 12px; letter-spacing:-.02em;">Two tools, two navigations</h1>
+    <p style="font-size:15px; line-height:1.65; color:#e8eae7; margin:0;">Today both consoles are the same 250px sidebar. They shouldn't be. The <strong>outlet console</strong> is a counter tool used one-handed on a tablet/phone under time pressure — its nav should put <strong>Earn</strong> and <strong>Redeem</strong> in the thumb zone. The <strong>platform console</strong> is a dense, data-heavy desk tool — its nav should maximize table width and support fast jumps. Reply with one id per console (e.g. "OB and PA"). No feature is dropped in any concept — only where it lives changes.</p>
+  </div>
+
+  <!-- ============ OUTLET ADMIN ============ -->
+  <h2 class="disp" style="font-size:20px; font-weight:700; color:#fff; margin:34px 0 4px;">Outlet console · counter tool (tablet / phone)</h2>
+  <p style="color:#dfe1de; font-size:13px; margin:0 0 22px;">Full nav inventory in every concept: Overview · Earn · Redeem · Transactions · Customers · Reports · Points program · Rewards · Campaigns · Branding · Contact · Menu · Events · Subscription · Settings.</p>
+
+  <div style="display:flex; gap:28px; flex-wrap:wrap; align-items:flex-start;">
+
+    <!-- OA -->
+    <div class="card" style="width:400px;">
+      <span class="rec">Recommended</span><span class="id">OA</span>
+      <div class="nm">Action Dock</div>
+      <div class="po">A persistent bottom dock with the two counter actions as big thumb targets; everything else lives behind "More". Same dock becomes a left rail on desktop. Fastest path to the #1 screen.</div>
+      <div style="width:340px; background:#0b0b0c; border-radius:30px; padding:8px; margin:0 auto;">
+        <div style="background:#F7F8F7; border-radius:23px; height:400px; overflow:hidden; display:flex; flex-direction:column; position:relative;">
+          <div style="display:flex; justify-content:space-between; align-items:center; padding:12px 16px; background:#fff; border-bottom:1px solid #E4E9E6;">
+            <div style="display:flex;align-items:center;gap:8px;"><span style="width:24px;height:24px;border-radius:7px;background:#B8460C;color:#fff;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:11px;">R</span><span class="disp" style="font-weight:700;font-size:13px;">Roastery Lane</span></div>
+            <span style="font-size:10px;font-weight:700;color:#5C6B64;background:#EEF1EF;padding:4px 9px;border-radius:999px;">Bijay</span>
+          </div>
+          <div style="flex:1; padding:16px; overflow:hidden;">
+            <div class="lab" style="color:#8B9A93;">Today</div>
+            <div style="display:flex;gap:10px;margin-top:10px;">
+              <div style="flex:1;background:#fff;border:1px solid #E4E9E6;border-radius:14px;padding:12px;"><div class="num" style="font-size:24px;color:#0FA968;">42</div><div style="font-size:10px;color:#8B9A93;">earns</div></div>
+              <div style="flex:1;background:#fff;border:1px solid #E4E9E6;border-radius:14px;padding:12px;"><div class="num" style="font-size:24px;color:#14201C;">8</div><div style="font-size:10px;color:#8B9A93;">redeems</div></div>
+            </div>
+            <div style="background:#fff;border:1px solid #E4E9E6;border-radius:14px;padding:12px;margin-top:10px;font-size:11px;color:#8B9A93;">Recent activity…</div>
+          </div>
+          <!-- dock -->
+          <div style="display:flex;align-items:center;gap:8px;padding:10px 12px;margin:8px 12px 12px;background:#14201C;border-radius:18px;">
+            <div style="flex:1;background:#0FA968;color:#fff;border-radius:12px;padding:11px;text-align:center;font-size:12px;font-weight:700;">＋ Earn code</div>
+            <div style="flex:1;background:#26332D;color:#E9F0EC;border-radius:12px;padding:11px;text-align:center;font-size:12px;font-weight:700;">◆ Redeem</div>
+            <div style="width:44px;color:#8DA79A;text-align:center;font-size:11px;font-weight:700;">☰<br>More</div>
+          </div>
+        </div>
+      </div>
+      <div style="font-size:11px;color:#8B9A93;margin-top:12px;">"More" sheet groups Manage · Reports · Settings. Desktop: dock rotates to a 240px left rail, actions pinned top.</div>
+    </div>
+
+    <!-- OB -->
+    <div class="card" style="width:400px;">
+      <span class="id">OB</span>
+      <div class="nm">Home-as-Hub</div>
+      <div class="po">No persistent chrome. The Overview screen itself is the nav — oversized Earn/Redeem tiles up top, a tidy grid of management tiles below. Zero learning curve, big targets.</div>
+      <div style="width:340px; background:#0b0b0c; border-radius:30px; padding:8px; margin:0 auto;">
+        <div style="background:#F7F8F7; border-radius:23px; height:400px; overflow:hidden; display:flex; flex-direction:column;">
+          <div style="display:flex; justify-content:space-between; align-items:center; padding:12px 16px; background:#fff; border-bottom:1px solid #E4E9E6;">
+            <span class="disp" style="font-weight:700;font-size:13px;">Roastery Lane</span>
+            <span style="width:26px;height:26px;border-radius:50%;background:#EEF1EF;"></span>
+          </div>
+          <div style="flex:1; padding:14px; overflow:hidden;">
+            <div style="display:flex;gap:10px;">
+              <div style="flex:1;background:#0FA968;color:#fff;border-radius:16px;padding:16px;"><div style="font-size:22px;">＋</div><div style="font-size:13px;font-weight:700;margin-top:6px;">Earn code</div></div>
+              <div style="flex:1;background:#14201C;color:#fff;border-radius:16px;padding:16px;"><div style="font-size:22px;">◆</div><div style="font-size:13px;font-weight:700;margin-top:6px;">Redeem</div></div>
+            </div>
+            <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:12px;">
+              <div style="background:#fff;border:1px solid #E4E9E6;border-radius:12px;padding:11px 8px;text-align:center;"><div class="gl" style="margin:0 auto;"></div><div style="font-size:10px;font-weight:600;margin-top:6px;">Customers</div></div>
+              <div style="background:#fff;border:1px solid #E4E9E6;border-radius:12px;padding:11px 8px;text-align:center;"><div class="gl" style="margin:0 auto;"></div><div style="font-size:10px;font-weight:600;margin-top:6px;">Campaigns</div></div>
+              <div style="background:#fff;border:1px solid #E4E9E6;border-radius:12px;padding:11px 8px;text-align:center;"><div class="gl" style="margin:0 auto;"></div><div style="font-size:10px;font-weight:600;margin-top:6px;">Menu</div></div>
+              <div style="background:#fff;border:1px solid #E4E9E6;border-radius:12px;padding:11px 8px;text-align:center;"><div class="gl" style="margin:0 auto;"></div><div style="font-size:10px;font-weight:600;margin-top:6px;">Rewards</div></div>
+              <div style="background:#fff;border:1px solid #E4E9E6;border-radius:12px;padding:11px 8px;text-align:center;"><div class="gl" style="margin:0 auto;"></div><div style="font-size:10px;font-weight:600;margin-top:6px;">Reports</div></div>
+              <div style="background:#fff;border:1px solid #E4E9E6;border-radius:12px;padding:11px 8px;text-align:center;"><div class="gl" style="margin:0 auto;"></div><div style="font-size:10px;font-weight:600;margin-top:6px;">Settings</div></div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div style="font-size:11px;color:#8B9A93;margin-top:12px;">Deeper screens get a simple back-arrow header. Great for infrequent managers; more taps to jump screen-to-screen.</div>
+    </div>
+
+    <!-- OC -->
+    <div class="card" style="width:400px;">
+      <span class="id">OC</span>
+      <div class="nm">Slim Icon Rail</div>
+      <div class="po">A compact 64px icon rail (labels on hover/expand) hugging the edge, Earn pinned as a bright FAB. Closest to today, most screen for tables, but smaller targets on phone.</div>
+      <div style="width:340px; background:#0b0b0c; border-radius:30px; padding:8px; margin:0 auto;">
+        <div style="background:#F7F8F7; border-radius:23px; height:400px; overflow:hidden; display:flex;">
+          <div style="width:58px;background:#14201C;display:flex;flex-direction:column;align-items:center;padding:12px 0;gap:14px;">
+            <span style="width:26px;height:26px;border-radius:8px;background:#B8460C;color:#fff;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;">R</span>
+            <span style="width:30px;height:30px;border-radius:9px;background:#0FA968;color:#fff;display:flex;align-items:center;justify-content:center;">＋</span>
+            <span style="width:20px;height:20px;border-radius:6px;background:#34D399;opacity:.9;"></span>
+            <span style="width:20px;height:20px;border-radius:6px;background:#3a463f;"></span>
+            <span style="width:20px;height:20px;border-radius:6px;background:#3a463f;"></span>
+            <span style="width:20px;height:20px;border-radius:6px;background:#3a463f;"></span>
+            <span style="width:20px;height:20px;border-radius:6px;background:#3a463f;"></span>
+          </div>
+          <div style="flex:1;padding:14px;">
+            <div class="disp" style="font-size:15px;font-weight:700;">Overview</div>
+            <div style="display:flex;gap:8px;margin-top:12px;">
+              <div style="flex:1;background:#fff;border:1px solid #E4E9E6;border-radius:12px;padding:10px;"><div class="num" style="font-size:20px;color:#0FA968;">42</div><div style="font-size:9px;color:#8B9A93;">earns</div></div>
+              <div style="flex:1;background:#fff;border:1px solid #E4E9E6;border-radius:12px;padding:10px;"><div class="num" style="font-size:20px;">8</div><div style="font-size:9px;color:#8B9A93;">redeems</div></div>
+            </div>
+            <div style="background:#fff;border:1px solid #E4E9E6;border-radius:12px;padding:11px;margin-top:8px;font-size:10px;color:#8B9A93;">Activity list…</div>
+          </div>
+        </div>
+      </div>
+      <div style="font-size:11px;color:#8B9A93;margin-top:12px;">Rail expands to 220px with labels on tap. Familiar, but counter actions aren't in the natural thumb zone on a phone.</div>
+    </div>
+  </div>
+
+  <!-- ============ PLATFORM ============ -->
+  <h2 class="disp" style="font-size:20px; font-weight:700; color:#fff; margin:44px 0 4px;">Platform console · data desk (desktop-first)</h2>
+  <p style="color:#dfe1de; font-size:13px; margin:0 0 22px;">Inventory: Companies · Outlets · Analytics · Companies-report · Plans · Subscription keys · Team · Activity log · Platform config. Chrome is deliberately cooler/denser than the tenant console so the two never feel like the same app.</p>
+
+  <div style="display:flex; gap:28px; flex-wrap:wrap; align-items:flex-start;">
+
+    <!-- PA -->
+    <div class="card" style="width:520px;">
+      <span class="rec">Recommended</span><span class="id">PA</span>
+      <div class="nm">Grouped Rail + Command-K</div>
+      <div class="po" style="max-width:440px;">A dense dark left rail grouped Operate / Catalog / Config, with a global ⌘K search to jump to any company or screen. Built for someone who lives in this tool all day.</div>
+      <div style="background:#0b0b0c; border-radius:16px; padding:8px;">
+        <div style="background:#0C110F; border-radius:11px; height:340px; overflow:hidden; display:flex;">
+          <div style="width:150px;background:#0C110F;border-right:1px solid #1B241F;padding:14px 10px;">
+            <div style="display:flex;align-items:center;gap:7px;margin-bottom:14px;"><span style="width:22px;height:22px;border-radius:6px;background:#0FA968;color:#fff;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:11px;">S</span><span class="disp" style="color:#E9F0EC;font-weight:700;font-size:12px;">Stampd Platform</span></div>
+            <div style="background:#141B18;border:1px solid #223029;border-radius:8px;padding:6px 8px;font-size:10px;color:#6E8578;margin-bottom:14px;">⌕ Search  ⌘K</div>
+            <div class="lab" style="color:#4E6157;margin-bottom:6px;">Operate</div>
+            <div style="background:#182019;color:#34D399;border-radius:7px;padding:6px 8px;font-size:11px;font-weight:600;">Companies</div>
+            <div style="color:#8DA79A;padding:6px 8px;font-size:11px;">Analytics</div>
+            <div style="color:#8DA79A;padding:6px 8px;font-size:11px;">Activity</div>
+            <div class="lab" style="color:#4E6157;margin:10px 0 6px;">Catalog</div>
+            <div style="color:#8DA79A;padding:6px 8px;font-size:11px;">Plans</div>
+            <div style="color:#8DA79A;padding:6px 8px;font-size:11px;">Subscription keys</div>
+            <div class="lab" style="color:#4E6157;margin:10px 0 6px;">Config</div>
+            <div style="color:#8DA79A;padding:6px 8px;font-size:11px;">Team</div>
+          </div>
+          <div style="flex:1;padding:16px;background:#0C110F;">
+            <div class="disp" style="color:#E9F0EC;font-size:15px;font-weight:700;">Companies</div>
+            <div style="background:#141B18;border:1px solid #223029;border-radius:10px;margin-top:12px;overflow:hidden;">
+              <div style="display:flex;padding:8px 12px;border-bottom:1px solid #223029;"><span class="lab" style="color:#6E8578;flex:1;">Company</span><span class="lab" style="color:#6E8578;width:60px;">Outlets</span><span class="lab" style="color:#6E8578;width:60px;">Points</span></div>
+              <div style="display:flex;padding:9px 12px;border-bottom:1px solid #1B241F;color:#E9F0EC;font-size:11px;"><span style="flex:1;">Roastery Group</span><span style="width:60px;">3</span><span class="num" style="width:60px;color:#34D399;">12.4k</span></div>
+              <div style="display:flex;padding:9px 12px;border-bottom:1px solid #1B241F;color:#E9F0EC;font-size:11px;"><span style="flex:1;">Momo House Co.</span><span style="width:60px;">2</span><span class="num" style="width:60px;color:#34D399;">8.1k</span></div>
+              <div style="display:flex;padding:9px 12px;color:#E9F0EC;font-size:11px;"><span style="flex:1;">Himalayan Brews</span><span style="width:60px;">5</span><span class="num" style="width:60px;color:#34D399;">21k</span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div style="font-size:11px;color:#8B9A93;margin-top:12px;">Dark chrome = "platform", not a tenant. Groups keep 9 destinations legible; ⌘K removes deep-clicking.</div>
+    </div>
+
+    <!-- PB -->
+    <div class="card" style="width:520px;">
+      <span class="id">PB</span>
+      <div class="nm">Top Bar + Contextual Sub-nav</div>
+      <div class="po" style="max-width:440px;">A global top bar (Companies · Analytics · Billing · Config) where each section opens its own row of sub-tabs. Maximum table width; nav depth reads as breadcrumbs.</div>
+      <div style="background:#0b0b0c; border-radius:16px; padding:8px;">
+        <div style="background:#F7F8F7; border-radius:11px; height:340px; overflow:hidden; display:flex; flex-direction:column;">
+          <div style="display:flex;align-items:center;gap:16px;padding:10px 16px;background:#0C110F;">
+            <div style="display:flex;align-items:center;gap:7px;"><span style="width:20px;height:20px;border-radius:6px;background:#0FA968;color:#fff;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:10px;">S</span><span class="disp" style="color:#E9F0EC;font-weight:700;font-size:12px;">Stampd</span></div>
+            <span style="color:#34D399;font-size:11px;font-weight:700;">Companies</span>
+            <span style="color:#8DA79A;font-size:11px;">Analytics</span>
+            <span style="color:#8DA79A;font-size:11px;">Billing</span>
+            <span style="color:#8DA79A;font-size:11px;">Config</span>
+            <span style="margin-left:auto;width:24px;height:24px;border-radius:50%;background:#0FA968;"></span>
+          </div>
+          <div style="display:flex;gap:14px;padding:8px 16px;background:#fff;border-bottom:1px solid #E4E9E6;">
+            <span style="font-size:11px;font-weight:700;color:#0FA968;border-bottom:2px solid #0FA968;padding-bottom:4px;">All companies</span>
+            <span style="font-size:11px;color:#8B9A93;">Register</span>
+            <span style="font-size:11px;color:#8B9A93;">Outlets</span>
+          </div>
+          <div style="flex:1;padding:16px;">
+            <div style="background:#fff;border:1px solid #E4E9E6;border-radius:10px;overflow:hidden;">
+              <div style="display:flex;padding:8px 12px;background:#F7F8F7;border-bottom:1px solid #E4E9E6;"><span class="lab" style="color:#8B9A93;flex:1;">Company</span><span class="lab" style="color:#8B9A93;width:70px;">Outlets</span><span class="lab" style="color:#8B9A93;width:70px;">Customers</span></div>
+              <div style="display:flex;padding:9px 12px;border-bottom:1px solid #EEF1EF;font-size:11px;"><span style="flex:1;">Roastery Group</span><span style="width:70px;">3</span><span class="num" style="width:70px;color:#0FA968;">1,204</span></div>
+              <div style="display:flex;padding:9px 12px;border-bottom:1px solid #EEF1EF;font-size:11px;"><span style="flex:1;">Momo House Co.</span><span style="width:70px;">2</span><span class="num" style="width:70px;color:#0FA968;">640</span></div>
+              <div style="display:flex;padding:9px 12px;font-size:11px;"><span style="flex:1;">Himalayan Brews</span><span style="width:70px;">5</span><span class="num" style="width:70px;color:#0FA968;">3,318</span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div style="font-size:11px;color:#8B9A93;margin-top:12px;">Widest tables of the three. Two-tier nav can feel like more clicks for cross-section jumps.</div>
+    </div>
+
+    <!-- PC -->
+    <div class="card" style="width:520px;">
+      <span class="id">PC</span>
+      <div class="nm">Collapsible Icon Rail + Breadcrumb</div>
+      <div class="po" style="max-width:440px;">A 56px icon rail that expands on demand, plus a persistent breadcrumb workspace bar. Everything maximizes horizontal room for wide reports and date-ranged exports.</div>
+      <div style="background:#0b0b0c; border-radius:16px; padding:8px;">
+        <div style="background:#F7F8F7; border-radius:11px; height:340px; overflow:hidden; display:flex;">
+          <div style="width:52px;background:#0C110F;display:flex;flex-direction:column;align-items:center;padding:12px 0;gap:12px;">
+            <span style="width:24px;height:24px;border-radius:7px;background:#0FA968;color:#fff;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:10px;">S</span>
+            <span style="width:20px;height:20px;border-radius:6px;background:#34D399;"></span>
+            <span style="width:20px;height:20px;border-radius:6px;background:#26332D;"></span>
+            <span style="width:20px;height:20px;border-radius:6px;background:#26332D;"></span>
+            <span style="width:20px;height:20px;border-radius:6px;background:#26332D;"></span>
+            <span style="width:20px;height:20px;border-radius:6px;background:#26332D;"></span>
+          </div>
+          <div style="flex:1;display:flex;flex-direction:column;">
+            <div style="padding:9px 16px;background:#fff;border-bottom:1px solid #E4E9E6;font-size:11px;color:#8B9A93;">Companies <span style="color:#CBD3CE;">/</span> <span style="color:#14201C;font-weight:700;">Roastery Group</span></div>
+            <div style="flex:1;padding:16px;">
+              <div style="display:flex;gap:10px;">
+                <div style="flex:1;background:#fff;border:1px solid #E4E9E6;border-radius:10px;padding:11px;"><div class="lab" style="color:#8B9A93;">Companies</div><div class="num" style="font-size:22px;color:#0FA968;">38</div></div>
+                <div style="flex:1;background:#fff;border:1px solid #E4E9E6;border-radius:10px;padding:11px;"><div class="lab" style="color:#8B9A93;">Outlets</div><div class="num" style="font-size:22px;color:#14201C;">96</div></div>
+                <div style="flex:1;background:#fff;border:1px solid #E4E9E6;border-radius:10px;padding:11px;"><div class="lab" style="color:#8B9A93;">Customers</div><div class="num" style="font-size:22px;color:#14201C;">14k</div></div>
+              </div>
+              <div style="background:#fff;border:1px solid #E4E9E6;border-radius:10px;padding:11px;margin-top:10px;font-size:10px;color:#8B9A93;">Weekly-flow chart…</div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div style="font-size:11px;color:#8B9A93;margin-top:12px;">Most raw table space. Icon-only rail leans on memory until expanded — fine for a daily power user.</div>
+    </div>
+  </div>
+
+</div>
+</x-dc>
+</body>
+</html>

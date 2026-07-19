@@ -1,436 +1,439 @@
-import { useEffect } from "react";
+import { useState } from "react";
 import { Link } from "react-router-dom";
 import {
+  ArrowRight,
+  Lock,
+  Zap,
+  Palette,
+  BookOpen,
+  Building2,
+  ShieldCheck,
+  Plus,
+  Minus,
+  Gift,
+  MapPin,
   Phone,
   Mail,
-  MapPin,
-  Clock,
-  Instagram,
-  Facebook,
-  Twitter,
-  User,
-  Store,
-  QrCode,
-  Wallet,
-  BarChart3,
-  Palette,
 } from "lucide-react";
-import { PLATFORM_NAME } from "../../lib/platform";
-import { usePlatformContact } from "../../hooks/usePlatformContact";
-import { StampdLogo } from "../../components/shared/StampdLogo";
 
-const STEPS = [
-  { n: "1", t: "We set up your program", d: "Pick how much of each bill comes back as points. Live in minutes — no app store needed." },
-  { n: "2", t: "Customers scan to collect", d: "You enter the bill, they scan the code. Points land on their balance instantly." },
-  { n: "3", t: "They spend, you keep them", d: "They put points toward the things you choose — and a reason to come back." },
+import { PLATFORM_NAME } from "../../lib/platform";
+import { StampdLogo } from "../../components/shared/StampdLogo";
+import { usePlatformContact } from "../../hooks/usePlatformContact";
+import { Button } from "@/components/ui/button";
+
+// The marketing site. Rebuilt around the actual loop rather than generic SaaS
+// claims: what this product does is specific and slightly unusual — a QR that
+// opens in the phone's own camera, points as a share of the bill, balances
+// that deliberately don't pool between branches — and saying that plainly
+// persuades better than adjectives.
+//
+// Every figure on this page is a fact about how the product works. There are
+// no invented customer counts, testimonials or logos.
+
+const LOOP = [
+  {
+    n: "1",
+    title: "Enter the bill",
+    body: "Staff types what the customer paid. Points are a share of it — you set the percent.",
+  },
+  {
+    n: "2",
+    title: "Customer scans",
+    body: "Their own phone camera opens the claim page. No app, no account hunting.",
+  },
+  {
+    n: "3",
+    title: "Points land",
+    body: "Instantly, with a little celebration. Fractional too, so a Rs 105 bill at 10% is 10.5.",
+  },
+  {
+    n: "4",
+    title: "They spend it here",
+    body: "On rewards you choose — and a real reason to walk back through your door.",
+  },
 ];
-const CUSTOMER_FEATURES = [
-  { Icon: Wallet, t: "One balance per place", d: "Every balance lives in your phone's browser — one home for every business you're loyal to, nothing to print or lose." },
-  { Icon: QrCode, t: "Instant QR points", d: "Scan the counter code with your phone's own camera, or the in-app scanner, and your points land immediately." },
+
+const FEATURES = [
+  {
+    Icon: Gift,
+    title: "Points as a share of the bill",
+    body: "Set 5%, 10%, whatever fits your margins. Sensible defaults, overridable per outlet.",
+  },
+  {
+    Icon: Zap,
+    title: "Double-point campaigns",
+    body: "Run a 2× weekend or a quiet-Tuesday boost. Pick the days; it goes live on its own, in Nepal time.",
+  },
+  {
+    Icon: Palette,
+    title: "Your brand, not ours",
+    body: "Your logo and colour theme the customer experience. It feels like your place, not a shared app.",
+  },
+  {
+    Icon: BookOpen,
+    title: "A ledger you can trust",
+    body: "Every earn and spend is a row that never changes. Balances always equal the history. Export any range.",
+  },
+  {
+    Icon: Building2,
+    title: "One chain, many outlets",
+    body: "Run several branches from one login, each isolated, with a private group rollup no single outlet can see.",
+  },
+  {
+    Icon: ShieldCheck,
+    title: "Staff-safe by design",
+    body: "Earn codes are single-use and short-lived. A customer can never move their own balance.",
+  },
 ];
-const BUSINESS_FEATURES = [
-  { Icon: BarChart3, t: "Powerful insights", d: "Track points, redemptions, and repeat visits from one dashboard, with exportable reports." },
-  { Icon: Palette, t: "Bespoke branding", d: "Your logo, your colour, your reward — customers feel like it's your own app, not a shared platform." },
+
+const FAQ = [
+  {
+    q: "Do my customers need to download an app?",
+    a: "No. They scan with their phone's own camera and it opens in the browser. They can add it to their home screen if they want to, and then it behaves like an app.",
+  },
+  {
+    q: "Can I choose my own rewards?",
+    a: "Yes. Put a points price on any menu item, or create a standalone reward that isn't on the menu at all. You also set how much of a bill comes back as points.",
+  },
+  {
+    q: "Do points work across my branches?",
+    a: "Points are earned and spent at the same counter, on purpose — each outlet keeps its own balances, even between two branches of one chain. You still get a private rollup across all of them.",
+  },
+  {
+    q: "Is there a payment gateway?",
+    a: "No. Stampd is purely loyalty — we never touch your customers' money. Your own subscription is arranged with us directly and activated with a key.",
+  },
 ];
-const FAQS = [
-  { q: "Do my customers need to download an app?", a: "No. It runs in the browser and can be added to their home screen like an app." },
-  { q: "Can I choose my own rewards?", a: "Yes — put a points price on anything you like, and set how much of a bill comes back." },
-  { q: "How do points get added?", a: "You enter the bill and show a short-lived QR; the customer scans it and earns a share of what they paid." },
-  { q: "Is there a cart or payments?", a: `No. ${PLATFORM_NAME} is purely loyalty — earn points on what you spend, then put them toward a reward.` },
-];
+
+function Faq({ q, a }: { q: string; a: string }) {
+  const [open, setOpen] = useState(false);
+  return (
+    <div className="border-b border-[var(--line)]">
+      <button
+        onClick={() => setOpen((v) => !v)}
+        aria-expanded={open}
+        className="flex w-full items-center justify-between gap-4 py-5 text-left"
+      >
+        <span className="font-display text-base font-bold text-[var(--ink)]">{q}</span>
+        {open ? (
+          <Minus className="h-4 w-4 flex-shrink-0 text-[var(--soft)]" />
+        ) : (
+          <Plus className="h-4 w-4 flex-shrink-0 text-[var(--soft)]" />
+        )}
+      </button>
+      {open && <p className="-mt-1 pb-5 text-sm leading-relaxed text-[var(--muted)]">{a}</p>}
+    </div>
+  );
+}
 
 export default function PlatformLanding() {
-  useEffect(() => {
-    document.title = `${PLATFORM_NAME} — digital loyalty for local business`;
-  }, []);
-
   const { data: contact } = usePlatformContact();
-  const hasContact = Boolean(
-    contact &&
-      (contact.phone ||
-        contact.email ||
-        contact.address ||
-        contact.hours ||
-        contact.aboutUs ||
-        contact.socials.instagram ||
-        contact.socials.facebook ||
-        contact.socials.x)
-  );
-  const hasSocials = Boolean(
-    contact && (contact.socials.instagram || contact.socials.facebook || contact.socials.x)
-  );
+  const hasContact = Boolean(contact && (contact.phone || contact.email || contact.address));
 
   return (
     <div className="min-h-screen bg-[var(--bg)] text-[var(--ink)]">
-      {/* Header */}
-      <header className="sticky top-0 z-20 border-b border-[var(--line)] bg-[var(--bg)]/85 backdrop-blur">
-        <div className="mx-auto flex max-w-[1140px] items-center gap-8 px-6 py-4">
-          <span className="flex items-center gap-2 font-display text-xl font-bold tracking-tight" style={{ color: "var(--plat)" }}>
-            <StampdLogo size={22} />
-            {PLATFORM_NAME}
-          </span>
-          <nav className="hidden items-center gap-7 md:flex">
-            <a href="#features" className="text-sm font-semibold text-[var(--muted)] transition-colors hover:text-[var(--plat)]">
-              Features
-            </a>
-            <a href="#business" className="text-sm font-semibold text-[var(--muted)] transition-colors hover:text-[var(--plat)]">
-              For Business
-            </a>
-            <a href="#customers" className="text-sm font-semibold text-[var(--muted)] transition-colors hover:text-[var(--plat)]">
-              For Customers
-            </a>
-          </nav>
-          <Link
-            to="/platform/login"
-            className="ml-auto rounded-lg border px-4 py-2 text-sm font-bold transition-opacity hover:opacity-80"
-            style={{ borderColor: "var(--plat)", color: "var(--plat)" }}
-          >
-            Log In
+      <header className="sticky top-0 z-30 border-b border-[var(--line)] bg-[var(--bg)]/90 backdrop-blur">
+        <div className="mx-auto flex w-full max-w-6xl items-center gap-3 px-6 py-4">
+          <Link to="/" className="flex items-center gap-2.5">
+            <StampdLogo size={26} />
+            <span className="font-display text-lg font-bold">{PLATFORM_NAME}</span>
           </Link>
+          <nav className="ml-6 hidden items-center gap-6 text-sm font-semibold text-[var(--muted)] lg:flex">
+            <a href="#loop" className="hover:text-[var(--ink)]">How it works</a>
+            <a href="#features" className="hover:text-[var(--ink)]">For businesses</a>
+            <a href="#nepal" className="hover:text-[var(--ink)]">Made for Nepal</a>
+            <a href="#faq" className="hover:text-[var(--ink)]">Questions</a>
+          </nav>
+          <div className="ml-auto flex items-center gap-2">
+            <Button asChild variant="ghost" size="sm">
+              <Link to="/admin-login">Log in</Link>
+            </Button>
+            <Button asChild size="sm">
+              <Link to="/explore">Start collecting</Link>
+            </Button>
+          </div>
         </div>
       </header>
 
-      {/* Hero */}
-      <section className="mx-auto grid max-w-[1140px] items-center gap-12 px-6 py-16 md:grid-cols-[1.05fr_.95fr]">
-        <div>
-          <span
-            className="mb-5 inline-block rounded-full px-3.5 py-1.5 text-[13px] font-bold uppercase tracking-wider"
-            style={{ background: "var(--plat-soft)", color: "var(--plat)" }}
-          >
-            Rewarding every visit
-          </span>
-          <h1 className="font-display text-[44px] leading-[1.1] tracking-tight md:text-[52px]">
-            The modern soul of{" "}
-            <span className="italic" style={{ color: "var(--plat)" }}>
-              loyalty.
+      {/* HERO — leads with the sentence that actually describes the product. */}
+      <section className="mx-auto w-full max-w-6xl px-6 pb-16 pt-14 lg:pt-20">
+        <div className="grid items-center gap-12 lg:grid-cols-[1.1fr_0.9fr]">
+          <div>
+            <span className="text-[10px] font-bold uppercase tracking-[0.18em] text-[var(--primary-deep)]">
+              Loyalty for local Nepal
             </span>
-          </h1>
-          <p className="mb-7 mt-4 max-w-[480px] text-[18px] text-[var(--muted)]">
-            Reimagining the shopkeeper's ledger for the digital age — a beautiful, seamless bridge
-            between local businesses and the customers who keep coming back.
-          </p>
-          <div className="flex flex-col gap-3 sm:flex-row">
-            <Link
-              to="/customer-login"
-              className="stamp-interactive group relative flex-1 overflow-hidden rounded-xl px-6 py-5 text-white"
-              style={{ background: "var(--plat)" }}
-            >
-              <User className="mb-2 h-6 w-6" />
-              <div className="font-display text-lg font-bold">Customer Login</div>
-              <div className="text-[13px] opacity-80">Track your rewards &amp; points</div>
-            </Link>
-            <Link
-              to="/business-login"
-              className="stamp-interactive group relative flex-1 overflow-hidden rounded-xl bg-[var(--surface-container)] px-6 py-5"
-            >
-              <Store className="mb-2 h-6 w-6" style={{ color: "var(--plat)" }} />
-              <div className="font-display text-lg font-bold">Business Admin</div>
-              <div className="text-[13px] text-[var(--muted)]">Manage cards &amp; analytics</div>
-            </Link>
-          </div>
-        </div>
+            <h1 className="mt-4 font-display text-[40px] font-bold leading-[1.05] tracking-tight lg:text-[56px]">
+              Turn every rupee into a reason to come back.
+            </h1>
+            <p className="mt-5 max-w-xl text-base leading-relaxed text-[var(--muted)]">
+              {PLATFORM_NAME} gives your cafe a points program that works like money — customers
+              earn a share of every bill and spend it right back at your counter. No app to
+              install, no punch cards, no hardware.
+            </p>
 
-        {/* Bento visual */}
-        <div className="grid grid-cols-2 gap-4">
-          <div className="shadow-ambient col-span-1 row-span-2 flex flex-col justify-end rounded-3xl bg-[var(--surface)] p-6">
-            <div
-              className="mb-4 flex h-12 w-12 items-center justify-center rounded-full"
-              style={{ background: "var(--plat-soft)" }}
-            >
-              <QrCode className="h-5 w-5" style={{ color: "var(--plat)" }} />
+            <div className="mt-7 flex flex-wrap gap-3">
+              <Button asChild size="lg">
+                <Link to="/admin-login">
+                  Start your program <ArrowRight />
+                </Link>
+              </Button>
+              <Button asChild variant="outline" size="lg">
+                <Link to="/explore">See it as a customer</Link>
+              </Button>
             </div>
-            <h3 className="font-display text-lg font-bold">Seamless scan</h3>
-            <p className="text-sm text-[var(--muted)]">Instant points via QR at the counter — no app to install.</p>
-          </div>
 
-          <div
-            className="rounded-3xl p-6 text-white shadow-2xl"
-            style={{ background: "linear-gradient(155deg, var(--brand), var(--brand-deep))" }}
-          >
-            <div className="mb-3 flex items-center justify-between gap-2">
-              <span className="truncate text-xs uppercase tracking-wider opacity-80">Coffesarowar</span>
-              <span className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-[9px] bg-white/20 text-xs font-bold">
-                C
-              </span>
-            </div>
-            <div className="flex gap-2">
-              {Array.from({ length: 4 }).map((_, i) => (
-                <div
-                  key={i}
-                  className="flex h-8 w-8 items-center justify-center rounded-full text-xs font-bold"
-                  style={{
-                    background: i < 2 ? "#fff" : "rgba(255,255,255,.15)",
-                    border: `2px dashed ${i < 2 ? "#fff" : "rgba(255,255,255,.4)"}`,
-                    color: "var(--brand)",
-                  }}
-                >
-                  {i < 2 ? "★" : ""}
+            {/* Facts about how the product works, not invented traction. */}
+            <dl className="mt-10 grid max-w-lg grid-cols-3 gap-6">
+              {[
+                { v: "10%", k: "of a bill back — your call" },
+                { v: "30s", k: "single-use earn code" },
+                { v: "0", k: "app installs needed" },
+              ].map((s) => (
+                <div key={s.k} className="border-t border-[var(--line)] pt-3">
+                  <dt className="font-numeral text-[32px] leading-none text-[var(--primary)]">
+                    {s.v}
+                  </dt>
+                  <dd className="mt-1.5 text-xs leading-snug text-[var(--muted)]">{s.k}</dd>
                 </div>
               ))}
-            </div>
+            </dl>
           </div>
 
-          <div className="shadow-ambient rounded-3xl bg-[var(--surface)] p-6">
-            <div className="font-display text-lg font-bold">Live in minutes</div>
-            <p className="text-sm text-[var(--muted)]">No hardware, no app store review — set your program and go.</p>
-          </div>
-        </div>
-      </section>
-
-      {/* For Customers / For Business */}
-      <section className="bg-[var(--surface-container-low,var(--surface))] px-6 py-16" id="features">
-        <div className="mx-auto flex max-w-[1140px] flex-col gap-10 md:flex-row">
-          <div className="flex-1" id="customers">
-            <h2 className="mb-5 font-display text-2xl font-bold" style={{ color: "var(--plat)" }}>
-              For Customers
-            </h2>
-            <div className="flex flex-col gap-3">
-              {CUSTOMER_FEATURES.map((f) => (
-                <div key={f.t} className="shadow-ambient flex items-start gap-4 rounded-2xl bg-[var(--surface)] p-5">
-                  <f.Icon className="mt-0.5 h-6 w-6 flex-shrink-0" style={{ color: "var(--plat)" }} />
-                  <div>
-                    <h4 className="font-bold text-[var(--ink)]">{f.t}</h4>
-                    <p className="text-sm text-[var(--muted)]">{f.d}</p>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-          <div className="flex-1" id="business">
-            <h2 className="mb-5 font-display text-2xl font-bold" style={{ color: "var(--plat)" }}>
-              For Business
-            </h2>
-            <div className="flex flex-col gap-3">
-              {BUSINESS_FEATURES.map((f) => (
-                <div key={f.t} className="shadow-ambient flex items-start gap-4 rounded-2xl bg-[var(--surface)] p-5">
-                  <f.Icon className="mt-0.5 h-6 w-6 flex-shrink-0" style={{ color: "var(--plat)" }} />
-                  <div>
-                    <h4 className="font-bold text-[var(--ink)]">{f.t}</h4>
-                    <p className="text-sm text-[var(--muted)]">{f.d}</p>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* How it works */}
-      <section className="mx-auto max-w-[1140px] px-6 py-10">
-        <h2 className="mb-8 text-center text-[15px] font-extrabold uppercase tracking-[0.1em] text-[var(--soft)]">
-          How it works
-        </h2>
-        <div className="grid gap-5 md:grid-cols-3">
-          {STEPS.map((s) => (
-            <div key={s.n} className="rounded-[22px] border border-[var(--line)] bg-[var(--surface)] p-7">
-              <div
-                className="mb-4 flex h-10 w-10 items-center justify-center rounded-[12px] font-display text-lg font-extrabold"
-                style={{ background: "var(--plat-soft)", color: "var(--plat)" }}
-              >
-                {s.n}
+          {/* The product's own moment rather than a stock dashboard shot: what
+              a customer sees the instant points land. */}
+          <div className="relative mx-auto w-full max-w-[320px]">
+            <div className="rounded-[28px] border border-[var(--line)] bg-[var(--surface)] p-6 shadow-ambient">
+              <div className="flex items-center gap-2.5">
+                <span className="flex h-9 w-9 items-center justify-center rounded-[var(--radius-field)] bg-[#B8460C] font-display text-sm font-bold text-white">
+                  C
+                </span>
+                <span className="font-display text-sm font-bold">Your café</span>
               </div>
-              <h3 className="mb-1.5 font-display text-[19px] font-bold">{s.t}</h3>
-              <p className="text-sm text-[var(--muted)]">{s.d}</p>
+
+              <div className="mt-5 text-[10px] font-bold uppercase tracking-[0.16em] text-[var(--soft)]">
+                Points earned
+              </div>
+              <div className="font-numeral text-[56px] leading-none text-[var(--primary)]">
+                +10.5
+              </div>
+              <p className="mt-1 text-sm text-[var(--muted)]">on a Rs 105 bill</p>
+
+              <div className="mt-5 rounded-[var(--radius-btn)] bg-[var(--surface-2)] p-4">
+                <div className="text-[10px] font-bold uppercase tracking-[0.16em] text-[var(--soft)]">
+                  Balance
+                </div>
+                <div className="font-numeral text-[28px] leading-none">240</div>
+                <div className="mt-3 flex flex-col gap-2">
+                  {[
+                    { n: "Free coffee", p: "80" },
+                    { n: "Slice of cake", p: "120" },
+                  ].map((r) => (
+                    <div key={r.n} className="flex items-center justify-between text-sm">
+                      <span className="text-[var(--ink)]">{r.n}</span>
+                      <span className="font-numeral text-lg leading-none text-[var(--primary)]">
+                        {r.p}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* THE LOOP */}
+      <section id="loop" className="border-t border-[var(--line)] bg-[var(--surface)]">
+        <div className="mx-auto w-full max-w-6xl px-6 py-16">
+          <div className="flex items-baseline gap-3">
+            <span className="font-numeral text-sm text-[var(--primary)]">01</span>
+            <h2 className="font-display text-2xl font-bold">The whole loop</h2>
+          </div>
+
+          {/* Numbered because this genuinely is a sequence — each step only
+              makes sense after the one before it. */}
+          <ol className="mt-8 grid gap-8 sm:grid-cols-2 lg:grid-cols-4">
+            {LOOP.map((s) => (
+              <li key={s.n} className="border-t border-[var(--line)] pt-4">
+                <span className="font-numeral text-2xl leading-none text-[var(--primary)]">
+                  {s.n}
+                </span>
+                <h3 className="mt-2 font-display text-base font-bold">{s.title}</h3>
+                <p className="mt-1.5 text-sm leading-relaxed text-[var(--muted)]">{s.body}</p>
+              </li>
+            ))}
+          </ol>
+
+          <div className="mt-10 flex items-start gap-3 rounded-[var(--radius-card)] bg-[var(--primary-soft)] px-5 py-4">
+            <Lock className="mt-0.5 h-4 w-4 flex-shrink-0 text-[var(--primary-deep)]" />
+            <p className="text-sm text-[var(--primary-deep)]">
+              <span className="font-bold">Points stay where they're earned.</span> Each outlet
+              keeps its own balances — even between two branches of the same chain — so customers
+              always know exactly where their points live.
+            </p>
+          </div>
+        </div>
+      </section>
+
+      {/* FEATURES */}
+      <section id="features" className="mx-auto w-full max-w-6xl px-6 py-16">
+        <div className="flex items-baseline gap-3">
+          <span className="font-numeral text-sm text-[var(--primary)]">02</span>
+          <h2 className="font-display text-2xl font-bold">Built for the counter</h2>
+        </div>
+
+        <div className="mt-8 grid gap-x-8 gap-y-9 sm:grid-cols-2 lg:grid-cols-3">
+          {FEATURES.map((f) => (
+            <div key={f.title} className="border-t border-[var(--line)] pt-4">
+              <f.Icon className="h-5 w-5 text-[var(--primary-deep)]" strokeWidth={1.75} />
+              <h3 className="mt-2.5 font-display text-base font-bold">{f.title}</h3>
+              <p className="mt-1.5 text-sm leading-relaxed text-[var(--muted)]">{f.body}</p>
             </div>
           ))}
         </div>
       </section>
 
-      {/* Mission banner */}
-      <section className="mx-auto max-w-[1140px] px-6 py-10">
-        <div
-          className="rounded-3xl p-11 text-white"
-          style={{ background: "linear-gradient(135deg, var(--brand-deep), var(--plat))" }}
-        >
-          <h2 className="mb-4 max-w-2xl font-display text-3xl font-bold">
-            A loyalty card that feels like your business, not a shared app.
-          </h2>
-          <p className="max-w-2xl text-[17px] italic opacity-90">
-            No paper ledgers to keep, no third-party logo cluttering the experience — just your
-            name, your colour, and your reward, at every single visit.
-          </p>
+      {/* MADE FOR NEPAL */}
+      <section id="nepal" className="border-y border-[var(--line)] bg-[var(--surface)]">
+        <div className="mx-auto grid w-full max-w-6xl gap-10 px-6 py-16 lg:grid-cols-[1fr_1fr]">
+          <div>
+            <span className="text-[10px] font-bold uppercase tracking-[0.18em] text-[var(--primary-deep)]">
+              Made for Nepal
+            </span>
+            <h2 className="mt-3 font-display text-[28px] font-bold leading-tight">
+              Built for a mid-range Android on cafe Wi-Fi.
+            </h2>
+            <p className="mt-4 text-sm leading-relaxed text-[var(--muted)]">
+              Rupees everywhere. Fast on slow networks and small screens. Campaigns judged in
+              Nepal time, not a server's. It installs to the home screen like an app — because
+              for your customers, it is one.
+            </p>
+          </div>
+
+          <div className="flex flex-col gap-4">
+            {[
+              {
+                k: "Rs",
+                t: "Rupees, with decimals handled gracefully — 10.5 points stays 10.5, not rounded away.",
+              },
+              {
+                k: "+5:45",
+                t: "UTC+5:45 aware, so a Thursday campaign runs on Nepal's Thursday.",
+              },
+              {
+                k: "PWA",
+                t: "Add to home screen. The shell is cached; balances and claims are always live.",
+              },
+            ].map((r) => (
+              <div key={r.k} className="flex gap-4 border-t border-[var(--line)] pt-4">
+                <span className="w-16 flex-shrink-0 font-numeral text-lg leading-none text-[var(--primary)]">
+                  {r.k}
+                </span>
+                <span className="text-sm leading-relaxed text-[var(--muted)]">{r.t}</span>
+              </div>
+            ))}
+          </div>
         </div>
       </section>
 
       {/* FAQ */}
-      <section className="mx-auto max-w-[760px] px-6 py-10">
-        <h2 className="mb-6 text-center font-display text-[30px] font-extrabold">Questions, answered</h2>
-        <div className="flex flex-col gap-2.5">
-          {FAQS.map((f) => (
-            <div key={f.q} className="shadow-ambient rounded-3xl bg-[var(--surface)] p-5">
-              <div className="mb-1 text-[15px] font-bold">{f.q}</div>
-              <div className="text-sm text-[var(--muted)]">{f.a}</div>
-            </div>
+      <section id="faq" className="mx-auto w-full max-w-3xl px-6 py-16">
+        <h2 className="font-display text-2xl font-bold">Questions, answered</h2>
+        <div className="mt-6">
+          {FAQ.map((f) => (
+            <Faq key={f.q} {...f} />
           ))}
         </div>
       </section>
 
-      {hasContact && contact && (
-        <section className="mx-auto max-w-[760px] px-6 py-10" id="contact">
-          <h2 className="mb-6 text-center font-display text-[30px] font-extrabold">Contact us</h2>
-          <div className="shadow-ambient rounded-3xl bg-[var(--surface)] p-6">
-            {contact.address && (
-              <div className="mb-2 flex items-start gap-2 text-sm text-[var(--ink)]">
-                <MapPin className="mt-0.5 h-4 w-4 flex-shrink-0 text-[var(--muted)]" />
-                {contact.address}
-              </div>
-            )}
-            {contact.phone && (
-              <a href={`tel:${contact.phone}`} className="mb-2 flex items-center gap-2 text-sm text-[var(--ink)]">
-                <Phone className="h-4 w-4 flex-shrink-0 text-[var(--muted)]" />
-                {contact.phone}
-              </a>
-            )}
-            {contact.email && (
-              <a href={`mailto:${contact.email}`} className="mb-2 flex items-center gap-2 text-sm text-[var(--ink)]">
-                <Mail className="h-4 w-4 flex-shrink-0 text-[var(--muted)]" />
-                {contact.email}
-              </a>
-            )}
-            {contact.hours && (
-              <div className="mb-2 flex items-start gap-2 whitespace-pre-line text-sm text-[var(--ink)]">
-                <Clock className="mt-0.5 h-4 w-4 flex-shrink-0 text-[var(--muted)]" />
-                {contact.hours}
-              </div>
-            )}
-            {contact.aboutUs && <p className="mb-3 text-sm text-[var(--muted)]">{contact.aboutUs}</p>}
-            {hasSocials && (
-              <div className="flex gap-2">
-                {contact.socials.instagram && (
-                  <a
-                    href={contact.socials.instagram}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="flex h-9 w-9 items-center justify-center rounded-full bg-[var(--bg)] text-[var(--muted)] hover:text-[var(--plat)]"
-                    aria-label="Instagram"
-                  >
-                    <Instagram className="h-4 w-4" />
-                  </a>
-                )}
-                {contact.socials.facebook && (
-                  <a
-                    href={contact.socials.facebook}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="flex h-9 w-9 items-center justify-center rounded-full bg-[var(--bg)] text-[var(--muted)] hover:text-[var(--plat)]"
-                    aria-label="Facebook"
-                  >
-                    <Facebook className="h-4 w-4" />
-                  </a>
-                )}
-                {contact.socials.x && (
-                  <a
-                    href={contact.socials.x}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="flex h-9 w-9 items-center justify-center rounded-full bg-[var(--bg)] text-[var(--muted)] hover:text-[var(--plat)]"
-                    aria-label="X (Twitter)"
-                  >
-                    <Twitter className="h-4 w-4" />
-                  </a>
-                )}
-              </div>
-            )}
-          </div>
-        </section>
-      )}
-
-      {/* Footer */}
-      <footer className="mt-6 bg-[var(--surface-container-high,var(--surface))] px-6 pb-8 pt-14">
-        <div className="mx-auto max-w-[1140px]">
-          <div className="mb-10 grid grid-cols-2 gap-8 md:grid-cols-4">
-            <div className="col-span-2 md:col-span-1">
-              <div className="mb-3 flex items-center gap-2 font-display text-xl font-bold" style={{ color: "var(--plat)" }}>
-                <StampdLogo size={22} />
-                {PLATFORM_NAME}
-              </div>
-              <p className="max-w-xs text-sm text-[var(--muted)]">
-                Elevating the connection between merchants and the people who love them.
-              </p>
-            </div>
-            <div>
-              <h5 className="mb-3 text-xs font-bold uppercase tracking-widest text-[var(--ink)]">Explore</h5>
-              <ul className="flex flex-col gap-2 text-sm text-[var(--muted)]">
-                <li>
-                  <Link to="/customer-login" className="hover:text-[var(--plat)]">
-                    Customer app
-                  </Link>
-                </li>
-                <li>
-                  <Link to="/business-login" className="hover:text-[var(--plat)]">
-                    Business console
-                  </Link>
-                </li>
-                <li>
-                  <Link to="/platform/login" className="hover:text-[var(--plat)]">
-                    Platform admin
-                  </Link>
-                </li>
-              </ul>
-            </div>
+      {/* CLOSING */}
+      <section className="border-t border-[var(--line)] bg-[var(--ink)] text-[#E9F0EC]">
+        <div className="mx-auto w-full max-w-3xl px-6 py-16 text-center">
+          <h2 className="font-display text-[30px] font-bold leading-tight text-white">
+            Give people a reason to choose you again.
+          </h2>
+          <p className="mx-auto mt-3 max-w-md text-sm text-[#8DA79A]">
+            Set up your program in minutes. No hardware, no app store, no card on file.
+          </p>
+          <div className="mt-7 flex flex-wrap justify-center gap-3">
+            <Button asChild size="lg">
+              <Link to="/admin-login">Start your program</Link>
+            </Button>
             {hasContact && (
-              <div>
-                <h5 className="mb-3 text-xs font-bold uppercase tracking-widest text-[var(--ink)]">Company</h5>
-                <ul className="flex flex-col gap-2 text-sm text-[var(--muted)]">
-                  <li>
-                    <a href="#contact" className="hover:text-[var(--plat)]">
-                      Contact
-                    </a>
-                  </li>
-                </ul>
-              </div>
-            )}
-            {hasSocials && contact && (
-              <div>
-                <h5 className="mb-3 text-xs font-bold uppercase tracking-widest text-[var(--ink)]">Connect</h5>
-                <div className="flex gap-3">
-                  {contact.socials.instagram && (
-                    <a
-                      href={contact.socials.instagram}
-                      target="_blank"
-                      rel="noreferrer"
-                      className="text-[var(--muted)] hover:text-[var(--plat)]"
-                      aria-label="Instagram"
-                    >
-                      <Instagram className="h-5 w-5" />
-                    </a>
-                  )}
-                  {contact.socials.facebook && (
-                    <a
-                      href={contact.socials.facebook}
-                      target="_blank"
-                      rel="noreferrer"
-                      className="text-[var(--muted)] hover:text-[var(--plat)]"
-                      aria-label="Facebook"
-                    >
-                      <Facebook className="h-5 w-5" />
-                    </a>
-                  )}
-                  {contact.socials.x && (
-                    <a
-                      href={contact.socials.x}
-                      target="_blank"
-                      rel="noreferrer"
-                      className="text-[var(--muted)] hover:text-[var(--plat)]"
-                      aria-label="X (Twitter)"
-                    >
-                      <Twitter className="h-5 w-5" />
-                    </a>
-                  )}
-                </div>
-              </div>
+              <Button
+                asChild
+                variant="outline"
+                size="lg"
+                className="border-white/25 bg-transparent text-white hover:border-white hover:text-white"
+              >
+                <a href={contact?.email ? `mailto:${contact.email}` : `tel:${contact?.phone}`}>
+                  Talk to us
+                </a>
+              </Button>
             )}
           </div>
-          <div className="flex flex-col items-center justify-between gap-3 border-t border-[var(--line)] pt-6 text-sm text-[var(--muted)] md:flex-row">
-            <p className="text-[13px] opacity-70">© 2026 {PLATFORM_NAME}. All rights reserved.</p>
-            <Link
-              to="/platform/login"
-              className="text-[11px] font-semibold uppercase tracking-[0.2em] text-[var(--soft)] hover:text-[var(--plat)]"
-            >
-              Platform admin login
-            </Link>
+
+          {hasContact && (
+            <div className="mt-8 flex flex-wrap items-center justify-center gap-x-6 gap-y-2 text-xs text-[#8DA79A]">
+              {contact?.phone && (
+                <a href={`tel:${contact.phone}`} className="flex items-center gap-1.5 hover:text-white">
+                  <Phone className="h-3.5 w-3.5" /> {contact.phone}
+                </a>
+              )}
+              {contact?.email && (
+                <a
+                  href={`mailto:${contact.email}`}
+                  className="flex items-center gap-1.5 hover:text-white"
+                >
+                  <Mail className="h-3.5 w-3.5" /> {contact.email}
+                </a>
+              )}
+              {contact?.address && (
+                <span className="flex items-center gap-1.5">
+                  <MapPin className="h-3.5 w-3.5" /> {contact.address}
+                </span>
+              )}
+            </div>
+          )}
+        </div>
+      </section>
+
+      <footer className="mx-auto w-full max-w-6xl px-6 py-10">
+        <div className="flex flex-wrap items-start justify-between gap-8">
+          <div className="max-w-xs">
+            <div className="flex items-center gap-2.5">
+              <StampdLogo size={22} />
+              <span className="font-display text-base font-bold">{PLATFORM_NAME}</span>
+            </div>
+            <p className="mt-2 text-xs text-[var(--muted)]">
+              Points that work like money, for local business in Nepal.
+            </p>
+          </div>
+
+          <div className="flex flex-wrap gap-10 text-sm">
+            {[
+              { h: "Customers", l: "Customer login", to: "/customer-login" },
+              { h: "Businesses", l: "Staff & owner login", to: "/admin-login" },
+              { h: "Platform", l: "Platform admin", to: "/platform/login" },
+            ].map((c) => (
+              <div key={c.h}>
+                <div className="text-[10px] font-bold uppercase tracking-[0.14em] text-[var(--soft)]">
+                  {c.h}
+                </div>
+                <Link
+                  to={c.to}
+                  className="mt-1.5 inline-flex items-center gap-1 font-semibold text-[var(--ink)] hover:text-[var(--primary-deep)]"
+                >
+                  {c.l} <ArrowRight className="h-3.5 w-3.5" />
+                </Link>
+              </div>
+            ))}
           </div>
         </div>
+
+        <p className="mt-10 border-t border-[var(--line)] pt-5 text-xs text-[var(--soft)]">
+          © {new Date().getFullYear()} {PLATFORM_NAME}. All rights reserved.
+        </p>
       </footer>
     </div>
   );

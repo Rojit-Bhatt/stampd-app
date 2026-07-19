@@ -9,6 +9,9 @@ import { tenantPath } from "../../lib/tenantPath";
 import { formatPoints, type PointsTransaction } from "../../hooks/usePoints";
 import { formatNpr } from "../../lib/subscription";
 import { Skeleton } from "../../components/ui/skeleton";
+import { DateRangeFilter, defaultDateRange, type DateRangeValue } from "../../components/shared/DateRangeFilter";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 
 interface AdminTransaction extends PointsTransaction {
   customerId: string;
@@ -23,13 +26,13 @@ const TYPE_META: Record<PointsTransaction["type"], { label: string; Icon: typeof
   expire: { label: "Expire", Icon: Hourglass, tone: "var(--soft)" },
 };
 
-function useTransactions() {
+function useTransactions(range: DateRangeValue) {
   const { companySlug, outletSlug } = useTenant();
   return useQuery<AdminTransaction[]>({
-    queryKey: ["adminTransactions", companySlug, outletSlug],
+    queryKey: ["adminTransactions", companySlug, outletSlug, range.startDate, range.endDate],
     queryFn: async () => {
       const res = await apiRequest<{ success: boolean; data: AdminTransaction[] }>(
-        "/api/admin/transactions",
+        `/api/admin/transactions?startDate=${range.startDate}&endDate=${range.endDate}`,
         { role: "admin" },
       );
       return res.data || [];
@@ -42,7 +45,8 @@ function useTransactions() {
 // so this page never offers to change anything.
 export default function AdminTransactions() {
   const { companySlug, outletSlug } = useTenant();
-  const { data: rows = [], isLoading } = useTransactions();
+  const [range, setRange] = useState<DateRangeValue>(defaultDateRange(30));
+  const { data: rows = [], isLoading } = useTransactions(range);
   const [query, setQuery] = useState("");
   const [type, setType] = useState<TypeFilter>("all");
   const [downloading, setDownloading] = useState(false);
@@ -59,12 +63,15 @@ export default function AdminTransactions() {
   const download = async () => {
     setDownloading(true);
     try {
-      const res = await fetch(apiUrl("/api/admin/reports/transactions/download"), {
-        headers: {
-          Authorization: `Bearer ${localStorage.getItem("admin_auth_token")}`,
-          ...tenantHeaders(),
+      const res = await fetch(
+        apiUrl(`/api/admin/reports/transactions/download?startDate=${range.startDate}&endDate=${range.endDate}`),
+        {
+          headers: {
+            Authorization: `Bearer ${localStorage.getItem("admin_auth_token")}`,
+            ...tenantHeaders(),
+          },
         },
-      });
+      );
       if (!res.ok) throw new Error("Download failed");
       const blob = await res.blob();
       const url = URL.createObjectURL(blob);
@@ -84,27 +91,27 @@ export default function AdminTransactions() {
     <div>
       <div className="mb-6 flex flex-wrap items-end justify-between gap-3">
         <div>
-          <h1 className="font-display text-[30px] font-extrabold text-[var(--ink)]">Transactions</h1>
+          <h1 className="font-display text-[30px] font-bold text-[var(--ink)]">Transactions</h1>
           <p className="text-[var(--muted)]">Every point earned, spent, or expired here.</p>
         </div>
-        <button
-          onClick={download}
-          disabled={downloading || rows.length === 0}
-          className="stamp-interactive flex items-center gap-2 rounded-full border border-[var(--line)] bg-[var(--surface)] px-4 py-2.5 text-sm font-bold disabled:opacity-50"
-        >
-          <Download className="h-4 w-4" />
+        <Button onClick={download} disabled={downloading || rows.length === 0} variant="outline">
+          <Download />
           {downloading ? "Preparing…" : "Export"}
-        </button>
+        </Button>
+      </div>
+
+      <div className="mb-4">
+        <DateRangeFilter value={range} onChange={setRange} />
       </div>
 
       <div className="mb-4 flex flex-wrap items-center gap-3">
         <div className="relative min-w-[220px] flex-1">
           <Search className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-[var(--soft)]" />
-          <input
+          <Input
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             placeholder="Search by customer or reward…"
-            className="w-full rounded-full border border-[var(--line)] bg-[var(--surface)] py-2.5 pl-10 pr-4 text-sm focus:border-[var(--brand)] focus:outline-none"
+            className="pl-10"
           />
         </div>
         <div className="flex gap-1.5 rounded-full border border-[var(--line)] bg-[var(--surface)] p-1">
@@ -113,7 +120,7 @@ export default function AdminTransactions() {
               key={t}
               onClick={() => setType(t)}
               className="rounded-full px-3.5 py-1.5 text-[13px] font-bold capitalize transition-colors"
-              style={type === t ? { background: "var(--brand)", color: "white" } : { color: "var(--muted)" }}
+              style={type === t ? { background: "var(--primary)", color: "white" } : { color: "var(--muted)" }}
             >
               {t}
             </button>
@@ -121,7 +128,7 @@ export default function AdminTransactions() {
         </div>
       </div>
 
-      <div className="shadow-ambient overflow-hidden rounded-3xl bg-[var(--surface)]">
+      <div className="shadow-ambient overflow-hidden rounded-[var(--radius-card)] bg-[var(--surface)]">
         <div className="grid grid-cols-[1.6fr_1fr_1.4fr_1fr_1fr] border-b border-[var(--line)] px-5 py-3 text-[11px] font-bold uppercase tracking-wider text-[var(--soft)]">
           <span>Customer</span>
           <span>Type</span>

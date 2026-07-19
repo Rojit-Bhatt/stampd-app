@@ -1,26 +1,36 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { QRCodeSVG } from "qrcode.react";
-import { Zap } from "lucide-react";
+import { Zap, QrCode } from "lucide-react";
+import { motion } from "motion/react";
 import toast from "react-hot-toast";
+
 import { apiRequest } from "../../lib/api";
 import { useAdminSettings } from "../../hooks/useAdminSettings";
 import { useTenant } from "../../context/TenantContext";
 import { tenantUrl } from "../../lib/tenantPath";
 import { formatNpr } from "../../lib/subscription";
+import { formatPoints } from "../../hooks/usePoints";
 import { useCampaigns } from "../../hooks/useCampaigns";
+import { useMotion } from "../../lib/motion";
+import { CountdownRing } from "../../components/admin/CountdownRing";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Badge } from "@/components/ui/badge";
 
-// Staff enters the bill, then the customer scans with their phone's own
-// camera app (not an in-app scanner) — the QR encodes a URL to
-// /[company]/[outlet]/claim, not the bare token, so opening it works from
-// anywhere with no app installed.
+// The busiest screen in the product: staff enters the bill, the customer scans
+// with their phone's own camera app (not an in-app scanner) — the QR encodes a
+// URL to /[company]/[outlet]/claim, not the bare token, so opening it works
+// from anywhere with no app installed.
 //
 // The bill comes FIRST and is mandatory: points are a percentage of what was
 // actually paid, so there is no code to generate until we know the amount.
 // The server enforces this too; this just stops staff hitting a 400.
+
 export default function GenerateQr() {
   const { companySlug, outletSlug } = useTenant();
   const { data: settings } = useAdminSettings();
   const { data: campaigns = [] } = useCampaigns();
+  const m = useMotion();
   const earnPercent = settings?.programResolved?.earnPercent ?? 100;
 
   // The server is authoritative and recomputes this at claim time; this is
@@ -28,11 +38,15 @@ export default function GenerateQr() {
   // Overlapping campaigns don't stack — the biggest wins.
   const liveCampaign = campaigns
     .filter((c) => c.isLive)
-    .reduce<(typeof campaigns)[number] | null>((best, c) => (!best || c.multiplier > best.multiplier ? c : best), null);
+    .reduce<(typeof campaigns)[number] | null>(
+      (best, c) => (!best || c.multiplier > best.multiplier ? c : best),
+      null,
+    );
   const multiplier = liveCampaign?.multiplier ?? 1;
 
   const [token, setToken] = useState<string | null>(null);
   const [ttl, setTtl] = useState(0);
+  const [issuedTtl, setIssuedTtl] = useState(30);
   const [loading, setLoading] = useState(false);
   const [billAmount, setBillAmount] = useState("");
   const [issuedFor, setIssuedFor] = useState<number | null>(null);
@@ -56,6 +70,7 @@ export default function GenerateQr() {
       setToken(res.data.token);
       setIssuedFor(res.data.billAmount);
       setTtl(res.data.expiresInSeconds);
+      setIssuedTtl(res.data.expiresInSeconds);
     } catch (err) {
       toast.error((err as Error).message || "Couldn't generate a code — try again.");
     } finally {
@@ -76,101 +91,148 @@ export default function GenerateQr() {
   const live = token && !expired;
 
   return (
-    <div className="mx-auto max-w-[460px] text-center">
-      <h1 className="font-display text-2xl font-extrabold text-[var(--ink)]">Earn code</h1>
-      <p className="mb-6 mt-1 text-[var(--muted)]">Enter the bill, then have the customer scan.</p>
+    <div className="mx-auto max-w-[480px]">
+      <header className="mb-5">
+        <h1 className="font-display text-2xl font-bold text-[var(--ink)]">Earn code</h1>
+        <p className="mt-1 text-sm text-[var(--muted)]">
+          Enter the bill, then have the customer scan.
+        </p>
+      </header>
 
+      {/* A live campaign changes what the bill is worth, so it sits above the
+          input rather than beside the result — staff should know before they
+          quote a number, not after. */}
       {liveCampaign && (
-        <div
-          className="mb-4 flex items-center justify-center gap-2 rounded-full px-4 py-2.5 text-sm font-bold"
-          style={{ background: "var(--brand)", color: "#fff" }}
-        >
-          <Zap className="h-4 w-4" />
-          {liveCampaign.multiplier}× points on right now — {liveCampaign.name}
+        <div className="mb-4 flex items-center gap-2.5 rounded-[var(--radius-btn)] bg-[var(--primary-soft)] px-4 py-3">
+          <Zap className="h-4 w-4 shrink-0 text-[var(--primary-deep)]" />
+          <span className="text-sm font-bold text-[var(--primary-deep)]">
+            {liveCampaign.multiplier}× points on right now — {liveCampaign.name}
+          </span>
         </div>
       )}
 
-      <div className="rounded-3xl border border-[var(--line)] bg-[var(--surface)] p-8 shadow-ambient">
-        <label className="mb-4 block text-left">
-          <span className="mb-1.5 block text-sm font-bold text-[var(--ink)]">Bill amount</span>
-          <input
-            type="number"
-            min={0}
-            step="0.01"
-            autoFocus
-            value={billAmount}
-            onChange={(e) => setBillAmount(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === "Enter" && amountValid && !loading) generate(parsedAmount);
-            }}
-            placeholder="What did they pay?"
-            className="w-full rounded-[11px] border border-[var(--line)] bg-[var(--bg)] px-4 py-3 text-sm focus:border-[var(--brand)] focus:outline-none"
-          />
-          {amountValid ? (
-            <span className="mt-1.5 block text-xs font-semibold text-[var(--muted)]">
-              Earns <span style={{ color: "var(--brand)" }}>{pointsPreview}</span> points
-              {earnPercent !== 100 ? ` (${earnPercent}% back)` : ""}
-              {liveCampaign ? ` · ${liveCampaign.multiplier}× ${liveCampaign.name}` : ""}
+      <div className="rounded-[var(--radius-card)] border border-[var(--line)] bg-[var(--surface)] p-6 shadow-ambient">
+        <label className="block">
+          <span className="mb-1.5 block text-[10px] font-bold uppercase tracking-[0.14em] text-[var(--soft)]">
+            Bill amount
+          </span>
+          <div className="relative">
+            <span className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-sm font-bold text-[var(--soft)]">
+              Rs
             </span>
-          ) : (
-            <span className="mt-1.5 block text-xs text-[var(--soft)]">
-              Required — points are a share of the bill.
-            </span>
-          )}
+            <Input
+              type="number"
+              inputMode="decimal"
+              min={0}
+              step="0.01"
+              autoFocus
+              value={billAmount}
+              onChange={(e) => setBillAmount(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" && amountValid && !loading) generate(parsedAmount);
+              }}
+              placeholder="What did they pay?"
+              className="h-14 pl-11 text-lg font-semibold"
+            />
+          </div>
         </label>
 
-        <div className="mx-auto flex h-[230px] w-[230px] items-center justify-center rounded-[18px] border border-[var(--line)] bg-white p-4">
-          {live ? (
-            <QRCodeSVG
-              value={`${tenantUrl(window.location.origin, companySlug, outletSlug, "claim")}?token=${encodeURIComponent(token)}`}
-              size={198}
-              level="M"
-              fgColor="#241E1B"
-            />
+        {/* The award preview. Serif numeral, because this is the figure the
+            customer is about to be promised. */}
+        <div className="mt-3 flex min-h-[46px] items-center gap-3 border-t border-[var(--line)] pt-3">
+          {amountValid ? (
+            <>
+              <div className="font-numeral text-3xl leading-none text-[var(--primary)]">
+                {formatPoints(pointsPreview)}
+              </div>
+              <div className="text-xs leading-snug text-[var(--muted)]">
+                points · {earnPercent}% back
+                {liveCampaign && (
+                  <>
+                    {" "}
+                    <span className="font-bold text-[var(--primary-deep)]">
+                      · {liveCampaign.multiplier}× {liveCampaign.name}
+                    </span>
+                  </>
+                )}
+              </div>
+            </>
           ) : (
-            <div className="flex flex-col items-center gap-2 text-[var(--soft)]">
-              <span className="text-3xl">⏱</span>
-              <span className="text-sm font-bold text-[var(--ink)]">
-                {loading ? "Generating…" : token ? "Code expired" : "Enter a bill amount to generate"}
-              </span>
-            </div>
+            <p className="text-xs text-[var(--soft)]">
+              Required — points are a share of the bill.
+            </p>
           )}
         </div>
 
-        {live && (
-          <>
-            {issuedFor !== null && (
-              <p className="mt-4 text-sm font-semibold text-[var(--ink)]">
-                For a {formatNpr(issuedFor)} bill
-              </p>
-            )}
-            <div className="mt-3 flex items-center justify-center gap-3">
-              <span
-                className="flex items-center justify-center rounded-full border-4 font-display text-lg font-extrabold"
-                style={{ width: 54, height: 54, borderColor: "var(--brand)", color: "var(--brand)" }}
+        <div className="mt-5 flex justify-center">
+          <div className="grid h-[236px] w-[236px] place-items-center rounded-[var(--radius-card)] border border-[var(--line)] bg-white p-4">
+            {live ? (
+              <motion.div
+                key={token}
+                initial={m.pick({ scale: 0.94, opacity: 0 }, { opacity: 0 })}
+                animate={{ scale: 1, opacity: 1 }}
+                transition={m.spring("cardEnter")}
               >
-                {ttl}
-              </span>
-              <span className="text-left text-[13px] text-[var(--muted)]">
+                <QRCodeSVG
+                  value={`${tenantUrl(window.location.origin, companySlug, outletSlug, "claim")}?token=${encodeURIComponent(token)}`}
+                  size={200}
+                  level="M"
+                  fgColor="#14201C"
+                />
+              </motion.div>
+            ) : (
+              <div className="flex flex-col items-center gap-2.5 px-4 text-center">
+                <QrCode className="h-8 w-8 text-[var(--soft)]" strokeWidth={1.5} />
+                <span className="text-sm font-semibold text-[var(--ink)]">
+                  {loading
+                    ? "Generating…"
+                    : token
+                      ? "Code expired"
+                      : "Enter a bill to generate"}
+                </span>
+                {token && !loading && (
+                  <span className="text-xs text-[var(--muted)]">
+                    Generate a fresh one — it only takes a tap.
+                  </span>
+                )}
+              </div>
+            )}
+          </div>
+        </div>
+
+        {live && (
+          <div className="mt-5 flex items-center justify-center gap-4">
+            <CountdownRing remaining={ttl} total={issuedTtl} />
+            <div className="text-left">
+              <div className="text-[13px] leading-snug text-[var(--muted)]">
                 seconds until
                 <br />
                 this code expires
-              </span>
+              </div>
+              {issuedFor !== null && (
+                <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
+                  <Badge variant="neutral">For {formatNpr(issuedFor)}</Badge>
+                  {liveCampaign && (
+                    <Badge variant="live">{liveCampaign.multiplier}×</Badge>
+                  )}
+                </div>
+              )}
             </div>
-          </>
+          </div>
         )}
 
-        <button
+        <Button
           onClick={() => generate(parsedAmount)}
           disabled={loading || !amountValid}
-          className="mt-6 w-full rounded-[14px] py-4 text-[15px] font-bold text-white transition-opacity hover:opacity-90 disabled:opacity-50"
-          style={{ background: "var(--brand)" }}
+          size="lg"
+          className="mt-6 w-full"
         >
           {token ? "Generate new code" : "Generate code"}
-        </button>
+        </Button>
       </div>
-      <p className="mt-4 text-[13px] text-[var(--soft)]">
-        Short-lived, single-use codes stop customers from screenshotting and re-using them.
+
+      <p className="mt-4 text-center text-[13px] text-[var(--soft)]">
+        Single-use — stops screenshots being re-scanned.
       </p>
     </div>
   );

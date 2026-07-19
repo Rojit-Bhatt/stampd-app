@@ -1,7 +1,19 @@
 import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Link, useParams } from "react-router-dom";
-import { Coins, Users, Gift, Wallet, Search, Download, TrendingUp, TrendingDown, Hourglass } from "lucide-react";
+import {
+  Coins,
+  Gift,
+  Search,
+  Download,
+  TrendingUp,
+  TrendingDown,
+  Hourglass,
+  QrCode,
+  TicketCheck,
+  Zap,
+  ArrowRight,
+} from "lucide-react";
 import {
   ResponsiveContainer,
   LineChart,
@@ -14,10 +26,15 @@ import {
   Tooltip,
   Legend,
 } from "recharts";
+
 import { apiRequest, apiUrl, tenantHeaders } from "../../lib/api";
 import { useAdminSettings } from "../../hooks/useAdminSettings";
 import { useAdminAuth } from "../../context/AdminAuthContext";
+import { useCampaigns } from "../../hooks/useCampaigns";
+import { formatPoints } from "../../hooks/usePoints";
 import { tenantPath } from "../../lib/tenantPath";
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
 
 interface AdminCustomer {
   id: string;
@@ -51,10 +68,9 @@ interface DashboardStats {
   pointsActivity: { weekStart: string; earned: number; redeemed: number }[];
 }
 
-// Chart-only categorical pair — kept distinct from --brand/--ok/--err since
-// those are identity/status tokens, not series colors. Validated with the
-// dataviz skill's palette checker (chroma floor, CVD separation, contrast
-// vs. a white card) rather than picked by eye.
+// Chart-only categorical pair — kept distinct from the identity/status tokens,
+// which are not series colors. Validated for chroma, CVD separation and
+// contrast against a white card rather than picked by eye.
 const CHART_EARNED_COLOR = "#A8632E";
 const CHART_REDEEMED_COLOR = "#1A6E99";
 
@@ -75,13 +91,57 @@ function lastVisit(iso: string | null): string {
   return new Date(iso).toLocaleDateString(undefined, { month: "short", day: "numeric" });
 }
 
+function greeting(): string {
+  const h = new Date().getHours();
+  if (h < 12) return "Good morning";
+  if (h < 17) return "Good afternoon";
+  return "Good evening";
+}
+
+/** A card on the hub. */
+function Panel({
+  title,
+  subtitle,
+  action,
+  children,
+}: {
+  title: string;
+  subtitle?: string;
+  action?: React.ReactNode;
+  children: React.ReactNode;
+}) {
+  return (
+    <section className="rounded-[var(--radius-card)] border border-[var(--line)] bg-[var(--surface)] p-6 shadow-ambient">
+      <div className="mb-4 flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <h3 className="font-display text-[17px] font-bold text-[var(--ink)]">{title}</h3>
+          {subtitle && <p className="mt-0.5 text-sm text-[var(--muted)]">{subtitle}</p>}
+        </div>
+        {action}
+      </div>
+      {children}
+    </section>
+  );
+}
+
+// The outlet console's hub. The two counter actions are the hero — they're
+// what staff open this console to do — and everything else is a report on how
+// the outlet is doing.
 export default function AdminOverview() {
   const { companySlug = "", outletSlug = "" } = useParams();
   const slug = outletSlug;
   const { data: settings } = useAdminSettings();
+  const { data: campaigns = [] } = useCampaigns();
   const { user } = useAdminAuth();
   const orgId = user?.organizationId ?? null;
   const [query, setQuery] = useState("");
+
+  const liveCampaign = campaigns
+    .filter((c) => c.isLive)
+    .reduce<(typeof campaigns)[number] | null>(
+      (best, c) => (!best || c.multiplier > best.multiplier ? c : best),
+      null,
+    );
 
   const { data: customers = [] } = useQuery<AdminCustomer[]>({
     queryKey: ["adminCustomers", orgId],
@@ -117,11 +177,14 @@ export default function AdminOverview() {
     },
   });
 
-  const kpis: { label: string; metric?: DashboardMetric; Icon: typeof Users }[] = [
-    { label: "New customers (7d)", metric: dashboardStats?.newCustomers, Icon: Users },
-    { label: "Points issued (7d)", metric: dashboardStats?.pointsIssued, Icon: Coins },
-    { label: "Revenue (7d)", metric: dashboardStats?.revenue, Icon: Wallet },
-    { label: "Points outstanding", metric: dashboardStats?.pointsOutstanding, Icon: Gift },
+  // Flow metrics move week to week and carry a trend. `pointsOutstanding` is a
+  // snapshot of what's sitting in balances right now — "how much exists", not
+  // "how fast it's moving" — so it deliberately gets no trend badge. Drawing
+  // them identically is what makes the two kinds of number get confused.
+  const flowKpis: { label: string; metric?: DashboardMetric; format?: (v: number) => string }[] = [
+    { label: "New customers · 7d", metric: dashboardStats?.newCustomers },
+    { label: "Points issued · 7d", metric: dashboardStats?.pointsIssued, format: formatPoints },
+    { label: "Revenue · 7d", metric: dashboardStats?.revenue, format: (v) => `Rs ${v.toLocaleString("en-IN")}` },
   ];
 
   const filtered = useMemo(() => {
@@ -146,49 +209,104 @@ export default function AdminOverview() {
     URL.revokeObjectURL(url);
   };
 
+  const today = new Date().toLocaleDateString(undefined, {
+    weekday: "long",
+    day: "numeric",
+    month: "short",
+  });
+
   return (
-    <div>
-      <div className="mb-6 flex flex-wrap items-end justify-between gap-3">
-        <div>
-          <h1 className="font-display text-[28px] font-extrabold text-[var(--ink)]">Overview</h1>
-          <p className="text-[var(--muted)]">Here’s how {settings?.name ?? "your business"} is doing.</p>
+    <div className="flex flex-col gap-6">
+      <header>
+        <h1 className="font-display text-[28px] font-bold leading-tight text-[var(--ink)]">
+          {greeting()}
+          {user?.name ? `, ${user.name.split(" ")[0]}` : ""}
+        </h1>
+        <p className="mt-0.5 text-sm text-[var(--muted)]">
+          {today} · {settings?.name ?? "your outlet"}
+        </p>
+      </header>
+
+      {/* A live multiplier changes what every bill is worth, so staff need to
+          see it before they quote anyone a number. */}
+      {liveCampaign && (
+        <div className="flex items-center gap-2.5 rounded-[var(--radius-btn)] bg-[var(--primary-soft)] px-4 py-3">
+          <Zap className="h-4 w-4 flex-shrink-0 text-[var(--primary-deep)]" />
+          <span className="text-sm font-bold text-[var(--primary-deep)]">
+            {liveCampaign.multiplier}× points live — {liveCampaign.name}
+          </span>
         </div>
+      )}
+
+      {/* The hero. These two are the job; everything below is reporting. */}
+      <div className="grid gap-4 sm:grid-cols-2">
         <Link
           to={tenantPath(companySlug, slug, "admin/generate")}
-          className="stamp-interactive rounded-full px-5 py-3 text-[15px] font-bold text-white"
-          style={{ background: "var(--brand)" }}
+          className="stamp-interactive group relative overflow-hidden rounded-[var(--radius-card)] border-[1.5px] border-[var(--primary)] bg-[var(--surface)] p-5"
         >
-          Generate earn code
+          <span
+            aria-hidden="true"
+            className="absolute right-0 top-0 h-0 w-0 border-l-[28px] border-t-[28px] border-l-transparent border-t-[var(--primary)]"
+          />
+          <QrCode className="h-6 w-6 text-[var(--primary)]" strokeWidth={1.75} />
+          <div className="mt-3 font-display text-base font-bold text-[var(--ink)]">Earn code</div>
+          <p className="mt-1 text-[13px] text-[var(--muted)]">
+            Enter a bill, show the QR. The screen you'll use most.
+          </p>
+        </Link>
+
+        <Link
+          to={tenantPath(companySlug, slug, "admin/redeem")}
+          className="stamp-interactive rounded-[var(--radius-card)] border border-[var(--line)] bg-[var(--surface)] p-5"
+        >
+          <TicketCheck className="h-6 w-6 text-[var(--ink)]" strokeWidth={1.75} />
+          <div className="mt-3 font-display text-base font-bold text-[var(--ink)]">Redeem</div>
+          <p className="mt-1 text-[13px] text-[var(--muted)]">
+            Put up a redeem QR — the customer picks their reward.
+          </p>
         </Link>
       </div>
 
-      <div className="mb-6 grid grid-cols-2 gap-4 md:grid-cols-4">
-        {kpis.map((s) => (
-          <div key={s.label} className="shadow-ambient rounded-3xl bg-[var(--surface)] p-5">
-            <div className="mb-3 flex h-11 w-11 items-center justify-center rounded-2xl bg-[var(--surface-container)]">
-              <s.Icon className="h-5 w-5" style={{ color: "var(--brand)" }} />
+      {/* Flow metrics: hairline-ruled, serif numerals, week-over-week trend. */}
+      <div className="grid grid-cols-2 gap-x-6 gap-y-5 lg:grid-cols-4">
+        {flowKpis.map((s) => (
+          <div key={s.label} className="border-t border-[var(--line)] pt-3">
+            <div className="text-[10px] font-bold uppercase tracking-[0.14em] text-[var(--soft)]">
+              {s.label}
             </div>
-            <div className="mb-1 text-[13px] uppercase tracking-wide text-[var(--muted)]">{s.label}</div>
-            <div className="flex items-center gap-2">
-              <div className="font-display text-[28px] font-bold leading-none">{s.metric?.value ?? "—"}</div>
-              {s.metric?.trend !== null && s.metric?.trend !== undefined && (
-                <span
-                  className="flex items-center gap-0.5 text-xs font-bold"
-                  style={{ color: s.metric.trend >= 0 ? "var(--ok)" : "var(--err)" }}
-                >
-                  {s.metric.trend >= 0 ? <TrendingUp className="h-3 w-3" /> : <TrendingDown className="h-3 w-3" />}
-                  {Math.abs(s.metric.trend)}%
-                </span>
-              )}
+            <div className="mt-1 font-numeral text-[32px] leading-none text-[var(--ink)]">
+              {s.metric ? (s.format ? s.format(s.metric.value) : s.metric.value) : "—"}
             </div>
+            {s.metric?.trend !== null && s.metric?.trend !== undefined && (
+              <span
+                className="mt-1 flex items-center gap-0.5 text-[11px] font-bold"
+                style={{ color: s.metric.trend >= 0 ? "var(--primary-deep)" : "var(--err)" }}
+              >
+                {s.metric.trend >= 0 ? (
+                  <TrendingUp className="h-3 w-3" />
+                ) : (
+                  <TrendingDown className="h-3 w-3" />
+                )}
+                {Math.abs(s.metric.trend)}%
+              </span>
+            )}
           </div>
         ))}
+
+        {/* Drawn differently on purpose — a snapshot, with no trend to show. */}
+        <div className="border-t border-[var(--line)] pt-3">
+          <div className="text-[10px] font-bold uppercase tracking-[0.14em] text-[var(--soft)]">
+            Points outstanding
+          </div>
+          <div className="mt-1 font-numeral text-[32px] leading-none text-[var(--ink)]">
+            {dashboardStats ? formatPoints(dashboardStats.pointsOutstanding.value) : "—"}
+          </div>
+          <span className="mt-1 block text-[11px] text-[var(--soft)]">right now</span>
+        </div>
       </div>
 
-      <div className="mb-6 grid grid-cols-1 gap-4 lg:grid-cols-2">
-        <div className="shadow-ambient rounded-3xl bg-[var(--surface)] p-6">
-          <h3 className="mb-1 font-display text-[17px] font-bold text-[var(--ink)]">Points velocity</h3>
-          <p className="mb-4 text-sm text-[var(--muted)]">Points issued per day, last 14 days.</p>
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+        <Panel title="Points velocity" subtitle="Points issued per day, last 14 days.">
           <ResponsiveContainer width="100%" height={220}>
             <LineChart data={dashboardStats?.pointsVelocity ?? []} margin={{ top: 4, right: 8, left: -20, bottom: 0 }}>
               <CartesianGrid stroke="var(--line)" strokeDasharray="3 3" vertical={false} />
@@ -203,18 +321,32 @@ export default function AdminOverview() {
               <YAxis tick={{ fill: "var(--muted)", fontSize: 12 }} axisLine={false} tickLine={false} width={36} />
               <Tooltip
                 labelFormatter={(v) => shortDate(String(v))}
-                contentStyle={{ background: "var(--surface)", border: "1px solid var(--line)", borderRadius: 12 }}
+                contentStyle={{
+                  background: "var(--surface)",
+                  border: "1px solid var(--line)",
+                  borderRadius: 12,
+                }}
               />
-              <Line type="monotone" dataKey="points" name="Points" stroke="var(--brand)" strokeWidth={2} dot={false} activeDot={{ r: 4 }} />
+              <Line
+                type="monotone"
+                dataKey="points"
+                name="Points"
+                stroke="var(--primary)"
+                strokeWidth={2}
+                dot={false}
+                activeDot={{ r: 4 }}
+              />
             </LineChart>
           </ResponsiveContainer>
-        </div>
+        </Panel>
 
-        <div className="shadow-ambient rounded-3xl bg-[var(--surface)] p-6">
-          <h3 className="mb-1 font-display text-[17px] font-bold text-[var(--ink)]">Points activity</h3>
-          <p className="mb-4 text-sm text-[var(--muted)]">Earned vs. redeemed per week, last 8 weeks.</p>
+        <Panel title="Points activity" subtitle="Earned vs. redeemed per week, last 8 weeks.">
           <ResponsiveContainer width="100%" height={220}>
-            <BarChart data={dashboardStats?.pointsActivity ?? []} margin={{ top: 4, right: 8, left: -20, bottom: 0 }} barGap={2}>
+            <BarChart
+              data={dashboardStats?.pointsActivity ?? []}
+              margin={{ top: 4, right: 8, left: -20, bottom: 0 }}
+              barGap={2}
+            >
               <CartesianGrid stroke="var(--line)" strokeDasharray="3 3" vertical={false} />
               <XAxis
                 dataKey="weekStart"
@@ -227,114 +359,124 @@ export default function AdminOverview() {
               <YAxis tick={{ fill: "var(--muted)", fontSize: 12 }} axisLine={false} tickLine={false} width={36} />
               <Tooltip
                 labelFormatter={(v) => shortDate(String(v))}
-                contentStyle={{ background: "var(--surface)", border: "1px solid var(--line)", borderRadius: 12 }}
+                contentStyle={{
+                  background: "var(--surface)",
+                  border: "1px solid var(--line)",
+                  borderRadius: 12,
+                }}
               />
               <Legend wrapperStyle={{ fontSize: 12 }} />
               <Bar dataKey="earned" name="Earned" fill={CHART_EARNED_COLOR} radius={[4, 4, 0, 0]} />
               <Bar dataKey="redeemed" name="Redeemed" fill={CHART_REDEEMED_COLOR} radius={[4, 4, 0, 0]} />
             </BarChart>
           </ResponsiveContainer>
-        </div>
+        </Panel>
       </div>
 
-      <div className="shadow-ambient mb-6 rounded-3xl bg-[var(--surface)] p-6">
-        <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-          <div>
-            <h3 className="font-display text-lg font-bold text-[var(--ink)]">Customer database</h3>
-            <p className="text-sm text-[var(--muted)]">Review activity and track loyalty progress.</p>
-          </div>
-          <div className="flex items-center gap-2.5">
-            <div className="flex items-center gap-2 rounded-full bg-[var(--surface-container)] px-4 py-2">
-              <Search className="h-3.5 w-3.5 flex-shrink-0 text-[var(--soft)]" />
-              <input
+      <Panel
+        title="Customers"
+        subtitle="The five most recent. Search to find anyone."
+        action={
+          <div className="flex items-center gap-2">
+            <div className="relative">
+              <Search className="pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-[var(--soft)]" />
+              <Input
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
                 placeholder="Search…"
-                className="w-32 bg-transparent text-sm text-[var(--ink)] placeholder:text-[var(--soft)] focus:outline-none"
+                aria-label="Search customers"
+                className="h-9 w-40 pl-9 text-sm"
               />
             </div>
-            <button
-              onClick={downloadExcel}
-              className="stamp-interactive flex items-center gap-1.5 rounded-full bg-[var(--surface-container)] px-4 py-2 text-sm font-bold text-[var(--ink)]"
-            >
-              <Download className="h-4 w-4" />
+            <Button onClick={downloadExcel} variant="outline" size="sm">
+              <Download />
               Export
-            </button>
+            </Button>
           </div>
-        </div>
-
+        }
+      >
         {filtered.length === 0 ? (
-          <p className="py-6 text-center text-sm text-[var(--muted)]">No customers match your search.</p>
+          <p className="py-6 text-center text-sm text-[var(--muted)]">
+            {query ? "No customers match your search." : "No customers yet."}
+          </p>
         ) : (
-          <div className="flex flex-col">
+          <ul className="flex flex-col">
             {filtered.map((c) => (
-              <Link
-                key={c.id}
-                to={`/${slug}/admin/customers/${c.id}`}
-                className="flex items-center gap-3 border-b border-[var(--line)] py-3 last:border-b-0 hover:bg-[var(--surface-container)]"
-              >
-                <span className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-full border border-[var(--line)] bg-[var(--bg)] text-xs font-bold text-[var(--muted)]">
-                  {c.name.split(" ").map((w) => w[0]).slice(0, 2).join("").toUpperCase()}
-                </span>
-                <span className="min-w-0 flex-1">
-                  <span className="block truncate text-sm font-bold text-[var(--ink)]">{c.name}</span>
-                  <span className="block truncate text-xs text-[var(--soft)]">{c.email}</span>
-                </span>
-                <span className="text-sm font-semibold text-[var(--ink)]">{c.pointsBalance}</span>
-                <span className="w-20 text-right text-[13px] text-[var(--muted)]">{lastVisit(c.lastActivityAt)}</span>
-              </Link>
+              <li key={c.id}>
+                <Link
+                  // Both slugs. An outlet slug alone can't identify an outlet,
+                  // so this used to build a path that resolved elsewhere.
+                  to={tenantPath(companySlug, slug, `admin/customers/${c.id}`)}
+                  className="-mx-2 flex items-center gap-3 rounded-[var(--radius-field)] border-b border-[var(--line)] px-2 py-3 transition-colors last:border-b-0 hover:bg-[var(--surface-2)]"
+                >
+                  <span className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-full bg-[var(--surface-2)] text-xs font-bold text-[var(--muted)]">
+                    {c.name.split(" ").map((w) => w[0]).slice(0, 2).join("").toUpperCase()}
+                  </span>
+                  <span className="min-w-0 flex-1">
+                    <span className="block truncate text-sm font-bold text-[var(--ink)]">{c.name}</span>
+                    <span className="block truncate text-xs text-[var(--soft)]">{c.email}</span>
+                  </span>
+                  <span className="font-numeral text-lg leading-none text-[var(--ink)]">
+                    {formatPoints(c.pointsBalance)}
+                  </span>
+                  <span className="hidden w-20 text-right text-[13px] text-[var(--muted)] sm:block">
+                    {lastVisit(c.lastActivityAt)}
+                  </span>
+                </Link>
+              </li>
             ))}
-          </div>
+          </ul>
         )}
 
         <Link
           to={tenantPath(companySlug, slug, "admin/customers")}
-          className="mt-4 inline-block text-sm font-bold"
-          style={{ color: "var(--brand)" }}
+          className="mt-4 inline-flex items-center gap-1 text-sm font-bold text-[var(--primary-deep)] hover:underline"
         >
-          View all customers →
+          View all customers <ArrowRight className="h-3.5 w-3.5" />
         </Link>
-      </div>
+      </Panel>
 
-      <div className="shadow-ambient rounded-3xl bg-[var(--surface)] p-6">
-        <div className="mb-4 flex items-center gap-2">
-          <span className="h-2 w-2 rounded-full" style={{ background: "var(--ok)" }} />
-          <h3 className="font-display text-[17px] font-bold">Live activity</h3>
-        </div>
+      <Panel title="Live activity" subtitle="Updates as customers scan at the counter.">
         {ledger.length === 0 ? (
           <p className="py-6 text-center text-sm text-[var(--muted)]">
             No activity yet. Points appear here as customers scan at the counter.
           </p>
         ) : (
-          <div className="flex flex-col">
+          <ul className="flex flex-col">
             {ledger.slice(0, 12).map((row) => {
               const Icon = row.type === "earn" ? Coins : row.type === "redeem" ? Gift : Hourglass;
+              const earn = row.type === "earn";
               return (
-                <div
+                <li
                   key={row.id}
                   className="flex items-center gap-3 border-b border-[var(--line)] py-3 last:border-b-0"
                 >
                   <span
-                    className="flex h-9 w-9 items-center justify-center rounded-xl"
-                    style={{ background: "var(--surface-container)", color: "var(--brand)" }}
+                    className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-full"
+                    style={{
+                      background: earn ? "var(--primary-soft)" : "var(--surface-2)",
+                      color: earn ? "var(--primary-deep)" : "var(--muted)",
+                    }}
                   >
                     <Icon className="h-4 w-4" />
                   </span>
-                  <span className="flex-1 text-sm">
+                  <span className="min-w-0 flex-1 text-sm">
                     <b>{row.customerName || "A customer"}</b>{" "}
                     {row.type === "earn"
-                      ? `earned ${row.points} points`
+                      ? `earned ${formatPoints(row.points)} points`
                       : row.type === "redeem"
                         ? `redeemed ${row.rewardName || "a reward"}`
-                        : `lost ${Math.abs(row.points)} points to expiry`}
+                        : `lost ${formatPoints(Math.abs(row.points))} points to expiry`}
                   </span>
-                  <span className="text-xs text-[var(--soft)]">{timeAgo(row.createdAt)}</span>
-                </div>
+                  <span className="flex-shrink-0 text-xs text-[var(--soft)]">
+                    {timeAgo(row.createdAt)}
+                  </span>
+                </li>
               );
             })}
-          </div>
+          </ul>
         )}
-      </div>
+      </Panel>
     </div>
   );
 }

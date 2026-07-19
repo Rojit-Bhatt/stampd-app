@@ -8,6 +8,7 @@ import {
   type BusinessCategory,
 } from "../../hooks/useAdminSettings";
 import { Skeleton } from "../../components/ui/skeleton";
+import { darken, identityAccent, collidesWithValueGreen } from "../../lib/color";
 
 const SWATCHES = ["#B5533C", "#8B2635", "#7A5CA8", "#2F7E8C", "#C9852B", "#C24B7A", "#3F7A5C", "#2B2B2B"];
 
@@ -20,16 +21,6 @@ const CATEGORY_LABELS: Record<BusinessCategory, string> = {
   retail: "Retail",
   other: "Other",
 };
-
-function darken(hex: string, amount = 0.22): string {
-  const m = /^#?([0-9a-f]{6})$/i.exec(hex.trim());
-  if (!m) return "#8a3a28";
-  const n = parseInt(m[1], 16);
-  const r = Math.round(((n >> 16) & 255) * (1 - amount));
-  const g = Math.round(((n >> 8) & 255) * (1 - amount));
-  const b = Math.round((n & 255) * (1 - amount));
-  return `#${((1 << 24) + (r << 16) + (g << 8) + b).toString(16).slice(1)}`;
-}
 
 export default function Branding() {
   const { data: settings, isLoading } = useAdminSettings();
@@ -52,7 +43,7 @@ export default function Branding() {
         <Skeleton className="mb-2 h-7 w-36" />
         <Skeleton className="mb-6 h-4 w-96" />
         <div className="grid grid-cols-1 items-start gap-6 lg:grid-cols-[1fr_340px]">
-          <div className="flex flex-col gap-5 shadow-ambient rounded-3xl bg-[var(--surface)] p-6">
+          <div className="flex flex-col gap-5 rounded-[var(--radius-card)] border border-[var(--line)] bg-[var(--surface)] shadow-ambient p-6">
             <div>
               <Skeleton className="mb-1.5 h-3.5 w-28" />
               <Skeleton className="h-11 w-full rounded-[11px]" />
@@ -102,25 +93,25 @@ export default function Branding() {
 
   return (
     <div>
-      <h1 className="font-display text-[28px] font-extrabold text-[var(--ink)]">Branding</h1>
+      <h1 className="font-display text-[28px] font-bold text-[var(--ink)]">Branding</h1>
       <p className="mb-6 text-[var(--muted)]">
         White-label your customer app. Changes preview live on the right.
       </p>
 
       <div className="grid grid-cols-1 items-start gap-6 lg:grid-cols-[1fr_340px]">
-        <div className="flex flex-col gap-5 shadow-ambient rounded-3xl bg-[var(--surface)] p-6">
+        <div className="flex flex-col gap-5 rounded-[var(--radius-card)] border border-[var(--line)] bg-[var(--surface)] shadow-ambient p-6">
           <Field label="Business name">
             <input
               value={name}
               onChange={(e) => setName(e.target.value)}
-              className="w-full rounded-[11px] border border-[var(--line)] bg-[var(--bg)] px-4 py-3 text-sm focus:border-[var(--brand)] focus:outline-none"
+              className="w-full rounded-[11px] border border-[var(--line)] bg-[var(--bg)] px-4 py-3 text-sm focus:border-[var(--primary)] focus:outline-none"
             />
           </Field>
           <Field label="Category">
             <select
               value={category}
               onChange={(e) => setCategory(e.target.value as BusinessCategory)}
-              className="w-full rounded-[11px] border border-[var(--line)] bg-[var(--bg)] px-4 py-3 text-sm focus:border-[var(--brand)] focus:outline-none"
+              className="w-full rounded-[11px] border border-[var(--line)] bg-[var(--bg)] px-4 py-3 text-sm focus:border-[var(--primary)] focus:outline-none"
             >
               {BUSINESS_CATEGORIES.map((c) => (
                 <option key={c} value={c}>
@@ -133,7 +124,7 @@ export default function Branding() {
             <input
               value={brand.tagline}
               onChange={(e) => set("tagline", e.target.value)}
-              className="w-full rounded-[11px] border border-[var(--line)] bg-[var(--bg)] px-4 py-3 text-sm focus:border-[var(--brand)] focus:outline-none"
+              className="w-full rounded-[11px] border border-[var(--line)] bg-[var(--bg)] px-4 py-3 text-sm focus:border-[var(--primary)] focus:outline-none"
             />
           </Field>
 
@@ -160,6 +151,18 @@ export default function Branding() {
                 aria-label="Custom colour"
               />
             </div>
+
+            {/* Told up front, not discovered later. Green already means
+                "points" everywhere in the customer app, so a green brand
+                colour would make an identity accent read as a balance. Your
+                logo and name keep the colour either way. */}
+            {collidesWithValueGreen(brand.primaryColor) && (
+              <p className="mt-2.5 rounded-[var(--radius-btn)] bg-[var(--warn-soft)] px-3.5 py-2.5 text-[13px] text-[var(--warn)]">
+                This green is close to the one Stampd uses for points. Your logo and name will
+                still use it, but accents step aside to dark ink so customers can always tell
+                their balance apart.
+              </p>
+            )}
           </div>
 
           <Field label="Logo URL">
@@ -167,7 +170,7 @@ export default function Branding() {
               value={brand.logoUrl}
               onChange={(e) => set("logoUrl", e.target.value)}
               placeholder="https://…/logo.png"
-              className="w-full rounded-[11px] border border-[var(--line)] bg-[var(--bg)] px-4 py-3 text-sm focus:border-[var(--brand)] focus:outline-none"
+              className="w-full rounded-[11px] border border-[var(--line)] bg-[var(--bg)] px-4 py-3 text-sm focus:border-[var(--primary)] focus:outline-none"
             />
           </Field>
           <Field label="Banner URL">
@@ -175,7 +178,7 @@ export default function Branding() {
               value={brand.bannerUrl}
               onChange={(e) => set("bannerUrl", e.target.value)}
               placeholder="https://…/banner.jpg"
-              className="w-full rounded-[11px] border border-[var(--line)] bg-[var(--bg)] px-4 py-3 text-sm focus:border-[var(--brand)] focus:outline-none"
+              className="w-full rounded-[11px] border border-[var(--line)] bg-[var(--bg)] px-4 py-3 text-sm focus:border-[var(--primary)] focus:outline-none"
             />
           </Field>
 
@@ -183,7 +186,7 @@ export default function Branding() {
             onClick={save}
             disabled={update.isPending}
             className="rounded-[13px] py-3.5 text-[15px] font-bold text-white transition-opacity hover:opacity-90 disabled:opacity-50"
-            style={{ background: "var(--brand)" }}
+            style={{ background: "var(--primary)" }}
           >
             {update.isPending ? "Saving…" : "Save branding"}
           </button>
@@ -207,7 +210,7 @@ export default function Branding() {
                 <img src={brand.logoUrl} alt="" className="h-[50px] w-[50px] rounded-[15px] bg-white object-cover" />
               ) : (
                 <div
-                  className="flex h-[50px] w-[50px] items-center justify-center rounded-[15px] bg-white font-display text-lg font-extrabold"
+                  className="flex h-[50px] w-[50px] items-center justify-center rounded-[15px] bg-white font-display text-lg font-bold"
                   style={{ color: brand.primaryColor }}
                 >
                   {initial}
@@ -215,15 +218,24 @@ export default function Branding() {
               )}
             </div>
             <div className="p-4">
-              <div className="font-display text-[19px] font-extrabold text-[var(--ink)]">{name}</div>
+              <div className="font-display text-[19px] font-bold text-[var(--ink)]">{name}</div>
               <div className="mb-3 text-xs text-[var(--muted)]">{brand.tagline}</div>
-              <div
-                className="rounded-[14px] p-3.5 text-white"
-                style={{ background: `linear-gradient(150deg, ${brand.primaryColor}, ${deep})` }}
-              >
-                <div className="text-[11px] opacity-80">Points balance</div>
-                <div className="mb-1 font-display text-2xl font-extrabold">1,240</div>
-                <div className="text-[11px] opacity-80">
+              {/* Shows what the customer ACTUALLY sees: your colour on the
+                  accent bar and the business name, the balance in Stampd's
+                  green. This card used to preview the balance in your brand
+                  gradient, which no customer ever sees — picking a colour
+                  here would have promised something the app doesn't do. */}
+              <div className="relative overflow-hidden rounded-[14px] border border-[var(--line)] bg-[var(--surface)] p-3.5">
+                <span
+                  aria-hidden="true"
+                  className="absolute inset-x-0 top-0 h-1"
+                  style={{ background: identityAccent(brand.primaryColor) }}
+                />
+                <div className="text-[11px] text-[var(--soft)]">Points balance</div>
+                <div className="mb-1 font-numeral text-3xl leading-none text-[var(--primary)]">
+                  1,240
+                </div>
+                <div className="text-[11px] text-[var(--muted)]">
                   {settings?.programResolved?.earnPercent === 100
                     ? "1 point per Rs 1"
                     : `${settings?.programResolved?.earnPercent ?? 100}% back`}

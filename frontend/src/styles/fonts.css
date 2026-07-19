@@ -1,2 +1,7 @@
-/* Stampd type system: Libre Caslon Text (display/headline serif) + Inter (body/UI). */
-@import url('https://fonts.googleapis.com/css2?family=Libre+Caslon+Text:ital,wght@0,400;0,700;1,400&family=Inter:wght@400;500;600;700;800&display=swap');
+/* Stampd type system — "editorial ledger".
+   Space Grotesk  display/headings — the characteristic voice.
+   DM Serif Display  numerals ONLY (balances, KPIs, +/- points). The hero of
+     every screen: points read like money in a well-kept passbook.
+   Inter  body & UI.
+   IBM Plex Mono  keys, slugs and codes only — never body copy. */
+@import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=DM+Serif+Display&family=Inter:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@400;500;600;700&display=swap');

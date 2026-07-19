@@ -2,6 +2,8 @@ import { useEffect, useState } from "react";
 import toast from "react-hot-toast";
 import { useAdminSettings, useUpdateAdminSettings, type AdminProgram } from "../../hooks/useAdminSettings";
 import { Skeleton } from "../../components/ui/skeleton";
+import { SegmentedControl, SegmentedControlItem } from "@/components/ui/segmented-control";
+import { Button } from "@/components/ui/button";
 
 type Field = keyof AdminProgram;
 
@@ -23,7 +25,7 @@ export default function PointsProgram() {
       <div className="max-w-[620px]">
         <Skeleton className="mb-2 h-7 w-56" />
         <Skeleton className="mb-6 h-4 w-72" />
-        <div className="flex flex-col gap-6 shadow-ambient rounded-3xl bg-[var(--surface)] p-6">
+        <div className="flex flex-col gap-6 rounded-[var(--radius-card)] border border-[var(--line)] bg-[var(--surface)] shadow-ambient p-6">
           <div>
             <Skeleton className="mb-2.5 h-3.5 w-52" />
             <Skeleton className="h-3 w-32" />
@@ -53,57 +55,62 @@ export default function PointsProgram() {
     }
   };
 
-  // A null override renders as an empty box showing the inherited value as
-  // its placeholder — clearing the box is how you go back to inheriting.
-  const inheritRow = (field: Field, label: string) => {
+  // Inherit and override are two explicit, visible states rather than "an
+  // empty box means inherit". Emptying a field to go back to inheriting was
+  // only discoverable by accident, and it made the difference between null
+  // (inherit) and 0 (a real, very different setting — "never expire") rest on
+  // whether a box looked empty.
+  const inheritRow = (field: Field, label: string, fallback: number) => {
     const isInherited = form[field] === null || form[field] === undefined;
     return (
-      <div className="flex items-center gap-2">
-        <span className="text-[11px] font-bold uppercase tracking-wider text-[var(--soft)]">{label}</span>
-        {isInherited ? (
-          <span
-            className="rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider"
-            style={{ background: "var(--info-soft)", color: "var(--info)" }}
-          >
-            Inherited
-          </span>
-        ) : (
-          <button
-            onClick={() => set(field, null)}
-            className="rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider hover:opacity-80"
-            style={{ background: "var(--surface-container)", color: "var(--muted)" }}
-          >
-            Reset to company default
-          </button>
-        )}
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <span className="text-[10px] font-bold uppercase tracking-[0.14em] text-[var(--soft)]">
+          {label}
+        </span>
+        <SegmentedControl
+          value={isInherited ? "inherit" : "override"}
+          onValueChange={(v) =>
+            set(field, v === "inherit" ? null : (defaults ? defaults[field] : fallback))
+          }
+          aria-label={`${label}: inherit from company or override`}
+        >
+          <SegmentedControlItem value="inherit">Inherit</SegmentedControlItem>
+          <SegmentedControlItem value="override">Override</SegmentedControlItem>
+        </SegmentedControl>
       </div>
     );
   };
 
   return (
     <div className="max-w-[620px]">
-      <h1 className="font-display text-2xl font-extrabold text-[var(--ink)]">Points program</h1>
+      <h1 className="font-display text-2xl font-bold text-[var(--ink)]">Points program</h1>
       <p className="mb-6 mt-1 text-[var(--muted)]">
         How much this outlet gives back, and how long it lasts.
       </p>
 
-      <div className="flex flex-col gap-6 shadow-ambient rounded-3xl bg-[var(--surface)] p-6">
+      <div className="flex flex-col gap-6 rounded-[var(--radius-card)] border border-[var(--line)] bg-[var(--surface)] shadow-ambient p-6">
         <div>
-          {inheritRow("earnPercent", "Earn rate")}
-          <label className="mt-2 block">
-            <div className="flex items-center gap-2">
+          {inheritRow("earnPercent", "Earn rate", 100)}
+          <div className="mt-3 flex items-center gap-2">
+            {form.earnPercent === null || form.earnPercent === undefined ? (
+              <div className="flex items-center gap-2 rounded-[var(--radius-btn)] bg-[var(--surface-2)] px-4 py-3">
+                <span className="font-numeral text-xl leading-none text-[var(--ink)]">
+                  {defaults ? defaults.earnPercent : 100}
+                </span>
+                <span className="text-xs text-[var(--muted)]">from your company</span>
+              </div>
+            ) : (
               <input
                 type="number"
                 min={0}
                 step="1"
-                value={form.earnPercent ?? ""}
-                onChange={(e) => set("earnPercent", e.target.value === "" ? null : Number(e.target.value))}
-                placeholder={defaults ? String(defaults.earnPercent) : "100"}
-                className="w-32 rounded-[11px] border border-[var(--line)] bg-[var(--bg)] px-4 py-3 text-sm focus:border-[var(--brand)] focus:outline-none"
+                value={form.earnPercent}
+                onChange={(e) => set("earnPercent", e.target.value === "" ? 0 : Number(e.target.value))}
+                className="w-32 rounded-[var(--radius-btn)] border border-[var(--line)] bg-[var(--surface)] px-4 py-3 text-sm focus:border-[var(--primary)] focus:outline-none"
               />
-              <span className="text-sm text-[var(--muted)]">% of the bill returned as points</span>
-            </div>
-          </label>
+            )}
+            <span className="text-sm text-[var(--muted)]">% of the bill returned as points</span>
+          </div>
           <p className="mt-2 text-[13px] text-[var(--muted)]">
             {resolved.earnPercent === 100
               ? "Right now: 1 point per Rs 1 spent."
@@ -113,21 +120,27 @@ export default function PointsProgram() {
         </div>
 
         <div className="border-t border-[var(--line)] pt-5">
-          {inheritRow("pointsExpiryDays", "Points expiry")}
-          <label className="mt-2 block">
-            <div className="flex items-center gap-2">
+          {inheritRow("pointsExpiryDays", "Points expiry", 0)}
+          <div className="mt-3 flex items-center gap-2">
+            {form.pointsExpiryDays === null || form.pointsExpiryDays === undefined ? (
+              <div className="flex items-center gap-2 rounded-[var(--radius-btn)] bg-[var(--surface-2)] px-4 py-3">
+                <span className="font-numeral text-xl leading-none text-[var(--ink)]">
+                  {defaults ? defaults.pointsExpiryDays : 0}
+                </span>
+                <span className="text-xs text-[var(--muted)]">from your company</span>
+              </div>
+            ) : (
               <input
                 type="number"
                 min={0}
                 step="1"
-                value={form.pointsExpiryDays ?? ""}
-                onChange={(e) => set("pointsExpiryDays", e.target.value === "" ? null : Number(e.target.value))}
-                placeholder={defaults ? String(defaults.pointsExpiryDays) : "0"}
-                className="w-32 rounded-[11px] border border-[var(--line)] bg-[var(--bg)] px-4 py-3 text-sm focus:border-[var(--brand)] focus:outline-none"
+                value={form.pointsExpiryDays}
+                onChange={(e) => set("pointsExpiryDays", e.target.value === "" ? 0 : Number(e.target.value))}
+                className="w-32 rounded-[var(--radius-btn)] border border-[var(--line)] bg-[var(--surface)] px-4 py-3 text-sm focus:border-[var(--primary)] focus:outline-none"
               />
-              <span className="text-sm text-[var(--muted)]">days of inactivity</span>
-            </div>
-          </label>
+            )}
+            <span className="text-sm text-[var(--muted)]">days of inactivity</span>
+          </div>
           <p className="mt-2 text-[13px] text-[var(--muted)]">
             {resolved.pointsExpiryDays === 0
               ? "Right now: points never expire."
@@ -136,14 +149,9 @@ export default function PointsProgram() {
           </p>
         </div>
 
-        <button
-          onClick={save}
-          disabled={update.isPending}
-          className="stamp-interactive rounded-[13px] py-3.5 text-sm font-bold text-white disabled:opacity-50"
-          style={{ background: "var(--brand)" }}
-        >
+        <Button onClick={save} disabled={update.isPending} size="lg">
           {update.isPending ? "Saving…" : "Save program"}
-        </button>
+        </Button>
       </div>
 
       <p className="mt-4 text-[13px] text-[var(--soft)]">

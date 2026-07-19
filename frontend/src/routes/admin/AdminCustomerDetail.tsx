@@ -72,7 +72,7 @@ export default function AdminCustomerDetail() {
           </div>
         </div>
       ) : !customer ? (
-        <div className="shadow-ambient rounded-3xl bg-[var(--surface)] p-10 text-center">
+        <div className="rounded-[var(--radius-card)] border border-[var(--line)] bg-[var(--surface)] shadow-ambient p-10 text-center">
           <p className="font-bold text-[var(--ink)]">Customer not found.</p>
           <p className="mt-1 text-sm text-[var(--muted)]">
             They may have been removed, or this link is for a different business.
@@ -81,7 +81,7 @@ export default function AdminCustomerDetail() {
       ) : (
         <>
           <div className="mb-6 flex flex-wrap items-center gap-4">
-            <span className="flex h-16 w-16 flex-shrink-0 items-center justify-center rounded-full text-xl font-bold text-white" style={{ background: "var(--brand)" }}>
+            <span className="flex h-16 w-16 flex-shrink-0 items-center justify-center rounded-full text-xl font-bold text-white" style={{ background: "var(--primary)" }}>
               {customer.name.split(" ").map((w) => w[0]).slice(0, 2).join("").toUpperCase()}
             </span>
             <div className="min-w-0">
@@ -99,7 +99,7 @@ export default function AdminCustomerDetail() {
             <Stat label="Total spent" value={formatNpr(customer.totalSpent)} />
           </div>
 
-          <div className="mb-6 shadow-ambient rounded-3xl bg-[var(--surface)] p-5">
+          <div className="mb-6 rounded-[var(--radius-card)] border border-[var(--line)] bg-[var(--surface)] shadow-ambient p-5">
             <div className="mb-3 text-xs font-bold uppercase tracking-wider text-[var(--soft)]">Contact</div>
             <div className="flex items-center gap-2 text-sm text-[var(--ink)]">
               <Phone className="h-4 w-4 text-[var(--muted)]" />
@@ -111,9 +111,9 @@ export default function AdminCustomerDetail() {
             </div>
           </div>
 
-          <div className="shadow-ambient rounded-3xl bg-[var(--surface)] p-6">
+          <div className="rounded-[var(--radius-card)] border border-[var(--line)] bg-[var(--surface)] shadow-ambient p-6">
             <div className="mb-4 flex items-center gap-2">
-              <Coins className="h-4 w-4" style={{ color: "var(--brand)" }} />
+              <Coins className="h-4 w-4" style={{ color: "var(--primary-deep)" }} />
               <h3 className="font-display text-lg font-bold text-[var(--ink)]">Recent activity</h3>
             </div>
             {customer.history.length === 0 ? (
@@ -154,7 +154,7 @@ export default function AdminCustomerDetail() {
 
 function Stat({ label, value }: { label: string; value: string }) {
   return (
-    <div className="shadow-ambient rounded-3xl bg-[var(--surface)] p-5">
+    <div className="rounded-[var(--radius-card)] border border-[var(--line)] bg-[var(--surface)] shadow-ambient p-5">
       <div className="mb-1 text-[13px] text-[var(--muted)]">{label}</div>
       <div className="font-display text-2xl font-bold text-[var(--ink)]">{value}</div>
     </div>
@@ -166,7 +166,7 @@ function Stat({ label, value }: { label: string; value: string }) {
 // No progress bar: a balance has no target to fill toward.
 function BalanceStat({ balance }: { balance: number }) {
   return (
-    <div className="relative overflow-hidden rounded-3xl p-5 text-white" style={{ background: "var(--brand)" }}>
+    <div className="relative overflow-hidden rounded-[var(--radius-card)] p-5 text-white" style={{ background: "var(--primary)" }}>
       <Coins className="absolute -bottom-3 -right-3 h-16 w-16 opacity-15" aria-hidden="true" />
       <div className="relative mb-1 text-[13px] opacity-80">Points balance</div>
       <div className="relative font-display text-2xl font-bold">{balance}</div>

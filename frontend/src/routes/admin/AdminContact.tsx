@@ -45,7 +45,7 @@ export default function AdminContact() {
         <Skeleton className="mb-2 h-7 w-40" />
         <Skeleton className="mb-6 h-4 w-96" />
         <div className="grid grid-cols-1 items-start gap-6 lg:grid-cols-[1fr_340px]">
-          <div className="flex flex-col gap-5 shadow-ambient rounded-3xl bg-[var(--surface)] p-6">
+          <div className="flex flex-col gap-5 rounded-[var(--radius-card)] border border-[var(--line)] bg-[var(--surface)] shadow-ambient p-6">
             {Array.from({ length: 4 }).map((_, i) => (
               <div key={i}>
                 <Skeleton className="mb-1.5 h-3.5 w-20" />
@@ -85,19 +85,19 @@ export default function AdminContact() {
 
   return (
     <div>
-      <h1 className="font-display text-[28px] font-extrabold text-[var(--ink)]">Contact</h1>
+      <h1 className="font-display text-[28px] font-bold text-[var(--ink)]">Contact</h1>
       <p className="mb-6 text-[var(--muted)]">
         Shown to your customers on their dashboard. Changes preview live on the right.
       </p>
 
       <div className="grid grid-cols-1 items-start gap-6 lg:grid-cols-[1fr_340px]">
-        <div className="flex flex-col gap-5 shadow-ambient rounded-3xl bg-[var(--surface)] p-6">
+        <div className="flex flex-col gap-5 rounded-[var(--radius-card)] border border-[var(--line)] bg-[var(--surface)] shadow-ambient p-6">
           <Field label="Phone" error={phoneError}>
             <input
               value={contact.phone}
               onChange={(e) => set("phone", e.target.value)}
               className={`w-full rounded-[11px] border bg-[var(--bg)] px-4 py-3 text-sm focus:outline-none ${
-                phoneError ? "border-[var(--err)]" : "border-[var(--line)] focus:border-[var(--brand)]"
+                phoneError ? "border-[var(--err)]" : "border-[var(--line)] focus:border-[var(--primary)]"
               }`}
             />
           </Field>
@@ -106,7 +106,7 @@ export default function AdminContact() {
               value={contact.email}
               onChange={(e) => set("email", e.target.value)}
               className={`w-full rounded-[11px] border bg-[var(--bg)] px-4 py-3 text-sm focus:outline-none ${
-                emailError ? "border-[var(--err)]" : "border-[var(--line)] focus:border-[var(--brand)]"
+                emailError ? "border-[var(--err)]" : "border-[var(--line)] focus:border-[var(--primary)]"
               }`}
             />
           </Field>
@@ -114,7 +114,7 @@ export default function AdminContact() {
             <input
               value={contact.address}
               onChange={(e) => set("address", e.target.value)}
-              className="w-full rounded-[11px] border border-[var(--line)] bg-[var(--bg)] px-4 py-3 text-sm focus:border-[var(--brand)] focus:outline-none"
+              className="w-full rounded-[11px] border border-[var(--line)] bg-[var(--bg)] px-4 py-3 text-sm focus:border-[var(--primary)] focus:outline-none"
             />
           </Field>
 
@@ -126,7 +126,7 @@ export default function AdminContact() {
                 value={contact.latitude ?? ""}
                 onChange={(e) => set("latitude", e.target.value === "" ? null : Number(e.target.value))}
                 placeholder="27.7172"
-                className="w-full rounded-[11px] border border-[var(--line)] bg-[var(--bg)] px-4 py-3 text-sm focus:border-[var(--brand)] focus:outline-none"
+                className="w-full rounded-[11px] border border-[var(--line)] bg-[var(--bg)] px-4 py-3 text-sm focus:border-[var(--primary)] focus:outline-none"
               />
             </Field>
             <Field label="Longitude">
@@ -136,7 +136,7 @@ export default function AdminContact() {
                 value={contact.longitude ?? ""}
                 onChange={(e) => set("longitude", e.target.value === "" ? null : Number(e.target.value))}
                 placeholder="85.3240"
-                className="w-full rounded-[11px] border border-[var(--line)] bg-[var(--bg)] px-4 py-3 text-sm focus:border-[var(--brand)] focus:outline-none"
+                className="w-full rounded-[11px] border border-[var(--line)] bg-[var(--bg)] px-4 py-3 text-sm focus:border-[var(--primary)] focus:outline-none"
               />
             </Field>
           </div>
@@ -147,7 +147,7 @@ export default function AdminContact() {
               onChange={(e) => set("hours", e.target.value)}
               rows={2}
               placeholder="Mon–Sat: 8am–8pm, Sun: Closed"
-              className="w-full rounded-[11px] border border-[var(--line)] bg-[var(--bg)] px-4 py-3 text-sm focus:border-[var(--brand)] focus:outline-none"
+              className="w-full rounded-[11px] border border-[var(--line)] bg-[var(--bg)] px-4 py-3 text-sm focus:border-[var(--primary)] focus:outline-none"
             />
           </Field>
           <Field label="About us">
@@ -155,7 +155,7 @@ export default function AdminContact() {
               value={contact.aboutUs}
               onChange={(e) => set("aboutUs", e.target.value)}
               rows={3}
-              className="w-full rounded-[11px] border border-[var(--line)] bg-[var(--bg)] px-4 py-3 text-sm focus:border-[var(--brand)] focus:outline-none"
+              className="w-full rounded-[11px] border border-[var(--line)] bg-[var(--bg)] px-4 py-3 text-sm focus:border-[var(--primary)] focus:outline-none"
             />
           </Field>
 
@@ -164,7 +164,7 @@ export default function AdminContact() {
               value={contact.socials.instagram}
               onChange={(e) => setSocial("instagram", e.target.value)}
               placeholder="https://instagram.com/…"
-              className="w-full rounded-[11px] border border-[var(--line)] bg-[var(--bg)] px-4 py-3 text-sm focus:border-[var(--brand)] focus:outline-none"
+              className="w-full rounded-[11px] border border-[var(--line)] bg-[var(--bg)] px-4 py-3 text-sm focus:border-[var(--primary)] focus:outline-none"
             />
           </Field>
           <Field label="Facebook URL">
@@ -172,7 +172,7 @@ export default function AdminContact() {
               value={contact.socials.facebook}
               onChange={(e) => setSocial("facebook", e.target.value)}
               placeholder="https://facebook.com/…"
-              className="w-full rounded-[11px] border border-[var(--line)] bg-[var(--bg)] px-4 py-3 text-sm focus:border-[var(--brand)] focus:outline-none"
+              className="w-full rounded-[11px] border border-[var(--line)] bg-[var(--bg)] px-4 py-3 text-sm focus:border-[var(--primary)] focus:outline-none"
             />
           </Field>
           <Field label="X (Twitter) URL">
@@ -180,7 +180,7 @@ export default function AdminContact() {
               value={contact.socials.x}
               onChange={(e) => setSocial("x", e.target.value)}
               placeholder="https://x.com/…"
-              className="w-full rounded-[11px] border border-[var(--line)] bg-[var(--bg)] px-4 py-3 text-sm focus:border-[var(--brand)] focus:outline-none"
+              className="w-full rounded-[11px] border border-[var(--line)] bg-[var(--bg)] px-4 py-3 text-sm focus:border-[var(--primary)] focus:outline-none"
             />
           </Field>
 
@@ -188,7 +188,7 @@ export default function AdminContact() {
             onClick={save}
             disabled={update.isPending || hasErrors}
             className="rounded-[13px] py-3.5 text-[15px] font-bold text-white transition-opacity hover:opacity-90 disabled:opacity-50"
-            style={{ background: "var(--brand)" }}
+            style={{ background: "var(--primary)" }}
           >
             {update.isPending ? "Saving…" : "Save contact info"}
           </button>

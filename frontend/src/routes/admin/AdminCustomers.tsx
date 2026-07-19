@@ -73,13 +73,13 @@ export default function AdminCustomers() {
     <div>
       <div className="mb-6 flex flex-wrap items-end justify-between gap-3">
         <div>
-          <h1 className="font-display text-[28px] font-extrabold text-[var(--ink)]">Customers</h1>
+          <h1 className="font-display text-[28px] font-bold text-[var(--ink)]">Customers</h1>
           <div className="text-[var(--muted)]">
             {isLoading ? <Skeleton className="inline-block h-4 w-40 align-middle" /> : `${customers.length} member${customers.length === 1 ? "" : "s"} of ${settings?.name ?? "your business"}`}
           </div>
         </div>
         <div className="flex items-center gap-2.5">
-          <div className="flex items-center gap-2 rounded-full bg-[var(--surface-container)] px-4 py-2.5">
+          <div className="flex items-center gap-2 rounded-full bg-[var(--surface-2)] px-4 py-2.5">
             <Search className="h-4 w-4 flex-shrink-0 text-[var(--soft)]" />
             <input
               value={query}
@@ -90,7 +90,7 @@ export default function AdminCustomers() {
           </div>
           <button
             onClick={downloadExcel}
-            className="stamp-interactive flex items-center gap-1.5 rounded-full bg-[var(--surface-container)] px-4 py-2.5 text-sm font-bold text-[var(--ink)]"
+            className="stamp-interactive flex items-center gap-1.5 rounded-full bg-[var(--surface-2)] px-4 py-2.5 text-sm font-bold text-[var(--ink)]"
           >
             <Download className="h-4 w-4" />
             Export to Excel
@@ -98,7 +98,7 @@ export default function AdminCustomers() {
         </div>
       </div>
 
-      <div className="shadow-ambient overflow-hidden rounded-3xl bg-[var(--surface)]">
+      <div className="shadow-ambient overflow-hidden rounded-[var(--radius-card)] bg-[var(--surface)]">
         <div className="grid grid-cols-[2fr_1fr_1fr_1fr_1fr] gap-4 border-b border-[var(--line)] px-5 py-3 text-[11px] font-bold uppercase tracking-wider text-[var(--soft)]">
           <span>Customer</span>
           <span>No.</span>
@@ -132,7 +132,7 @@ export default function AdminCustomers() {
             <Link
               key={c.id}
               to={tenantPath(companySlug, outletSlug, `admin/customers/${c.id}`)}
-              className="grid w-full grid-cols-[2fr_1fr_1fr_1fr_1fr] gap-4 items-center border-b border-[var(--line)] px-5 py-3.5 text-left last:border-b-0 hover:bg-[var(--surface-container)]"
+              className="grid w-full grid-cols-[2fr_1fr_1fr_1fr_1fr] gap-4 items-center border-b border-[var(--line)] px-5 py-3.5 text-left last:border-b-0 hover:bg-[var(--surface-2)]"
             >
               <span className="flex items-center gap-3 min-w-0">
                 <span className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-full border border-[var(--line)] bg-[var(--bg)] text-xs font-bold text-[var(--muted)]">
