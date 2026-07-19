@@ -108,6 +108,23 @@
   --err-soft: #2A1917;
 }
 
+/* A layout bug anywhere in the app that pushes one element past the
+   viewport's edge doesn't just clip that element on mobile — it widens the
+   whole page, and the browser responds by rendering everything zoomed out
+   to fit. That's the "I have to manually zoom out and then the nav is
+   misplaced" report: the zoom is the symptom, and position:fixed/sticky
+   chrome (the bottom nav, the sticky header) doesn't reliably track a
+   layout the user has pinch-zoomed, which is what makes it look
+   misaligned once they do.
+   This is the backstop: no element, however it misbehaves, can force the
+   page itself wider than the viewport. Inner rows that scroll sideways on
+   purpose (category pills, the My Places strip) keep working — they carry
+   their own overflow-x-auto, which this doesn't touch. */
+html {
+  overflow-x: hidden;
+  max-width: 100vw;
+}
+
 body {
   background-color: var(--bg);
   color: var(--ink);
@@ -115,6 +132,8 @@ body {
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   margin: 0;
+  overflow-x: hidden;
+  max-width: 100vw;
 }
 
 .font-display {

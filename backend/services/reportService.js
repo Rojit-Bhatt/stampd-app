@@ -9,29 +9,10 @@ const {
   isExpiredNow
 } = require("./pointsService");
 const { toPoints } = require("../utils/pointsMath");
+const { resolveDateRange } = require("../utils/dateRange");
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 const WEEK_MS = 7 * DAY_MS;
-
-// Parses "YYYY-MM-DD" query params into a [start, end] Date range, defaulting
-// to the last 30 days when either is missing or invalid.
-const resolveDateRange = (startDateParam, endDateParam) => {
-  const now = new Date();
-  let start = startDateParam ? new Date(startDateParam) : null;
-  let end = endDateParam ? new Date(endDateParam) : null;
-
-  if (!start || Number.isNaN(start.getTime())) {
-    start = new Date(now.getTime() - 30 * DAY_MS);
-  }
-  if (!end || Number.isNaN(end.getTime())) {
-    end = now;
-  } else {
-    // Treat the end date as inclusive of its whole day.
-    end = new Date(end.getTime() + DAY_MS - 1);
-  }
-
-  return { start, end };
-};
 
 const sumCenti = (txns) => txns.reduce((sum, t) => sum + t.pointsCenti, 0);
 const sumRevenue = (txns) => txns.reduce((sum, t) => sum + (t.billAmount || 0), 0);
@@ -256,9 +237,11 @@ const buildCustomersWorkbook = async (organizationId) => {
 };
 
 // The full outlet ledger as a spreadsheet — the export counterpart of the
-// admin transaction history page.
-const buildTransactionsWorkbook = async (organizationId) => {
-  const { data: rows } = await getOutletTransactions(organizationId, { limit: 5000 });
+// admin transaction history page. Takes the same optional date range as the
+// page itself, so filtering to "Today" then exporting downloads today's
+// rows, not the whole ledger.
+const buildTransactionsWorkbook = async (organizationId, { startDate, endDate } = {}) => {
+  const { data: rows } = await getOutletTransactions(organizationId, { limit: 5000, startDate, endDate });
 
   const workbook = new ExcelJS.Workbook();
   const sheet = workbook.addWorksheet("Transactions");

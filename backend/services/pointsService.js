@@ -11,6 +11,7 @@ const User = require("../models/User");
 const { resolveProgram } = require("./programService");
 const { resolveActiveMultiplier } = require("./campaignService");
 const { earnCenti, toPoints } = require("../utils/pointsMath");
+const { resolveDateRange } = require("../utils/dateRange");
 
 // An EARN token only has to survive being scanned: the instant it is, it
 // converts into a PendingClaim that lives 15 minutes, which is what actually
@@ -618,8 +619,20 @@ const getPointsHistoryByUserId = async (userId, organizationId, limit = 50) => {
 };
 
 // The outlet's whole ledger, newest first — the admin transaction history.
-const getOutletTransactions = async (organizationId, { limit = 100 } = {}) => {
-  const rows = await PointsTransaction.find({ organizationId }).sort({ createdAt: -1 });
+// startDate/endDate are both optional and, deliberately, do nothing unless
+// at least one is passed: AdminOverview's live-activity feed polls this with
+// neither, and must keep seeing the true most-recent rows, not a trailing-
+// 30-day window it never asked for. The Transactions page and its Excel
+// export are the only callers that ever pass a range.
+const getOutletTransactions = async (organizationId, { limit = 100, startDate, endDate } = {}) => {
+  let rows = await PointsTransaction.find({ organizationId }).sort({ createdAt: -1 });
+  if (startDate || endDate) {
+    const { start, end } = resolveDateRange(startDate, endDate);
+    rows = rows.filter((t) => {
+      const createdAt = new Date(t.createdAt);
+      return createdAt >= start && createdAt <= end;
+    });
+  }
   const capped = rows.slice(0, limit);
 
   const userIds = [...new Set(capped.map((r) => r.userId.toString()))];
