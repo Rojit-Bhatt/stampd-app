@@ -1,5 +1,5 @@
 import { Link } from "react-router-dom";
-import { Coffee, QrCode, Coins, UtensilsCrossed, Settings } from "lucide-react";
+import { Coffee, QrCode, Coins, UtensilsCrossed, CircleUser } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 
 import { tenantPath } from "../../lib/tenantPath";
@@ -43,6 +43,14 @@ function NavLink({
 // something resting on the page, and the rounded shape keeps the centre FAB
 // from looking bolted on.
 //
+// `fixed`, not `sticky`: sticky only pins once the page has scrolled far
+// enough that the nav's normal flow position would go past the viewport
+// edge — on a short page (little content, no scrolling needed) it just sits
+// after the content instead, which is the "nav is down at the bottom of the
+// page, not the screen" bug. Fixed pins it to the viewport unconditionally,
+// which is what a bottom tab bar is supposed to do. CustomerLayout reserves
+// matching bottom padding on the scrollable content so nothing sits under it.
+//
 // The active tab and the scan button are green: navigating and scanning are
 // both ACTIONS. The tenant hue never appears here, so the nav looks and
 // behaves identically at every outlet a customer belongs to.
@@ -52,7 +60,7 @@ export function BottomNav({ slug, activeTab, onScanClick }: BottomNavProps) {
 
   return (
     // pb accounts for the iOS home indicator when installed as a PWA.
-    <footer className="sticky bottom-0 z-30 flex-shrink-0 px-4 pt-2 pb-[max(1.25rem,env(safe-area-inset-bottom))]">
+    <footer className="fixed inset-x-0 bottom-0 z-30 flex-shrink-0 px-4 pt-2 pb-[max(1.25rem,env(safe-area-inset-bottom))]">
       <div className="relative mx-auto flex max-w-md items-center justify-between rounded-full border border-[var(--line)] bg-[var(--surface)] px-4 py-2 shadow-float">
         <NavLink to={path("dashboard")} icon={Coffee} label="Card" active={activeTab === "dashboard"} />
         <NavLink to={path("menu")} icon={UtensilsCrossed} label="Menu" active={activeTab === "menu"} />
@@ -72,7 +80,7 @@ export function BottomNav({ slug, activeTab, onScanClick }: BottomNavProps) {
         <div className="w-14" aria-hidden="true" />
 
         <NavLink to={path("history")} icon={Coins} label="Points" active={activeTab === "history"} />
-        <NavLink to={path("settings")} icon={Settings} label="Settings" active={activeTab === "settings"} />
+        <NavLink to={path("settings")} icon={CircleUser} label="Profile" active={activeTab === "settings"} />
       </div>
     </footer>
   );

@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { Outlet, useLocation, useNavigate, Link, NavLink } from "react-router-dom";
-import { QrCode, Coffee, Coins, UtensilsCrossed, Settings } from "lucide-react";
+import { QrCode, Coffee, Coins, UtensilsCrossed, CircleUser, ArrowLeft } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 
 import { useCustomerAuth } from "../../context/CustomerAuthContext";
@@ -81,6 +81,18 @@ export function CustomerLayout() {
 
       <header className="sticky top-0 z-20 flex-shrink-0 border-b border-[var(--line)] bg-[var(--surface)]/95 backdrop-blur">
         <div className="mx-auto flex w-full max-w-5xl items-center gap-3 px-5 py-3">
+          {/* Every customer arrived either from /explore or a scanned QR —
+              either way, /explore is always a safe "up a level" — this is
+              the one place in a tenant's subtree that isn't tenant-themed,
+              since it's leaving the tenant. */}
+          <Link
+            to="/explore"
+            aria-label="Back to Explore"
+            className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-full text-[var(--muted)] transition-colors hover:bg-[var(--surface-2)] hover:text-[var(--ink)]"
+          >
+            <ArrowLeft className="h-4.5 w-4.5" />
+          </Link>
+
           {/* Inside an outlet, the outlet is the identity — its own tile and
               name, in its own colour. Stampd's mark belongs on /explore. */}
           <Link to={path("dashboard")} className="flex min-w-0 items-center gap-2.5">
@@ -107,7 +119,7 @@ export function CustomerLayout() {
             <DesktopTab to={path("dashboard")} icon={Coffee} label="Card" />
             <DesktopTab to={path("menu")} icon={UtensilsCrossed} label="Menu" />
             <DesktopTab to={path("history")} icon={Coins} label="Points" />
-            <DesktopTab to={path("settings")} icon={Settings} label="Settings" />
+            <DesktopTab to={path("settings")} icon={CircleUser} label="Profile" />
           </nav>
 
           <div className="ml-auto flex flex-shrink-0 items-center gap-2">
@@ -123,7 +135,7 @@ export function CustomerLayout() {
             </button>
             <Link
               to={path("settings")}
-              aria-label="Account settings"
+              aria-label="Profile"
               className="flex h-9 w-9 items-center justify-center rounded-full bg-[var(--surface-2)] text-xs font-bold text-[var(--ink)] transition-colors hover:bg-[var(--line)]"
             >
               {(account?.name || "?").charAt(0).toUpperCase()}
@@ -132,7 +144,13 @@ export function CustomerLayout() {
         </div>
       </header>
 
-      <main className="flex-1">
+      {/* Clears the fixed bottom nav on phones. This is for a LONG page: it
+          guarantees the true last item of a tall list (CustomerHistory's
+          ledger, a long menu) isn't left sitting behind the nav once
+          scrolled all the way down — padding after the content can't do
+          anything for a SHORT page, since it doesn't move content that's
+          already above it, only adds trailing space past it. */}
+      <main className="flex-1 pb-28 lg:pb-0">
         <Outlet />
       </main>
 

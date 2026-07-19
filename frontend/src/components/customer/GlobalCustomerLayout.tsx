@@ -162,11 +162,17 @@ export function GlobalCustomerLayout() {
         </div>
       </header>
 
-      <main className="flex-1">
+      {/* pb-24 clears the fixed bottom nav on phones; lg:pb-0 because it's
+          hidden entirely at that width. */}
+      <main className="flex-1 pb-24 lg:pb-0">
         <Outlet />
       </main>
 
-      <footer className="sticky bottom-0 z-30 flex-shrink-0 px-4 pt-2 pb-[max(1.25rem,env(safe-area-inset-bottom))] lg:hidden">
+      {/* `fixed`, not `sticky` — see BottomNav.tsx for why: sticky only pins
+          once the page has scrolled far enough to need it, so a short page
+          left the nav sitting after the content instead of glued to the
+          screen. */}
+      <footer className="fixed inset-x-0 bottom-0 z-30 flex-shrink-0 px-4 pt-2 pb-[max(1.25rem,env(safe-area-inset-bottom))] lg:hidden">
         <div className="mx-auto flex max-w-md items-center gap-2 rounded-full border border-[var(--line)] bg-[var(--surface)] px-3 py-2 shadow-float">
           <Tab to="/explore" icon={Compass} label="Home" variant="bottom" />
           <Tab to="/explore/mine" icon={Store} label="My businesses" variant="bottom" />
