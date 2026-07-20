@@ -10,6 +10,24 @@ export default defineConfig({
     tailwindcss(),
     VitePWA({
       registerType: "autoUpdate",
+      // Without this the plugin is a BUILD-ONLY plugin: `vite dev` serves no
+      // manifest, injects no <link rel="manifest">, and registers no service
+      // worker. Chrome judges installability from exactly those, so it never
+      // fires `beforeinstallprompt` — and the install prompt, which is gated
+      // on that event, can never appear while developing. The feature looked
+      // broken when only its dev environment was.
+      //
+      // Note this is necessary but not sufficient on a phone: the install
+      // criteria also require a SECURE CONTEXT, and a LAN address like
+      // http://192.168.1.11:3000 is not one (only localhost is exempt). Real
+      // on-device install testing needs HTTPS — the deployed site, a tunnel,
+      // or Chrome's unsafely-treat-insecure-origin-as-secure flag.
+      devOptions: {
+        enabled: true,
+        // Vite serves dev modules as ESM, so the dev service worker has to be
+        // a module too.
+        type: "module",
+      },
       // apple-touch-icon isn't in the manifest (iOS reads it from a <link> in
       // index.html instead) — list it here so the service worker still
       // precaches it.
