@@ -2,6 +2,7 @@ const bcrypt = require("bcryptjs");
 const crypto = require("crypto");
 const { OAuth2Client } = require("google-auth-library");
 const CustomerAccount = require("../models/CustomerAccount");
+const CustomerAvatar = require("../models/CustomerAvatar");
 const AccountVerificationToken = require("../models/AccountVerificationToken");
 const User = require("../models/User");
 const Organization = require("../models/Organization");
@@ -66,7 +67,8 @@ const formatGlobalSessionPayload = (account) => ({
     id: account._id.toString(),
     name: account.name,
     email: account.email,
-    emailVerified: account.emailVerified
+    emailVerified: account.emailVerified,
+    avatarVersion: account.avatarVersion || 0
   }
 });
 
@@ -233,7 +235,31 @@ const authenticateWithGoogle = async ({ idToken }) => {
     account.name = name;
     shouldSave = true;
   }
+  // Google already proved ownership of this mailbox — the payload check above
+  // rejects anything with email_verified !== true. Asking the customer to go
+  // find our own confirmation email on top of that verifies nothing further,
+  // so an account that signs in this way is verified from here on. Matters
+  // now that redemption is gated on it: a Google-only customer has no
+  // password, and previously an account created BEFORE linking Google could
+  // sit permanently unverified with no way to earn its way out.
+  if (!account.emailVerified) {
+    account.emailVerified = true;
+    shouldSave = true;
+  }
   if (shouldSave) await account.save();
+
+  // Keep the denormalized copies on every tenant membership in step, the
+  // same sync verifyAccountEmail does — outlet-scoped code (redeemPoints)
+  // reads emailVerified off the User row, not the account.
+  if (account.emailVerified) {
+    const members = await User.find({ customerAccountId: account._id });
+    for (const member of members) {
+      if (!member.emailVerified) {
+        member.emailVerified = true;
+        await member.save();
+      }
+    }
+  }
 
   const out = formatGlobalSessionPayload(account);
   out.needsPhone = !account.phone;
@@ -411,6 +437,76 @@ const getMyTenants = async ({ customerAccountId }) => {
   return { success: true, memberships: rows.filter(Boolean) };
 };
 
+// --- avatar -----------------------------------------------------------
+
+// The client resizes to 256x256 WebP before uploading, which lands around
+// 10-20KB. This ceiling is the backstop for a client that doesn't (or won't):
+// it has to be generous enough not to reject an honest phone photo that
+// slipped through unresized, and tight enough that the collection can't be
+// used as free storage.
+const MAX_AVATAR_BYTES = 256 * 1024;
+const ALLOWED_AVATAR_TYPES = ["image/webp", "image/jpeg", "image/png"];
+
+const setAvatar = async ({ customerAccountId, buffer, mimeType }) => {
+  if (!buffer || !buffer.length) throw createHttpError("An image file is required.", 400);
+  if (!ALLOWED_AVATAR_TYPES.includes(mimeType)) {
+    throw createHttpError("Profile pictures must be a WebP, JPEG, or PNG image.", 400);
+  }
+  if (buffer.length > MAX_AVATAR_BYTES) {
+    throw createHttpError("That image is too large — pick one under 256KB.", 400);
+  }
+
+  const account = await CustomerAccount.findOne({ _id: customerAccountId });
+  if (!account) throw createHttpError("Account not found.", 404);
+
+  const dataBase64 = buffer.toString("base64");
+  const existing = await CustomerAvatar.findOne({ customerAccountId });
+  if (existing) {
+    existing.mimeType = mimeType;
+    existing.dataBase64 = dataBase64;
+    existing.byteSize = buffer.length;
+    existing.updatedAt = new Date();
+    await existing.save();
+  } else {
+    await CustomerAvatar.create({
+      customerAccountId,
+      mimeType,
+      dataBase64,
+      byteSize: buffer.length
+    });
+  }
+
+  // Bumped, never set to a timestamp: the served image is cached immutably
+  // against this number, so it only has to change, not mean anything.
+  account.avatarVersion = (account.avatarVersion || 0) + 1;
+  await account.save();
+
+  return formatGlobalSessionPayload(account);
+};
+
+const removeAvatar = async ({ customerAccountId }) => {
+  const account = await CustomerAccount.findOne({ _id: customerAccountId });
+  if (!account) throw createHttpError("Account not found.", 404);
+
+  await CustomerAvatar.deleteOne({ customerAccountId });
+  // Still bumped rather than reset to 0: any URL already in a cache pins the
+  // old version, so reusing a number would serve the deleted picture back.
+  account.avatarVersion = (account.avatarVersion || 0) + 1;
+  await account.save();
+
+  return formatGlobalSessionPayload(account);
+};
+
+const getAvatar = async (customerAccountId) => {
+  const row = await CustomerAvatar.findOne({ customerAccountId });
+  if (!row) return null;
+  return {
+    mimeType: row.mimeType,
+    buffer: Buffer.from(row.dataBase64, "base64"),
+    updatedAt: row.updatedAt
+  };
+};
+
 module.exports = {
   registerAccount,
   loginAccount,
@@ -422,5 +518,9 @@ module.exports = {
   resetPassword,
   enterTenant,
   ensureMembership,
-  getMyTenants
+  getMyTenants,
+  setAvatar,
+  removeAvatar,
+  getAvatar,
+  MAX_AVATAR_BYTES
 };

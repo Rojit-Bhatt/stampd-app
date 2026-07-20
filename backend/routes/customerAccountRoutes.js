@@ -2,7 +2,8 @@ const express = require("express");
 const {
   register, login, googleAuth,
   verifyEmail, resendVerification, forgotPassword, resetPassword,
-  completeProfile, enterTenant, getMyTenants
+  completeProfile, enterTenant, getMyTenants,
+  uploadAvatarFile, uploadAvatar, deleteAvatar, getAvatar
 } = require("../controllers/customerAccountController");
 const { resolveTenant } = require("../middleware/tenantMiddleware");
 const { verifyGlobalSession } = require("../middleware/customerAuthMiddleware");
@@ -22,6 +23,13 @@ router.post("/resend-verification", registrationLimiter, resendVerification);
 router.post("/forgot-password", registrationLimiter, forgotPassword);
 router.post("/reset-password", resetPassword);
 router.post("/complete-profile", verifyGlobalSession, completeProfile);
+
+// Profile picture. Writes need the global session (the avatar belongs to the
+// CustomerAccount, not to any one outlet's membership); the read is public
+// because it is loaded by an <img> tag — see getAvatarController.
+router.post("/avatar", verifyGlobalSession, uploadAvatarFile, uploadAvatar);
+router.delete("/avatar", verifyGlobalSession, deleteAvatar);
+router.get("/avatar/:accountId", getAvatar);
 
 // Needs a resolved tenant (which org to provision into) + a valid global
 // session (which account) — the exchange for a tenant JWT.

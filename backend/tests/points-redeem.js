@@ -167,6 +167,49 @@ async function main() {
       redeemWindow.body?.data,
     );
 
+    // The other half of the pair points-earn.js sets up: earning is open to an
+    // unverified customer, spending is not. This is the only gate on
+    // emailVerified left in the loyalty loop, so it is the only thing standing
+    // between an unreachable account and a free reward — and a test that only
+    // checked the earn side would pass with the gate removed entirely.
+    console.log("\n== An unverified customer earns but cannot redeem ==");
+    const unverifiedEmail = `unverified_redeem_${Date.now()}@test.co`;
+    await api("/api/auth/register", {
+      method: "POST",
+      body: { name: "Unverified Redeemer", email: unverifiedEmail, password: "password", phone: "+9779800004444" },
+    });
+    const unverifiedLogin = await api("/api/auth/login", {
+      method: "POST", body: { email: unverifiedEmail, password: "password" },
+    });
+    const unverifiedToken = unverifiedLogin.body?.token;
+    check("an unverified customer gets a session", Boolean(unverifiedToken), unverifiedLogin.body);
+
+    const unverifiedEarn = await earn(adminToken, unverifiedToken, 1000);
+    check("they can earn (200)", unverifiedEarn.status === 200, unverifiedEarn.body);
+    check("with a balance well past the reward's price", unverifiedEarn.body?.data?.balance >= 180, unverifiedEarn.body);
+
+    const blockedQr = await redeemQr(adminToken);
+    const blocked = await api("/api/points/redeem", {
+      method: "POST", token: unverifiedToken,
+      body: { token: blockedQr.body.data.token, itemId: coffee.id },
+    });
+    check("but redeeming is refused (403)", blocked.status === 403, blocked.body);
+    // The frontend branches on this code to offer "resend verification"
+    // rather than showing a generic failure toast.
+    check("tagged EMAIL_NOT_VERIFIED, not a bare 403", blocked.body?.code === "EMAIL_NOT_VERIFIED", blocked.body);
+
+    // Refusing must not have consumed the single-use redeem token — otherwise
+    // verifying and coming straight back would need staff to re-issue a QR.
+    const unverifiedMint = await api("/__test__/mint-token", {
+      method: "POST", body: { email: unverifiedEmail, type: "email_verify" },
+    });
+    await api(`/api/auth/verify-email?token=${unverifiedMint.body.token}`);
+    const nowAllowed = await api("/api/points/redeem", {
+      method: "POST", token: unverifiedToken,
+      body: { token: blockedQr.body.data.token, itemId: coffee.id },
+    });
+    check("after verifying, the same code still works (200)", nowAllowed.status === 200, nowAllowed.body);
+
     console.log("\n== The admin ledger ==");
     const txns = await api("/api/admin/transactions", { token: adminToken });
     const mine = (txns.body?.data || []).filter((t) => t.customerName === "Redeem Tester");

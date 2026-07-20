@@ -122,22 +122,26 @@ async function main() {
     const wrongWay = await api("/api/points/claim", { method: "POST", token: customerToken, body: { token: redeemQr.body.data.token } });
     check("a redeem QR is rejected on the earn path", wrongWay.status === 400, wrongWay.body);
 
-    console.log("\n== Only a verified customer earns ==");
+    // Earning is deliberately open to an unverified customer: they are at the
+    // counter with a 30-second QR and a bill they have already paid, and
+    // sending them to their inbox at that moment loses a genuine earn.
+    // Verification is enforced on the REDEEM side instead — see
+    // points-redeem.js, which owns the other half of this pair.
+    console.log("\n== An unverified customer can still EARN ==");
     const unverifiedEmail = `unverified_${Date.now()}@test.co`;
     await api("/api/auth/register", {
       method: "POST",
       body: { name: "Unverified", email: unverifiedEmail, password: "password", phone: "+9779800002222" },
     });
     const unverifiedLogin = await api("/api/auth/login", { method: "POST", body: { email: unverifiedEmail, password: "password" } });
-    if (unverifiedLogin.body?.token) {
-      const q = await api("/api/admin/generate-qr", { method: "POST", token: adminToken, body: { billAmount: 100 } });
-      const blocked = await api("/api/points/claim", {
-        method: "POST", token: unverifiedLogin.body.token, body: { token: q.body.data.token },
-      });
-      check("an unverified customer can't earn (403)", blocked.status === 403, blocked.body);
-    } else {
-      check("an unverified customer can't even log in to earn", true);
-    }
+    check("an unverified customer can log in", Boolean(unverifiedLogin.body?.token), unverifiedLogin.body);
+    check("and is still flagged unverified", unverifiedLogin.body?.user?.emailVerified === false, unverifiedLogin.body);
+    const unverifiedQr = await api("/api/admin/generate-qr", { method: "POST", token: adminToken, body: { billAmount: 100 } });
+    const allowed = await api("/api/points/claim", {
+      method: "POST", token: unverifiedLogin.body.token, body: { token: unverifiedQr.body.data.token },
+    });
+    check("an unverified customer CAN earn (200)", allowed.status === 200, allowed.body);
+    check("and the points actually land", allowed.body?.data?.pointsEarned === 100, allowed.body);
 
     console.log("\n== Staff can't earn on their own QR ==");
     const staffQr = await api("/api/admin/generate-qr", { method: "POST", token: adminToken, body: { billAmount: 100 } });

@@ -75,7 +75,16 @@ export function AccountSettingsForm({ role, onLogout }: AccountSettingsFormProps
   const resendVerification = async () => {
     setResending(true);
     try {
-      await apiRequest("/api/auth/resend-verification", { method: "POST", body: { email: account.email } });
+      // A customer's verified flag lives on the global CustomerAccount and is
+      // fanned out to every outlet membership from there; the tenant-scoped
+      // /api/auth link only ever verifies the one outlet's row, which is not
+      // what the redeem gate reads across the rest of the app. Staff keep
+      // their own identity system, so they keep their own endpoint.
+      const path =
+        role === "customer"
+          ? "/api/customer-auth/resend-verification"
+          : "/api/admin-auth/resend-verification";
+      await apiRequest(path, { method: "POST", body: { email: account.email } });
       toast.success("Verification email sent — check your inbox.");
     } catch {
       toast.error("Couldn't resend that — try again in a bit.");
@@ -109,7 +118,11 @@ export function AccountSettingsForm({ role, onLogout }: AccountSettingsFormProps
         <div className="rounded-[var(--radius-card)] border border-[var(--line)] bg-[var(--surface)] shadow-ambient p-5">
           <div className="mb-2 text-sm font-bold">Email verification</div>
           <div className="mb-3 text-[13px] text-[var(--muted)]">
-            {account.emailVerified ? "Verified" : "Not verified"}
+            {account.emailVerified
+              ? "Verified"
+              : role === "customer"
+                ? "Not verified — you can still earn points, but you'll need this to redeem them."
+                : "Not verified"}
           </div>
           {!account.emailVerified && (
             <button

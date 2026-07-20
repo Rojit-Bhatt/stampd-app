@@ -7,6 +7,7 @@ import { useCustomerAuth } from "../../context/CustomerAuthContext";
 import { PLATFORM_NAME } from "../../lib/platform";
 import { ConfirmDialog } from "../shared/ConfirmDialog";
 import { GlobalScannerModal } from "./GlobalScannerModal";
+import { CustomerAvatar } from "./CustomerAvatar";
 import { useMyTenants } from "../../hooks/useMyTenants";
 import { StampdLogo } from "../shared/StampdLogo";
 
@@ -150,6 +151,16 @@ export function GlobalCustomerLayout() {
               <QrCode className="h-4 w-4" />
               <span className="hidden sm:inline">Scan</span>
             </button>
+            {/* Identity, not a control — /explore has no profile page of its
+                own (that lives inside an outlet). It's here so the customer
+                can tell at a glance which account they're signed in as
+                before they act on anything. */}
+            <CustomerAvatar
+              accountId={globalAccount.id}
+              avatarVersion={globalAccount.avatarVersion}
+              name={globalAccount.name}
+              size={36}
+            />
             <button
               onClick={() => setConfirmLogoutOpen(true)}
               aria-label="Log out"

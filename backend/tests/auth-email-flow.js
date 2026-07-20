@@ -42,7 +42,10 @@ async function main() {
     const login1 = await (await post("/api/auth/login", { email, password: "password" })).json();
     check("login emailVerified false", login1.user && login1.user.emailVerified === false);
 
-    // 3. Unverified customer cannot earn points
+    // 3. An unverified customer CAN earn — verification gates redeeming, not
+    //    earning (points-earn.js / points-redeem.js own that pair in full).
+    //    Kept here so this suite still proves the unverified session it just
+    //    created is a usable one rather than a dead end.
     const genAdmin = await (await post("/api/admin-auth/login", { email: "durbarmarg@coffesarowar.com", password: "password" })).json();
     const gen = await fetch(`${baseUrl}/api/admin/generate-qr`, {
       method: "POST", headers: { ...H, Authorization: `Bearer ${genAdmin.token}` },
@@ -53,7 +56,7 @@ async function main() {
       method: "POST", headers: { ...H, Authorization: `Bearer ${login1.token}` },
       body: JSON.stringify({ token: genBody.data.token })
     });
-    check("unverified earn -> 403", claimUnverified.status === 403);
+    check("unverified earn -> 200", claimUnverified.status === 200);
 
     // 4. Verify email via a minted token, then login shows verified
     const rawToken = await mint(email, "email_verify");

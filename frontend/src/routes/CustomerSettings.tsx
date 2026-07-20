@@ -4,6 +4,7 @@ import { motion, AnimatePresence, useReducedMotion } from "motion/react";
 import { useCustomerAuth } from "../context/CustomerAuthContext";
 import { AccountSettingsForm } from "../components/shared/AccountSettingsForm";
 import { InstallAppPrompt } from "../components/customer/InstallAppPrompt";
+import { AvatarPicker } from "../components/customer/AvatarPicker";
 
 const LOGOUT_ANIMATION_MS = 420;
 
@@ -29,6 +30,9 @@ export default function CustomerSettings() {
           came looking for it should still find it here. */}
       <InstallAppPrompt className="mb-4" persistent />
 
+      <div className="max-w-[480px]">
+        <AvatarPicker className="mb-6" />
+      </div>
       <AccountSettingsForm role="customer" onLogout={handleLogout} />
 
       {/* The card flips away as the session ends. */}
