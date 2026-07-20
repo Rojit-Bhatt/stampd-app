@@ -35,6 +35,7 @@ export interface AdminContact {
     instagram: string;
     facebook: string;
     x: string;
+    tiktok?: string;
   };
 }
 

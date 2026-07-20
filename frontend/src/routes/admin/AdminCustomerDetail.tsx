@@ -6,6 +6,7 @@ import { useAdminAuth } from "../../context/AdminAuthContext";
 import { Skeleton } from "../../components/ui/skeleton";
 import { tenantPath } from "../../lib/tenantPath";
 import { formatNpr } from "../../lib/subscription";
+import { avatarUrl } from "../../lib/avatar";
 
 interface AdminCustomer {
   id: string;
@@ -14,6 +15,8 @@ interface AdminCustomer {
   customerNo: string;
   phone: string;
   address: string;
+  customerAccountId?: string | null;
+  avatarVersion?: number;
   pointsBalance: number;
   lifetimePoints: number;
   lastActivityAt: string | null;
@@ -81,7 +84,25 @@ export default function AdminCustomerDetail() {
       ) : (
         <>
           <div className="mb-6 flex flex-wrap items-center gap-4">
-            <span className="flex h-16 w-16 flex-shrink-0 items-center justify-center rounded-full text-xl font-bold text-white" style={{ background: "var(--primary)" }}>
+            {avatarUrl(customer.customerAccountId, customer.avatarVersion) ? (
+              <img
+                src={avatarUrl(customer.customerAccountId, customer.avatarVersion) || ""}
+                alt={customer.name}
+                className="h-16 w-16 flex-shrink-0 rounded-full object-cover border border-[var(--line)]"
+                onError={(e) => {
+                  (e.target as HTMLElement).style.display = "none";
+                  const fallback = (e.target as HTMLElement).nextElementSibling;
+                  if (fallback) (fallback as HTMLElement).style.display = "flex";
+                }}
+              />
+            ) : null}
+            <span
+              className="flex h-16 w-16 flex-shrink-0 items-center justify-center rounded-full text-xl font-bold text-white"
+              style={{
+                background: "var(--primary)",
+                display: avatarUrl(customer.customerAccountId, customer.avatarVersion) ? "none" : "flex"
+              }}
+            >
               {customer.name.split(" ").map((w) => w[0]).slice(0, 2).join("").toUpperCase()}
             </span>
             <div className="min-w-0">

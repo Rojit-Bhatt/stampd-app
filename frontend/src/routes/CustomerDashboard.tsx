@@ -24,10 +24,16 @@ import { tenantPath } from "../lib/tenantPath";
 import { PointsBalanceCard } from "../components/customer/PointsBalanceCard";
 import { Badge } from "@/components/ui/badge";
 
-function osmEmbedUrl(lat: number, lon: number): string {
-  const delta = 0.01;
-  const bbox = `${lon - delta},${lat - delta},${lon + delta},${lat + delta}`;
-  return `https://www.openstreetmap.org/export/embed.html?bbox=${bbox}&marker=${lat},${lon}`;
+function TiktokIcon({ className = "h-4 w-4" }: { className?: string }) {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      fill="currentColor"
+      className={className}
+    >
+      <path d="M12.525.02c1.31-.02 2.61-.01 3.91-.02.08 1.53.63 3.02 1.59 4.23.95.1 1.9.1 2.85.1v3.91c-.95 0-1.9 0-2.85-.1-.28.87-.85 1.62-1.59 2.16v4.61c.05 1.34-.33 2.68-1.08 3.79-.75 1.11-1.85 1.9-3.13 2.23-1.28.33-2.63.14-3.79-.53-1.16-.67-1.98-1.78-2.31-3.13-.33-1.28-.14-2.63.53-3.79.67-1.16 1.78-1.98 3.13-2.31V14.1c-.67.11-1.32.37-1.89.77-.57.4-1.01.94-1.29 1.58-.28.64-.37 1.35-.26 2.05.11.7.42 1.35.89 1.88.47.53 1.09.9 1.79 1.07.7.17 1.43.14 2.12-.09.69-.23 1.29-.65 1.73-1.22.44-.57.69-1.27.72-1.99V4.65c-.11-1.54.51-3.07 1.67-4.1.95-.8 2.16-1.23 3.4-1.23-.08.24-.08.49-.08.73z" />
+    </svg>
+  );
 }
 
 function formatEventDate(iso: string): string {
@@ -86,7 +92,6 @@ export default function CustomerDashboard() {
     .sort((a, b) => a.pointsPrice - b.pointsPrice)[0];
 
   const contact = tenant?.contact;
-  const hasLatLong = contact?.latitude != null && contact?.longitude != null;
   const hasContact = Boolean(
     contact &&
       (contact.phone ||
@@ -94,10 +99,10 @@ export default function CustomerDashboard() {
         contact.address ||
         contact.hours ||
         contact.aboutUs ||
-        hasLatLong ||
         contact.socials.instagram ||
         contact.socials.facebook ||
-        contact.socials.x)
+        contact.socials.x ||
+        contact.socials.tiktok)
   );
 
   const { data: menuData } = useCustomerMenu();
@@ -345,10 +350,10 @@ export default function CustomerDashboard() {
 
           {hasContact && contact && (
             <Section title="Visit us">
-              {hasLatLong && (
+              {contact.address && (
                 <iframe
                   title="Location"
-                  src={osmEmbedUrl(contact.latitude as number, contact.longitude as number)}
+                  src={`https://maps.google.com/maps?q=${encodeURIComponent(contact.address)}&t=&z=15&ie=UTF8&iwloc=&output=embed`}
                   className="mb-3.5 h-[160px] w-full rounded-[var(--radius-btn)] border-0"
                 />
               )}
@@ -359,13 +364,13 @@ export default function CustomerDashboard() {
                     <MapPin className="mt-0.5 h-4 w-4 flex-shrink-0 text-[var(--soft)]" />
                     <a
                       href={
-                        hasLatLong
-                          ? `https://www.openstreetmap.org/?mlat=${contact.latitude}&mlon=${contact.longitude}`
-                          : undefined
+                        contact.address.startsWith("http")
+                          ? contact.address
+                          : `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(contact.address)}`
                       }
                       target="_blank"
                       rel="noreferrer"
-                      className="hover:underline"
+                      className="hover:underline text-left"
                     >
                       {contact.address}
                     </a>
@@ -398,10 +403,10 @@ export default function CustomerDashboard() {
               </div>
 
               {contact.aboutUs && (
-                <p className="mt-3 text-sm text-[var(--muted)]">{contact.aboutUs}</p>
+                <p className="mt-3 text-sm text-[var(--muted)] text-left">{contact.aboutUs}</p>
               )}
 
-              {(contact.socials.instagram || contact.socials.facebook || contact.socials.x) && (
+              {(contact.socials.instagram || contact.socials.facebook || contact.socials.x || contact.socials.tiktok) && (
                 <div className="mt-3.5 flex gap-2">
                   {contact.socials.instagram && (
                     <a
@@ -434,6 +439,17 @@ export default function CustomerDashboard() {
                       aria-label="X (Twitter)"
                     >
                       <Twitter className="h-4 w-4" />
+                    </a>
+                  )}
+                  {contact.socials.tiktok && (
+                    <a
+                      href={contact.socials.tiktok}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="flex h-10 w-10 items-center justify-center rounded-full bg-[var(--surface-2)] text-[var(--muted)] transition-colors hover:text-[var(--brand-ink)]"
+                      aria-label="TikTok"
+                    >
+                      <TiktokIcon className="h-4 w-4" />
                     </a>
                   )}
                 </div>

@@ -8,6 +8,7 @@ const RewardItem = require("../models/RewardItem");
 const Organization = require("../models/Organization");
 const Company = require("../models/Company");
 const User = require("../models/User");
+const CustomerAccount = require("../models/CustomerAccount");
 const { resolveProgram } = require("./programService");
 const { resolveActiveMultiplier } = require("./campaignService");
 const { earnCenti, toPoints } = require("../utils/pointsMath");
@@ -672,7 +673,9 @@ const getCustomerDetailRows = async (organizationId) => {
   const program = await loadProgram(org);
   const now = new Date();
 
-  const customers = await User.find({ role: "customer", organizationId }).sort({ name: 1 });
+  const customers = await User.find({ role: "customer", organizationId })
+    .populate("customerAccountId")
+    .sort({ name: 1 });
 
   const rows = await Promise.all(
     customers.map(async (customer) => {
@@ -690,6 +693,10 @@ const getCustomerDetailRows = async (organizationId) => {
       const suffix = idStr.substring(Math.max(0, idStr.length - 5)).toUpperCase();
       const formattedId = `NO. ${suffix.padStart(5, "0")}`;
 
+      const account = customer.customerAccountId;
+      const customerAccountIdStr = account ? (account._id ? account._id.toString() : account.toString()) : null;
+      const avatarVersion = account && account.avatarVersion ? account.avatarVersion : 0;
+
       return {
         id: idStr,
         name: customer.name,
@@ -697,6 +704,8 @@ const getCustomerDetailRows = async (organizationId) => {
         phone: customer.phone || "",
         address: customer.address || "",
         customerNo: formattedId,
+        customerAccountId: customerAccountIdStr,
+        avatarVersion: avatarVersion,
         pointsBalance: toPoints(effectiveBalanceCenti(balance, now)),
         lifetimePoints: toPoints(lifetimePointsCenti),
         lastActivityAt: balance ? balance.lastActivityAt : null,

@@ -60,7 +60,8 @@ const OrganizationSchema = new mongoose.Schema({
     socials: {
       instagram: { type: String, default: "" },
       facebook: { type: String, default: "" },
-      x: { type: String, default: "" }
+      x: { type: String, default: "" },
+      tiktok: { type: String, default: "" }
     }
   },
 

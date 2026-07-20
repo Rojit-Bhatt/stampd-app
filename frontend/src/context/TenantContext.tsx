@@ -24,6 +24,7 @@ export interface TenantContact {
     instagram: string;
     facebook: string;
     x: string;
+    tiktok?: string;
   };
 }
 
