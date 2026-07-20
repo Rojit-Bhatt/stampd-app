@@ -72,6 +72,7 @@ const ALLOWED_ORIGINS = (
   "http://localhost:5173,http://localhost:5174,http://localhost:3000,http://localhost:3001"
 ).split(",").map((o) => o.trim());
 
+// CORS is needed for the browser-based frontend to talk to the API.
 app.use(
   cors({
     origin: ALLOWED_ORIGINS,
