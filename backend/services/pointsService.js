@@ -31,9 +31,10 @@ const ttlForPurpose = (purpose) =>
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 
-const createHttpError = (message, statusCode) => {
+const createHttpError = (message, statusCode, code) => {
   const error = new Error(message);
   error.statusCode = statusCode;
+  if (code) error.code = code;
   return error;
 };
 
@@ -379,9 +380,12 @@ const claimPoints = async ({ token, userId, role, organizationId }) => {
   if (!claimer) {
     throw createHttpError("Account not found.", 404);
   }
-  if (claimer.emailVerified === false) {
-    throw createHttpError("Please verify your email before collecting points.", 403);
-  }
+  // Deliberately NOT gated on emailVerified. Earning is the moment the
+  // customer is standing at the counter with a 30-second QR on screen —
+  // bouncing them to their inbox there loses the earn for a bill that was
+  // genuinely paid. Verification is enforced at REDEEM instead
+  // (see redeemPoints), which is the only side that can cost the outlet
+  // anything, and which the customer can complete on their own time.
 
   const org = await loadOrganizationOrThrow(organizationId);
 
@@ -482,6 +486,20 @@ const redeemPoints = async ({ token, itemId, kind, userId, role, organizationId 
   if (!itemId) throw createHttpError("Pick something to redeem first.", 400);
   if (!userId) throw createHttpError("Authenticated user context is required.", 401);
   if (role !== "customer") throw createHttpError("Only customers can redeem points.", 403);
+
+  // The one place email verification is enforced. Earning is open (a paid
+  // bill should never be lost to an unread inbox); spending is not, because
+  // this is the side that hands over something real and the side an
+  // unreachable account could be used to walk off with.
+  const redeemer = await User.findOne({ _id: userId, organizationId });
+  if (!redeemer) throw createHttpError("Account not found.", 404);
+  if (redeemer.emailVerified === false) {
+    throw createHttpError(
+      "Verify your email before redeeming — your points are safe in the meantime.",
+      403,
+      "EMAIL_NOT_VERIFIED"
+    );
+  }
 
   const org = await loadOrganizationOrThrow(organizationId);
   const program = await loadProgram(org);

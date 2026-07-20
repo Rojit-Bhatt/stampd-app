@@ -130,8 +130,11 @@ export default function CustomerDashboard() {
         <p className="mt-0.5 text-sm text-[var(--muted)]">{awayText}</p>
       </header>
 
-      {/* Scanning is blocked by the backend (403) until the email is verified,
-          so this has to be impossible to miss. */}
+      {/* Earning is open to an unverified customer — only redeeming is gated
+          (see pointsService.redeemPoints). So this is a heads-up, not a
+          blocker, and it says exactly which of the two is affected. Telling
+          someone their points aren't collecting when they are would be a
+          lie that costs the outlet a visit. */}
       {unverified && (
         <div
           className="mb-4 flex items-start gap-3 rounded-[var(--radius-btn)] px-4 py-3"
@@ -139,11 +142,17 @@ export default function CustomerDashboard() {
         >
           <MailWarning className="mt-0.5 h-5 w-5 flex-shrink-0" />
           <div className="text-sm">
-            <span className="font-bold">Verify your email to start collecting points.</span>{" "}
+            <span className="font-bold">
+              You're collecting points fine — verify your email before you spend them.
+            </span>{" "}
             <button
               onClick={async () => {
                 try {
-                  await apiRequest("/api/auth/resend-verification", {
+                  // The GLOBAL endpoint, not the tenant-scoped /api/auth one:
+                  // only this path flips CustomerAccount.emailVerified and
+                  // fans it out to every outlet membership. The tenant link
+                  // would verify this outlet's row alone.
+                  await apiRequest("/api/customer-auth/resend-verification", {
                     method: "POST",
                     body: { email: account?.email },
                   });
@@ -437,9 +446,7 @@ export default function CustomerDashboard() {
       {/* Deliberately doesn't say "below": the scan button sits in the bottom
           pill on a phone and in the header on desktop. */}
       <p className="mt-5 text-center text-xs text-[var(--muted)]">
-        {unverified
-          ? "Verify your email above before you can scan to earn points."
-          : "Tap Scan and point at the counter's QR to earn points."}
+        Tap Scan and point at the counter's QR to earn points.
       </p>
     </div>
   );

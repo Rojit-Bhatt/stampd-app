@@ -49,4 +49,18 @@ const registrationLimiter = rateLimit({
   handler: jsonHandler("Too many requests. Please wait a while and try again."),
 });
 
-module.exports = { authLimiter, registrationLimiter };
+// File uploads. Authenticated, so this is not about anonymous abuse — it's
+// that each request carries up to 256KB that gets base64'd into memory and
+// rewrites a row, and nothing in the product needs a customer to change their
+// picture more than a handful of times an hour. Its own bucket rather than
+// reusing registrationLimiter: sharing would let picture-fiddling burn the
+// budget for password resets, which actually matter.
+const uploadLimiter = rateLimit({
+  windowMs: HOUR,
+  limit: 20,
+  standardHeaders: true,
+  legacyHeaders: false,
+  handler: jsonHandler("Too many uploads. Please wait a while and try again."),
+});
+
+module.exports = { authLimiter, registrationLimiter, uploadLimiter };

@@ -8,6 +8,7 @@ import { useTenant } from "../../context/TenantContext";
 import { useAccount } from "../../hooks/useAccount";
 import { BottomNav } from "./BottomNav";
 import { ScannerModal } from "./ScannerModal";
+import { CustomerAvatar } from "./CustomerAvatar";
 import { tenantPath } from "../../lib/tenantPath";
 
 // The authenticated customer app shell.
@@ -38,7 +39,7 @@ function DesktopTab({ to, icon: Icon, label }: { to: string; icon: LucideIcon; l
 
 export function CustomerLayout() {
   const { companySlug, slug, tenant } = useTenant();
-  const { user, isLoading } = useCustomerAuth();
+  const { user, isLoading, globalAccount } = useCustomerAuth();
   const { data: account } = useAccount("customer");
   const navigate = useNavigate();
   const location = useLocation();
@@ -136,9 +137,14 @@ export function CustomerLayout() {
             <Link
               to={path("settings")}
               aria-label="Profile"
-              className="flex h-9 w-9 items-center justify-center rounded-full bg-[var(--surface-2)] text-xs font-bold text-[var(--ink)] transition-colors hover:bg-[var(--line)]"
+              className="flex items-center justify-center rounded-full transition-opacity hover:opacity-80"
             >
-              {(account?.name || "?").charAt(0).toUpperCase()}
+              <CustomerAvatar
+                accountId={globalAccount?.id}
+                avatarVersion={globalAccount?.avatarVersion}
+                name={globalAccount?.name || account?.name}
+                size={36}
+              />
             </Link>
           </div>
         </div>

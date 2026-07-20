@@ -1,12 +1,12 @@
 import { useEffect, useState } from "react";
 import { Outlet, Link, NavLink, useLocation, useNavigate } from "react-router-dom";
-import { QrCode, Compass, Store, LogOut } from "lucide-react";
+import { QrCode, Compass, Store, CircleUser } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 
 import { useCustomerAuth } from "../../context/CustomerAuthContext";
 import { PLATFORM_NAME } from "../../lib/platform";
-import { ConfirmDialog } from "../shared/ConfirmDialog";
 import { GlobalScannerModal } from "./GlobalScannerModal";
+import { CustomerAvatar } from "./CustomerAvatar";
 import { useMyTenants } from "../../hooks/useMyTenants";
 import { StampdLogo } from "../shared/StampdLogo";
 
@@ -72,7 +72,6 @@ export function GlobalCustomerLayout() {
   const navigate = useNavigate();
   const location = useLocation();
   const [scanOpen, setScanOpen] = useState(false);
-  const [confirmLogoutOpen, setConfirmLogoutOpen] = useState(false);
   // Also warms the query cache Explore's "My places" row and ExploreMine both
   // read from, so switching tabs is instant.
   // `error`, not `isError` — same reason as AdminGuard: once this query has
@@ -114,19 +113,6 @@ export function GlobalCustomerLayout() {
     <div className="flex min-h-screen flex-col bg-[var(--bg)]">
       <GlobalScannerModal open={scanOpen} onClose={() => setScanOpen(false)} />
 
-      <ConfirmDialog
-        open={confirmLogoutOpen}
-        onOpenChange={setConfirmLogoutOpen}
-        title="Log out?"
-        description="You'll need to sign in again to see your businesses."
-        confirmLabel="Log out"
-        confirmColor="var(--primary)"
-        onConfirm={() => {
-          logout();
-          navigate("/customer-login");
-        }}
-      />
-
       <header className="sticky top-0 z-20 flex-shrink-0 border-b border-[var(--line)] bg-[var(--surface)]/95 backdrop-blur">
         <div className="mx-auto flex w-full max-w-5xl items-center gap-3 px-5 py-3">
           <Link to="/explore" className="flex flex-shrink-0 items-center gap-2">
@@ -139,6 +125,7 @@ export function GlobalCustomerLayout() {
           <nav className="ml-4 hidden items-center gap-1 lg:flex">
             <Tab to="/explore" icon={Compass} label="Home" variant="top" />
             <Tab to="/explore/mine" icon={Store} label="My businesses" variant="top" />
+            <Tab to="/explore/profile" icon={CircleUser} label="Profile" variant="top" />
           </nav>
 
           <div className="ml-auto flex flex-shrink-0 items-center gap-2">
@@ -150,14 +137,23 @@ export function GlobalCustomerLayout() {
               <QrCode className="h-4 w-4" />
               <span className="hidden sm:inline">Scan</span>
             </button>
-            <button
-              onClick={() => setConfirmLogoutOpen(true)}
-              aria-label="Log out"
-              title={globalAccount.name || "Log out"}
-              className="flex h-9 w-9 items-center justify-center rounded-full bg-[var(--surface-2)] text-[var(--muted)] transition-colors hover:bg-[var(--line)] hover:text-[var(--ink)]"
+            {/* Same affordance the outlet console's header has: the avatar IS
+                the way into Profile. Log out used to sit beside it as its own
+                header button — it's now inside Profile, where an action you
+                can't undo with another tap belongs, rather than one stray tap
+                from every screen. */}
+            <NavLink
+              to="/explore/profile"
+              aria-label="Profile"
+              className="flex items-center justify-center rounded-full transition-opacity hover:opacity-80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)] focus-visible:ring-offset-2"
             >
-              <LogOut className="h-4 w-4" />
-            </button>
+              <CustomerAvatar
+                accountId={globalAccount.id}
+                avatarVersion={globalAccount.avatarVersion}
+                name={globalAccount.name}
+                size={36}
+              />
+            </NavLink>
           </div>
         </div>
       </header>
@@ -176,6 +172,7 @@ export function GlobalCustomerLayout() {
         <div className="mx-auto flex max-w-md items-center gap-2 rounded-full border border-[var(--line)] bg-[var(--surface)] px-3 py-2 shadow-float">
           <Tab to="/explore" icon={Compass} label="Home" variant="bottom" />
           <Tab to="/explore/mine" icon={Store} label="My businesses" variant="bottom" />
+          <Tab to="/explore/profile" icon={CircleUser} label="Profile" variant="bottom" />
         </div>
       </footer>
     </div>

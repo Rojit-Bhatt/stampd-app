@@ -174,7 +174,26 @@ const verifyEmail = async ({ token, organizationId }) => {
   record.usedAt = new Date();
   await record.save();
 
-  return { success: true, message: "Email verified. You can start earning points." };
+  // Write through to the global identity when this membership has one.
+  //
+  // Without this, verifying via a tenant-scoped link set the User row alone
+  // while CustomerAccount stayed false — and ensureMembership re-syncs the
+  // membership DOWN from the account on every enter-tenant, so the next
+  // page load silently reverted it. The customer verified, could redeem,
+  // navigated, and could not redeem again, with nothing to explain why.
+  // Required late: customerAccountService already requires this module.
+  if (user.customerAccountId) {
+    const CustomerAccount = require("../models/CustomerAccount");
+    const account = await CustomerAccount.findOne({ _id: user.customerAccountId });
+    if (account && !account.emailVerified) {
+      account.emailVerified = true;
+      await account.save();
+      const { syncVerifiedToMemberships } = require("./customerAccountService");
+      await syncVerifiedToMemberships(account);
+    }
+  }
+
+  return { success: true, message: "Email verified." };
 };
 
 const resendVerification = async ({ email, organizationId, companySlug, outletSlug }) => {

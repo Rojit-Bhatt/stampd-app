@@ -2,6 +2,7 @@ const bcrypt = require("bcryptjs");
 const crypto = require("crypto");
 const { OAuth2Client } = require("google-auth-library");
 const CustomerAccount = require("../models/CustomerAccount");
+const CustomerAvatar = require("../models/CustomerAvatar");
 const AccountVerificationToken = require("../models/AccountVerificationToken");
 const User = require("../models/User");
 const Organization = require("../models/Organization");
@@ -12,6 +13,7 @@ const { effectiveBalanceCenti, expiresAtFor } = require("./pointsService");
 const { toPoints } = require("../utils/pointsMath");
 const { generateGlobalSessionToken } = require("../utils/tokenUtils");
 const { resolveProgram } = require("./programService");
+const { resolveGoogleLink } = require("../utils/googleLink");
 const { sendEmail } = require("./emailService");
 
 const SALT_ROUNDS = 10;
@@ -59,16 +61,48 @@ const sendVerifyEmail = async (account) => {
   }).catch((err) => console.error(`Failed to email verify-link to ${account.email}:`, err.message));
 };
 
+const formatAccountSummary = (account) => ({
+  id: account._id.toString(),
+  name: account.name,
+  email: account.email,
+  emailVerified: account.emailVerified,
+  avatarVersion: account.avatarVersion || 0
+});
+
 const formatGlobalSessionPayload = (account) => ({
   success: true,
   token: generateGlobalSessionToken({ customerAccountId: account._id.toString() }),
-  account: {
-    id: account._id.toString(),
-    name: account.name,
-    email: account.email,
-    emailVerified: account.emailVerified
-  }
+  account: formatAccountSummary(account)
 });
+
+// The same account shape WITHOUT a fresh session token — for endpoints that
+// change the account but are not authentication. Minting a token from, say,
+// an avatar upload would let a client extend its session indefinitely by
+// re-uploading a picture, which is not a decision an avatar endpoint should
+// get to make.
+const formatAccountPayload = (account) => ({
+  success: true,
+  account: formatAccountSummary(account)
+});
+
+// Pushes a now-verified account's flag out to every tenant membership row it
+// owns. Outlet-scoped code — the redeem gate in pointsService above all —
+// reads emailVerified off the User row, never off the account, so an account
+// marked verified without this fan-out is verified nowhere that matters.
+//
+// One implementation, three callers (verify-by-email, Google sign-in, and the
+// legacy tenant-scoped verify in authService): it used to be a copy-pasted
+// loop per caller, and the copies had already drifted apart on whether they
+// re-saved rows that were already true.
+const syncVerifiedToMemberships = async (account) => {
+  const members = await User.find({ customerAccountId: account._id });
+  for (const member of members) {
+    if (!member.emailVerified) {
+      member.emailVerified = true;
+      await member.save();
+    }
+  }
+};
 
 // Finds-or-creates the tenant-scoped User "membership" row for this
 // CustomerAccount, re-syncing the denormalized name/phone/emailVerified
@@ -224,8 +258,13 @@ const authenticateWithGoogle = async ({ idToken }) => {
     throw createHttpError("Google account mismatch for this user.", 409);
   }
 
+  // See utils/googleLink.js — the linking rules live there, pure and
+  // directly tested, because this path can't be reached from a test without
+  // a genuinely signed Google token.
+  const { linkGoogleId, markVerified, clearPassword } = resolveGoogleLink(account, googleId);
+
   let shouldSave = false;
-  if (!account.googleId) {
+  if (linkGoogleId) {
     account.googleId = googleId;
     shouldSave = true;
   }
@@ -233,11 +272,82 @@ const authenticateWithGoogle = async ({ idToken }) => {
     account.name = name;
     shouldSave = true;
   }
+  if (markVerified) {
+    account.emailVerified = true;
+    shouldSave = true;
+  }
+  if (clearPassword) {
+    account.password = null;
+    shouldSave = true;
+  }
   if (shouldSave) await account.save();
+
+  if (account.emailVerified) await syncVerifiedToMemberships(account);
 
   const out = formatGlobalSessionPayload(account);
   out.needsPhone = !account.phone;
   return out;
+};
+
+// --- profile (global) --------------------------------------------------
+
+// Name and password belong to the CustomerAccount, not to any one outlet's
+// membership row. The tenant-scoped /api/account equivalents write the User
+// row instead, which for a customer means: a rename is silently reverted by
+// the next ensureMembership re-sync, and a password change reports success
+// while sign-in (which reads CustomerAccount.password) keeps the old one.
+// These are the versions the customer app uses.
+const updateAccountProfile = async ({ customerAccountId, name }) => {
+  if (!name || !name.trim()) throw createHttpError("Name is required.", 400);
+
+  const account = await CustomerAccount.findOne({ _id: customerAccountId });
+  if (!account) throw createHttpError("Account not found.", 404);
+
+  account.name = name.trim();
+  await account.save();
+
+  // name is denormalized onto every membership (that's what outlet-scoped
+  // reporting reads), so it has to travel — same shape as completeProfile's
+  // phone fan-out below. Mock DB has no updateMany: find+save loop.
+  const members = await User.find({ customerAccountId: account._id });
+  for (const member of members) {
+    if (member.name !== account.name) {
+      member.name = account.name;
+      await member.save();
+    }
+  }
+
+  return formatAccountPayload(account);
+};
+
+const changeAccountPassword = async ({ customerAccountId, currentPassword, newPassword }) => {
+  if (!currentPassword || !newPassword) {
+    throw createHttpError("Current and new password are required.", 400);
+  }
+  if (newPassword.length < 8) {
+    throw createHttpError("New password must be at least 8 characters.", 400);
+  }
+
+  const account = await CustomerAccount.findOne({ _id: customerAccountId });
+  if (!account) throw createHttpError("Account not found.", 404);
+
+  if (!account.password) {
+    // Either a Google-only signup, or an account whose unproven password was
+    // discarded when Google proved the address (see utils/googleLink.js).
+    // Password reset is the way in — it mails the address Google verified.
+    throw createHttpError(
+      "This account signs in with Google. Use \"forgot password\" if you'd like to set one.",
+      400
+    );
+  }
+
+  const isValid = await bcrypt.compare(currentPassword, account.password);
+  if (!isValid) throw createHttpError("Current password is incorrect.", 401);
+
+  account.password = await bcrypt.hash(newPassword, SALT_ROUNDS);
+  await account.save();
+
+  return { success: true, message: "Password updated." };
 };
 
 const completeProfile = async ({ customerAccountId, phone }) => {
@@ -283,11 +393,7 @@ const verifyAccountEmail = async ({ token }) => {
   record.usedAt = new Date();
   await record.save();
 
-  const members = await User.find({ customerAccountId: account._id });
-  for (const member of members) {
-    member.emailVerified = true;
-    await member.save();
-  }
+  await syncVerifiedToMemberships(account);
 
   // Fulfill any pending stamp claims this account was waiting on, now that
   // it's verified. Required late (avoids a require-cycle since
@@ -411,16 +517,123 @@ const getMyTenants = async ({ customerAccountId }) => {
   return { success: true, memberships: rows.filter(Boolean) };
 };
 
+// --- avatar -----------------------------------------------------------
+
+// The client resizes to 256x256 WebP before uploading, which lands around
+// 10-20KB. This ceiling is the backstop for a client that doesn't (or won't):
+// it has to be generous enough not to reject an honest phone photo that
+// slipped through unresized, and tight enough that the collection can't be
+// used as free storage.
+const MAX_AVATAR_BYTES = 256 * 1024;
+
+/**
+ * The stored type is decided by the BYTES, never by the multipart part's
+ * declared Content-Type — that header is written by the uploader and proves
+ * nothing. Since the served response echoes this type back with the image,
+ * trusting the label would let anyone store arbitrary content and have us
+ * hand it back under a type of their choosing.
+ *
+ * Deliberately a closed list of three raster formats. SVG is absent and must
+ * stay absent: it is a document, not an image, and it executes script in the
+ * origin that serves it.
+ */
+const sniffImageType = (buffer) => {
+  if (buffer.length < 12) return null;
+  // PNG: \x89PNG\r\n\x1a\n
+  if (buffer.subarray(0, 8).equals(Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]))) {
+    return "image/png";
+  }
+  // JPEG: FF D8 FF
+  if (buffer[0] === 0xff && buffer[1] === 0xd8 && buffer[2] === 0xff) return "image/jpeg";
+  // WebP: "RIFF" .... "WEBP"
+  if (buffer.subarray(0, 4).toString("ascii") === "RIFF" &&
+      buffer.subarray(8, 12).toString("ascii") === "WEBP") {
+    return "image/webp";
+  }
+  return null;
+};
+
+const setAvatar = async ({ customerAccountId, buffer }) => {
+  if (!buffer || !buffer.length) throw createHttpError("An image file is required.", 400);
+  if (buffer.length > MAX_AVATAR_BYTES) {
+    throw createHttpError("That image is too large — pick one under 256KB.", 400);
+  }
+  const mimeType = sniffImageType(buffer);
+  if (!mimeType) {
+    throw createHttpError("Profile pictures must be a WebP, JPEG, or PNG image.", 400);
+  }
+
+  const account = await CustomerAccount.findOne({ _id: customerAccountId });
+  if (!account) throw createHttpError("Account not found.", 404);
+
+  // One atomic upsert, not findOne-then-create: two uploads racing each other
+  // would both miss the read and both insert, leaving two rows for one
+  // account. getAvatar's findOne would then return whichever the driver
+  // handed back first, so the picture would appear to randomly revert. The
+  // unique index can't be relied on to catch it either — the mock DB used in
+  // dev/test doesn't enforce indexes at all.
+  await CustomerAvatar.findOneAndUpdate(
+    { customerAccountId },
+    {
+      $set: {
+        customerAccountId,
+        mimeType,
+        dataBase64: buffer.toString("base64"),
+        byteSize: buffer.length,
+        updatedAt: new Date()
+      }
+    },
+    { upsert: true, new: true }
+  );
+
+  // Bumped, never set to a timestamp: the served image is cached immutably
+  // against this number, so it only has to change, not mean anything.
+  account.avatarVersion = (account.avatarVersion || 0) + 1;
+  await account.save();
+
+  return formatAccountPayload(account);
+};
+
+const removeAvatar = async ({ customerAccountId }) => {
+  const account = await CustomerAccount.findOne({ _id: customerAccountId });
+  if (!account) throw createHttpError("Account not found.", 404);
+
+  await CustomerAvatar.deleteOne({ customerAccountId });
+  // Still bumped rather than reset to 0: any URL already in a cache pins the
+  // old version, so reusing a number would serve the deleted picture back.
+  account.avatarVersion = (account.avatarVersion || 0) + 1;
+  await account.save();
+
+  return formatAccountPayload(account);
+};
+
+const getAvatar = async (customerAccountId) => {
+  const row = await CustomerAvatar.findOne({ customerAccountId });
+  if (!row) return null;
+  return {
+    mimeType: row.mimeType,
+    buffer: Buffer.from(row.dataBase64, "base64"),
+    updatedAt: row.updatedAt
+  };
+};
+
 module.exports = {
   registerAccount,
   loginAccount,
   authenticateWithGoogle,
   completeProfile,
+  updateAccountProfile,
+  changeAccountPassword,
   verifyAccountEmail,
   resendVerification,
   forgotPassword,
   resetPassword,
   enterTenant,
   ensureMembership,
-  getMyTenants
+  syncVerifiedToMemberships,
+  getMyTenants,
+  setAvatar,
+  removeAvatar,
+  getAvatar,
+  MAX_AVATAR_BYTES
 };

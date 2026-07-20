@@ -184,12 +184,12 @@ const fulfillPendingClaim = async ({ pendingClaimId, organizationId, customerAcc
   const account = await CustomerAccount.findOne({ _id: customerAccountId });
   if (!account) throw createHttpError("Account not found.", 404);
 
+  // No emailVerified gate here, matching claimPoints: a signup that happened
+  // BECAUSE someone scanned a QR at the counter must land its first earn
+  // immediately, not hours later when they get round to their inbox.
+  // autoFulfillForAccount still runs on verification and is now simply a
+  // no-op for these — it only ever picks up claims still unfulfilled.
   const membershipUser = await ensureMembership({ customerAccountId, organizationId, account });
-  if (!membershipUser.emailVerified) {
-    // Do NOT mark fulfilled — leave pending so the verify-email hook can
-    // complete it later. Same message claimPoints uses for this case.
-    throw createHttpError("Please verify your email before collecting points.", 403);
-  }
 
   const org = await loadOrganizationOrThrow(organizationId);
   const session = await mongoose.startSession();

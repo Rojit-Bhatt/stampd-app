@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useSearchParams, useNavigate, Link } from "react-router-dom";
 import { useQueryClient } from "@tanstack/react-query";
-import { ChevronLeft, Gift, Loader2 } from "lucide-react";
+import { ChevronLeft, Gift, Loader2, MailWarning } from "lucide-react";
 import toast from "react-hot-toast";
 import { useTenant } from "../context/TenantContext";
 import { useCustomerAuth } from "../context/CustomerAuthContext";
@@ -51,6 +51,8 @@ export default function RedeemLanding() {
   const [redeeming, setRedeeming] = useState<string | null>(null);
   const [pending, setPending] = useState<PendingReward | null>(null);
   const [result, setResult] = useState<RedeemResult["data"] | null>(null);
+  const [needsVerification, setNeedsVerification] = useState(false);
+  const [resending, setResending] = useState(false);
 
   const balance = points?.balance ?? 0;
 
@@ -89,11 +91,67 @@ export default function RedeemLanding() {
       qc.invalidateQueries({ queryKey: ["pointsBalance"] });
       qc.invalidateQueries({ queryKey: ["pointsHistory"] });
     } catch (err: any) {
-      toast.error(err.message || "Couldn't redeem that — try again.");
+      // The one refusal that has a fix the customer can act on right here.
+      // A toast would be wrong for it: it disappears, and the thing it's
+      // asking for takes a trip to another app.
+      if (err.code === "EMAIL_NOT_VERIFIED") {
+        setPending(null);
+        setNeedsVerification(true);
+      } else {
+        toast.error(err.message || "Couldn't redeem that — try again.");
+      }
     } finally {
       setRedeeming(null);
     }
   };
+
+  if (needsVerification) {
+    return (
+      <Shell title="Verify your email first" backTo={tenantPath(companySlug, outletSlug, "dashboard")}>
+        <div className="rounded-[var(--radius-card)] border border-[var(--line)] bg-[var(--surface)] px-5 py-6 shadow-ambient">
+          <span
+            className="mb-4 flex h-11 w-11 items-center justify-center rounded-full"
+            style={{ background: "var(--warn-soft)", color: "var(--warn)" }}
+          >
+            <MailWarning className="h-5 w-5" />
+          </span>
+          <p className="text-sm text-[var(--muted)]">
+            Your {formatPoints(balance)} points are safe — we just need to know this email is
+            really yours before you spend them. Tap the link we sent to{" "}
+            <span className="font-semibold text-[var(--ink)]">{globalAccount.email}</span>, then
+            scan the counter's code again.
+          </p>
+          <Button
+            size="lg"
+            className="mt-5 w-full"
+            disabled={resending}
+            onClick={async () => {
+              setResending(true);
+              try {
+                await apiRequest("/api/customer-auth/resend-verification", {
+                  method: "POST",
+                  body: { email: globalAccount.email },
+                });
+                toast.success("Sent — check your inbox.");
+              } catch {
+                toast.error("Couldn't resend that — try again in a bit.");
+              } finally {
+                setResending(false);
+              }
+            }}
+          >
+            {resending ? (
+              <>
+                <Loader2 className="animate-spin" /> Sending…
+              </>
+            ) : (
+              "Resend the verification email"
+            )}
+          </Button>
+        </div>
+      </Shell>
+    );
+  }
 
   if (result) {
     return (

@@ -14,6 +14,8 @@ export interface GlobalAccount {
   name: string;
   email: string;
   emailVerified: boolean;
+  /** 0 = no profile picture. Bumped by the backend on every upload/removal. */
+  avatarVersion?: number;
 }
 
 interface CustomerAuthContextType {
@@ -49,6 +51,10 @@ interface CustomerAuthContextType {
   // a cached tenant token only if it actually belongs to this tenant.
   // Called by TenantSessionSync on every /:slug/* page.
   ensureTenantSession: (slug: string, tenantOrgId: string | null) => Promise<void>;
+  // Replaces the cached global account after an endpoint returns a fresh one
+  // (avatar upload/removal). Keeps the session token as-is: the account is
+  // what changed, not who is signed in.
+  setGlobalAccountData: (account: GlobalAccount) => void;
   logout: () => void;
 }
 
@@ -201,6 +207,11 @@ export function CustomerAuthProvider({ children }: { children: React.ReactNode }
     persistGlobal(res.token, res.account);
   };
 
+  const setGlobalAccountData = (account: GlobalAccount) => {
+    localStorage.setItem("customer_global_account", JSON.stringify(account));
+    setGlobalAccount(account);
+  };
+
   const logout = () => {
     clearGlobal();
     clearTenant();
@@ -218,6 +229,7 @@ export function CustomerAuthProvider({ children }: { children: React.ReactNode }
         loginWithGoogle,
         completeProfile,
         ensureTenantSession,
+        setGlobalAccountData,
         logout,
       }}
     >

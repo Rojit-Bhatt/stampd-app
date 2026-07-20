@@ -25,6 +25,7 @@ const GlobalCustomerLogin = lazy(() => import('./routes/GlobalCustomerLogin'));
 const GlobalCustomerRegister = lazy(() => import('./routes/GlobalCustomerRegister'));
 const Explore = lazy(() => import('./routes/Explore'));
 const ExploreMine = lazy(() => import('./routes/ExploreMine'));
+const ExploreProfile = lazy(() => import('./routes/ExploreProfile'));
 const CustomerLogin = lazy(() => import('./routes/CustomerLogin'));
 const CustomerRegister = lazy(() => import('./routes/CustomerRegister'));
 const CustomerDashboard = lazy(() => import('./routes/CustomerDashboard'));
@@ -114,6 +115,7 @@ export default function App() {
           <Route element={<GlobalCustomerLayout />}>
             <Route path="/explore" element={<Explore />} />
             <Route path="/explore/mine" element={<ExploreMine />} />
+            <Route path="/explore/profile" element={<ExploreProfile />} />
           </Route>
           {/* Global customer-account verification — slug-less, since
               CustomerAccount identity isn't tenant-scoped. */}
