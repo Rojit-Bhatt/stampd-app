@@ -139,10 +139,11 @@ const uploadAvatarController = async (req, res, next) => {
       error.statusCode = 400;
       throw error;
     }
+    // req.file.mimetype is deliberately NOT passed on — the service decides
+    // the type from the bytes. See sniffImageType.
     const result = await setAvatar({
       customerAccountId: req.customerAccount.id,
-      buffer: req.file.buffer,
-      mimeType: req.file.mimetype
+      buffer: req.file.buffer
     });
     res.status(200).json(result);
   } catch (error) {
@@ -185,6 +186,11 @@ const getAvatarController = async (req, res, next) => {
     // Immutable is safe because the client always requests ?v=<avatarVersion>
     // and that number changes on every upload AND every removal.
     res.set("Cache-Control", "public, max-age=31536000, immutable");
+    // The stored type was sniffed from the bytes, but nosniff is what stops a
+    // browser second-guessing it and rendering the response as something
+    // else entirely. Belt and braces on the one endpoint that serves
+    // user-supplied bytes back verbatim.
+    res.set("X-Content-Type-Options", "nosniff");
     res.set("Content-Type", avatar.mimeType);
     res.send(avatar.buffer);
   } catch (error) {

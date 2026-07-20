@@ -19,8 +19,9 @@ const CustomerAvatarSchema = new mongoose.Schema({
   updatedAt: { type: Date, default: Date.now }
 });
 
-// One avatar per account. Enforced explicitly in the service too — the mock
-// DB doesn't apply indexes (see CustomerAccount for the same note).
+// One avatar per account. The mock DB doesn't apply indexes (see
+// CustomerAccount for the same note), so this index is not what keeps the
+// invariant in dev/test — setAvatar's atomic upsert is.
 CustomerAvatarSchema.index({ customerAccountId: 1 }, { unique: true });
 
 module.exports = mongoose.model("CustomerAvatar", CustomerAvatarSchema);

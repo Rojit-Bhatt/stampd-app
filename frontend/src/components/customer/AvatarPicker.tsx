@@ -1,4 +1,4 @@
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Camera, Loader2, Trash2 } from "lucide-react";
 import toast from "react-hot-toast";
 
@@ -6,6 +6,7 @@ import { useCustomerAuth, type GlobalAccount } from "../../context/CustomerAuthC
 import { apiRequest } from "../../lib/api";
 import { resizeToAvatar } from "../../lib/avatar";
 import { CustomerAvatar } from "./CustomerAvatar";
+import { Button } from "@/components/ui/button";
 
 /**
  * Profile-picture section of the customer's Profile page.
@@ -26,24 +27,32 @@ export function AvatarPicker({ className = "" }: { className?: string }) {
 
   const hasAvatar = Boolean(globalAccount?.avatarVersion);
 
-  const revokePreview = () => {
-    setPreview((current) => {
-      if (current) URL.revokeObjectURL(current);
-      return null;
-    });
+  // Mirrors `preview` so the unmount cleanup can reach the CURRENT url — an
+  // effect with an empty dep array closes over the initial null and would
+  // revoke nothing. Without this, uploading and then navigating away pins the
+  // blob for the lifetime of the page.
+  const previewRef = useRef<string | null>(null);
+  useEffect(
+    () => () => {
+      if (previewRef.current) URL.revokeObjectURL(previewRef.current);
+    },
+    [],
+  );
+
+  const setPreviewUrl = (url: string | null) => {
+    if (previewRef.current) URL.revokeObjectURL(previewRef.current);
+    previewRef.current = url;
+    setPreview(url);
   };
 
   const onPick = async (file: File | undefined) => {
     if (!file) return;
     setBusy(true);
-    let localUrl: string | null = null;
     try {
       // Resized before upload, not after: see lib/avatar.ts for why this is
       // the whole storage story.
       const blob = await resizeToAvatar(file);
-      localUrl = URL.createObjectURL(blob);
-      revokePreview();
-      setPreview(localUrl);
+      setPreviewUrl(URL.createObjectURL(blob));
 
       const form = new FormData();
       form.append("file", blob, "avatar.webp");
@@ -56,8 +65,7 @@ export function AvatarPicker({ className = "" }: { className?: string }) {
     } catch (err) {
       // Drop the optimistic preview — leaving it up would show a picture that
       // isn't actually saved anywhere.
-      if (localUrl) URL.revokeObjectURL(localUrl);
-      setPreview(null);
+      setPreviewUrl(null);
       toast.error((err as Error).message || "Couldn't save that picture — try another.");
     } finally {
       setBusy(false);
@@ -74,7 +82,7 @@ export function AvatarPicker({ className = "" }: { className?: string }) {
         "/api/customer-auth/avatar",
         { method: "DELETE", role: "customer-global" },
       );
-      revokePreview();
+      setPreviewUrl(null);
       setGlobalAccountData(res.account);
       toast.success("Profile picture removed.");
     } catch (err) {
@@ -90,7 +98,10 @@ export function AvatarPicker({ className = "" }: { className?: string }) {
     >
       <div className="mb-3 text-sm font-bold">Profile picture</div>
 
-      <div className="flex items-center gap-4">
+      {/* Stacks below sm. Side by side, the buttons are squeezed into a
+          ~200px column on a 375px phone and wrap one under the other at
+          different widths; stacking gives them the full row instead. */}
+      <div className="flex flex-col items-start gap-4 sm:flex-row sm:items-center">
         <div className="relative flex-shrink-0">
           {preview ? (
             <img
@@ -107,34 +118,31 @@ export function AvatarPicker({ className = "" }: { className?: string }) {
             />
           )}
           {busy && (
-            <span className="absolute inset-0 flex items-center justify-center rounded-full bg-[var(--ink)]/40">
-              <Loader2 className="h-5 w-5 animate-spin text-white" />
+            // A fixed dark scrim with a light spinner, NOT bg-[var(--ink)]:
+            // --ink inverts in dark mode to a near-white, which would put a
+            // white spinner on a white scrim and make the only feedback
+            // during a multi-second upload vanish. motion-reduce guard
+            // because Tailwind's animate-spin has none of its own.
+            <span className="absolute inset-0 flex items-center justify-center rounded-full bg-black/45">
+              <Loader2 className="h-5 w-5 animate-spin text-white motion-reduce:animate-none" />
             </span>
           )}
         </div>
 
         <div className="min-w-0 flex-1">
+          {/* The shared Button, not hand-rolled classes: it carries the 44px
+              touch target, the focus ring and the press feedback that the
+              rest of the customer app has. This is a phone-first page. */}
           <div className="flex flex-wrap gap-2">
-            <button
-              type="button"
-              onClick={() => inputRef.current?.click()}
-              disabled={busy}
-              className="flex items-center gap-2 rounded-[var(--radius-btn)] px-4 py-2.5 text-sm font-bold text-white transition-opacity hover:opacity-90 disabled:opacity-50"
-              style={{ background: "var(--primary)" }}
-            >
+            <Button type="button" onClick={() => inputRef.current?.click()} disabled={busy}>
               <Camera className="h-4 w-4" />
               {hasAvatar ? "Change" : "Add a picture"}
-            </button>
+            </Button>
             {hasAvatar && (
-              <button
-                type="button"
-                onClick={onRemove}
-                disabled={busy}
-                className="flex items-center gap-2 rounded-[var(--radius-btn)] border border-[var(--line)] bg-[var(--bg)] px-4 py-2.5 text-sm font-bold text-[var(--muted)] transition-colors hover:text-[var(--ink)] disabled:opacity-50"
-              >
+              <Button type="button" variant="outline" onClick={onRemove} disabled={busy}>
                 <Trash2 className="h-4 w-4" />
                 Remove
-              </button>
+              </Button>
             )}
           </div>
           <p className="mt-2 text-[13px] text-[var(--muted)]">

@@ -7,7 +7,7 @@ const {
 } = require("../controllers/customerAccountController");
 const { resolveTenant } = require("../middleware/tenantMiddleware");
 const { verifyGlobalSession } = require("../middleware/customerAuthMiddleware");
-const { authLimiter, registrationLimiter } = require("../middleware/rateLimitMiddleware");
+const { authLimiter, registrationLimiter, uploadLimiter } = require("../middleware/rateLimitMiddleware");
 const { discover } = require("../controllers/discoveryController");
 
 const router = express.Router();
@@ -27,7 +27,7 @@ router.post("/complete-profile", verifyGlobalSession, completeProfile);
 // Profile picture. Writes need the global session (the avatar belongs to the
 // CustomerAccount, not to any one outlet's membership); the read is public
 // because it is loaded by an <img> tag — see getAvatarController.
-router.post("/avatar", verifyGlobalSession, uploadAvatarFile, uploadAvatar);
+router.post("/avatar", uploadLimiter, verifyGlobalSession, uploadAvatarFile, uploadAvatar);
 router.delete("/avatar", verifyGlobalSession, deleteAvatar);
 router.get("/avatar/:accountId", getAvatar);
 

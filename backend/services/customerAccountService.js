@@ -13,6 +13,7 @@ const { effectiveBalanceCenti, expiresAtFor } = require("./pointsService");
 const { toPoints } = require("../utils/pointsMath");
 const { generateGlobalSessionToken } = require("../utils/tokenUtils");
 const { resolveProgram } = require("./programService");
+const { resolveGoogleLink } = require("../utils/googleLink");
 const { sendEmail } = require("./emailService");
 
 const SALT_ROUNDS = 10;
@@ -60,17 +61,48 @@ const sendVerifyEmail = async (account) => {
   }).catch((err) => console.error(`Failed to email verify-link to ${account.email}:`, err.message));
 };
 
+const formatAccountSummary = (account) => ({
+  id: account._id.toString(),
+  name: account.name,
+  email: account.email,
+  emailVerified: account.emailVerified,
+  avatarVersion: account.avatarVersion || 0
+});
+
 const formatGlobalSessionPayload = (account) => ({
   success: true,
   token: generateGlobalSessionToken({ customerAccountId: account._id.toString() }),
-  account: {
-    id: account._id.toString(),
-    name: account.name,
-    email: account.email,
-    emailVerified: account.emailVerified,
-    avatarVersion: account.avatarVersion || 0
-  }
+  account: formatAccountSummary(account)
 });
+
+// The same account shape WITHOUT a fresh session token — for endpoints that
+// change the account but are not authentication. Minting a token from, say,
+// an avatar upload would let a client extend its session indefinitely by
+// re-uploading a picture, which is not a decision an avatar endpoint should
+// get to make.
+const formatAccountPayload = (account) => ({
+  success: true,
+  account: formatAccountSummary(account)
+});
+
+// Pushes a now-verified account's flag out to every tenant membership row it
+// owns. Outlet-scoped code — the redeem gate in pointsService above all —
+// reads emailVerified off the User row, never off the account, so an account
+// marked verified without this fan-out is verified nowhere that matters.
+//
+// One implementation, three callers (verify-by-email, Google sign-in, and the
+// legacy tenant-scoped verify in authService): it used to be a copy-pasted
+// loop per caller, and the copies had already drifted apart on whether they
+// re-saved rows that were already true.
+const syncVerifiedToMemberships = async (account) => {
+  const members = await User.find({ customerAccountId: account._id });
+  for (const member of members) {
+    if (!member.emailVerified) {
+      member.emailVerified = true;
+      await member.save();
+    }
+  }
+};
 
 // Finds-or-creates the tenant-scoped User "membership" row for this
 // CustomerAccount, re-syncing the denormalized name/phone/emailVerified
@@ -226,8 +258,13 @@ const authenticateWithGoogle = async ({ idToken }) => {
     throw createHttpError("Google account mismatch for this user.", 409);
   }
 
+  // See utils/googleLink.js — the linking rules live there, pure and
+  // directly tested, because this path can't be reached from a test without
+  // a genuinely signed Google token.
+  const { linkGoogleId, markVerified, clearPassword } = resolveGoogleLink(account, googleId);
+
   let shouldSave = false;
-  if (!account.googleId) {
+  if (linkGoogleId) {
     account.googleId = googleId;
     shouldSave = true;
   }
@@ -235,31 +272,17 @@ const authenticateWithGoogle = async ({ idToken }) => {
     account.name = name;
     shouldSave = true;
   }
-  // Google already proved ownership of this mailbox — the payload check above
-  // rejects anything with email_verified !== true. Asking the customer to go
-  // find our own confirmation email on top of that verifies nothing further,
-  // so an account that signs in this way is verified from here on. Matters
-  // now that redemption is gated on it: a Google-only customer has no
-  // password, and previously an account created BEFORE linking Google could
-  // sit permanently unverified with no way to earn its way out.
-  if (!account.emailVerified) {
+  if (markVerified) {
     account.emailVerified = true;
+    shouldSave = true;
+  }
+  if (clearPassword) {
+    account.password = null;
     shouldSave = true;
   }
   if (shouldSave) await account.save();
 
-  // Keep the denormalized copies on every tenant membership in step, the
-  // same sync verifyAccountEmail does — outlet-scoped code (redeemPoints)
-  // reads emailVerified off the User row, not the account.
-  if (account.emailVerified) {
-    const members = await User.find({ customerAccountId: account._id });
-    for (const member of members) {
-      if (!member.emailVerified) {
-        member.emailVerified = true;
-        await member.save();
-      }
-    }
-  }
+  if (account.emailVerified) await syncVerifiedToMemberships(account);
 
   const out = formatGlobalSessionPayload(account);
   out.needsPhone = !account.phone;
@@ -309,11 +332,7 @@ const verifyAccountEmail = async ({ token }) => {
   record.usedAt = new Date();
   await record.save();
 
-  const members = await User.find({ customerAccountId: account._id });
-  for (const member of members) {
-    member.emailVerified = true;
-    await member.save();
-  }
+  await syncVerifiedToMemberships(account);
 
   // Fulfill any pending stamp claims this account was waiting on, now that
   // it's verified. Required late (avoids a require-cycle since
@@ -445,43 +464,73 @@ const getMyTenants = async ({ customerAccountId }) => {
 // slipped through unresized, and tight enough that the collection can't be
 // used as free storage.
 const MAX_AVATAR_BYTES = 256 * 1024;
-const ALLOWED_AVATAR_TYPES = ["image/webp", "image/jpeg", "image/png"];
 
-const setAvatar = async ({ customerAccountId, buffer, mimeType }) => {
-  if (!buffer || !buffer.length) throw createHttpError("An image file is required.", 400);
-  if (!ALLOWED_AVATAR_TYPES.includes(mimeType)) {
-    throw createHttpError("Profile pictures must be a WebP, JPEG, or PNG image.", 400);
+/**
+ * The stored type is decided by the BYTES, never by the multipart part's
+ * declared Content-Type — that header is written by the uploader and proves
+ * nothing. Since the served response echoes this type back with the image,
+ * trusting the label would let anyone store arbitrary content and have us
+ * hand it back under a type of their choosing.
+ *
+ * Deliberately a closed list of three raster formats. SVG is absent and must
+ * stay absent: it is a document, not an image, and it executes script in the
+ * origin that serves it.
+ */
+const sniffImageType = (buffer) => {
+  if (buffer.length < 12) return null;
+  // PNG: \x89PNG\r\n\x1a\n
+  if (buffer.subarray(0, 8).equals(Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]))) {
+    return "image/png";
   }
+  // JPEG: FF D8 FF
+  if (buffer[0] === 0xff && buffer[1] === 0xd8 && buffer[2] === 0xff) return "image/jpeg";
+  // WebP: "RIFF" .... "WEBP"
+  if (buffer.subarray(0, 4).toString("ascii") === "RIFF" &&
+      buffer.subarray(8, 12).toString("ascii") === "WEBP") {
+    return "image/webp";
+  }
+  return null;
+};
+
+const setAvatar = async ({ customerAccountId, buffer }) => {
+  if (!buffer || !buffer.length) throw createHttpError("An image file is required.", 400);
   if (buffer.length > MAX_AVATAR_BYTES) {
     throw createHttpError("That image is too large — pick one under 256KB.", 400);
+  }
+  const mimeType = sniffImageType(buffer);
+  if (!mimeType) {
+    throw createHttpError("Profile pictures must be a WebP, JPEG, or PNG image.", 400);
   }
 
   const account = await CustomerAccount.findOne({ _id: customerAccountId });
   if (!account) throw createHttpError("Account not found.", 404);
 
-  const dataBase64 = buffer.toString("base64");
-  const existing = await CustomerAvatar.findOne({ customerAccountId });
-  if (existing) {
-    existing.mimeType = mimeType;
-    existing.dataBase64 = dataBase64;
-    existing.byteSize = buffer.length;
-    existing.updatedAt = new Date();
-    await existing.save();
-  } else {
-    await CustomerAvatar.create({
-      customerAccountId,
-      mimeType,
-      dataBase64,
-      byteSize: buffer.length
-    });
-  }
+  // One atomic upsert, not findOne-then-create: two uploads racing each other
+  // would both miss the read and both insert, leaving two rows for one
+  // account. getAvatar's findOne would then return whichever the driver
+  // handed back first, so the picture would appear to randomly revert. The
+  // unique index can't be relied on to catch it either — the mock DB used in
+  // dev/test doesn't enforce indexes at all.
+  await CustomerAvatar.findOneAndUpdate(
+    { customerAccountId },
+    {
+      $set: {
+        customerAccountId,
+        mimeType,
+        dataBase64: buffer.toString("base64"),
+        byteSize: buffer.length,
+        updatedAt: new Date()
+      }
+    },
+    { upsert: true, new: true }
+  );
 
   // Bumped, never set to a timestamp: the served image is cached immutably
   // against this number, so it only has to change, not mean anything.
   account.avatarVersion = (account.avatarVersion || 0) + 1;
   await account.save();
 
-  return formatGlobalSessionPayload(account);
+  return formatAccountPayload(account);
 };
 
 const removeAvatar = async ({ customerAccountId }) => {
@@ -494,7 +543,7 @@ const removeAvatar = async ({ customerAccountId }) => {
   account.avatarVersion = (account.avatarVersion || 0) + 1;
   await account.save();
 
-  return formatGlobalSessionPayload(account);
+  return formatAccountPayload(account);
 };
 
 const getAvatar = async (customerAccountId) => {
@@ -518,6 +567,7 @@ module.exports = {
   resetPassword,
   enterTenant,
   ensureMembership,
+  syncVerifiedToMemberships,
   getMyTenants,
   setAvatar,
   removeAvatar,

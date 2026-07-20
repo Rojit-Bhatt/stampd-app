@@ -25,6 +25,10 @@ const PNG_1X1 = Buffer.from(
   "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==",
   "base64"
 );
+// A real (lossless) WebP — RIFF....WEBP container, which is what the server
+// sniffs for. Needed as a genuinely different format from the PNG so the
+// "does the stored type follow the bytes" assertions mean something.
+const WEBP_1X1 = Buffer.from("UklGRhoAAABXRUJQVlA4TA0AAAAvAAAAEAcQERGIiP4HAA==", "base64");
 
 async function main() {
   const { baseUrl, stop } = await bootServer({ port: 5052 });
@@ -88,7 +92,7 @@ async function main() {
     check("byte-for-byte what was uploaded", bytes.equals(PNG_1X1), { got: bytes.length, want: PNG_1X1.length });
 
     console.log("\n== Replacing ==");
-    const replaced = await upload(PNG_1X1, { token: a.token, type: "image/webp", filename: "a.webp" });
+    const replaced = await upload(WEBP_1X1, { token: a.token, type: "image/webp", filename: "a.webp" });
     check("a second upload replaces rather than stacking -> 200", replaced.status === 200, replaced.body);
     check("and bumps the version again", replaced.body?.account?.avatarVersion === 2, replaced.body?.account);
     const reserved = await fetch(`${baseUrl}/api/customer-auth/avatar/${a.account.id}?v=2`);
@@ -96,6 +100,27 @@ async function main() {
       reserved.headers.get("content-type") === "image/webp", reserved.headers.get("content-type"));
 
     console.log("\n== Validation ==");
+    // The multipart part's Content-Type is written by whoever is uploading,
+    // so it proves nothing; the server decides the type from the bytes. This
+    // matters because the served response echoes that type back — trusting
+    // the label would let anyone store arbitrary content and have it handed
+    // back under a type of their choosing.
+    const liar = await upload(PNG_1X1, { token: a.token, type: "image/webp", filename: "lie.webp" });
+    check("a lying Content-Type is ignored -> 200", liar.status === 200, liar.body);
+    const sniffed = await fetch(`${baseUrl}/api/customer-auth/avatar/${a.account.id}`);
+    check("the BYTES decide the stored type, not the label",
+      sniffed.headers.get("content-type") === "image/png", sniffed.headers.get("content-type"));
+    check("and the response forbids the browser sniffing it further",
+      sniffed.headers.get("x-content-type-options") === "nosniff",
+      sniffed.headers.get("x-content-type-options"));
+
+    // Non-image bytes are refused even when dressed as a PNG. Before the byte
+    // check this returned 200 and was served back as image/png.
+    const disguised = await upload(Buffer.from("<html><script>alert(1)</script></html>"), {
+      token: a.token, type: "image/png", filename: "x.png",
+    });
+    check("HTML disguised as a PNG is rejected (400)", disguised.status === 400, disguised.body);
+
     const wrongType = await upload(Buffer.from("not an image"), {
       token: a.token, type: "text/plain", filename: "a.txt",
     });
@@ -134,7 +159,7 @@ async function main() {
     // Bumped, not reset to 0: any cache still holding ?v=2 would otherwise be
     // handed the deleted image back the next time the version reached 2.
     check("removal bumps the version rather than resetting it",
-      removed.body?.account?.avatarVersion === 3, removed.body?.account);
+      removed.body?.account?.avatarVersion === 4, removed.body?.account);
     const gone = await fetch(`${baseUrl}/api/customer-auth/avatar/${a.account.id}`);
     check("and the image is really gone (404)", gone.status === 404, gone.status);
   } finally {

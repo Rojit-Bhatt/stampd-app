@@ -160,6 +160,10 @@ export function GlobalCustomerLayout() {
               avatarVersion={globalAccount.avatarVersion}
               name={globalAccount.name}
               size={36}
+              // Standing alone with nothing labelling it, so it announces
+              // itself — otherwise the "which account am I?" signal it exists
+              // to give is visual-only.
+              labelled
             />
             <button
               onClick={() => setConfirmLogoutOpen(true)}
