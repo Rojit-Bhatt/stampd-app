@@ -209,12 +209,20 @@ export default function AdminRewards() {
                 className="flex items-center gap-3.5 rounded-[var(--radius-card)] border border-[var(--line)] bg-[var(--surface)] shadow-ambient px-5 py-4"
                 style={{ opacity: r.isActive ? 1 : 0.55 }}
               >
-                <span
-                  className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-[var(--radius-btn)]"
-                  style={{ background: "var(--surface-2)", color: "var(--primary-deep)" }}
-                >
-                  <Gift className="h-4 w-4" />
-                </span>
+                {r.imageUrl ? (
+                  <img
+                    src={r.imageUrl}
+                    alt={r.name}
+                    className="h-10 w-10 flex-shrink-0 rounded-[var(--radius-btn)] object-cover"
+                  />
+                ) : (
+                  <span
+                    className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-[var(--radius-btn)]"
+                    style={{ background: "var(--surface-2)", color: "var(--primary-deep)" }}
+                  >
+                    <Gift className="h-4 w-4" />
+                  </span>
+                )}
                 <div className="min-w-0 flex-1">
                   <div className="truncate font-bold text-[var(--ink)]">{r.name}</div>
                   {r.description && (

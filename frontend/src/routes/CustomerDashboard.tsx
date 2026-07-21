@@ -224,15 +224,23 @@ export default function CustomerDashboard() {
                   const canAfford = item.pointsPrice <= balance;
                   return (
                     <li key={item.id} className="flex items-center gap-3">
-                      <span
-                        className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full"
-                        style={{
-                          background: canAfford ? "var(--primary-soft)" : "var(--surface-2)",
-                          color: canAfford ? "var(--primary-deep)" : "var(--soft)",
-                        }}
-                      >
-                        <Gift className="h-3.5 w-3.5" />
-                      </span>
+                      {item.imageUrl ? (
+                        <img
+                          src={item.imageUrl}
+                          alt={item.name}
+                          className="h-8 w-8 flex-shrink-0 rounded-full object-cover"
+                        />
+                      ) : (
+                        <span
+                          className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full"
+                          style={{
+                            background: canAfford ? "var(--primary-soft)" : "var(--surface-2)",
+                            color: canAfford ? "var(--primary-deep)" : "var(--soft)",
+                          }}
+                        >
+                          <Gift className="h-3.5 w-3.5" />
+                        </span>
+                      )}
                       <div className="min-w-0 flex-1">
                         <div className="truncate text-sm font-semibold text-[var(--ink)]">
                           {item.name}

@@ -209,15 +209,23 @@ export default function RedeemLanding() {
                 disabled={!canAfford || Boolean(redeeming)}
                 className="stamp-interactive flex items-center gap-3.5 rounded-[var(--radius-card)] border border-[var(--line)] bg-[var(--surface)] px-4 py-3.5 text-left disabled:cursor-not-allowed disabled:opacity-70"
               >
-                <span
-                  className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full"
-                  style={{
-                    background: canAfford ? "var(--primary-soft)" : "var(--surface-2)",
-                    color: canAfford ? "var(--primary-deep)" : "var(--soft)",
-                  }}
-                >
-                  <Gift className="h-4.5 w-4.5" />
-                </span>
+                {item.imageUrl ? (
+                  <img
+                    src={item.imageUrl}
+                    alt={item.name}
+                    className="h-10 w-10 flex-shrink-0 rounded-full object-cover"
+                  />
+                ) : (
+                  <span
+                    className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full"
+                    style={{
+                      background: canAfford ? "var(--primary-soft)" : "var(--surface-2)",
+                      color: canAfford ? "var(--primary-deep)" : "var(--soft)",
+                    }}
+                  >
+                    <Gift className="h-4.5 w-4.5" />
+                  </span>
+                )}
 
                 <span className="min-w-0 flex-1">
                   <span className="block truncate text-sm font-bold text-[var(--ink)]">

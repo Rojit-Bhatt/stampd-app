@@ -717,7 +717,7 @@ const getCustomerDetailRows = async (organizationId) => {
     })
   );
 
-  return rows;
+  return rows.filter((r) => r.history.length > 0);
 };
 
 module.exports = {
