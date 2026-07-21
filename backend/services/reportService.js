@@ -178,7 +178,7 @@ const getDashboardStats = async (organizationId) => {
     }
   }
   const pointsActivity = weekBuckets.map((b) => ({
-    weekStart: b.weekStart.toISOString().slice(0, 10),
+    weekStart: b.weekEnd.toISOString().slice(0, 10),
     earned: toPoints(b.earnedCenti),
     redeemed: toPoints(b.redeemedCenti)
   }));

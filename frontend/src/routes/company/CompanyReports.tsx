@@ -76,44 +76,46 @@ export default function CompanyReports() {
         ))}
       </div>
 
-      <div className="shadow-ambient overflow-hidden rounded-[var(--radius-card)] bg-[var(--surface)]">
-        <div className="grid grid-cols-[2fr_1fr_1fr_1fr_1fr] border-b border-[var(--line)] px-5 py-3 text-[11px] font-bold uppercase tracking-wider text-[var(--soft)]">
-          <span>Outlet</span>
-          <span>Customers</span>
-          <span>Points</span>
-          <span>Redeemed</span>
-          <span>Revenue</span>
-        </div>
+      <div className="shadow-ambient overflow-x-auto rounded-[var(--radius-card)] bg-[var(--surface)]">
+        <div className="min-w-[650px]">
+          <div className="grid grid-cols-[2fr_1fr_1fr_1fr_1fr] border-b border-[var(--line)] px-5 py-3 text-[11px] font-bold uppercase tracking-wider text-[var(--soft)]">
+            <span>Outlet</span>
+            <span>Customers</span>
+            <span>Points</span>
+            <span>Redeemed</span>
+            <span>Revenue</span>
+          </div>
 
-        {isLoading ? (
-          Array.from({ length: 3 }).map((_, i) => (
-            <div key={i} className="grid grid-cols-[2fr_1fr_1fr_1fr_1fr] items-center gap-3 border-b border-[var(--line)] px-5 py-3.5 last:border-b-0">
-              <Skeleton className="h-3.5 w-32" />
-              <Skeleton className="h-3.5 w-8" />
-              <Skeleton className="h-3.5 w-8" />
-              <Skeleton className="h-3.5 w-8" />
-              <Skeleton className="h-3.5 w-14" />
-            </div>
-          ))
-        ) : (data?.outlets || []).length === 0 ? (
-          <div className="px-5 py-10 text-center text-sm text-[var(--muted)]">No outlets yet.</div>
-        ) : (
-          (data?.outlets || []).map((o) => (
-            <div key={o.outletId} className="grid grid-cols-[2fr_1fr_1fr_1fr_1fr] items-center gap-3 border-b border-[var(--line)] px-5 py-3.5 text-sm last:border-b-0">
-              <span className="min-w-0">
-                <span className="block truncate font-bold">{o.name}</span>
-                <span className="block truncate font-mono text-xs text-[var(--soft)]">
-                  /{o.slug}
-                  {o.status !== "active" ? ` · ${o.status}` : ""}
+          {isLoading ? (
+            Array.from({ length: 3 }).map((_, i) => (
+              <div key={i} className="grid grid-cols-[2fr_1fr_1fr_1fr_1fr] items-center gap-3 border-b border-[var(--line)] px-5 py-3.5 last:border-b-0">
+                <Skeleton className="h-3.5 w-32" />
+                <Skeleton className="h-3.5 w-8" />
+                <Skeleton className="h-3.5 w-8" />
+                <Skeleton className="h-3.5 w-8" />
+                <Skeleton className="h-3.5 w-14" />
+              </div>
+            ))
+          ) : (data?.outlets || []).length === 0 ? (
+            <div className="px-5 py-10 text-center text-sm text-[var(--muted)]">No outlets yet.</div>
+          ) : (
+            (data?.outlets || []).map((o) => (
+              <div key={o.outletId} className="grid grid-cols-[2fr_1fr_1fr_1fr_1fr] items-center gap-3 border-b border-[var(--line)] px-5 py-3.5 text-sm last:border-b-0">
+                <span className="min-w-0">
+                  <span className="block truncate font-bold">{o.name}</span>
+                  <span className="block truncate font-mono text-xs text-[var(--soft)]">
+                    /{o.slug}
+                    {o.status !== "active" ? ` · ${o.status}` : ""}
+                  </span>
                 </span>
-              </span>
-              <span className="font-semibold">{o.customersCount}</span>
-              <span className="font-semibold">{o.pointsIssued}</span>
-              <span className="font-semibold">{o.redemptionCount}</span>
-              <span className="font-semibold">{formatNpr(o.revenue)}</span>
-            </div>
-          ))
-        )}
+                <span className="font-semibold">{o.customersCount}</span>
+                <span className="font-semibold">{o.pointsIssued}</span>
+                <span className="font-semibold">{o.redemptionCount}</span>
+                <span className="font-semibold">{formatNpr(o.revenue)}</span>
+              </div>
+            ))
+          )}
+        </div>
       </div>
 
       {data?.range && (

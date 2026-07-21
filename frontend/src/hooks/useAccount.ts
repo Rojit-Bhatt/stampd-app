@@ -32,6 +32,27 @@ export function useUpdateProfile(role: Role) {
       }),
     onSuccess: (account) => {
       qc.setQueryData(["account", role], account);
+      if (typeof window !== "undefined") {
+        if (role === "admin") {
+          const stored = localStorage.getItem("admin_auth_user");
+          if (stored) {
+            try {
+              const parsed = JSON.parse(stored);
+              parsed.name = account.name;
+              localStorage.setItem("admin_auth_user", JSON.stringify(parsed));
+            } catch (_) {}
+          }
+        } else if (role === "customer") {
+          const stored = localStorage.getItem("customer_auth_user");
+          if (stored) {
+            try {
+              const parsed = JSON.parse(stored);
+              parsed.name = account.name;
+              localStorage.setItem("customer_auth_user", JSON.stringify(parsed));
+            } catch (_) {}
+          }
+        }
+      }
     },
   });
 }

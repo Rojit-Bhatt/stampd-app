@@ -30,6 +30,7 @@ import {
 import { apiRequest, apiUrl, tenantHeaders } from "../../lib/api";
 import { useAdminSettings } from "../../hooks/useAdminSettings";
 import { useAdminAuth } from "../../context/AdminAuthContext";
+import { useAccount } from "../../hooks/useAccount";
 import { useCampaigns } from "../../hooks/useCampaigns";
 import { formatPoints } from "../../hooks/usePoints";
 import { tenantPath } from "../../lib/tenantPath";
@@ -133,6 +134,7 @@ export default function AdminOverview() {
   const { data: settings } = useAdminSettings();
   const { data: campaigns = [] } = useCampaigns();
   const { user } = useAdminAuth();
+  const { data: account } = useAccount("admin");
   const orgId = user?.organizationId ?? null;
   const [query, setQuery] = useState("");
 
@@ -215,12 +217,14 @@ export default function AdminOverview() {
     month: "short",
   });
 
+  const displayName = account?.name || user?.name;
+
   return (
     <div className="flex flex-col gap-6">
       <header>
         <h1 className="font-display text-[28px] font-bold leading-tight text-[var(--ink)]">
           {greeting()}
-          {user?.name ? `, ${user.name.split(" ")[0]}` : ""}
+          {displayName ? `, ${displayName.split(" ")[0]}` : ""}
         </h1>
         <p className="mt-0.5 text-sm text-[var(--muted)]">
           {today} · {settings?.name ?? "your outlet"}

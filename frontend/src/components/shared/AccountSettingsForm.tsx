@@ -25,8 +25,8 @@ export function AccountSettingsForm({ role, onLogout }: AccountSettingsFormProps
   const [resending, setResending] = useState(false);
 
   useEffect(() => {
-    if (account && !name) setName(account.name);
-  }, [account, name]);
+    if (account) setName(account.name);
+  }, [account?.name]);
 
   if (isLoading || !account) {
     return (
