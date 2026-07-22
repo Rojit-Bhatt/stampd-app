@@ -205,6 +205,7 @@ export default function CustomerDashboard() {
             expiresAt={points?.expiresAt ?? null}
             businessName={tenant?.name}
             isLoading={cardLoading}
+            tier={points?.tier ?? null}
           />
 
           {catalog.length > 0 && (

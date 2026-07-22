@@ -16,6 +16,8 @@ export interface PointsBalance {
   multiplier: number;
   /** Null unless a campaign is live right now. */
   activeCampaign: { name: string; multiplier: number } | null;
+  /** Null when the outlet has no tier thresholds configured, or none are met. */
+  tier: string | null;
 }
 
 export interface PublicCampaign {

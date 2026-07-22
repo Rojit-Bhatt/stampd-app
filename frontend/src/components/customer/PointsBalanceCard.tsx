@@ -3,6 +3,7 @@ import { motion } from "motion/react";
 import { formatPoints } from "../../hooks/usePoints";
 import { useMotion } from "../../lib/motion";
 import { Skeleton } from "../ui/skeleton";
+import { Badge } from "../ui/badge";
 
 interface PointsBalanceCardProps {
   balance: number;
@@ -10,6 +11,8 @@ interface PointsBalanceCardProps {
   expiresAt: string | null;
   businessName?: string;
   isLoading?: boolean;
+  /** Null when the outlet has no tier thresholds configured, or none are met. */
+  tier?: string | null;
 }
 
 const DAY_MS = 24 * 60 * 60 * 1000;
@@ -29,6 +32,7 @@ export function PointsBalanceCard({
   expiresAt,
   businessName,
   isLoading,
+  tier,
 }: PointsBalanceCardProps) {
   const m = useMotion();
 
@@ -58,11 +62,14 @@ export function PointsBalanceCard({
 
       <div className="min-w-0">
         {businessName && (
-          <div
-            className="truncate font-display text-base font-bold"
-            style={{ color: "var(--brand-ink)" }}
-          >
-            {businessName}
+          <div className="flex items-center gap-2">
+            <div
+              className="truncate font-display text-base font-bold"
+              style={{ color: "var(--brand-ink)" }}
+            >
+              {businessName}
+            </div>
+            {tier && <Badge>{tier}</Badge>}
           </div>
         )}
         <div className="mt-0.5 text-[10px] font-bold uppercase tracking-[0.16em] text-[var(--soft)]">

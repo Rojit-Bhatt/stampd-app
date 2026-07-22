@@ -8,6 +8,7 @@ import { useAdminAuth } from "../../context/AdminAuthContext";
 import { useTenant } from "../../context/TenantContext";
 import { tenantPath } from "../../lib/tenantPath";
 import { Skeleton } from "../../components/ui/skeleton";
+import { Badge } from "../../components/ui/badge";
 
 interface AdminCustomer {
   id: string;
@@ -22,6 +23,8 @@ interface AdminCustomer {
   redemptionCount: number;
   totalSpent: number;
   history: { id: string; type: string; points: number; createdAt: string }[];
+  /** Null when the outlet has no tier thresholds configured, or none are met. */
+  tier: string | null;
 }
 
 function lastVisit(iso: string | null): string {
@@ -99,9 +102,10 @@ export default function AdminCustomers() {
       </div>
 
       <div className="shadow-ambient overflow-hidden rounded-[var(--radius-card)] bg-[var(--surface)]">
-        <div className="grid grid-cols-[2fr_1fr_1fr_1fr_1fr] gap-4 border-b border-[var(--line)] px-5 py-3 text-[11px] font-bold uppercase tracking-wider text-[var(--soft)]">
+        <div className="grid grid-cols-[2fr_1fr_1fr_1fr_1fr_1fr] gap-4 border-b border-[var(--line)] px-5 py-3 text-[11px] font-bold uppercase tracking-wider text-[var(--soft)]">
           <span>Customer</span>
           <span>No.</span>
+          <span>Tier</span>
           <span>Points</span>
           <span>Redeemed</span>
           <span>Last visit</span>
@@ -109,7 +113,7 @@ export default function AdminCustomers() {
 
         {isLoading ? (
           Array.from({ length: 5 }).map((_, i) => (
-            <div key={i} className="grid grid-cols-[2fr_1fr_1fr_1fr_1fr] gap-4 items-center border-b border-[var(--line)] px-5 py-3.5 last:border-b-0">
+            <div key={i} className="grid grid-cols-[2fr_1fr_1fr_1fr_1fr_1fr] gap-4 items-center border-b border-[var(--line)] px-5 py-3.5 last:border-b-0">
               <span className="flex items-center gap-3">
                 <Skeleton className="h-9 w-9 flex-shrink-0 rounded-full" />
                 <span className="flex-1">
@@ -118,6 +122,7 @@ export default function AdminCustomers() {
                 </span>
               </span>
               <Skeleton className="h-3.5 w-14" />
+              <Skeleton className="h-3.5 w-10" />
               <Skeleton className="h-3.5 w-10" />
               <Skeleton className="h-3.5 w-8" />
               <Skeleton className="h-3.5 w-16" />
@@ -132,7 +137,7 @@ export default function AdminCustomers() {
             <Link
               key={c.id}
               to={tenantPath(companySlug, outletSlug, `admin/customers/${c.id}`)}
-              className="grid w-full grid-cols-[2fr_1fr_1fr_1fr_1fr] gap-4 items-center border-b border-[var(--line)] px-5 py-3.5 text-left last:border-b-0 hover:bg-[var(--surface-2)]"
+              className="grid w-full grid-cols-[2fr_1fr_1fr_1fr_1fr_1fr] gap-4 items-center border-b border-[var(--line)] px-5 py-3.5 text-left last:border-b-0 hover:bg-[var(--surface-2)]"
             >
               <span className="flex items-center gap-3 min-w-0">
                 <span className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-full border border-[var(--line)] bg-[var(--bg)] text-xs font-bold text-[var(--muted)]">
@@ -144,6 +149,7 @@ export default function AdminCustomers() {
                 </span>
               </span>
               <span className="font-mono text-[13px] text-[var(--muted)]">{c.customerNo}</span>
+              <span>{c.tier ? <Badge>{c.tier}</Badge> : <span className="text-[13px] text-[var(--soft)]">—</span>}</span>
               <span className="text-sm font-semibold">
                 {c.pointsBalance}
               </span>
