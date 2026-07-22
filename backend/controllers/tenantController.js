@@ -84,6 +84,7 @@ const getMySettings = async (req, res, next) => {
         programResolved: resolveProgram(company, organization),
         programOverridden: getOverriddenFields(organization),
         companyProgramDefaults: company ? company.programDefaults : null,
+        tierThresholds: organization.tierThresholds,
         menuEnabled: organization.menuEnabled,
         ...(subscriptionReminder ? { subscriptionReminder } : {})
       }
@@ -101,7 +102,7 @@ const updateMySettings = async (req, res, next) => {
       throw createHttpError("Business not found.", 404);
     }
 
-    const { name, branding, contact, program, menuEnabled, category } = req.body;
+    const { name, branding, contact, program, menuEnabled, category, tierThresholds } = req.body;
 
     if (name !== undefined) {
       organization.name = name.trim();
@@ -132,6 +133,14 @@ const updateMySettings = async (req, res, next) => {
       };
     }
 
+    if (tierThresholds !== undefined && typeof tierThresholds === "object") {
+      const merged = { ...organization.tierThresholds.toObject?.() ?? organization.tierThresholds };
+      for (const label of Object.keys(tierThresholds)) {
+        merged[label] = { ...merged[label], ...tierThresholds[label] };
+      }
+      organization.tierThresholds = merged;
+    }
+
     if (menuEnabled !== undefined) {
       organization.menuEnabled = Boolean(menuEnabled);
     }
@@ -153,6 +162,7 @@ const updateMySettings = async (req, res, next) => {
         programResolved: resolveProgram(company, organization),
         programOverridden: getOverriddenFields(organization),
         companyProgramDefaults: company ? company.programDefaults : null,
+        tierThresholds: organization.tierThresholds,
         menuEnabled: organization.menuEnabled
       }
     });

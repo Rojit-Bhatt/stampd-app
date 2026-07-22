@@ -182,6 +182,35 @@ async function main() {
     const listResp = await api("/api/admin/customers", { token: adminToken });
     const me = (listResp.body?.data || []).find((c) => c.email === email);
     check("admin customer list surfaces tier", me?.tier === "Silver");
+
+    const { makeSiblingOutlet } = require("./helpers/makeOutlet");
+
+    const getSettingsResp = await api("/api/admin/settings", { token: adminToken });
+    check(
+      "GET settings surfaces tierThresholds",
+      getSettingsResp.body.settings.tierThresholds?.Silver?.minVisits === 2
+    );
+
+    const patchResp = await api("/api/admin/settings", {
+      method: "PATCH",
+      token: adminToken,
+      body: { tierThresholds: { Gold: { minVisits: 5, minSpend: 2000 } } },
+    });
+    check(
+      "PATCH settings persists a new Gold threshold",
+      patchResp.body.settings.tierThresholds?.Gold?.minVisits === 5
+    );
+    check(
+      "PATCH settings leaves Silver untouched",
+      patchResp.body.settings.tierThresholds?.Silver?.minVisits === 2
+    );
+
+    const sibling = await makeSiblingOutlet(baseUrl, { label: `tier${Date.now()}` });
+    const siblingSettings = await api("/api/admin/settings", { slug: sibling.outletSlug, token: sibling.adminToken });
+    check(
+      "a sibling outlet's tierThresholds start unconfigured (null), isolated from durbarmarg's",
+      siblingSettings.body.settings.tierThresholds?.Gold?.minVisits === null
+    );
   } finally {
     stop();
   }
