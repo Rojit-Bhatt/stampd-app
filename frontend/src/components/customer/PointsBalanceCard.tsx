@@ -64,7 +64,7 @@ export function PointsBalanceCard({
         {businessName && (
           <div className="flex items-center gap-2">
             <div
-              className="truncate font-display text-base font-bold"
+              className="min-w-0 truncate font-display text-base font-bold"
               style={{ color: "var(--brand-ink)" }}
             >
               {businessName}
