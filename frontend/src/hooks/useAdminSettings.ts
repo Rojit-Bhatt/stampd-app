@@ -54,6 +54,18 @@ export interface ResolvedProgram {
   pointsExpiryDays: number;
 }
 
+export interface TierThreshold {
+  minVisits: number | null;
+  minSpend: number | null;
+}
+
+export interface TierThresholds {
+  Bronze: TierThreshold;
+  Silver: TierThreshold;
+  Gold: TierThreshold;
+  Platinum: TierThreshold;
+}
+
 export interface AdminSettings {
   name: string;
   slug: string;
@@ -70,6 +82,8 @@ export interface AdminSettings {
   programOverridden: (keyof AdminProgram)[];
   /** The company's defaults, for showing what "inherit" means. */
   companyProgramDefaults: ResolvedProgram | null;
+  /** Per-outlet tier thresholds, keyed by fixed label. No inheritance. */
+  tierThresholds: TierThresholds;
   menuEnabled: boolean;
   // False for a platform-onboarded business with no attached owner — the
   // Subscription nav item/route must be hidden for it (there's nothing to
@@ -87,6 +101,7 @@ export interface AdminSettingsPatch {
   branding?: Partial<AdminBranding>;
   contact?: Partial<AdminContact>;
   program?: Partial<AdminProgram>;
+  tierThresholds?: Partial<TierThresholds>;
   menuEnabled?: boolean;
 }
 

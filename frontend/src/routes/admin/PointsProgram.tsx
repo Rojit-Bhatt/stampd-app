@@ -1,11 +1,18 @@
 import { useEffect, useState } from "react";
 import toast from "react-hot-toast";
-import { useAdminSettings, useUpdateAdminSettings, type AdminProgram } from "../../hooks/useAdminSettings";
+import {
+  useAdminSettings,
+  useUpdateAdminSettings,
+  type AdminProgram,
+  type TierThresholds,
+} from "../../hooks/useAdminSettings";
 import { Skeleton } from "../../components/ui/skeleton";
 import { SegmentedControl, SegmentedControlItem } from "@/components/ui/segmented-control";
 import { Button } from "@/components/ui/button";
 
 type Field = keyof AdminProgram;
+
+const TIER_LABELS = ["Bronze", "Silver", "Gold", "Platinum"] as const;
 
 // Every field here is an override: null means "whatever my company says".
 // The UI has to make that visible, because "100" typed in by hand and "100
@@ -15,12 +22,17 @@ export default function PointsProgram() {
   const { data: settings, isLoading } = useAdminSettings();
   const update = useUpdateAdminSettings();
   const [form, setForm] = useState<AdminProgram | null>(null);
+  const [tierForm, setTierForm] = useState<TierThresholds | null>(null);
 
   useEffect(() => {
     if (settings && !form) setForm(settings.program);
   }, [settings, form]);
 
-  if (isLoading || !form || !settings) {
+  useEffect(() => {
+    if (settings && !tierForm) setTierForm(settings.tierThresholds);
+  }, [settings, tierForm]);
+
+  if (isLoading || !form || !tierForm || !settings) {
     return (
       <div className="max-w-[620px]">
         <Skeleton className="mb-2 h-7 w-56" />
@@ -54,6 +66,18 @@ export default function PointsProgram() {
       toast.error((err as Error).message || "Couldn't save that — try again.");
     }
   };
+
+  const saveTiers = async () => {
+    try {
+      await update.mutateAsync({ tierThresholds: tierForm });
+      toast.success("Tiers saved!");
+    } catch (err) {
+      toast.error((err as Error).message || "Couldn't save that — try again.");
+    }
+  };
+
+  const setTier = (label: (typeof TIER_LABELS)[number], field: "minVisits" | "minSpend", value: number | null) =>
+    setTierForm((t) => (t ? { ...t, [label]: { ...t[label], [field]: value } } : t));
 
   // Inherit and override are two explicit, visible states rather than "an
   // empty box means inherit". Emptying a field to go back to inheriting was
@@ -157,6 +181,47 @@ export default function PointsProgram() {
       <p className="mt-4 text-[13px] text-[var(--soft)]">
         Changing the earn rate only affects future visits — what a customer already earned stays as it was.
       </p>
+
+      <div className="mt-6 flex flex-col gap-4 rounded-[var(--radius-card)] border border-[var(--line)] bg-[var(--surface)] shadow-ambient p-6">
+        <div>
+          <h3 className="font-display text-lg font-bold text-[var(--ink)]">Tiers</h3>
+          <p className="mt-1 text-[13px] text-[var(--muted)]">
+            A customer reaches a tier once they meet both the visit count and the amount spent, looking back over
+            their last year. Leave either box blank to switch that tier off.
+          </p>
+        </div>
+        {TIER_LABELS.map((label) => (
+          <div
+            key={label}
+            className="flex flex-wrap items-center gap-3 border-t border-[var(--line)] pt-4 first:border-t-0 first:pt-0"
+          >
+            <span className="w-24 text-sm font-semibold text-[var(--ink)]">{label}</span>
+            <input
+              type="number"
+              min={0}
+              step="1"
+              placeholder="Min visits"
+              value={tierForm[label].minVisits ?? ""}
+              onChange={(e) => setTier(label, "minVisits", e.target.value === "" ? null : Number(e.target.value))}
+              className="w-32 rounded-[var(--radius-btn)] border border-[var(--line)] bg-[var(--surface)] px-4 py-3 text-sm focus:border-[var(--primary)] focus:outline-none"
+            />
+            <span className="text-xs text-[var(--muted)]">visits</span>
+            <input
+              type="number"
+              min={0}
+              step="1"
+              placeholder="Min spend"
+              value={tierForm[label].minSpend ?? ""}
+              onChange={(e) => setTier(label, "minSpend", e.target.value === "" ? null : Number(e.target.value))}
+              className="w-32 rounded-[var(--radius-btn)] border border-[var(--line)] bg-[var(--surface)] px-4 py-3 text-sm focus:border-[var(--primary)] focus:outline-none"
+            />
+            <span className="text-xs text-[var(--muted)]">Rs spent</span>
+          </div>
+        ))}
+        <Button onClick={saveTiers} disabled={update.isPending} size="lg">
+          {update.isPending ? "Saving…" : "Save tiers"}
+        </Button>
+      </div>
     </div>
   );
 }
