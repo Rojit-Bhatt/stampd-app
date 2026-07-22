@@ -133,7 +133,7 @@ const updateMySettings = async (req, res, next) => {
       };
     }
 
-    if (tierThresholds !== undefined && typeof tierThresholds === "object") {
+    if (tierThresholds !== undefined && tierThresholds !== null && typeof tierThresholds === "object") {
       const merged = { ...organization.tierThresholds.toObject?.() ?? organization.tierThresholds };
       for (const label of Object.keys(tierThresholds)) {
         merged[label] = { ...merged[label], ...tierThresholds[label] };

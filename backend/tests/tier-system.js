@@ -205,6 +205,16 @@ async function main() {
       patchResp.body.settings.tierThresholds?.Silver?.minVisits === 2
     );
 
+    const nullPatchResp = await api("/api/admin/settings", {
+      method: "PATCH",
+      token: adminToken,
+      body: { tierThresholds: null },
+    });
+    check(
+      "PATCH settings with tierThresholds: null is a no-op, not a 500",
+      nullPatchResp.status === 200 && nullPatchResp.body.settings.tierThresholds?.Gold?.minVisits === 5
+    );
+
     const sibling = await makeSiblingOutlet(baseUrl, { label: `tier${Date.now()}` });
     const siblingSettings = await api("/api/admin/settings", { slug: sibling.outletSlug, token: sibling.adminToken });
     check(
