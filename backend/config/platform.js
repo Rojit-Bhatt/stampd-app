@@ -45,6 +45,11 @@ const PLATFORM_TIMEZONE = process.env.PLATFORM_TIMEZONE || "Asia/Kathmandu";
 // A business can always express "6x" by writing 6.
 const CAMPAIGN_STACKING = "max";
 
+// Fixed tier labels a customer can be placed into at an outlet, ordered
+// lowest to highest. Admins configure the numeric thresholds per label
+// (Organization.tierThresholds); the label set itself is platform-fixed.
+const TIER_LABELS = ["Bronze", "Silver", "Gold", "Platinum"];
+
 // Slugs a company may never take. A company slug owns a whole top-level URL
 // segment (/[company]/[outlet]), so one colliding with a static route would
 // make that company permanently unreachable — React Router ranks static
@@ -67,6 +72,7 @@ module.exports = {
   CAMPAIGN_STACKING,
   DEFAULT_PROGRAM,
   BUSINESS_CATEGORIES,
+  TIER_LABELS,
   RESERVED_SLUGS,
   isReservedSlug
 };

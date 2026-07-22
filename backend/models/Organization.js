@@ -46,6 +46,31 @@ const OrganizationSchema = new mongoose.Schema({
     pointsExpiryDays: { type: Number, min: 0, default: null }
   },
 
+  // Fixed-label tier configuration for this outlet (see config/platform.js
+  // TIER_LABELS). Every field defaults to null meaning "not configured" —
+  // resolveTier in services/tierService.js skips any label with a null
+  // threshold. Outlet-scoped only, no inheritance: two outlets of the same
+  // company configure tiers independently, matching points never pooling
+  // across outlets.
+  tierThresholds: {
+    Bronze: {
+      minVisits: { type: Number, min: 0, default: null },
+      minSpend: { type: Number, min: 0, default: null }
+    },
+    Silver: {
+      minVisits: { type: Number, min: 0, default: null },
+      minSpend: { type: Number, min: 0, default: null }
+    },
+    Gold: {
+      minVisits: { type: Number, min: 0, default: null },
+      minSpend: { type: Number, min: 0, default: null }
+    },
+    Platinum: {
+      minVisits: { type: Number, min: 0, default: null },
+      minSpend: { type: Number, min: 0, default: null }
+    }
+  },
+
   // Contact/location/social info the business admin controls, shown to
   // customers on their dashboard. All fields optional — a tenant with
   // nothing filled in just shows no contact section.

@@ -9,6 +9,8 @@ const AdminVerificationToken = require("../models/AdminVerificationToken");
 const PointsBalance = require("../models/PointsBalance");
 const Subscription = require("../models/Subscription");
 const PointsTransaction = require("../models/PointsTransaction");
+const Organization = require("../models/Organization");
+const Company = require("../models/Company");
 const { resolveTenant } = require("../middleware/tenantMiddleware");
 
 const router = express.Router();
@@ -178,6 +180,81 @@ router.post("/create-test-transaction", async (req, res, next) => {
     });
 
     res.json({ success: true, tx });
+  } catch (error) {
+    next(error);
+  }
+});
+
+// DEV/TEST ONLY. Get organization by company slug and outlet slug, for tests
+// that need to directly manipulate organization config.
+router.post("/get-organization", async (req, res, next) => {
+  try {
+    const { companySlug, outletSlug } = req.body;
+    const company = await Company.findOne({ slug: String(companySlug || "").toLowerCase() });
+    if (!company) return res.status(404).json({ success: false, message: "Company not found" });
+
+    const org = await Organization.findOne({ companyId: company._id, slug: String(outletSlug || "").toLowerCase() });
+    if (!org) return res.status(404).json({ success: false, message: "Organization not found" });
+
+    res.json({ success: true, organizationId: org._id.toString() });
+  } catch (error) {
+    next(error);
+  }
+});
+
+// DEV/TEST ONLY. Update tier thresholds on an organization.
+router.post("/set-tier-thresholds", async (req, res, next) => {
+  try {
+    const { organizationId, tierThresholds } = req.body;
+    const org = await Organization.findOneAndUpdate(
+      { _id: organizationId },
+      { $set: { tierThresholds } },
+      { new: true }
+    );
+    if (!org) return res.status(404).json({ success: false, message: "Organization not found" });
+
+    res.json({ success: true });
+  } catch (error) {
+    next(error);
+  }
+});
+
+// DEV/TEST ONLY. Create a test transaction with a specific date (for testing
+// rolling windows that exclude old data).
+router.post("/create-dated-transaction", async (req, res, next) => {
+  try {
+    const { email, organizationId, billAmount, createdAtDaysAgo } = req.body;
+    const user = await User.findOne({
+      organizationId,
+      email: String(email || "").toLowerCase(),
+      role: "customer"
+    });
+    if (!user) return res.status(404).json({ success: false, message: "User not found" });
+
+    const createdAt = new Date(Date.now() - (createdAtDaysAgo || 0) * 24 * 60 * 60 * 1000);
+    const tx = await PointsTransaction.create({
+      organizationId,
+      userId: user._id,
+      type: "earn",
+      pointsCenti: 100000,
+      billAmount: billAmount || 1000,
+      earnPercent: 100,
+      createdAt
+    });
+
+    res.json({ success: true, tx });
+  } catch (error) {
+    next(error);
+  }
+});
+
+// DEV/TEST ONLY. Call resolveTier for testing tier resolution.
+router.post("/resolve-tier", async (req, res, next) => {
+  try {
+    const { organizationId, userId } = req.body;
+    const { resolveTier } = require("../services/tierService");
+    const tier = await resolveTier(organizationId, userId);
+    res.json({ success: true, tier });
   } catch (error) {
     next(error);
   }
