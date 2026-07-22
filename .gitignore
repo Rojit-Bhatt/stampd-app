@@ -14,3 +14,6 @@ __pycache__/
 
 # SDD scratch (briefs, reports, review packages, ledger)
 .superpowers/
+
+# Local git worktrees
+.worktrees/
