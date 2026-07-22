@@ -11,6 +11,7 @@ const User = require("../models/User");
 const CustomerAccount = require("../models/CustomerAccount");
 const { resolveProgram } = require("./programService");
 const { resolveActiveMultiplier } = require("./campaignService");
+const { resolveTier } = require("./tierService");
 const { earnCenti, toPoints } = require("../utils/pointsMath");
 const { resolveDateRange } = require("../utils/dateRange");
 
@@ -594,6 +595,7 @@ const getPointsBalanceByUserId = async (userId, organizationId) => {
   const balance = await PointsBalance.findOne({ userId, organizationId });
   const now = new Date();
   const { multiplier, campaign } = await resolveActiveMultiplier(organizationId, now);
+  const tier = await resolveTier(organizationId, userId);
 
   return {
     success: true,
@@ -603,10 +605,9 @@ const getPointsBalanceByUserId = async (userId, organizationId) => {
       expiresAt: expiresAtFor(balance),
       earnPercent: program.earnPercent,
       pointsExpiryDays: program.pointsExpiryDays,
-      // Null unless something is live right now — the dashboard shouldn't
-      // have to re-derive "is a campaign on".
       multiplier,
-      activeCampaign: campaign ? { name: campaign.name, multiplier: campaign.multiplier } : null
+      activeCampaign: campaign ? { name: campaign.name, multiplier: campaign.multiplier } : null,
+      tier
     }
   };
 };
@@ -688,6 +689,7 @@ const getCustomerDetailRows = async (organizationId) => {
 
       const totalSpent = earns.reduce((sum, t) => sum + (t.billAmount || 0), 0);
       const lifetimePointsCenti = earns.reduce((sum, t) => sum + t.pointsCenti, 0);
+      const tier = await resolveTier(organizationId, customer._id);
 
       const idStr = customer._id.toString();
       const suffix = idStr.substring(Math.max(0, idStr.length - 5)).toUpperCase();
@@ -708,10 +710,10 @@ const getCustomerDetailRows = async (organizationId) => {
         avatarVersion: avatarVersion,
         pointsBalance: toPoints(effectiveBalanceCenti(balance, now)),
         lifetimePoints: toPoints(lifetimePointsCenti),
+        tier,
         lastActivityAt: balance ? balance.lastActivityAt : null,
         redemptionCount: redeems.length,
         totalSpent: Math.round(totalSpent * 100) / 100,
-        // Kept as "recent activity" for the customer-detail drawer.
         history: allTxns.slice(0, 10).map(formatTransaction)
       };
     })

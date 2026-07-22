@@ -175,6 +175,13 @@ async function main() {
         }
       }
     });
+
+    const balanceResp = await api("/api/points/balance", { token: customerToken });
+    check("balance response surfaces tier", balanceResp.body.data.tier === "Silver");
+
+    const listResp = await api("/api/admin/customers", { token: adminToken });
+    const me = (listResp.body?.data || []).find((c) => c.email === email);
+    check("admin customer list surfaces tier", me?.tier === "Silver");
   } finally {
     stop();
   }
