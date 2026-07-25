@@ -221,6 +221,43 @@ async function main() {
       "a sibling outlet's tierThresholds start unconfigured (null), isolated from durbarmarg's",
       siblingSettings.body.settings.tierThresholds?.Gold?.minVisits === null
     );
+
+    // resolveTier itself (not just the settings endpoint) must ignore a
+    // sibling outlet's data. Give the sibling an easy-to-meet Bronze bar,
+    // then ask resolveTier for a tier at the SIBLING organizationId using
+    // this same customer's durbarmarg userId. That userId doesn't
+    // correspond to any PointsTransaction row at the sibling outlet, so a
+    // correctly org-scoped query finds zero earns there regardless of how
+    // many earns this customer racked up at durbarmarg — proving the query
+    // doesn't leak across outlets.
+    const siblingOrgResp = await api("/__test__/get-organization", {
+      method: "POST",
+      slug: null,
+      body: { companySlug: COMPANY, outletSlug: sibling.outletSlug }
+    });
+    const siblingOrganizationId = siblingOrgResp.body.organizationId;
+    await api("/__test__/set-tier-thresholds", {
+      method: "POST",
+      slug: null,
+      body: {
+        organizationId: siblingOrganizationId,
+        tierThresholds: {
+          Bronze: { minVisits: 1, minSpend: 1 },
+          Silver: { minVisits: null, minSpend: null },
+          Gold: { minVisits: null, minSpend: null },
+          Platinum: { minVisits: null, minSpend: null }
+        }
+      }
+    });
+    const tierAtSibling = await api("/__test__/resolve-tier", {
+      method: "POST",
+      slug: null,
+      body: { organizationId: siblingOrganizationId, userId }
+    });
+    check(
+      "resolveTier at a sibling outlet ignores this customer's durbarmarg earns entirely",
+      tierAtSibling.body.tier === null
+    );
   } finally {
     stop();
   }

@@ -595,7 +595,7 @@ const getPointsBalanceByUserId = async (userId, organizationId) => {
   const balance = await PointsBalance.findOne({ userId, organizationId });
   const now = new Date();
   const { multiplier, campaign } = await resolveActiveMultiplier(organizationId, now);
-  const tier = await resolveTier(organizationId, userId);
+  const tier = await resolveTier(organizationId, userId, { org });
 
   return {
     success: true,
@@ -689,7 +689,7 @@ const getCustomerDetailRows = async (organizationId) => {
 
       const totalSpent = earns.reduce((sum, t) => sum + (t.billAmount || 0), 0);
       const lifetimePointsCenti = earns.reduce((sum, t) => sum + t.pointsCenti, 0);
-      const tier = await resolveTier(organizationId, customer._id);
+      const tier = await resolveTier(organizationId, customer._id, { org, earns });
 
       const idStr = customer._id.toString();
       const suffix = idStr.substring(Math.max(0, idStr.length - 5)).toUpperCase();
