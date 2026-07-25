@@ -367,12 +367,12 @@ export default function CustomerDashboard() {
                     <Star className="h-4.5 w-4.5 fill-current" />
                     <Star className="h-4.5 w-4.5 fill-current" />
                     <Star className="h-4.5 w-4.5 fill-current" />
-                    <Star className="h-4.5 w-4.5 fill-current" />
+                    <Star className="h-4.5 w-4.5" />
                   </div>
-                  <span className="text-sm font-semibold text-[var(--ink)]">5.0 Star Rating</span>
+                  <span className="text-sm font-semibold text-[var(--ink)]">Leave us a rating</span>
                 </div>
                 <p className="text-xs text-[var(--muted)] leading-relaxed">
-                  Love our service, food, or drinks? We'd love if you could leave a review on Google! Your support helps other coffee and cafe lovers find us.
+                  Love what we offer? We'd love if you could leave a review on Google! Your support helps other customers find us.
                 </p>
                 <a
                   href={contact.googleReviewUrl}

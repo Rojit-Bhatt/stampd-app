@@ -717,7 +717,11 @@ const getCustomerDetailRows = async (organizationId) => {
     })
   );
 
-  return rows.filter((r) => r.history.length > 0);
+  // Every customer row is returned, including ones with no earn/redeem yet —
+  // a customer who joined (via /explore auto-provisioning, or a claim) but
+  // hasn't transacted is still a real customer of this outlet, and an outlet
+  // needs to see them to follow up.
+  return rows;
 };
 
 module.exports = {

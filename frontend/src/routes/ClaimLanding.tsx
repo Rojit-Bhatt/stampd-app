@@ -34,13 +34,19 @@ type Stage =
 // code (CLAIM_ALREADY_FULFILLED). Adding codes backend-side would make this
 // robust — until then, an unrecognised message falls through to "unknown",
 // which still renders a sane screen rather than guessing wrong.
-type ClaimFailure = "expired" | "already-used" | "already-added" | "offline" | "unknown";
+type ClaimFailure = "expired" | "already-used" | "already-added" | "session-expired" | "offline" | "unknown";
 
-function classifyFailure(err: Error & { code?: string }): ClaimFailure {
+function classifyFailure(err: Error & { code?: string; status?: number }): ClaimFailure {
   if (err.code === "CLAIM_ALREADY_FULFILLED") return "already-added";
   // A fetch that never reached the server — the claim itself is untouched and
   // still held, so this must not read as "your points are gone".
   if (!navigator.onLine || err.name === "TypeError") return "offline";
+  // Checked before the generic "expired" text match below: a stale cached
+  // tenant token (never revalidated before this call) fails verifyToken with
+  // jsonwebtoken's own "jwt expired" message, which would otherwise match the
+  // QR-code "expired" case and send the customer to re-scan a still-valid
+  // 15-minute claim instead of just signing back in.
+  if (err.status === 401) return "session-expired";
   const msg = (err.message || "").toLowerCase();
   if (msg.includes("expired")) return "expired";
   if (msg.includes("already been used")) return "already-used";
@@ -303,6 +309,26 @@ export default function ClaimLanding() {
               : undefined
           }
           primary={{ label: "See my points", to: tenantPath(companySlug, slug, "dashboard") }}
+        />
+      );
+    }
+
+    if (failure === "session-expired") {
+      return (
+        <ClaimStateScreen
+          icon={<Lock className="h-6 w-6" />}
+          tone="warn"
+          title="Sign in again"
+          body="Your sign-in has expired. Your claim is still held — sign back in and we'll finish it."
+          primary={{
+            label: "Sign in",
+            onClick: () => {
+              checkedOnce.current = true;
+              setMode("login");
+              setStage("choose");
+            },
+          }}
+          secondary={{ label: backLabel, to: home }}
         />
       );
     }

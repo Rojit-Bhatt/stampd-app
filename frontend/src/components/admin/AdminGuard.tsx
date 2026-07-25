@@ -14,7 +14,8 @@ export function AdminGuard({ children }: { children: React.ReactNode }) {
   const { companySlug, outletSlug } = useParams();
   const tenantSlugPath = companySlug && outletSlug ? `/${companySlug}/${outletSlug}` : null;
   const { data: settings, isLoading: settingsLoading, error: settingsErrorObj } = useAdminSettings();
-  const suspended = (settingsErrorObj as (Error & { code?: string }) | null)?.code === "TENANT_SUSPENDED";
+  const settingsErr = settingsErrorObj as (Error & { code?: string; status?: number }) | null;
+  const suspended = settingsErr?.code === "TENANT_SUSPENDED";
 
   // Deliberately `error`, not `isError`. In TanStack Query v5 a query that
   // ALREADY HAS DATA and then fails a background refetch keeps status
@@ -24,7 +25,14 @@ export function AdminGuard({ children }: { children: React.ReactNode }) {
   // console is open. The console kept rendering happily off cached data
   // while every write failed, which is precisely the stranding this guard
   // exists to prevent.
-  const settingsError = Boolean(settingsErrorObj);
+  //
+  // Restricted to an actual auth failure (401/403), not just any error —
+  // a transient 500 or a network blip (a Render cold-start, a brief DB
+  // reconnect) isn't the staff member's session going bad, and force-logging
+  // them out over it destroys a perfectly valid session for no reason. The
+  // query's own retries already absorb genuinely transient failures before
+  // `error` is even populated.
+  const settingsError = settingsErr?.status === 401 || settingsErr?.status === 403;
 
   // Latched, not read live: AdminLayout (rendered as `children` below) also
   // calls useAdminSettings() itself, so mounting/unmounting it in direct

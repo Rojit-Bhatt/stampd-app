@@ -649,11 +649,13 @@ const deleteCustomerAccount = async ({ customerAccountId, email }) => {
   const members = await User.find({ customerAccountId: account._id });
   const memberIds = members.map(m => m._id);
 
-  // 2. Delete all PointsTransactions for these memberships
-  await PointsTransaction.deleteMany({ userId: { $in: memberIds } });
+  // 2. Delete all PointsTransactions for these memberships. Per-id, not
+  // `$in` — the mock DB's query matcher only supports top-level equality/
+  // $or/$lte/$gte and throws on anything else.
+  await Promise.all(memberIds.map((id) => PointsTransaction.deleteMany({ userId: id })));
 
-  // 3. Delete all PointsBalances for these memberships
-  await PointsBalance.deleteMany({ userId: { $in: memberIds } });
+  // 3. Delete all PointsBalances for these memberships (same $in constraint).
+  await Promise.all(memberIds.map((id) => PointsBalance.deleteMany({ userId: id })));
 
   // 4. Delete all PendingClaims for this customer account
   await PendingClaim.deleteMany({ customerAccountId: account._id });

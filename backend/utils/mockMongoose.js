@@ -242,8 +242,35 @@ const mongoose = {
       commitTransaction: () => {},
       abortTransaction: () => {},
       endSession: () => {},
+      // Real MongoDB rolls every write inside `fn` back on a throw. Callers
+      // rely on that — e.g. pointsService.redeemPoints consumes the redeem
+      // QR token before the atomic balance check, trusting a failed check to
+      // un-consume it; pendingClaimService's already-fulfilled race guard
+      // depends on it too. A bare passthrough here left both of those races
+      // live in every dev/test run (the only place this mock is used), so
+      // this snapshots every collection before `fn` runs and restores it —
+      // in place, onto the same Document references, so any `.save()`/
+      // `.toObject()` a caller still holds keeps working — on failure.
       withTransaction: async (fn) => {
-        return fn();
+        const modelNames = Object.keys(db);
+        const snapshot = {};
+        for (const name of modelNames) {
+          snapshot[name] = db[name].map((doc) => [doc, { ...doc }]);
+        }
+        try {
+          return await fn();
+        } catch (err) {
+          for (const name of modelNames) {
+            db[name] = snapshot[name].map(([doc, props]) => {
+              for (const k of Object.keys(doc)) {
+                if (!(k in props)) delete doc[k];
+              }
+              Object.assign(doc, props);
+              return doc;
+            });
+          }
+          throw err;
+        }
       }
     };
   },
