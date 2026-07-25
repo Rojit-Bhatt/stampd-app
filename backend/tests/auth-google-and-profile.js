@@ -114,6 +114,13 @@ async function main() {
     });
     const adminToken = adminLogin.body.token;
 
+    // getCustomerDetailRows filters out zero-activity customers (only shows
+    // history.length > 0), so this customer needs one real earn before
+    // they're visible in the admin list at all.
+    const gapGen = await api("/api/admin/generate-qr", { method: "POST", token: adminToken, body: { billAmount: 100 } });
+    const gapClaim = await api("/api/points/claim", { method: "POST", token: customerToken, body: { token: gapGen.body.data.token } });
+    check("gap customer earns once so they appear in the customer list", gapClaim.status === 200);
+
     const customersList = await api("/api/admin/customers", { token: adminToken });
     const gapCustomer = (customersList.body?.data || []).find((c) => c.email === customerEmail);
     check("complete-profile saved phone, visible to admin", gapCustomer?.phone === "9800000000");
