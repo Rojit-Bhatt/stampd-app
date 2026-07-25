@@ -17,6 +17,17 @@ if (!process.env.JWT_SECRET) {
 // mode apart from a real connection.
 const USING_MOCK_DB = !process.env.MONGODB_URI;
 
+// Same fatal-in-production pattern as JWT_SECRET above. Without this, a
+// production deploy with a missing/typo'd MONGODB_URI wouldn't crash — it
+// would silently fall back to the in-memory mock DB and (further below) mount
+// the unauthenticated /__test__ routes, which include an endpoint that mints
+// a valid session token for any email address. A misconfigured prod deploy
+// must fail loudly here, not hand out an account-takeover primitive.
+if (USING_MOCK_DB && process.env.NODE_ENV === "production") {
+  console.error("FATAL: MONGODB_URI must be set in production.");
+  process.exit(1);
+}
+
 if (USING_MOCK_DB) {
   process.env.MONGODB_URI = "mongodb://in-memory-fallback";
   console.warn("[dev] MONGODB_URI is not defined. Enabling in-memory MongoDB/Mongoose fallback.");

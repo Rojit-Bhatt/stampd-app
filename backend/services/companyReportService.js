@@ -28,9 +28,16 @@ const getCompanyRollup = async (companyId, { startDate, endDate } = {}) => {
   const outlets = await Organization.find({ companyId });
   const { start, end } = resolveDateRange(startDate, endDate);
 
+  const distinctCustomerAccountIds = new Set();
+
   const perOutlet = await Promise.all(
     outlets.map(async (outlet) => {
       const customers = await User.find({ organizationId: outlet._id, role: "customer" });
+      customers.forEach((c) => {
+        distinctCustomerAccountIds.add(
+          c.customerAccountId ? c.customerAccountId.toString() : c._id.toString()
+        );
+      });
       const txns = await PointsTransaction.find({ organizationId: outlet._id });
       const inRange = txns.filter((t) => {
         const createdAt = new Date(t.createdAt);
@@ -59,7 +66,6 @@ const getCompanyRollup = async (companyId, { startDate, endDate } = {}) => {
 
   const totals = perOutlet.reduce(
     (acc, o) => ({
-      customersCount: acc.customersCount + o.customersCount,
       transactions: acc.transactions + o.transactions,
       pointsIssuedCenti: acc.pointsIssuedCenti + o.pointsIssuedCenti,
       pointsRedeemedCenti: acc.pointsRedeemedCenti + o.pointsRedeemedCenti,
@@ -67,7 +73,7 @@ const getCompanyRollup = async (companyId, { startDate, endDate } = {}) => {
       revenue: acc.revenue + o.revenue
     }),
     {
-      customersCount: 0, transactions: 0, pointsIssuedCenti: 0,
+      transactions: 0, pointsIssuedCenti: 0,
       pointsRedeemedCenti: 0, redemptionCount: 0, revenue: 0
     }
   );
@@ -90,6 +96,10 @@ const getCompanyRollup = async (companyId, { startDate, endDate } = {}) => {
       // Customer counts are a snapshot of who exists today, not a flow, so
       // they're never filtered by the date range — a customer who joined
       // outside the selected window is still a real customer of this outlet.
+      // Distinct CustomerAccounts, not summed per-outlet User rows — a
+      // customer loyal to two outlets of this company must count once, the
+      // same reasoning platformAnalyticsService uses for its platform-wide total.
+      customersCount: distinctCustomerAccountIds.size,
       outletCount: perOutlet.filter((o) => o.status !== "archived").length
     },
     outlets: perOutlet.map(present).sort((a, b) => b.revenue - a.revenue)

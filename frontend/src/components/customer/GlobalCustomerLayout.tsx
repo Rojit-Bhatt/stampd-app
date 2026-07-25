@@ -78,7 +78,12 @@ export function GlobalCustomerLayout() {
   // data, a failed background refetch leaves status "success" and isError
   // false, so a session going stale mid-visit would never be caught.
   const { error: myTenantsErrorObj } = useMyTenants();
-  const myTenantsError = Boolean(myTenantsErrorObj);
+  // Restricted to an actual auth failure, not any error — a transient 500 or
+  // network blip on a mobile connection isn't the session going bad, and
+  // logging the customer out over it is an unnecessary forced re-login. The
+  // query's own retries already absorb genuinely transient failures.
+  const myTenantsStatus = (myTenantsErrorObj as (Error & { status?: number }) | null)?.status;
+  const myTenantsError = myTenantsStatus === 401 || myTenantsStatus === 403;
 
   useEffect(() => {
     if (!globalAccount) {
