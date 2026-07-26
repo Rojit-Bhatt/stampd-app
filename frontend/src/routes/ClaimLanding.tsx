@@ -240,6 +240,7 @@ export default function ClaimLanding() {
     try {
       await registerUser(
         name, email, password, phone,
+        undefined,
         pendingClaimId ?? undefined,
         claimSecret ?? undefined,
       );

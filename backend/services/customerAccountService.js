@@ -68,7 +68,10 @@ const formatAccountSummary = (account) => ({
   name: account.name,
   email: account.email,
   emailVerified: account.emailVerified,
-  avatarVersion: account.avatarVersion || 0
+  avatarVersion: account.avatarVersion || 0,
+  marketingConsent: account.marketingConsent,
+  birthdayMonth: account.birthdayMonth ?? null,
+  birthdayDay: account.birthdayDay ?? null
 });
 
 const formatGlobalSessionPayload = (account) => ({
@@ -153,7 +156,7 @@ const ensureMembership = async ({ customerAccountId, organizationId, account }) 
   return user;
 };
 
-const registerAccount = async ({ name, email, password, phone, pendingClaimId, claimSecret }) => {
+const registerAccount = async ({ name, email, password, phone, pendingClaimId, claimSecret, marketingEmailConsent }) => {
   if (!name || !email || !password) {
     throw createHttpError("Name, email, and password are required.", 400);
   }
@@ -173,7 +176,8 @@ const registerAccount = async ({ name, email, password, phone, pendingClaimId, c
     email: normalizedEmail,
     password: hashedPassword,
     phone: phone.trim(),
-    emailVerified: false
+    emailVerified: false,
+    ...(marketingEmailConsent ? { marketingConsent: { email: { granted: true, updatedAt: new Date() } } } : {})
   });
 
   await sendVerifyEmail(account);

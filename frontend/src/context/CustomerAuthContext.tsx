@@ -9,6 +9,18 @@ export interface User {
   emailVerified?: boolean;
 }
 
+export interface MarketingConsentChannel {
+  granted: boolean;
+  updatedAt: string | null;
+}
+
+export interface MarketingConsent {
+  email: MarketingConsentChannel;
+  sms: MarketingConsentChannel;
+  whatsapp: MarketingConsentChannel;
+  push: MarketingConsentChannel;
+}
+
 export interface GlobalAccount {
   id: string;
   name: string;
@@ -16,6 +28,9 @@ export interface GlobalAccount {
   emailVerified: boolean;
   /** 0 = no profile picture. Bumped by the backend on every upload/removal. */
   avatarVersion?: number;
+  marketingConsent?: MarketingConsent;
+  birthdayMonth?: number | null;
+  birthdayDay?: number | null;
 }
 
 interface CustomerAuthContextType {
@@ -38,6 +53,7 @@ interface CustomerAuthContextType {
     email: string,
     password: string,
     phone: string,
+    marketingEmailConsent?: boolean,
     pendingClaimId?: string,
     // Proof the caller actually scanned the QR. Register is unauthenticated,
     // so without this a pending claim could be bound by anyone who guessed
@@ -173,12 +189,13 @@ export function CustomerAuthProvider({ children }: { children: React.ReactNode }
     email: string,
     password: string,
     phone: string,
+    marketingEmailConsent?: boolean,
     pendingClaimId?: string,
     claimSecret?: string,
   ) => {
     const res = await apiRequest<{ success: boolean; token?: string; account?: GlobalAccount; message: string }>(
       "/api/customer-auth/register",
-      { method: "POST", body: { name, email, password, phone, pendingClaimId, claimSecret } },
+      { method: "POST", body: { name, email, password, phone, marketingEmailConsent, pendingClaimId, claimSecret } },
     );
     if (!res.success) {
       throw new Error(res.message || "Failed to register.");

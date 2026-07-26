@@ -46,6 +46,24 @@ async function main() {
         settings.body.settings.messagingTriggers?.inactivity?.days === null &&
         settings.body.settings.messagingTriggers?.birthday?.enabled === false
     );
+
+    const emailOptedIn = `msg_optin_${Date.now()}@test.co`;
+    await api("/api/customer-auth/register", {
+      method: "POST",
+      slug: null,
+      body: { name: "Opted In", email: emailOptedIn, password: "password123", phone: "9811110001", marketingEmailConsent: true },
+    });
+    const optedInLogin = await api("/api/customer-auth/login", { method: "POST", slug: null, body: { email: emailOptedIn, password: "password123" } });
+    check("registering with marketingEmailConsent:true grants email consent", optedInLogin.body.account?.marketingConsent?.email?.granted === true);
+
+    const emailOptedOut = `msg_optout_${Date.now()}@test.co`;
+    await api("/api/customer-auth/register", {
+      method: "POST",
+      slug: null,
+      body: { name: "Opted Out", email: emailOptedOut, password: "password123", phone: "9811110002" },
+    });
+    const optedOutLogin = await api("/api/customer-auth/login", { method: "POST", slug: null, body: { email: emailOptedOut, password: "password123" } });
+    check("registering without marketingEmailConsent leaves email consent false", optedOutLogin.body.account?.marketingConsent?.email?.granted === false);
   } finally {
     stop();
   }
