@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { TrendingUp, TrendingDown, Download } from "lucide-react";
-import { ResponsiveContainer, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip } from "recharts";
+import { ResponsiveContainer, LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip } from "recharts";
 import { apiRequest, apiUrl } from "../../lib/api";
 import { Skeleton } from "../../components/ui/skeleton";
 import { DateRangeFilter, defaultDateRange, type DateRangeValue } from "../../components/shared/DateRangeFilter";
@@ -10,6 +10,14 @@ import { Button } from "@/components/ui/button";
 interface DashboardMetric {
   value: number;
   trend: number | null;
+}
+
+interface TierDistribution {
+  Bronze: number;
+  Silver: number;
+  Gold: number;
+  Platinum: number;
+  untiered: number;
 }
 
 interface PlatformAnalyticsData {
@@ -22,6 +30,7 @@ interface PlatformAnalyticsData {
   revenue: DashboardMetric;
   redemptions: DashboardMetric;
   pointsVelocity: { date: string; points: number }[];
+  tierDistribution: TierDistribution;
 }
 
 const shortDate = (iso: string) => new Date(iso).toLocaleDateString(undefined, { month: "short", day: "numeric" });
@@ -195,6 +204,32 @@ export default function PlatformAnalytics() {
               <Tooltip />
               <Line type="monotone" dataKey="points" stroke="var(--primary)" strokeWidth={2} dot={false} />
             </LineChart>
+          </ResponsiveContainer>
+        )}
+      </div>
+
+      <div className="mt-6 rounded-[var(--radius-card)] border border-[var(--line)] bg-[var(--surface)] p-6 shadow-ambient">
+        <h3 className="mb-1 font-display text-lg font-bold text-[var(--ink)]">Tier distribution</h3>
+        <p className="mb-4 text-[13px] text-[var(--muted)]">How many customers fall into each tier, across every business.</p>
+        {isLoading || !stats ? (
+          <Skeleton className="h-[220px] w-full rounded-xl" />
+        ) : (
+          <ResponsiveContainer width="100%" height={220}>
+            <BarChart
+              data={[
+                { label: "Bronze", count: stats.tierDistribution.Bronze },
+                { label: "Silver", count: stats.tierDistribution.Silver },
+                { label: "Gold", count: stats.tierDistribution.Gold },
+                { label: "Platinum", count: stats.tierDistribution.Platinum },
+                { label: "Untiered", count: stats.tierDistribution.untiered },
+              ]}
+            >
+              <CartesianGrid strokeDasharray="3 3" stroke="var(--line)" />
+              <XAxis dataKey="label" tick={{ fontSize: 12 }} stroke="var(--soft)" />
+              <YAxis tick={{ fontSize: 12 }} stroke="var(--soft)" allowDecimals={false} />
+              <Tooltip />
+              <Bar dataKey="count" fill="var(--primary)" radius={[4, 4, 0, 0]} />
+            </BarChart>
           </ResponsiveContainer>
         )}
       </div>
