@@ -6,6 +6,8 @@ const CustomerAccount = require("../models/CustomerAccount");
 const PointsTransaction = require("../models/PointsTransaction");
 const { toPoints } = require("../utils/pointsMath");
 const { resolveDateRange } = require("./reportService");
+const { TIER_LABELS } = require("../config/platform");
+const { resolveTier } = require("./tierService");
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 const WEEK_MS = 7 * DAY_MS;
@@ -23,6 +25,47 @@ const weekOverWeekTrend = (current, previous) => {
 // not a leak. It never exposes which specific tenant a customer belongs
 // to, only aggregate counts/sums, so it doesn't violate the per-tenant
 // isolation invariant that governs every other report in this codebase.
+// Only scans outlets that have at least one tier label actually configured
+// — most outlets won't, and skipping them avoids a ledger query per
+// customer at outlets with nothing to compute. Reuses each qualifying
+// outlet's already-fetched org/earns across all its customers (same
+// {org, earns} reuse tierService.resolveTier already supports), never a
+// fresh query per customer.
+const getPlatformTierDistribution = async () => {
+  const orgs = await Organization.find({});
+  const counts = { untiered: 0 };
+  for (const label of TIER_LABELS) counts[label] = 0;
+
+  for (const org of orgs) {
+    const configured = TIER_LABELS.some((label) => {
+      const t = org.tierThresholds && org.tierThresholds[label];
+      return t && t.minVisits !== null && t.minVisits !== undefined && t.minSpend !== null && t.minSpend !== undefined;
+    });
+    if (!configured) continue;
+
+    const customers = await User.find({ role: "customer", organizationId: org._id });
+    const earns = await PointsTransaction.find({ organizationId: org._id, type: "earn" });
+    const earnsByCustomer = new Map();
+    for (const t of earns) {
+      const key = t.userId.toString();
+      if (!earnsByCustomer.has(key)) earnsByCustomer.set(key, []);
+      earnsByCustomer.get(key).push(t);
+    }
+
+    for (const customer of customers) {
+      const customerEarns = earnsByCustomer.get(customer._id.toString()) || [];
+      const tier = await resolveTier(org._id, customer._id, { org, earns: customerEarns });
+      if (tier && Object.prototype.hasOwnProperty.call(counts, tier)) {
+        counts[tier] += 1;
+      } else {
+        counts.untiered += 1;
+      }
+    }
+  }
+
+  return counts;
+};
+
 const getPlatformAnalytics = async () => {
   const now = new Date();
   const currentStart = new Date(now.getTime() - WEEK_MS);
@@ -80,6 +123,8 @@ const getPlatformAnalytics = async () => {
     points: toPoints(centi)
   }));
 
+  const tierDistribution = await getPlatformTierDistribution();
+
   return {
     // Point-in-time totals, not flows — deliberately no trend badge, same
     // reasoning as pointsOutstanding on the outlet-level dashboard.
@@ -91,7 +136,8 @@ const getPlatformAnalytics = async () => {
     pointsIssued: { value: toPoints(pointsCurrent), trend: weekOverWeekTrend(pointsCurrent, pointsPrevious) },
     revenue: { value: Math.round(revenueCurrent * 100) / 100, trend: weekOverWeekTrend(revenueCurrent, revenuePrevious) },
     redemptions: { value: redeemsCurrent.length, trend: weekOverWeekTrend(redeemsCurrent.length, redeemsPrevious.length) },
-    pointsVelocity
+    pointsVelocity,
+    tierDistribution
   };
 };
 
@@ -189,4 +235,4 @@ const buildPlatformCompanyReportWorkbook = async ({ rows, start, end }) => {
   return workbook.xlsx.writeBuffer();
 };
 
-module.exports = { getPlatformAnalytics, getPlatformCompanyReportRows, buildPlatformCompanyReportWorkbook };
+module.exports = { getPlatformAnalytics, getPlatformTierDistribution, getPlatformCompanyReportRows, buildPlatformCompanyReportWorkbook };

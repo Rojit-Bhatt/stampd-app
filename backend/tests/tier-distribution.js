@@ -10,6 +10,7 @@
  */
 
 const { bootServer } = require("./helpers/bootServer");
+const { makeSiblingOutlet } = require("./helpers/makeOutlet");
 const ExcelJS = require("exceljs");
 
 async function readSheetAsObjects(buffer, sheetIndex = 0) {
@@ -121,6 +122,30 @@ async function main() {
     const rowC = customersRows.find((r) => r.Email === emailC);
     check("customers workbook has a Tier column with the right value for a Silver customer", rowA?.Tier === "Silver");
     check("customers workbook shows an em-dash for an untiered customer", rowC?.Tier === "—");
+
+    // Platform-level: a sibling outlet with NO tier thresholds configured
+    // must be entirely excluded from the tally (not even counted as
+    // untiered) — durbarmarg is the only outlet configured in this fresh
+    // process, so the platform tally must match durbarmarg's own exactly.
+    const sibling = await makeSiblingOutlet(baseUrl, { label: `dist${Date.now()}` });
+    const siblingEmail = `dist_sib_${Date.now()}@test.co`;
+    await api("/api/auth/register", { method: "POST", slug: sibling.outletSlug, body: { name: "Dist Sib", email: siblingEmail, password: "password123", phone: "9811111114" } });
+    const mintSib = await api("/__test__/mint-token", { method: "POST", body: { email: siblingEmail, type: "email_verify" } });
+    await fetch(`${baseUrl}/api/auth/verify-email?token=${mintSib.body.token}`, { headers: { "X-Company-Slug": COMPANY, "X-Outlet-Slug": sibling.outletSlug } });
+
+    const platformLogin = await api("/api/platform/login", { method: "POST", slug: null, body: { email: "admin@stampd.co", password: "password" } });
+    const platformToken = platformLogin.body.token;
+    const platformAnalytics = await fetch(`${baseUrl}/api/platform/analytics`, { headers: { Authorization: `Bearer ${platformToken}` } }).then((r) => r.json());
+
+    check("platform analytics includes tierDistribution", Boolean(platformAnalytics.tierDistribution));
+    check(
+      "platform tierDistribution matches durbarmarg's own counts exactly (sibling outlet has no tiers configured, contributes nothing)",
+      platformAnalytics.tierDistribution?.Bronze === dist.body.Bronze &&
+        platformAnalytics.tierDistribution?.Silver === dist.body.Silver &&
+        platformAnalytics.tierDistribution?.Gold === dist.body.Gold &&
+        platformAnalytics.tierDistribution?.Platinum === dist.body.Platinum &&
+        platformAnalytics.tierDistribution?.untiered === dist.body.untiered
+    );
   } finally {
     stop();
   }
