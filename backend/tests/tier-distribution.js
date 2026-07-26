@@ -10,6 +10,25 @@
  */
 
 const { bootServer } = require("./helpers/bootServer");
+const ExcelJS = require("exceljs");
+
+async function readSheetAsObjects(buffer, sheetIndex = 0) {
+  const workbook = new ExcelJS.Workbook();
+  await workbook.xlsx.load(buffer);
+  const sheet = workbook.worksheets[sheetIndex];
+  const rows = [];
+  sheet.eachRow((row) => {
+    const values = [];
+    row.eachCell({ includeEmpty: true }, (cell) => values.push(cell.value));
+    rows.push(values);
+  });
+  const header = rows[0] || [];
+  return rows.slice(1).map((row) => {
+    const obj = {};
+    header.forEach((h, i) => { obj[h] = row[i]; });
+    return obj;
+  });
+}
 
 const COMPANY = "coffesarowar";
 const SLUG = "durbarmarg";
@@ -91,6 +110,17 @@ async function main() {
     check("Gold count is unaffected (unconfigured)", dist.body.Gold === baseline.body.Gold && dist.body.Gold === 0);
     check("Platinum count is unaffected (unconfigured)", dist.body.Platinum === baseline.body.Platinum && dist.body.Platinum === 0);
     check("untiered count increases by exactly 1 (customer C)", dist.body.untiered === baseline.body.untiered + 1);
+
+    const customersDownloadRaw = await fetch(`${baseUrl}/api/admin/reports/customers/download`, {
+      headers: { Authorization: `Bearer ${adminToken}`, "X-Company-Slug": COMPANY, "X-Outlet-Slug": SLUG },
+    });
+    check("customers download -> 200", customersDownloadRaw.status === 200);
+    const customersBuf = Buffer.from(await customersDownloadRaw.arrayBuffer());
+    const customersRows = await readSheetAsObjects(customersBuf);
+    const rowA = customersRows.find((r) => r.Email === emailA);
+    const rowC = customersRows.find((r) => r.Email === emailC);
+    check("customers workbook has a Tier column with the right value for a Silver customer", rowA?.Tier === "Silver");
+    check("customers workbook shows an em-dash for an untiered customer", rowC?.Tier === "—");
   } finally {
     stop();
   }

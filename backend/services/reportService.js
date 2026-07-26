@@ -234,7 +234,7 @@ const buildCustomersWorkbook = async (organizationId) => {
   const sheet = workbook.addWorksheet("Customers");
   sheet.addRow([
     "Name", "Email", "Phone", "Address", "Customer #",
-    "Points Balance", "Lifetime Points", "Redemptions", "Total Spent", "Last Activity"
+    "Points Balance", "Lifetime Points", "Redemptions", "Total Spent", "Last Activity", "Tier"
   ]);
   for (const r of rows) {
     sheet.addRow([
@@ -247,7 +247,8 @@ const buildCustomersWorkbook = async (organizationId) => {
       r.lifetimePoints,
       r.redemptionCount,
       r.totalSpent,
-      r.lastActivityAt ? new Date(r.lastActivityAt).toISOString().slice(0, 10) : ""
+      r.lastActivityAt ? new Date(r.lastActivityAt).toISOString().slice(0, 10) : "",
+      r.tier || "—"
     ]);
   }
   return workbook.xlsx.writeBuffer();
