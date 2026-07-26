@@ -69,6 +69,14 @@ interface DashboardStats {
   pointsActivity: { weekStart: string; earned: number; redeemed: number }[];
 }
 
+interface TierDistribution {
+  Bronze: number;
+  Silver: number;
+  Gold: number;
+  Platinum: number;
+  untiered: number;
+}
+
 // Chart-only categorical pair — kept distinct from the identity/status tokens,
 // which are not series colors. Validated for chroma, CVD separation and
 // contrast against a white card rather than picked by eye.
@@ -173,6 +181,16 @@ export default function AdminOverview() {
     queryKey: ["adminDashboardStats", orgId],
     queryFn: async () => {
       const res = await apiRequest<{ success: boolean } & DashboardStats>("/api/admin/dashboard-stats", {
+        role: "admin",
+      });
+      return res;
+    },
+  });
+
+  const { data: tierDistribution } = useQuery<TierDistribution>({
+    queryKey: ["adminTierDistribution", orgId],
+    queryFn: async () => {
+      const res = await apiRequest<{ success: boolean } & TierDistribution>("/api/admin/tier-distribution", {
         role: "admin",
       });
       return res;
@@ -376,6 +394,37 @@ export default function AdminOverview() {
           </ResponsiveContainer>
         </Panel>
       </div>
+
+      <Panel title="Tier distribution" subtitle="How many customers fall into each tier right now.">
+        <ResponsiveContainer width="100%" height={220}>
+          <BarChart
+            data={
+              tierDistribution
+                ? [
+                    { label: "Bronze", count: tierDistribution.Bronze },
+                    { label: "Silver", count: tierDistribution.Silver },
+                    { label: "Gold", count: tierDistribution.Gold },
+                    { label: "Platinum", count: tierDistribution.Platinum },
+                    { label: "Untiered", count: tierDistribution.untiered },
+                  ]
+                : []
+            }
+            margin={{ top: 4, right: 8, left: -20, bottom: 0 }}
+          >
+            <CartesianGrid stroke="var(--line)" strokeDasharray="3 3" vertical={false} />
+            <XAxis dataKey="label" tick={{ fill: "var(--muted)", fontSize: 12 }} axisLine={{ stroke: "var(--line)" }} tickLine={false} />
+            <YAxis tick={{ fill: "var(--muted)", fontSize: 12 }} axisLine={false} tickLine={false} width={36} allowDecimals={false} />
+            <Tooltip
+              contentStyle={{
+                background: "var(--surface)",
+                border: "1px solid var(--line)",
+                borderRadius: 12,
+              }}
+            />
+            <Bar dataKey="count" name="Customers" fill="var(--primary)" radius={[4, 4, 0, 0]} />
+          </BarChart>
+        </ResponsiveContainer>
+      </Panel>
 
       <Panel
         title="Customers"
