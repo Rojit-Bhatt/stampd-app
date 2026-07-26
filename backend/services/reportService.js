@@ -10,6 +10,7 @@ const {
 } = require("./pointsService");
 const { toPoints } = require("../utils/pointsMath");
 const { resolveDateRange } = require("../utils/dateRange");
+const { TIER_LABELS } = require("../config/platform");
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 const WEEK_MS = 7 * DAY_MS;
@@ -195,6 +196,22 @@ const getDashboardStats = async (organizationId) => {
   };
 };
 
+const getTierDistributionStats = async (organizationId) => {
+  const rows = await getCustomerDetailRows(organizationId);
+  const counts = { untiered: 0 };
+  for (const label of TIER_LABELS) counts[label] = 0;
+
+  for (const row of rows) {
+    if (row.tier && Object.prototype.hasOwnProperty.call(counts, row.tier)) {
+      counts[row.tier] += 1;
+    } else {
+      counts.untiered += 1;
+    }
+  }
+
+  return counts;
+};
+
 const buildSummaryWorkbook = async (stats) => {
   const workbook = new ExcelJS.Workbook();
   const sheet = workbook.addWorksheet("Summary");
@@ -263,6 +280,7 @@ const buildTransactionsWorkbook = async (organizationId, { startDate, endDate } 
 module.exports = {
   getSummaryStats,
   getDashboardStats,
+  getTierDistributionStats,
   getPointsOutstandingCenti,
   getPointsExpiredCenti,
   buildSummaryWorkbook,

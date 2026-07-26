@@ -1,6 +1,7 @@
 const {
   getSummaryStats,
   getDashboardStats,
+  getTierDistributionStats,
   buildSummaryWorkbook,
   buildCustomersWorkbook,
   buildTransactionsWorkbook,
@@ -21,6 +22,15 @@ const getSummary = async (req, res, next) => {
       startDate: req.query.startDate,
       endDate: req.query.endDate,
     });
+    res.status(200).json({ success: true, ...stats });
+  } catch (error) {
+    next(error);
+  }
+};
+
+const getTierDistribution = async (req, res, next) => {
+  try {
+    const stats = await getTierDistributionStats(req.user.organizationId);
     res.status(200).json({ success: true, ...stats });
   } catch (error) {
     next(error);
@@ -68,6 +78,7 @@ const downloadTransactions = async (req, res, next) => {
 module.exports = {
   getDashboard,
   getSummary,
+  getTierDistribution,
   downloadSummary,
   downloadCustomers,
   downloadTransactions,
