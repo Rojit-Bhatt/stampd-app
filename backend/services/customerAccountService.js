@@ -331,6 +331,24 @@ const updateAccountProfile = async ({ customerAccountId, name }) => {
   return formatAccountPayload(account);
 };
 
+const updatePreferences = async ({ customerAccountId, emailOptIn, birthdayMonth, birthdayDay }) => {
+  const account = await CustomerAccount.findOne({ _id: customerAccountId });
+  if (!account) throw createHttpError("Account not found.", 404);
+
+  if (emailOptIn !== undefined) {
+    account.marketingConsent.email = { granted: Boolean(emailOptIn), updatedAt: new Date() };
+  }
+  if (birthdayMonth !== undefined) {
+    account.birthdayMonth = birthdayMonth === null ? null : Number(birthdayMonth);
+  }
+  if (birthdayDay !== undefined) {
+    account.birthdayDay = birthdayDay === null ? null : Number(birthdayDay);
+  }
+
+  await account.save();
+  return formatAccountPayload(account);
+};
+
 const changeAccountPassword = async ({ customerAccountId, currentPassword, newPassword }) => {
   if (!currentPassword || !newPassword) {
     throw createHttpError("Current and new password are required.", 400);
@@ -685,6 +703,7 @@ module.exports = {
   authenticateWithGoogle,
   completeProfile,
   updateAccountProfile,
+  updatePreferences,
   changeAccountPassword,
   verifyAccountEmail,
   resendVerification,

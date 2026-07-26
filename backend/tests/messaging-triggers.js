@@ -64,6 +64,24 @@ async function main() {
     });
     const optedOutLogin = await api("/api/customer-auth/login", { method: "POST", slug: null, body: { email: emailOptedOut, password: "password123" } });
     check("registering without marketingEmailConsent leaves email consent false", optedOutLogin.body.account?.marketingConsent?.email?.granted === false);
+
+    const prefsToken = optedOutLogin.body.token;
+    const setEmailOn = await api("/api/customer-auth/preferences", {
+      method: "PATCH",
+      token: prefsToken,
+      slug: null,
+      body: { emailOptIn: true },
+    });
+    check("PATCH preferences turns email consent on", setEmailOn.body.account?.marketingConsent?.email?.granted === true);
+
+    const setBirthday = await api("/api/customer-auth/preferences", {
+      method: "PATCH",
+      token: prefsToken,
+      slug: null,
+      body: { birthdayMonth: 5, birthdayDay: 20 },
+    });
+    check("PATCH preferences sets birthday", setBirthday.body.account?.birthdayMonth === 5 && setBirthday.body.account?.birthdayDay === 20);
+    check("PATCH preferences with only birthday leaves email consent untouched", setBirthday.body.account?.marketingConsent?.email?.granted === true);
   } finally {
     stop();
   }

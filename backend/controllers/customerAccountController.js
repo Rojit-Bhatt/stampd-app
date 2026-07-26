@@ -2,7 +2,7 @@ const multer = require("multer");
 const {
   registerAccount, loginAccount, authenticateWithGoogle,
   verifyAccountEmail, resendVerification, forgotPassword, resetPassword,
-  completeProfile, updateAccountProfile, changeAccountPassword,
+  completeProfile, updateAccountProfile, updatePreferences, changeAccountPassword,
   enterTenant, getMyTenants,
   setAvatar, removeAvatar, getAvatar, MAX_AVATAR_BYTES,
   deleteCustomerAccount
@@ -91,6 +91,21 @@ const updateProfileController = async (req, res, next) => {
     const result = await updateAccountProfile({
       customerAccountId: req.customerAccount.id,
       name: req.body.name
+    });
+    res.status(200).json(result);
+  } catch (error) {
+    next(error);
+  }
+};
+
+const updatePreferencesController = async (req, res, next) => {
+  try {
+    const { emailOptIn, birthdayMonth, birthdayDay } = req.body;
+    const result = await updatePreferences({
+      customerAccountId: req.customerAccount.id,
+      emailOptIn,
+      birthdayMonth,
+      birthdayDay
     });
     res.status(200).json(result);
   } catch (error) {
@@ -251,6 +266,7 @@ module.exports = {
   resetPassword: resetPasswordController,
   completeProfile: completeProfileController,
   updateProfile: updateProfileController,
+  updatePreferences: updatePreferencesController,
   changePassword: changePasswordController,
   deleteAccount: deleteAccountController,
   enterTenant: enterTenantController,

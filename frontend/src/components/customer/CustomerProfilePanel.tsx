@@ -45,6 +45,12 @@ export function CustomerProfilePanel({ onLogout }: { onLogout: () => void }) {
   const [savingPassword, setSavingPassword] = useState(false);
   const [resending, setResending] = useState(false);
 
+  const [emailOptIn, setEmailOptIn] = useState(globalAccount?.marketingConsent?.email?.granted ?? false);
+  const [savingEmailOptIn, setSavingEmailOptIn] = useState(false);
+  const [birthdayMonth, setBirthdayMonth] = useState<number | "">(globalAccount?.birthdayMonth ?? "");
+  const [birthdayDay, setBirthdayDay] = useState<number | "">(globalAccount?.birthdayDay ?? "");
+  const [savingBirthday, setSavingBirthday] = useState(false);
+
   const [showConfirmDelete, setShowConfirmDelete] = useState(false);
   const [confirmEmail, setConfirmEmail] = useState("");
   const [deleting, setDeleting] = useState(false);
@@ -111,6 +117,44 @@ export function CustomerProfilePanel({ onLogout }: { onLogout: () => void }) {
     }
   };
 
+  const saveEmailOptIn = async (next: boolean) => {
+    setEmailOptIn(next);
+    setSavingEmailOptIn(true);
+    try {
+      const res = await apiRequest<{ success: boolean; account: GlobalAccount }>(
+        "/api/customer-auth/preferences",
+        { method: "PATCH", role: "customer-global", body: { emailOptIn: next } },
+      );
+      setGlobalAccountData(res.account);
+      toast.success(next ? "You're opted in!" : "Opted out.");
+    } catch (err) {
+      setEmailOptIn(!next);
+      toast.error((err as Error).message || "Couldn't update that — try again.");
+    } finally {
+      setSavingEmailOptIn(false);
+    }
+  };
+
+  const saveBirthday = async () => {
+    setSavingBirthday(true);
+    try {
+      const res = await apiRequest<{ success: boolean; account: GlobalAccount }>(
+        "/api/customer-auth/preferences",
+        {
+          method: "PATCH",
+          role: "customer-global",
+          body: { birthdayMonth: birthdayMonth === "" ? null : birthdayMonth, birthdayDay: birthdayDay === "" ? null : birthdayDay },
+        },
+      );
+      setGlobalAccountData(res.account);
+      toast.success("Birthday saved!");
+    } catch (err) {
+      toast.error((err as Error).message || "Couldn't update that — try again.");
+    } finally {
+      setSavingBirthday(false);
+    }
+  };
+
   const resendVerification = async () => {
     setResending(true);
     try {
@@ -144,6 +188,45 @@ export function CustomerProfilePanel({ onLogout }: { onLogout: () => void }) {
         <Button onClick={saveName} disabled={savingName || !name.trim()}>
           {savingName ? "Saving…" : "Save name"}
         </Button>
+      </Card>
+
+      <Card title="Email updates">
+        <label className="flex items-center gap-2 text-sm text-[var(--muted)]">
+          <input
+            type="checkbox"
+            checked={emailOptIn}
+            disabled={savingEmailOptIn}
+            onChange={(e) => saveEmailOptIn(e.target.checked)}
+          />
+          Send me offers and updates by email
+        </label>
+      </Card>
+
+      <Card title="Birthday">
+        <p className="mb-3 text-sm text-[var(--muted)]">Optional — we'll send you something nice on the day.</p>
+        <div className="flex items-center gap-2">
+          <input
+            type="number"
+            min={1}
+            max={12}
+            placeholder="Month"
+            value={birthdayMonth}
+            onChange={(e) => setBirthdayMonth(e.target.value === "" ? "" : Number(e.target.value))}
+            className="w-20 rounded-[var(--radius-btn)] border border-[var(--line)] bg-[var(--surface)] px-3 py-2 text-sm"
+          />
+          <input
+            type="number"
+            min={1}
+            max={31}
+            placeholder="Day"
+            value={birthdayDay}
+            onChange={(e) => setBirthdayDay(e.target.value === "" ? "" : Number(e.target.value))}
+            className="w-20 rounded-[var(--radius-btn)] border border-[var(--line)] bg-[var(--surface)] px-3 py-2 text-sm"
+          />
+          <Button onClick={saveBirthday} disabled={savingBirthday}>
+            {savingBirthday ? "Saving…" : "Save"}
+          </Button>
+        </div>
       </Card>
 
       <Card title="Email verification">

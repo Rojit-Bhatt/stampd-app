@@ -2,7 +2,7 @@ const express = require("express");
 const {
   register, login, googleAuth,
   verifyEmail, resendVerification, forgotPassword, resetPassword,
-  completeProfile, updateProfile, changePassword, enterTenant, getMyTenants,
+  completeProfile, updateProfile, updatePreferences, changePassword, enterTenant, getMyTenants,
   uploadAvatarFile, uploadAvatar, deleteAvatar, getAvatar
 } = require("../controllers/customerAccountController");
 const { resolveTenant } = require("../middleware/tenantMiddleware");
@@ -30,6 +30,7 @@ router.post("/complete-profile", verifyGlobalSession, completeProfile);
 // never reaches what sign-in actually checks — so the customer app uses
 // these, and /api/account is left to staff and platform admins.
 router.patch("/profile", verifyGlobalSession, updateProfile);
+router.patch("/preferences", verifyGlobalSession, updatePreferences);
 router.post("/change-password", authLimiter, verifyGlobalSession, changePassword);
 
 // Profile picture. Writes need the global session (the avatar belongs to the
