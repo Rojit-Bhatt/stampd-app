@@ -16,6 +16,26 @@ const CustomerAccountSchema = new mongoose.Schema({
   // the account, and the cache-buster that lets the served image be marked
   // immutable (see the avatar endpoint in customerAccountController).
   avatarVersion: { type: Number, default: 0 },
+  marketingConsent: {
+    email: {
+      granted: { type: Boolean, default: false },
+      updatedAt: { type: Date, default: null }
+    },
+    sms: {
+      granted: { type: Boolean, default: false },
+      updatedAt: { type: Date, default: null }
+    },
+    whatsapp: {
+      granted: { type: Boolean, default: false },
+      updatedAt: { type: Date, default: null }
+    },
+    push: {
+      granted: { type: Boolean, default: false },
+      updatedAt: { type: Date, default: null }
+    }
+  },
+  birthdayMonth: { type: Number, min: 1, max: 12, default: null },
+  birthdayDay: { type: Number, min: 1, max: 31, default: null },
   createdAt: { type: Date, default: Date.now }
 });
 
