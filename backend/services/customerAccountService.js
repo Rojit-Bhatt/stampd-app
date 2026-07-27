@@ -2,6 +2,7 @@ const bcrypt = require("bcryptjs");
 const crypto = require("crypto");
 const { OAuth2Client } = require("google-auth-library");
 const CustomerAccount = require("../models/CustomerAccount");
+const PushSubscription = require("../models/PushSubscription");
 const CustomerAvatar = require("../models/CustomerAvatar");
 const AccountVerificationToken = require("../models/AccountVerificationToken");
 const User = require("../models/User");
@@ -346,6 +347,36 @@ const updatePreferences = async ({ customerAccountId, emailOptIn, birthdayMonth,
   }
 
   await account.save();
+  return formatAccountPayload(account);
+};
+
+const savePushSubscription = async ({ customerAccountId, endpoint, keys }) => {
+  await PushSubscription.findOneAndUpdate(
+    { endpoint },
+    { $set: { customerAccountId, endpoint, keys } },
+    { upsert: true, new: true }
+  );
+
+  const account = await CustomerAccount.findOne({ _id: customerAccountId });
+  if (!account) throw createHttpError("Account not found.", 404);
+  account.marketingConsent.push = { granted: true, updatedAt: new Date() };
+  await account.save();
+
+  return formatAccountPayload(account);
+};
+
+const removePushSubscription = async ({ customerAccountId, endpoint }) => {
+  await PushSubscription.deleteOne({ endpoint, customerAccountId });
+
+  const remaining = await PushSubscription.countDocuments({ customerAccountId });
+  const account = await CustomerAccount.findOne({ _id: customerAccountId });
+  if (!account) throw createHttpError("Account not found.", 404);
+
+  if (remaining === 0) {
+    account.marketingConsent.push = { granted: false, updatedAt: new Date() };
+    await account.save();
+  }
+
   return formatAccountPayload(account);
 };
 
@@ -704,6 +735,8 @@ module.exports = {
   completeProfile,
   updateAccountProfile,
   updatePreferences,
+  savePushSubscription,
+  removePushSubscription,
   changeAccountPassword,
   verifyAccountEmail,
   resendVerification,

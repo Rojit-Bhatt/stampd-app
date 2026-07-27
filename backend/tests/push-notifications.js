@@ -143,6 +143,35 @@ async function main() {
 
     const subsCountResp = await fetch(`${baseUrl}/__test__/push-subscription-count?customerAccountId=${pruneCustomer.accountId}`).then((r) => r.json());
     check("a 410 response prunes the dead subscription", subsCountResp.count === 0);
+
+    const subsCustomer = await provisionTenantCustomer(api, "SubsFlow", "23");
+
+    const saveResp = await api("/api/customer-auth/push-subscription", {
+      method: "POST",
+      token: subsCustomer.globalToken,
+      slug: null,
+      body: { endpoint: "https://push.example/subs-1", keys: { p256dh: "p1", auth: "a1" } },
+    });
+    check("POST push-subscription grants push consent", saveResp.body.account?.marketingConsent?.push?.granted === true);
+
+    const saveResp2 = await api("/api/customer-auth/push-subscription", {
+      method: "POST",
+      token: subsCustomer.globalToken,
+      slug: null,
+      body: { endpoint: "https://push.example/subs-1", keys: { p256dh: "p1-updated", auth: "a1" } },
+    });
+    check("POSTing the same endpoint again succeeds (updates, not a duplicate)", saveResp2.status === 200);
+
+    const countAfterUpsert = await fetch(`${baseUrl}/__test__/push-subscription-count?customerAccountId=${subsCustomer.accountId}`).then((r) => r.json());
+    check("upserting the same endpoint results in exactly one row", countAfterUpsert.count === 1);
+
+    const deleteResp = await api("/api/customer-auth/push-subscription", {
+      method: "DELETE",
+      token: subsCustomer.globalToken,
+      slug: null,
+      body: { endpoint: "https://push.example/subs-1" },
+    });
+    check("DELETE revokes push consent when it was the last device", deleteResp.body.account?.marketingConsent?.push?.granted === false);
   } finally {
     stop();
   }

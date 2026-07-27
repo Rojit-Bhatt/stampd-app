@@ -2,7 +2,7 @@ const express = require("express");
 const {
   register, login, googleAuth,
   verifyEmail, resendVerification, forgotPassword, resetPassword,
-  completeProfile, updateProfile, updatePreferences, changePassword, enterTenant, getMyTenants,
+  completeProfile, updateProfile, updatePreferences, savePushSubscription, removePushSubscription, changePassword, enterTenant, getMyTenants,
   uploadAvatarFile, uploadAvatar, deleteAvatar, getAvatar
 } = require("../controllers/customerAccountController");
 const { resolveTenant } = require("../middleware/tenantMiddleware");
@@ -31,6 +31,8 @@ router.post("/complete-profile", verifyGlobalSession, completeProfile);
 // these, and /api/account is left to staff and platform admins.
 router.patch("/profile", verifyGlobalSession, updateProfile);
 router.patch("/preferences", verifyGlobalSession, updatePreferences);
+router.post("/push-subscription", verifyGlobalSession, savePushSubscription);
+router.delete("/push-subscription", verifyGlobalSession, removePushSubscription);
 router.post("/change-password", authLimiter, verifyGlobalSession, changePassword);
 
 // Profile picture. Writes need the global session (the avatar belongs to the

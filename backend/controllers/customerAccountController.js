@@ -2,7 +2,7 @@ const multer = require("multer");
 const {
   registerAccount, loginAccount, authenticateWithGoogle,
   verifyAccountEmail, resendVerification, forgotPassword, resetPassword,
-  completeProfile, updateAccountProfile, updatePreferences, changeAccountPassword,
+  completeProfile, updateAccountProfile, updatePreferences, savePushSubscription, removePushSubscription, changeAccountPassword,
   enterTenant, getMyTenants,
   setAvatar, removeAvatar, getAvatar, MAX_AVATAR_BYTES,
   deleteCustomerAccount
@@ -107,6 +107,26 @@ const updatePreferencesController = async (req, res, next) => {
       birthdayMonth,
       birthdayDay
     });
+    res.status(200).json(result);
+  } catch (error) {
+    next(error);
+  }
+};
+
+const savePushSubscriptionController = async (req, res, next) => {
+  try {
+    const { endpoint, keys } = req.body;
+    const result = await savePushSubscription({ customerAccountId: req.customerAccount.id, endpoint, keys });
+    res.status(200).json(result);
+  } catch (error) {
+    next(error);
+  }
+};
+
+const removePushSubscriptionController = async (req, res, next) => {
+  try {
+    const { endpoint } = req.body;
+    const result = await removePushSubscription({ customerAccountId: req.customerAccount.id, endpoint });
     res.status(200).json(result);
   } catch (error) {
     next(error);
@@ -267,6 +287,8 @@ module.exports = {
   completeProfile: completeProfileController,
   updateProfile: updateProfileController,
   updatePreferences: updatePreferencesController,
+  savePushSubscription: savePushSubscriptionController,
+  removePushSubscription: removePushSubscriptionController,
   changePassword: changePasswordController,
   deleteAccount: deleteAccountController,
   enterTenant: enterTenantController,
