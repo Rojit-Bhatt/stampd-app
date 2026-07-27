@@ -6,6 +6,7 @@ const PushSubscription = require("../models/PushSubscription");
 const { resolveTier } = require("./tierService");
 const { sendEmail } = require("./emailService");
 const { sendPushToSubscription } = require("./messagingService");
+const { sendSms } = require("./smsService");
 const { TIER_LABELS } = require("../config/platform");
 
 const createHttpError = (message, statusCode) => {
@@ -14,13 +15,13 @@ const createHttpError = (message, statusCode) => {
   return error;
 };
 
-const CHANNELS = ["email", "push"];
+const CHANNELS = ["email", "push", "sms"];
 const SEGMENT_TYPES = ["tier", "all"];
 
 const parseInput = (input) => {
   const channel = String(input.channel || "");
   if (!CHANNELS.includes(channel)) {
-    throw createHttpError("Pick a channel: email or push.", 400);
+    throw createHttpError("Pick a channel: email, push, or SMS.", 400);
   }
 
   const segmentType = String(input.segmentType || "");
@@ -192,7 +193,7 @@ const evaluateBroadcasts = async ({ organization, membership }) => {
         console.error(`Broadcast email failed for ${customer.email}:`, err.message);
         status = "failed";
       }
-    } else {
+    } else if (broadcast.channel === "push") {
       const subscriptions = await PushSubscription.find({ customerAccountId: customer._id });
       let anySucceeded = false;
       for (const sub of subscriptions) {
@@ -200,6 +201,16 @@ const evaluateBroadcasts = async ({ organization, membership }) => {
         if (result.ok) anySucceeded = true;
       }
       status = anySucceeded ? "sent" : "failed";
+    } else {
+      const result = await sendSms({
+        companyId: organization.companyId,
+        organizationId: organization._id,
+        to: customer.phone,
+        text: broadcast.body
+      });
+      if (result.sent) status = "sent";
+      else if (result.reason === "cap_reached" || result.reason === "sms_not_enabled") status = "cap_reached";
+      else status = "failed";
     }
 
     await BroadcastLog.create({

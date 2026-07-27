@@ -35,6 +35,14 @@ const CompanySchema = new mongoose.Schema({
     pointsExpiryDays: { type: Number, min: 0, default: DEFAULT_PROGRAM.pointsExpiryDays }
   },
 
+  // Nullable — null means SMS is not enabled for this company at all (no
+  // budget approved yet). A non-null value is the calendar-month spend
+  // ceiling in paisa (1 rupee = 100 paisa, same integer-money reasoning
+  // pointsMath.js already applies to points, avoiding float drift across
+  // many accumulated sends). Set by the platform admin only — see
+  // platformService.updateCompany.
+  smsMonthlyCapPaisa: { type: Number, min: 0, default: null },
+
   status: { type: String, enum: ["active", "suspended"], default: "active" },
   createdAt: { type: Date, default: Date.now }
 });

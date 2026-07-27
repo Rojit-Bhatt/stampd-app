@@ -1,4 +1,5 @@
 const { sendEmail } = require("./emailService");
+const { sendSms } = require("./smsService");
 const MessageLog = require("../models/MessageLog");
 const PointsTransaction = require("../models/PointsTransaction");
 const CustomerAccount = require("../models/CustomerAccount");
@@ -72,6 +73,19 @@ const sendTrigger = async (type, { organization, customer, membership, context =
       sendPushToSubscription(sub, { title: subject, body: stripHtml(html) });
     }
     if (subscriptions.length > 0) sent = true;
+  }
+
+  // Awaited (unlike email/push above) because smsService's cap check must
+  // resolve before this function can know whether to count it as sent —
+  // there's no fire-and-forget shortcut for "was this within budget."
+  if (customer.marketingConsent?.sms?.granted) {
+    const result = await sendSms({
+      companyId: organization.companyId,
+      organizationId: organization._id,
+      to: customer.phone,
+      text: stripHtml(html)
+    });
+    if (result.sent) sent = true;
   }
 
   if (!sent) {

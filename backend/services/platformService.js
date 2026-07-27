@@ -71,6 +71,7 @@ const buildCompanyStats = async (company) => {
     // platform console can show what they currently are — a PATCH endpoint
     // with no way to read the present value is a form you fill in blind.
     programDefaults: company.programDefaults,
+    smsMonthlyCapPaisa: company.smsMonthlyCapPaisa ?? null,
     owner: owner ? { name: owner.name, email: owner.email, emailVerified: owner.emailVerified } : null,
     outlets: outletRows.sort((a, b) => a.name.localeCompare(b.name)),
     outletCount: outletRows.filter((o) => o.status !== "archived").length,
@@ -153,12 +154,19 @@ const getCompanyById = async (id) => {
   return { success: true, company: await buildCompanyStats(company) };
 };
 
-const updateCompany = async (id, { name, status, ownerEmail, programDefaults, actorId, actorName }) => {
+const updateCompany = async (id, { name, status, ownerEmail, programDefaults, smsMonthlyCapPaisa, actorId, actorName }) => {
   const company = await Company.findOne({ _id: id });
   if (!company) throw createHttpError("Company not found.", 404);
 
   if (status !== undefined && status !== "active" && status !== "suspended") {
     throw createHttpError("status must be either 'active' or 'suspended'.", 400);
+  }
+
+  if (smsMonthlyCapPaisa !== undefined && smsMonthlyCapPaisa !== null) {
+    const cap = Number(smsMonthlyCapPaisa);
+    if (!Number.isFinite(cap) || cap < 0) {
+      throw createHttpError("smsMonthlyCapPaisa must be a non-negative number, or null.", 400);
+    }
   }
 
   // The inheritance root, editable after registration — without this a
@@ -169,6 +177,9 @@ const updateCompany = async (id, { name, status, ownerEmail, programDefaults, ac
   const updates = {};
   if (name !== undefined) updates.name = name.trim();
   if (status !== undefined) updates.status = status;
+  if (smsMonthlyCapPaisa !== undefined) {
+    updates.smsMonthlyCapPaisa = smsMonthlyCapPaisa === null ? null : Number(smsMonthlyCapPaisa);
+  }
   if (program) {
     // Merged, not replaced: a caller sending only earnPercent must not wipe
     // pointsExpiryDays. Assigned as a whole object because the mock DB turns
@@ -206,6 +217,9 @@ const updateCompany = async (id, { name, status, ownerEmail, programDefaults, ac
 
   const changeParts = [];
   if (updates.name !== undefined) changeParts.push(`name → "${updates.name}"`);
+  if (updates.smsMonthlyCapPaisa !== undefined) {
+    changeParts.push(`SMS cap → ${updates.smsMonthlyCapPaisa === null ? "disabled" : `${updates.smsMonthlyCapPaisa} paisa/month`}`);
+  }
   if (ownerEmailChanged) changeParts.push(`owner email → ${ownerResult.email}`);
   if (program) {
     changeParts.push(

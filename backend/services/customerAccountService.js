@@ -157,7 +157,7 @@ const ensureMembership = async ({ customerAccountId, organizationId, account }) 
   return user;
 };
 
-const registerAccount = async ({ name, email, password, phone, pendingClaimId, claimSecret, marketingEmailConsent }) => {
+const registerAccount = async ({ name, email, password, phone, pendingClaimId, claimSecret, marketingEmailConsent, marketingSmsConsent }) => {
   if (!name || !email || !password) {
     throw createHttpError("Name, email, and password are required.", 400);
   }
@@ -172,13 +172,18 @@ const registerAccount = async ({ name, email, password, phone, pendingClaimId, c
   }
 
   const hashedPassword = await bcrypt.hash(password, SALT_ROUNDS);
+
+  const marketingConsent = {};
+  if (marketingEmailConsent) marketingConsent.email = { granted: true, updatedAt: new Date() };
+  if (marketingSmsConsent) marketingConsent.sms = { granted: true, updatedAt: new Date() };
+
   const account = await CustomerAccount.create({
     name: name.trim(),
     email: normalizedEmail,
     password: hashedPassword,
     phone: phone.trim(),
     emailVerified: false,
-    ...(marketingEmailConsent ? { marketingConsent: { email: { granted: true, updatedAt: new Date() } } } : {})
+    ...(Object.keys(marketingConsent).length ? { marketingConsent } : {})
   });
 
   await sendVerifyEmail(account);
@@ -332,12 +337,15 @@ const updateAccountProfile = async ({ customerAccountId, name }) => {
   return formatAccountPayload(account);
 };
 
-const updatePreferences = async ({ customerAccountId, emailOptIn, birthdayMonth, birthdayDay }) => {
+const updatePreferences = async ({ customerAccountId, emailOptIn, smsOptIn, birthdayMonth, birthdayDay }) => {
   const account = await CustomerAccount.findOne({ _id: customerAccountId });
   if (!account) throw createHttpError("Account not found.", 404);
 
   if (emailOptIn !== undefined) {
     account.marketingConsent.email = { granted: Boolean(emailOptIn), updatedAt: new Date() };
+  }
+  if (smsOptIn !== undefined) {
+    account.marketingConsent.sms = { granted: Boolean(smsOptIn), updatedAt: new Date() };
   }
   if (birthdayMonth !== undefined) {
     account.birthdayMonth = birthdayMonth === null ? null : Number(birthdayMonth);

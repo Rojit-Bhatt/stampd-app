@@ -14,7 +14,12 @@ const BroadcastLogSchema = new mongoose.Schema({
   // "no_consent" is a permanent outcome, never retried later even if the
   // customer subsequently grants consent — matches sendTrigger's existing
   // {sent:false, reason:"no_consent"} behavior, which also never retries.
-  status: { type: String, enum: ["sent", "failed", "no_consent"], required: true },
+  // "cap_reached" covers BOTH a company with no SMS budget configured at
+  // all and one that's exhausted its monthly cap — the admin's actionable
+  // response is identical either way ("talk to the platform about your SMS
+  // budget"), so these are collapsed into one status rather than a 5th
+  // enum member.
+  status: { type: String, enum: ["sent", "failed", "no_consent", "cap_reached"], required: true },
   sentAt: { type: Date, default: Date.now }
 });
 

@@ -69,13 +69,14 @@ const getCompany = async (req, res, next) => {
 
 const patchCompany = async (req, res, next) => {
   try {
-    const { name, status, ownerEmail, programDefaults } = req.body;
+    const { name, status, ownerEmail, programDefaults, smsMonthlyCapPaisa } = req.body;
     const actor = await User.findOne({ _id: req.user.id });
     const result = await updateCompany(req.params.id, {
       name,
       status,
       ownerEmail,
       programDefaults,
+      smsMonthlyCapPaisa,
       actorId: req.user.id,
       actorName: actor ? actor.name : "Unknown"
     });

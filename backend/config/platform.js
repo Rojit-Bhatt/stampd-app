@@ -52,6 +52,12 @@ const CAMPAIGN_STACKING = "max";
 // (Organization.tierThresholds); the label set itself is platform-fixed.
 const TIER_LABELS = ["Bronze", "Silver", "Gold", "Platinum"];
 
+// Paisa (1/100 rupee) per SMS, assuming one GSM7 segment (160 ASCII chars).
+// THIS IS A PLACEHOLDER — Sparrow SMS quotes NPR 0.70-1.50/SMS depending on
+// volume; confirm the actual contracted rate against a live account before
+// this goes to production, then update this constant to match.
+const SMS_COST_PAISA_PER_MESSAGE = 100; // NPR 1.00
+
 // Slugs a company may never take. A company slug owns a whole top-level URL
 // segment (/[company]/[outlet]), so one colliding with a static route would
 // make that company permanently unreachable — React Router ranks static
@@ -93,6 +99,7 @@ module.exports = {
   DEFAULT_PROGRAM,
   BUSINESS_CATEGORIES,
   TIER_LABELS,
+  SMS_COST_PAISA_PER_MESSAGE,
   RESERVED_SLUGS,
   isReservedSlug,
   VAPID_SUBJECT,

@@ -370,4 +370,58 @@ router.post("/stub-webpush-behavior", async (req, res, next) => {
   }
 });
 
+// DEV/TEST ONLY. Get a company's id by slug, for tests that need to
+// directly configure company-level settings (e.g. the SMS cap).
+router.post("/get-company", async (req, res, next) => {
+  try {
+    const { companySlug } = req.body;
+    const company = await Company.findOne({ slug: String(companySlug || "").toLowerCase() });
+    if (!company) return res.status(404).json({ success: false, message: "Company not found" });
+    res.json({ success: true, companyId: company._id.toString() });
+  } catch (error) {
+    next(error);
+  }
+});
+
+// DEV/TEST ONLY. Set (or clear, with null) a company's SMS monthly cap.
+router.post("/set-sms-cap", async (req, res, next) => {
+  try {
+    const { companyId, smsMonthlyCapPaisa } = req.body;
+    const company = await Company.findOneAndUpdate(
+      { _id: companyId },
+      { $set: { smsMonthlyCapPaisa } },
+      { new: true }
+    );
+    if (!company) return res.status(404).json({ success: false, message: "Company not found" });
+    res.json({ success: true });
+  } catch (error) {
+    next(error);
+  }
+});
+
+// DEV/TEST ONLY. Call smsService.sendSms directly, decoupled from the
+// trigger/broadcast callers, for cap/enablement assertions.
+router.post("/send-sms", async (req, res, next) => {
+  try {
+    const { companyId, organizationId, to, text } = req.body;
+    const { sendSms } = require("../services/smsService");
+    const result = await sendSms({ companyId, organizationId, to, text });
+    res.status(200).json(result);
+  } catch (error) {
+    next(error);
+  }
+});
+
+// DEV/TEST ONLY. Read back this-calendar-month SmsSendLog count for a
+// company, for cap assertions.
+router.get("/sms-send-log-count", async (req, res, next) => {
+  try {
+    const SmsSendLog = require("../models/SmsSendLog");
+    const count = await SmsSendLog.countDocuments({ companyId: req.query.companyId });
+    res.status(200).json({ success: true, count });
+  } catch (error) {
+    next(error);
+  }
+});
+
 module.exports = router;

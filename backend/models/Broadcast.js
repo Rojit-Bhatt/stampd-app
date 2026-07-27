@@ -8,7 +8,7 @@ const { TIER_LABELS } = require("../config/platform");
 // segmentType is "tier"; "all" ignores it (kept null).
 const BroadcastSchema = new mongoose.Schema({
   organizationId: { type: mongoose.Schema.Types.ObjectId, ref: "Organization", required: true },
-  channel: { type: String, enum: ["email", "push"], required: true },
+  channel: { type: String, enum: ["email", "push", "sms"], required: true },
   segmentType: { type: String, enum: ["tier", "all"], required: true },
   segmentTier: { type: String, enum: TIER_LABELS, default: null },
   subject: { type: String, required: true, trim: true },

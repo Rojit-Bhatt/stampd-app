@@ -10,8 +10,8 @@ const {
 
 const register = async (req, res, next) => {
   try {
-    const { name, email, password, phone, pendingClaimId, claimSecret, marketingEmailConsent } = req.body;
-    const result = await registerAccount({ name, email, password, phone, pendingClaimId, claimSecret, marketingEmailConsent });
+    const { name, email, password, phone, pendingClaimId, claimSecret, marketingEmailConsent, marketingSmsConsent } = req.body;
+    const result = await registerAccount({ name, email, password, phone, pendingClaimId, claimSecret, marketingEmailConsent, marketingSmsConsent });
     res.status(201).json(result);
   } catch (error) {
     next(error);
@@ -100,10 +100,11 @@ const updateProfileController = async (req, res, next) => {
 
 const updatePreferencesController = async (req, res, next) => {
   try {
-    const { emailOptIn, birthdayMonth, birthdayDay } = req.body;
+    const { emailOptIn, smsOptIn, birthdayMonth, birthdayDay } = req.body;
     const result = await updatePreferences({
       customerAccountId: req.customerAccount.id,
       emailOptIn,
+      smsOptIn,
       birthdayMonth,
       birthdayDay
     });
