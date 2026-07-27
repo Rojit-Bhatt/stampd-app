@@ -14,6 +14,37 @@ const { bootServer } = require("./helpers/bootServer");
 const COMPANY = "coffesarowar";
 const SLUG = "durbarmarg";
 
+async function getOrgId(baseUrl, companySlug, outletSlug) {
+  const resp = await fetch(`${baseUrl}/__test__/get-organization`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ companySlug, outletSlug }),
+  });
+  const body = await resp.json();
+  return body.organizationId;
+}
+
+// The real flow for a customer with BOTH a CustomerAccount (owns consent/
+// birthday) and a working outlet membership (owns earn/redeem history) —
+// tenant-scoped /api/auth/register does NOT set customerAccountId, so a
+// customer registered that way has no linked CustomerAccount at all.
+async function provisionTenantCustomer(api, label, phoneSuffix, slug = SLUG) {
+  const email = `${label}_${Date.now()}@test.co`;
+  const reg = await api("/api/customer-auth/register", {
+    method: "POST",
+    slug: null,
+    body: { name: label, email, password: "password123", phone: `98111100${phoneSuffix}` },
+  });
+  const globalToken = reg.body.token;
+  const entered = await api("/api/customer-auth/enter-tenant", {
+    method: "POST",
+    token: globalToken,
+    slug,
+    body: {},
+  });
+  return { email, globalToken, tenantToken: entered.body.token, userId: entered.body.user.id };
+}
+
 async function main() {
   const { baseUrl, stop } = await bootServer({ port: 5032 });
   let failures = 0;
@@ -91,6 +122,27 @@ async function main() {
     check("PATCH settings sets milestone visitCount", patchTriggers.body.settings.messagingTriggers?.milestone?.visitCount === 3);
     check("PATCH settings sets inactivity days", patchTriggers.body.settings.messagingTriggers?.inactivity?.days === 30);
     check("PATCH settings sets birthday enabled", patchTriggers.body.settings.messagingTriggers?.birthday?.enabled === true);
+
+    const orgId = await getOrgId(baseUrl, COMPANY, SLUG);
+
+    const consentedCustomer = await provisionTenantCustomer(api, "SendConsented", "10");
+    await api("/api/customer-auth/preferences", { method: "PATCH", token: consentedCustomer.globalToken, slug: null, body: { emailOptIn: true } });
+
+    const sendTriggerResp = await fetch(`${baseUrl}/__test__/send-trigger`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ organizationId: orgId, userId: consentedCustomer.userId, type: "milestone", context: { visitCount: 3 } }),
+    }).then(async (r) => ({ status: r.status, body: await r.json() }));
+    check("test-hook send-trigger -> 200", sendTriggerResp.status === 200);
+    check("sendTrigger sends when consent is granted", sendTriggerResp.body.sent === true);
+
+    const noConsentCustomer = await provisionTenantCustomer(api, "SendNoConsent", "11");
+    const sendTriggerNoConsent = await fetch(`${baseUrl}/__test__/send-trigger`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ organizationId: orgId, userId: noConsentCustomer.userId, type: "milestone", context: { visitCount: 3 } }),
+    }).then(async (r) => ({ status: r.status, body: await r.json() }));
+    check("sendTrigger refuses when consent is not granted", sendTriggerNoConsent.body.sent === false && sendTriggerNoConsent.body.reason === "no_consent");
   } finally {
     stop();
   }

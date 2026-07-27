@@ -260,4 +260,28 @@ router.post("/resolve-tier", async (req, res, next) => {
   }
 });
 
+// DEV/TEST ONLY. Call sendTrigger directly for testing the consent gate and
+// template rendering, decoupled from the real milestone/cron trigger paths.
+router.post("/send-trigger", async (req, res, next) => {
+  try {
+    const { organizationId, userId, type, context } = req.body;
+    const { sendTrigger } = require("../services/messagingService");
+
+    const membership = await User.findOne({ _id: userId, organizationId });
+    if (!membership) return res.status(404).json({ success: false, message: "Membership not found." });
+    if (!membership.customerAccountId) return res.status(404).json({ success: false, message: "No linked CustomerAccount." });
+
+    const customer = await CustomerAccount.findOne({ _id: membership.customerAccountId });
+    if (!customer) return res.status(404).json({ success: false, message: "CustomerAccount not found." });
+
+    const organization = await Organization.findOne({ _id: organizationId });
+    if (!organization) return res.status(404).json({ success: false, message: "Organization not found." });
+
+    const result = await sendTrigger(type, { organization, customer, membership, context });
+    res.status(200).json(result);
+  } catch (error) {
+    next(error);
+  }
+});
+
 module.exports = router;
