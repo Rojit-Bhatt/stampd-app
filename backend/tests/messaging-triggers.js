@@ -82,6 +82,15 @@ async function main() {
     });
     check("PATCH preferences sets birthday", setBirthday.body.account?.birthdayMonth === 5 && setBirthday.body.account?.birthdayDay === 20);
     check("PATCH preferences with only birthday leaves email consent untouched", setBirthday.body.account?.marketingConsent?.email?.granted === true);
+
+    const patchTriggers = await api("/api/admin/settings", {
+      method: "PATCH",
+      token: adminToken,
+      body: { messagingTriggers: { milestone: { visitCount: 3 }, inactivity: { days: 30 }, birthday: { enabled: true } } },
+    });
+    check("PATCH settings sets milestone visitCount", patchTriggers.body.settings.messagingTriggers?.milestone?.visitCount === 3);
+    check("PATCH settings sets inactivity days", patchTriggers.body.settings.messagingTriggers?.inactivity?.days === 30);
+    check("PATCH settings sets birthday enabled", patchTriggers.body.settings.messagingTriggers?.birthday?.enabled === true);
   } finally {
     stop();
   }

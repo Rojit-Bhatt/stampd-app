@@ -85,6 +85,7 @@ const getMySettings = async (req, res, next) => {
         programOverridden: getOverriddenFields(organization),
         companyProgramDefaults: company ? company.programDefaults : null,
         tierThresholds: organization.tierThresholds,
+        messagingTriggers: organization.messagingTriggers,
         menuEnabled: organization.menuEnabled,
         ...(subscriptionReminder ? { subscriptionReminder } : {})
       }
@@ -102,7 +103,7 @@ const updateMySettings = async (req, res, next) => {
       throw createHttpError("Business not found.", 404);
     }
 
-    const { name, branding, contact, program, menuEnabled, category, tierThresholds } = req.body;
+    const { name, branding, contact, program, menuEnabled, category, tierThresholds, messagingTriggers } = req.body;
 
     if (name !== undefined) {
       organization.name = name.trim();
@@ -141,6 +142,15 @@ const updateMySettings = async (req, res, next) => {
       organization.tierThresholds = merged;
     }
 
+    if (messagingTriggers !== undefined && messagingTriggers !== null && typeof messagingTriggers === "object") {
+      const current = organization.messagingTriggers.toObject?.() ?? organization.messagingTriggers;
+      organization.messagingTriggers = {
+        milestone: { ...current.milestone, ...messagingTriggers.milestone },
+        inactivity: { ...current.inactivity, ...messagingTriggers.inactivity },
+        birthday: { ...current.birthday, ...messagingTriggers.birthday }
+      };
+    }
+
     if (menuEnabled !== undefined) {
       organization.menuEnabled = Boolean(menuEnabled);
     }
@@ -163,6 +173,7 @@ const updateMySettings = async (req, res, next) => {
         programOverridden: getOverriddenFields(organization),
         companyProgramDefaults: company ? company.programDefaults : null,
         tierThresholds: organization.tierThresholds,
+        messagingTriggers: organization.messagingTriggers,
         menuEnabled: organization.menuEnabled
       }
     });
