@@ -45,7 +45,9 @@ if (USING_MOCK_DB) {
 const express = require("express");
 const cors = require("cors");
 const connectDB = require("./config/db");
-const { PLATFORM_NAME } = require("./config/platform");
+const { PLATFORM_NAME, PLATFORM_TIMEZONE } = require("./config/platform");
+const cron = require("node-cron");
+const { runDailyTriggers } = require("./services/messagingService");
 const { seedDemoData, ensurePlatformAdmin, cleanupDemoData } = require("./seed/demoSeed");
 const { ensureDefaultPlansSeeded } = require("./services/subscriptionPlanService");
 
@@ -213,6 +215,10 @@ const startServer = async () => {
       console.log("[db] No PLATFORM_ADMIN_EMAIL/PASSWORD environment variables set; skipping default platform admin bootstrap.");
     }
   }
+
+  cron.schedule("0 9 * * *", () => {
+    runDailyTriggers().catch((err) => console.error("Daily triggers run failed:", err.message));
+  }, { timezone: PLATFORM_TIMEZONE });
 
   app.listen(PORT, "0.0.0.0", () => {
     console.log(`${PLATFORM_NAME} server running on port ${PORT}`);

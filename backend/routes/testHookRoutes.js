@@ -297,4 +297,30 @@ router.post("/message-log-count", async (req, res, next) => {
   }
 });
 
+router.post("/run-daily-triggers", async (req, res, next) => {
+  try {
+    const { runDailyTriggers } = require("../services/messagingService");
+    await runDailyTriggers();
+    res.status(200).json({ success: true });
+  } catch (error) {
+    next(error);
+  }
+});
+
+router.post("/backdate-balance", async (req, res, next) => {
+  try {
+    const { organizationId, userId, days } = req.body;
+
+    const balance = await PointsBalance.findOne({ userId, organizationId });
+    if (!balance) return res.status(404).json({ success: false, message: "Test balance not found." });
+
+    balance.lastActivityAt = new Date(Date.now() - days * 24 * 60 * 60 * 1000);
+    await balance.save();
+
+    res.status(200).json({ success: true });
+  } catch (error) {
+    next(error);
+  }
+});
+
 module.exports = router;

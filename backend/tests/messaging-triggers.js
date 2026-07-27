@@ -10,6 +10,7 @@
  */
 
 const { bootServer } = require("./helpers/bootServer");
+const { makeSiblingOutlet } = require("./helpers/makeOutlet");
 
 const COMPANY = "coffesarowar";
 const SLUG = "durbarmarg";
@@ -168,6 +169,63 @@ async function main() {
     await api("/api/points/claim", { method: "POST", token: milestoneCustomer.tenantToken, body: { token: gen4.body.data.token } });
     const countAfterFour = await getMessageLogCount(baseUrl, orgId, milestoneCustomer.userId, "milestone");
     check("milestone trigger does not re-fire on the 4th visit", countAfterFour === 1);
+
+    await api("/api/admin/settings", { method: "PATCH", token: adminToken, body: { messagingTriggers: { birthday: { enabled: true } } } });
+
+    const today = new Date();
+    const birthdayCustomer = await provisionTenantCustomer(api, "Birthday", "13");
+    await api("/api/customer-auth/preferences", {
+      method: "PATCH",
+      token: birthdayCustomer.globalToken,
+      slug: null,
+      body: { emailOptIn: true, birthdayMonth: today.getMonth() + 1, birthdayDay: today.getDate() },
+    });
+
+    await api("/__test__/run-daily-triggers", { method: "POST", body: {} });
+    const birthdayCountAfterFirstRun = await getMessageLogCount(baseUrl, orgId, birthdayCustomer.userId, "birthday");
+    check("birthday trigger fires on a matching real date", birthdayCountAfterFirstRun === 1);
+
+    await api("/__test__/run-daily-triggers", { method: "POST", body: {} });
+    const birthdayCountAfterSecondRun = await getMessageLogCount(baseUrl, orgId, birthdayCustomer.userId, "birthday");
+    check("birthday trigger does not re-fire the same day (idempotent)", birthdayCountAfterSecondRun === 1);
+
+    await api("/api/admin/settings", { method: "PATCH", token: adminToken, body: { messagingTriggers: { inactivity: { days: 10 } } } });
+
+    const inactiveCustomer = await provisionTenantCustomer(api, "Inactive", "14");
+    await api("/api/customer-auth/preferences", { method: "PATCH", token: inactiveCustomer.globalToken, slug: null, body: { emailOptIn: true } });
+    const genI = await api("/api/admin/generate-qr", { method: "POST", token: adminToken, body: { billAmount: 200 } });
+    await api("/api/points/claim", { method: "POST", token: inactiveCustomer.tenantToken, body: { token: genI.body.data.token } });
+
+    await fetch(`${baseUrl}/__test__/backdate-balance`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ organizationId: orgId, userId: inactiveCustomer.userId, days: 15 }),
+    });
+
+    await api("/__test__/run-daily-triggers", { method: "POST", body: {} });
+    const inactivityCountAfterFirstRun = await getMessageLogCount(baseUrl, orgId, inactiveCustomer.userId, "inactivity");
+    check("inactivity trigger fires once past the configured threshold", inactivityCountAfterFirstRun === 1);
+
+    await api("/__test__/run-daily-triggers", { method: "POST", body: {} });
+    const inactivityCountAfterSecondRun = await getMessageLogCount(baseUrl, orgId, inactiveCustomer.userId, "inactivity");
+    check("inactivity trigger does not re-fire within the cooldown window", inactivityCountAfterSecondRun === 1);
+
+    // Per-outlet isolation: a sibling outlet with NEITHER trigger configured
+    // must never fire, even for a customer whose birthday/inactivity would
+    // otherwise match.
+    const sibling = await makeSiblingOutlet(baseUrl, { label: `msg${Date.now()}` });
+    const siblingOrgId = await getOrgId(baseUrl, COMPANY, sibling.outletSlug);
+    const siblingCustomer = await provisionTenantCustomer(api, "SiblingBirthday", "15", sibling.outletSlug);
+    await api("/api/customer-auth/preferences", {
+      method: "PATCH",
+      token: siblingCustomer.globalToken,
+      slug: null,
+      body: { emailOptIn: true, birthdayMonth: today.getMonth() + 1, birthdayDay: today.getDate() },
+    });
+
+    await api("/__test__/run-daily-triggers", { method: "POST", body: {} });
+    const siblingBirthdayCount = await getMessageLogCount(baseUrl, siblingOrgId, siblingCustomer.userId, "birthday");
+    check("a sibling outlet with birthday trigger unconfigured never fires, even for a matching birthday", siblingBirthdayCount === 0);
   } finally {
     stop();
   }
