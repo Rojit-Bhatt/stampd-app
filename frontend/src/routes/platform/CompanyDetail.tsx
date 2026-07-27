@@ -17,6 +17,7 @@ export default function CompanyDetail() {
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [form, setForm] = useState<{ name: string; ownerEmail: string } | null>(null);
   const [earnPercent, setEarnPercent] = useState<string>("");
+  const [smsCapRupees, setSmsCapRupees] = useState<string>("");
 
   const { data: company, isLoading } = useQuery<Company>({
     queryKey: ["platformCompany", id],
@@ -33,6 +34,7 @@ export default function CompanyDetail() {
     if (company && !form) {
       setForm({ name: company.name, ownerEmail: "" });
       setEarnPercent(String(company.programDefaults?.earnPercent ?? 100));
+      setSmsCapRupees(company.smsMonthlyCapPaisa === null ? "" : String(company.smsMonthlyCapPaisa / 100));
     }
   }, [company, form]);
 
@@ -49,7 +51,7 @@ export default function CompanyDetail() {
   });
 
   const update = useMutation({
-    mutationFn: (patch: { name?: string; ownerEmail?: string; programDefaults?: { earnPercent: number } }) =>
+    mutationFn: (patch: { name?: string; ownerEmail?: string; programDefaults?: { earnPercent: number }; smsMonthlyCapPaisa?: number | null }) =>
       apiRequest<{ success: boolean; owner?: { email: string } }>(`/api/platform/companies/${id}`, {
         method: "PATCH", role: "platform", body: patch,
       }),
@@ -70,12 +72,16 @@ export default function CompanyDetail() {
 
   const saveDetails = () => {
     if (!form || !company) return;
-    const patch: { name?: string; ownerEmail?: string; programDefaults?: { earnPercent: number } } = {};
+    const patch: { name?: string; ownerEmail?: string; programDefaults?: { earnPercent: number }; smsMonthlyCapPaisa?: number | null } = {};
     if (form.name !== company.name) patch.name = form.name;
     if (form.ownerEmail.trim()) patch.ownerEmail = form.ownerEmail.trim();
     const currentEarn = company.programDefaults?.earnPercent ?? 100;
     if (earnPercent !== "" && Number(earnPercent) !== currentEarn) {
       patch.programDefaults = { earnPercent: Number(earnPercent) };
+    }
+    const currentCapRupees = company.smsMonthlyCapPaisa === null ? "" : String(company.smsMonthlyCapPaisa / 100);
+    if (smsCapRupees !== currentCapRupees) {
+      patch.smsMonthlyCapPaisa = smsCapRupees.trim() === "" ? null : Math.round(Number(smsCapRupees) * 100);
     }
     if (Object.keys(patch).length === 0) return;
     update.mutate(patch);
@@ -179,6 +185,29 @@ export default function CompanyDetail() {
               className="w-28 rounded-[var(--radius-btn)] border border-[var(--line)] bg-[var(--bg)] px-4 py-3 text-sm focus:border-[var(--primary)] focus:outline-none"
             />
             <span className="text-sm text-[var(--muted)]">% of the bill back as points</span>
+          </div>
+        </div>
+      )}
+
+      {isOwner && (
+        <div className="mt-5 rounded-[var(--radius-card)] border border-[var(--line)] bg-[var(--surface)] p-5 shadow-ambient">
+          <h3 className="font-display text-lg font-bold text-[var(--ink)]">SMS budget</h3>
+          <p className="mb-3 text-[13px] text-[var(--muted)]">
+            Leave blank to keep SMS disabled for this company. A monthly rupee ceiling covers every
+            outlet under it combined — once spend for the current month reaches it, further SMS
+            sends are skipped until next month.
+          </p>
+          <div className="flex items-center gap-2">
+            <span className="text-sm text-[var(--muted)]">Rs</span>
+            <input
+              value={smsCapRupees}
+              onChange={(e) => setSmsCapRupees(e.target.value)}
+              type="number"
+              min={0}
+              placeholder="Disabled"
+              className="w-28 rounded-[var(--radius-btn)] border border-[var(--line)] bg-[var(--bg)] px-4 py-3 text-sm focus:border-[var(--primary)] focus:outline-none"
+            />
+            <span className="text-sm text-[var(--muted)]">per month</span>
           </div>
         </div>
       )}

@@ -55,6 +55,8 @@ export function CustomerProfilePanel({ onLogout }: { onLogout: () => void }) {
   const [resending, setResending] = useState(false);
 
   const [emailOptIn, setEmailOptIn] = useState(globalAccount?.marketingConsent?.email?.granted ?? false);
+  const [smsOptIn, setSmsOptIn] = useState(globalAccount?.marketingConsent?.sms?.granted ?? false);
+  const [savingSmsOptIn, setSavingSmsOptIn] = useState(false);
   const [savingEmailOptIn, setSavingEmailOptIn] = useState(false);
   const [birthdayMonth, setBirthdayMonth] = useState<number | "">(globalAccount?.birthdayMonth ?? "");
   const [birthdayDay, setBirthdayDay] = useState<number | "">(globalAccount?.birthdayDay ?? "");
@@ -155,6 +157,24 @@ export function CustomerProfilePanel({ onLogout }: { onLogout: () => void }) {
       toast.error((err as Error).message || "Couldn't update that — try again.");
     } finally {
       setSavingEmailOptIn(false);
+    }
+  };
+
+  const saveSmsOptIn = async (next: boolean) => {
+    setSmsOptIn(next);
+    setSavingSmsOptIn(true);
+    try {
+      const res = await apiRequest<{ success: boolean; account: GlobalAccount }>(
+        "/api/customer-auth/preferences",
+        { method: "PATCH", role: "customer-global", body: { smsOptIn: next } },
+      );
+      setGlobalAccountData(res.account);
+      toast.success(next ? "You're opted in!" : "Opted out.");
+    } catch (err) {
+      setSmsOptIn(!next);
+      toast.error((err as Error).message || "Couldn't update that — try again.");
+    } finally {
+      setSavingSmsOptIn(false);
     }
   };
 
@@ -263,6 +283,18 @@ export function CustomerProfilePanel({ onLogout }: { onLogout: () => void }) {
             onChange={(e) => saveEmailOptIn(e.target.checked)}
           />
           Send me offers and updates by email
+        </label>
+      </Card>
+
+      <Card title="SMS updates">
+        <label className="flex items-center gap-2 text-sm text-[var(--muted)]">
+          <input
+            type="checkbox"
+            checked={smsOptIn}
+            disabled={savingSmsOptIn}
+            onChange={(e) => saveSmsOptIn(e.target.checked)}
+          />
+          Send me offers and updates by SMS
         </label>
       </Card>
 

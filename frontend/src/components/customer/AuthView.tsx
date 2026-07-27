@@ -30,6 +30,7 @@ const registerSchema = z.object({
     .trim()
     .refine((v) => v.replace(/\D/g, "").replace(/^0+/, "").length >= 7, "Enter a valid phone number."),
   emailOptIn: z.boolean().default(false),
+  smsOptIn: z.boolean().default(false),
 });
 
 type LoginFormValues = z.infer<typeof loginSchema>;
@@ -58,7 +59,7 @@ export function AuthView({ mode }: { mode: Mode }) {
   });
   const registerForm = useForm<RegisterFormValues>({
     resolver: zodResolver(registerSchema),
-    defaultValues: { name: "", email: "", password: "", phone: "", emailOptIn: false },
+    defaultValues: { name: "", email: "", password: "", phone: "", emailOptIn: false, smsOptIn: false },
   });
 
   const onLoginSubmit = async (data: LoginFormValues) => {
@@ -81,7 +82,7 @@ export function AuthView({ mode }: { mode: Mode }) {
     const toastId = toast.loading("Setting up your account…");
     try {
       const local = data.phone.replace(/\D/g, "").replace(/^0+/, "");
-      await registerUser(data.name, data.email, data.password, `+977${local}`, data.emailOptIn);
+      await registerUser(data.name, data.email, data.password, `+977${local}`, data.emailOptIn, data.smsOptIn);
       await ensureTenantSession(slug, tenant?.id ?? null);
       toast.success("Welcome! You can verify your email later before redeeming.", { id: toastId });
       navigate(tenantPath(companySlug, slug, "dashboard"));
@@ -207,6 +208,15 @@ export function AuthView({ mode }: { mode: Mode }) {
               onChange={(e) => registerForm.setValue("emailOptIn", e.target.checked)}
             />
             Send me offers and updates by email
+          </label>
+
+          <label className="flex items-center gap-2 text-sm text-[var(--muted)]">
+            <input
+              type="checkbox"
+              checked={registerForm.watch("smsOptIn")}
+              onChange={(e) => registerForm.setValue("smsOptIn", e.target.checked)}
+            />
+            Send me offers and updates by SMS
           </label>
 
           <SubmitButton loading={isSubmitting} label="Create account" />

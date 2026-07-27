@@ -54,6 +54,7 @@ interface CustomerAuthContextType {
     password: string,
     phone: string,
     marketingEmailConsent?: boolean,
+    marketingSmsConsent?: boolean,
     pendingClaimId?: string,
     // Proof the caller actually scanned the QR. Register is unauthenticated,
     // so without this a pending claim could be bound by anyone who guessed
@@ -190,12 +191,13 @@ export function CustomerAuthProvider({ children }: { children: React.ReactNode }
     password: string,
     phone: string,
     marketingEmailConsent?: boolean,
+    marketingSmsConsent?: boolean,
     pendingClaimId?: string,
     claimSecret?: string,
   ) => {
     const res = await apiRequest<{ success: boolean; token?: string; account?: GlobalAccount; message: string }>(
       "/api/customer-auth/register",
-      { method: "POST", body: { name, email, password, phone, marketingEmailConsent, pendingClaimId, claimSecret } },
+      { method: "POST", body: { name, email, password, phone, marketingEmailConsent, marketingSmsConsent, pendingClaimId, claimSecret } },
     );
     if (!res.success) {
       throw new Error(res.message || "Failed to register.");

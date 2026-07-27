@@ -35,6 +35,7 @@ function BroadcastFields({ draft, onChange }: { draft: BroadcastDraft; onChange:
         >
           <option value="email">Email</option>
           <option value="push">Push notification</option>
+          <option value="sms">SMS</option>
         </select>
         <select
           value={draft.segmentType === "all" ? "all" : draft.segmentTier || ""}
@@ -99,10 +100,12 @@ function BroadcastDetailPanel({ id, onClose }: { id: string; onClose: () => void
                     ? { background: "var(--ok-soft)", color: "var(--ok)" }
                     : r.status === "failed"
                       ? { background: "var(--err-soft)", color: "var(--err)" }
-                      : { background: "var(--surface-2)", color: "var(--soft)" }
+                      : r.status === "cap_reached"
+                        ? { background: "var(--warn-soft)", color: "var(--warn)" }
+                        : { background: "var(--surface-2)", color: "var(--soft)" }
                 }
               >
-                {r.status === "no_consent" ? "No consent" : r.status}
+                {r.status === "no_consent" ? "No consent" : r.status === "cap_reached" ? "Budget reached" : r.status}
               </span>
             </div>
           ))}

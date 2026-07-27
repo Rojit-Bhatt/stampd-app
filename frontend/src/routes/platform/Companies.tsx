@@ -29,6 +29,8 @@ export interface Company {
   branding: { primaryColor: string };
   /** The values every outlet under this company inherits when it hasn't set its own. */
   programDefaults?: { earnPercent: number; pointsExpiryDays: number };
+  /** Paisa (1/100 rupee), the monthly SMS spend ceiling. Null = SMS not enabled for this company. */
+  smsMonthlyCapPaisa: number | null;
   owner: { name: string; email: string; emailVerified: boolean } | null;
   outlets: Outlet[];
   outletCount: number;

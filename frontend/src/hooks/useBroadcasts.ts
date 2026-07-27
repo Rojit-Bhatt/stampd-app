@@ -7,7 +7,7 @@ export type TierLabel = (typeof TIER_LABELS)[number];
 
 export interface Broadcast {
   id: string;
-  channel: "email" | "push";
+  channel: "email" | "push" | "sms";
   segmentType: "tier" | "all";
   segmentTier: TierLabel | null;
   subject: string;
@@ -23,7 +23,7 @@ export interface BroadcastRecipient {
   userId: string;
   name: string;
   email: string;
-  status: "sent" | "failed" | "no_consent";
+  status: "sent" | "failed" | "no_consent" | "cap_reached";
   sentAt: string;
 }
 
@@ -32,7 +32,7 @@ export interface BroadcastDetail extends Broadcast {
 }
 
 export interface BroadcastDraft {
-  channel: "email" | "push";
+  channel: "email" | "push" | "sms";
   segmentType: "tier" | "all";
   segmentTier: TierLabel | null;
   subject: string;
