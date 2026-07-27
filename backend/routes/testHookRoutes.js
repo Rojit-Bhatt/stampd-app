@@ -11,6 +11,7 @@ const Subscription = require("../models/Subscription");
 const PointsTransaction = require("../models/PointsTransaction");
 const Organization = require("../models/Organization");
 const Company = require("../models/Company");
+const MessageLog = require("../models/MessageLog");
 const { resolveTenant } = require("../middleware/tenantMiddleware");
 
 const router = express.Router();
@@ -279,6 +280,18 @@ router.post("/send-trigger", async (req, res, next) => {
 
     const result = await sendTrigger(type, { organization, customer, membership, context });
     res.status(200).json(result);
+  } catch (error) {
+    next(error);
+  }
+});
+
+// DEV/TEST ONLY. Read back MessageLog rows for idempotency assertions.
+router.post("/message-log-count", async (req, res, next) => {
+  try {
+    const { organizationId, userId, triggerType } = req.body;
+
+    const count = await MessageLog.countDocuments({ organizationId, userId, triggerType });
+    res.status(200).json({ success: true, count });
   } catch (error) {
     next(error);
   }

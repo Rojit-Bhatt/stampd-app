@@ -1,5 +1,7 @@
 const { sendEmail } = require("./emailService");
 const MessageLog = require("../models/MessageLog");
+const PointsTransaction = require("../models/PointsTransaction");
+const CustomerAccount = require("../models/CustomerAccount");
 
 const renderTemplate = (type, { organization, customer, context }) => {
   if (type === "milestone") {
@@ -38,4 +40,22 @@ const sendTrigger = async (type, { organization, customer, membership, context =
   return { sent: true };
 };
 
-module.exports = { sendTrigger };
+const checkMilestoneTrigger = async ({ organization, membership }) => {
+  const visitCount = organization.messagingTriggers?.milestone?.visitCount;
+  if (visitCount === null || visitCount === undefined) return;
+
+  const earns = await PointsTransaction.countDocuments({
+    organizationId: organization._id,
+    userId: membership._id,
+    type: "earn"
+  });
+  if (earns !== visitCount) return;
+
+  if (!membership.customerAccountId) return;
+  const customer = await CustomerAccount.findOne({ _id: membership.customerAccountId });
+  if (!customer) return;
+
+  await sendTrigger("milestone", { organization, customer, membership, context: { visitCount } });
+};
+
+module.exports = { sendTrigger, checkMilestoneTrigger };

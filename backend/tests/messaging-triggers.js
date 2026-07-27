@@ -14,6 +14,16 @@ const { bootServer } = require("./helpers/bootServer");
 const COMPANY = "coffesarowar";
 const SLUG = "durbarmarg";
 
+async function getMessageLogCount(baseUrl, organizationId, userId, triggerType) {
+  const resp = await fetch(`${baseUrl}/__test__/message-log-count`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ organizationId, userId, triggerType }),
+  });
+  const body = await resp.json();
+  return body.count;
+}
+
 async function getOrgId(baseUrl, companySlug, outletSlug) {
   const resp = await fetch(`${baseUrl}/__test__/get-organization`, {
     method: "POST",
@@ -143,6 +153,21 @@ async function main() {
       body: JSON.stringify({ organizationId: orgId, userId: noConsentCustomer.userId, type: "milestone", context: { visitCount: 3 } }),
     }).then(async (r) => ({ status: r.status, body: await r.json() }));
     check("sendTrigger refuses when consent is not granted", sendTriggerNoConsent.body.sent === false && sendTriggerNoConsent.body.reason === "no_consent");
+
+    const milestoneCustomer = await provisionTenantCustomer(api, "Milestone", "12");
+    await api("/api/customer-auth/preferences", { method: "PATCH", token: milestoneCustomer.globalToken, slug: null, body: { emailOptIn: true } });
+
+    for (let i = 0; i < 3; i += 1) {
+      const gen = await api("/api/admin/generate-qr", { method: "POST", token: adminToken, body: { billAmount: 100 } });
+      await api("/api/points/claim", { method: "POST", token: milestoneCustomer.tenantToken, body: { token: gen.body.data.token } });
+    }
+    const countAfterThree = await getMessageLogCount(baseUrl, orgId, milestoneCustomer.userId, "milestone");
+    check("milestone trigger fires exactly once at the 3rd visit", countAfterThree === 1);
+
+    const gen4 = await api("/api/admin/generate-qr", { method: "POST", token: adminToken, body: { billAmount: 100 } });
+    await api("/api/points/claim", { method: "POST", token: milestoneCustomer.tenantToken, body: { token: gen4.body.data.token } });
+    const countAfterFour = await getMessageLogCount(baseUrl, orgId, milestoneCustomer.userId, "milestone");
+    check("milestone trigger does not re-fire on the 4th visit", countAfterFour === 1);
   } finally {
     stop();
   }

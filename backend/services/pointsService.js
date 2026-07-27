@@ -12,6 +12,7 @@ const CustomerAccount = require("../models/CustomerAccount");
 const { resolveProgram } = require("./programService");
 const { resolveActiveMultiplier } = require("./campaignService");
 const { resolveTier } = require("./tierService");
+const { checkMilestoneTrigger } = require("./messagingService");
 const { earnCenti, toPoints } = require("../utils/pointsMath");
 const { resolveDateRange } = require("../utils/dateRange");
 
@@ -403,6 +404,9 @@ const claimPoints = async ({ token, userId, role, organizationId }) => {
         session, userId, organizationId, billAmount: existingToken.billAmount, org, now, token
       });
     });
+
+    checkMilestoneTrigger({ organization: org, membership: claimer })
+      .catch((err) => console.error("Milestone trigger check failed:", err.message));
 
     return responsePayload;
   } finally {
