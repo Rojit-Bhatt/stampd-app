@@ -38,15 +38,21 @@ const stripHtml = (html) => html.replace(/<[^>]+>/g, "");
 
 // Never rejects — every failure path (dead subscription or anything else)
 // is handled internally, so callers can fire this without a .catch().
+// Returns {ok} so a caller that needs real delivery status
+// (broadcastService's evaluateBroadcasts) can tell success from failure;
+// existing trigger callers (sendTrigger below) ignore the return value
+// exactly as before.
 const sendPushToSubscription = async (sub, payload) => {
   try {
     await webpush.sendNotification({ endpoint: sub.endpoint, keys: sub.keys }, JSON.stringify(payload));
+    return { ok: true };
   } catch (err) {
     if (err.statusCode === 410 || err.statusCode === 404) {
       await PushSubscription.deleteOne({ _id: sub._id });
     } else {
       console.error("Failed to send push notification:", err.message);
     }
+    return { ok: false };
   }
 };
 

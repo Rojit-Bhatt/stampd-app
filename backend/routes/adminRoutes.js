@@ -27,6 +27,7 @@ const {
 const { listEvents, createEventController, updateEventController, deleteEventController } = require("../controllers/eventController");
 const campaignController = require("../controllers/campaignController");
 const rewardController = require("../controllers/rewardController");
+const broadcastController = require("../controllers/broadcastController");
 const { verifyToken, isBusinessAdmin } = require("../middleware/authMiddleware");
 
 const router = express.Router();
@@ -68,5 +69,11 @@ router.get("/events", verifyToken, isBusinessAdmin, listEvents);
 router.post("/events", verifyToken, isBusinessAdmin, createEventController);
 router.patch("/events/:id", verifyToken, isBusinessAdmin, updateEventController);
 router.delete("/events/:id", verifyToken, isBusinessAdmin, deleteEventController);
+
+router.get("/broadcasts", verifyToken, isBusinessAdmin, broadcastController.list);
+router.post("/broadcasts", verifyToken, isBusinessAdmin, broadcastController.create);
+router.get("/broadcasts/:id", verifyToken, isBusinessAdmin, broadcastController.detail);
+router.patch("/broadcasts/:id", verifyToken, isBusinessAdmin, broadcastController.update);
+router.delete("/broadcasts/:id", verifyToken, isBusinessAdmin, broadcastController.remove);
 
 module.exports = router;

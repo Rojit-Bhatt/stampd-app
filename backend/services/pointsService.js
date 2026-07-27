@@ -13,6 +13,7 @@ const { resolveProgram } = require("./programService");
 const { resolveActiveMultiplier } = require("./campaignService");
 const { resolveTier } = require("./tierService");
 const { checkMilestoneTrigger } = require("./messagingService");
+const { evaluateBroadcasts } = require("./broadcastService");
 const { earnCenti, toPoints } = require("../utils/pointsMath");
 const { resolveDateRange } = require("../utils/dateRange");
 
@@ -407,6 +408,9 @@ const claimPoints = async ({ token, userId, role, organizationId }) => {
 
     checkMilestoneTrigger({ organization: org, membership: claimer })
       .catch((err) => console.error("Milestone trigger check failed:", err.message));
+
+    evaluateBroadcasts({ organization: org, membership: claimer })
+      .catch((err) => console.error("Broadcast evaluation failed:", err.message));
 
     return responsePayload;
   } finally {

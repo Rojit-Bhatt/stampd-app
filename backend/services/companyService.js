@@ -10,6 +10,7 @@ const { sendEmail } = require("./emailService");
 const { assertCanAddOutlet } = require("./subscriptionService");
 const { DEFAULT_PROGRAM, BUSINESS_CATEGORIES, isReservedSlug } = require("../config/platform");
 const { sanitizeProgramInput } = require("./programService");
+const { seedDefaultBroadcasts } = require("./broadcastService");
 
 const SALT_ROUNDS = 10;
 const VERIFY_TTL_MS = 24 * 60 * 60 * 1000;
@@ -187,6 +188,8 @@ const createOutlet = async ({ companyId, name, slug, category, adminName, adminE
     // programService.resolveProgram.
     program: { earnPercent: null, pointsExpiryDays: null, ...(programOverrides || {}) }
   });
+
+  await seedDefaultBroadcasts(organization._id);
 
   const adminAccount = await AdminAccount.create({
     name: adminName.trim(),
