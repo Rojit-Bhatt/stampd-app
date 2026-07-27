@@ -323,4 +323,51 @@ router.post("/backdate-balance", async (req, res, next) => {
   }
 });
 
+router.post("/create-push-subscription", async (req, res, next) => {
+  try {
+    const { customerAccountId, endpoint, keys, grantConsent } = req.body;
+    const PushSubscription = require("../models/PushSubscription");
+
+    await PushSubscription.create({ customerAccountId, endpoint, keys });
+
+    if (grantConsent) {
+      const account = await CustomerAccount.findOne({ _id: customerAccountId });
+      account.marketingConsent.push = { granted: true, updatedAt: new Date() };
+      await account.save();
+    }
+
+    res.status(200).json({ success: true });
+  } catch (error) {
+    next(error);
+  }
+});
+
+router.get("/push-subscription-count", async (req, res, next) => {
+  try {
+    const PushSubscription = require("../models/PushSubscription");
+    const count = await PushSubscription.countDocuments({ customerAccountId: req.query.customerAccountId });
+    res.status(200).json({ success: true, count });
+  } catch (error) {
+    next(error);
+  }
+});
+
+router.post("/stub-webpush-behavior", async (req, res, next) => {
+  try {
+    const webpush = require("web-push");
+    const { behavior } = req.body;
+    webpush.sendNotification = async () => {
+      if (behavior === "gone") {
+        const err = new Error("Subscription gone");
+        err.statusCode = 410;
+        throw err;
+      }
+      return { statusCode: 201 };
+    };
+    res.status(200).json({ success: true });
+  } catch (error) {
+    next(error);
+  }
+});
+
 module.exports = router;

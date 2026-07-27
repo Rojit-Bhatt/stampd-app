@@ -6,7 +6,11 @@ const Organization = require("../models/Organization");
 const User = require("../models/User");
 const PointsBalance = require("../models/PointsBalance");
 const { toPoints } = require("../utils/pointsMath");
-const { PLATFORM_TIMEZONE } = require("../config/platform");
+const { PLATFORM_TIMEZONE, VAPID_SUBJECT, VAPID_PUBLIC_KEY, VAPID_PRIVATE_KEY } = require("../config/platform");
+const webpush = require("web-push");
+const PushSubscription = require("../models/PushSubscription");
+
+webpush.setVapidDetails(VAPID_SUBJECT, VAPID_PUBLIC_KEY, VAPID_PRIVATE_KEY);
 
 const renderTemplate = (type, { organization, customer, context }) => {
   if (type === "milestone") {
@@ -30,18 +34,45 @@ const renderTemplate = (type, { organization, customer, context }) => {
   throw new Error(`Unknown trigger type: ${type}`);
 };
 
+const stripHtml = (html) => html.replace(/<[^>]+>/g, "");
+
+// Never rejects — every failure path (dead subscription or anything else)
+// is handled internally, so callers can fire this without a .catch().
+const sendPushToSubscription = async (sub, payload) => {
+  try {
+    await webpush.sendNotification({ endpoint: sub.endpoint, keys: sub.keys }, JSON.stringify(payload));
+  } catch (err) {
+    if (err.statusCode === 410 || err.statusCode === 404) {
+      await PushSubscription.deleteOne({ _id: sub._id });
+    } else {
+      console.error("Failed to send push notification:", err.message);
+    }
+  }
+};
+
 const sendTrigger = async (type, { organization, customer, membership, context = {} }) => {
-  if (!customer.marketingConsent?.email?.granted) {
+  const { subject, html } = renderTemplate(type, { organization, customer, context });
+  let sent = false;
+
+  if (customer.marketingConsent?.email?.granted) {
+    sendEmail({ to: customer.email, subject, html })
+      .catch((err) => console.error(`Failed to send ${type} trigger to ${customer.email}:`, err.message));
+    sent = true;
+  }
+
+  if (customer.marketingConsent?.push?.granted) {
+    const subscriptions = await PushSubscription.find({ customerAccountId: customer._id });
+    for (const sub of subscriptions) {
+      sendPushToSubscription(sub, { title: subject, body: stripHtml(html) });
+    }
+    if (subscriptions.length > 0) sent = true;
+  }
+
+  if (!sent) {
     return { sent: false, reason: "no_consent" };
   }
 
-  const { subject, html } = renderTemplate(type, { organization, customer, context });
-
-  sendEmail({ to: customer.email, subject, html })
-    .catch((err) => console.error(`Failed to send ${type} trigger to ${customer.email}:`, err.message));
-
   await MessageLog.create({ organizationId: organization._id, userId: membership._id, triggerType: type });
-
   return { sent: true };
 };
 
@@ -144,4 +175,4 @@ const runDailyTriggers = async () => {
   }
 };
 
-module.exports = { sendTrigger, checkMilestoneTrigger, runDailyTriggers };
+module.exports = { sendTrigger, sendPushToSubscription, checkMilestoneTrigger, runDailyTriggers };

@@ -1,3 +1,5 @@
+const webpush = require("web-push");
+
 // Central place for platform-wide branding + defaults.
 // Change PLATFORM_NAME here (or via env) to rebrand the whole SaaS.
 const PLATFORM_NAME = process.env.PLATFORM_NAME || "Stampd";
@@ -66,6 +68,24 @@ const RESERVED_SLUGS = new Set([
 
 const isReservedSlug = (slug) => RESERVED_SLUGS.has(String(slug || "").trim().toLowerCase());
 
+// If real VAPID keys aren't configured, generate an ephemeral pair at
+// startup — safe for dev/test (no real browser ever subscribes against it
+// across restarts), and forces a deliberate real pair in production the
+// same way JWT_SECRET's own dev fallback does.
+let vapidPublicKey = process.env.PUSH_VAPID_PUBLIC_KEY;
+let vapidPrivateKey = process.env.PUSH_VAPID_PRIVATE_KEY;
+
+if (!vapidPublicKey || !vapidPrivateKey) {
+  const generated = webpush.generateVAPIDKeys();
+  vapidPublicKey = generated.publicKey;
+  vapidPrivateKey = generated.privateKey;
+  console.log("[dev] PUSH_VAPID keys not set — generated an ephemeral dev-only pair.");
+}
+
+const VAPID_SUBJECT = process.env.PUSH_VAPID_SUBJECT || "mailto:support@stampd.co";
+const VAPID_PUBLIC_KEY = vapidPublicKey;
+const VAPID_PRIVATE_KEY = vapidPrivateKey;
+
 module.exports = {
   PLATFORM_NAME,
   PLATFORM_TIMEZONE,
@@ -74,5 +94,8 @@ module.exports = {
   BUSINESS_CATEGORIES,
   TIER_LABELS,
   RESERVED_SLUGS,
-  isReservedSlug
+  isReservedSlug,
+  VAPID_SUBJECT,
+  VAPID_PUBLIC_KEY,
+  VAPID_PRIVATE_KEY
 };
