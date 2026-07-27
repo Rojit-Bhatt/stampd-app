@@ -35,6 +35,15 @@ function Card({ title, children }: { title: string; children: React.ReactNode })
 const fieldClass =
   "w-full rounded-[var(--radius-btn)] border border-[var(--line)] bg-[var(--bg)] px-4 py-3 text-sm focus:border-[var(--primary)] focus:outline-none";
 
+const VAPID_PUBLIC_KEY = import.meta.env.VITE_VAPID_PUBLIC_KEY as string | undefined;
+
+const urlBase64ToUint8Array = (base64String: string) => {
+  const padding = "=".repeat((4 - (base64String.length % 4)) % 4);
+  const base64 = (base64String + padding).replace(/-/g, "+").replace(/_/g, "/");
+  const rawData = atob(base64);
+  return Uint8Array.from([...rawData].map((c) => c.charCodeAt(0)));
+};
+
 export function CustomerProfilePanel({ onLogout }: { onLogout: () => void }) {
   const { globalAccount, setGlobalAccountData } = useCustomerAuth();
 
@@ -51,6 +60,9 @@ export function CustomerProfilePanel({ onLogout }: { onLogout: () => void }) {
   const [birthdayDay, setBirthdayDay] = useState<number | "">(globalAccount?.birthdayDay ?? "");
   const [savingBirthday, setSavingBirthday] = useState(false);
 
+  const [pushEnabled, setPushEnabled] = useState(false);
+  const [savingPush, setSavingPush] = useState(false);
+
   const [showConfirmDelete, setShowConfirmDelete] = useState(false);
   const [confirmEmail, setConfirmEmail] = useState("");
   const [deleting, setDeleting] = useState(false);
@@ -60,6 +72,17 @@ export function CustomerProfilePanel({ onLogout }: { onLogout: () => void }) {
   useEffect(() => {
     if (globalAccount?.name) setName(globalAccount.name);
   }, [globalAccount?.id, globalAccount?.name]);
+
+  // The browser, not the server, is the source of truth for "is THIS
+  // device subscribed" — a customer's account-wide push consent flag
+  // doesn't tell you whether this specific browser still has a live
+  // subscription.
+  useEffect(() => {
+    navigator.serviceWorker?.ready
+      .then((reg) => reg.pushManager.getSubscription())
+      .then((sub) => setPushEnabled(!!sub))
+      .catch(() => setPushEnabled(false));
+  }, []);
 
   if (!globalAccount) return null;
 
@@ -155,6 +178,47 @@ export function CustomerProfilePanel({ onLogout }: { onLogout: () => void }) {
     }
   };
 
+  const savePushOptIn = async (next: boolean) => {
+    setSavingPush(true);
+    try {
+      if (next) {
+        if (!VAPID_PUBLIC_KEY) throw new Error("Push isn't set up for this app yet.");
+        const permission = await Notification.requestPermission();
+        if (permission !== "granted") throw new Error("Notification permission wasn't granted.");
+        const registration = await navigator.serviceWorker.ready;
+        const subscription = await registration.pushManager.subscribe({
+          userVisibleOnly: true,
+          applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY),
+        });
+        const json = subscription.toJSON();
+        await apiRequest("/api/customer-auth/push-subscription", {
+          method: "POST",
+          role: "customer-global",
+          body: { endpoint: json.endpoint, keys: json.keys },
+        });
+        setPushEnabled(true);
+        toast.success("Push notifications on!");
+      } else {
+        const registration = await navigator.serviceWorker.ready;
+        const subscription = await registration.pushManager.getSubscription();
+        if (subscription) {
+          await apiRequest("/api/customer-auth/push-subscription", {
+            method: "DELETE",
+            role: "customer-global",
+            body: { endpoint: subscription.endpoint },
+          });
+          await subscription.unsubscribe();
+        }
+        setPushEnabled(false);
+        toast.success("Push notifications off.");
+      }
+    } catch (err) {
+      toast.error((err as Error).message || "Couldn't update that — try again.");
+    } finally {
+      setSavingPush(false);
+    }
+  };
+
   const resendVerification = async () => {
     setResending(true);
     try {
@@ -199,6 +263,18 @@ export function CustomerProfilePanel({ onLogout }: { onLogout: () => void }) {
             onChange={(e) => saveEmailOptIn(e.target.checked)}
           />
           Send me offers and updates by email
+        </label>
+      </Card>
+
+      <Card title="Push notifications">
+        <label className="flex items-center gap-2 text-sm text-[var(--muted)]">
+          <input
+            type="checkbox"
+            checked={pushEnabled}
+            disabled={savingPush}
+            onChange={(e) => savePushOptIn(e.target.checked)}
+          />
+          Send me updates as push notifications
         </label>
       </Card>
 
