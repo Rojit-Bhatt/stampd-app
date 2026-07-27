@@ -10,6 +10,9 @@ export default defineConfig({
     tailwindcss(),
     VitePWA({
       registerType: "autoUpdate",
+      strategies: "injectManifest",
+      srcDir: "src",
+      filename: "sw.ts",
       // apple-touch-icon isn't in the manifest (iOS reads it from a <link> in
       // index.html instead) — list it here so the service worker still
       // precaches it.
