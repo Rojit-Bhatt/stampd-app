@@ -5,6 +5,7 @@ import {
   useUpdateAdminSettings,
   type AdminProgram,
   type TierThresholds,
+  type MessagingTriggers,
 } from "../../hooks/useAdminSettings";
 import { Skeleton } from "../../components/ui/skeleton";
 import { SegmentedControl, SegmentedControlItem } from "@/components/ui/segmented-control";
@@ -23,6 +24,7 @@ export default function PointsProgram() {
   const update = useUpdateAdminSettings();
   const [form, setForm] = useState<AdminProgram | null>(null);
   const [tierForm, setTierForm] = useState<TierThresholds | null>(null);
+  const [triggersForm, setTriggersForm] = useState<MessagingTriggers | null>(null);
 
   useEffect(() => {
     if (settings && !form) setForm(settings.program);
@@ -32,7 +34,11 @@ export default function PointsProgram() {
     if (settings && !tierForm) setTierForm(settings.tierThresholds);
   }, [settings, tierForm]);
 
-  if (isLoading || !form || !tierForm || !settings) {
+  useEffect(() => {
+    if (settings && !triggersForm) setTriggersForm(settings.messagingTriggers);
+  }, [settings, triggersForm]);
+
+  if (isLoading || !form || !tierForm || !triggersForm || !settings) {
     return (
       <div className="max-w-[620px]">
         <Skeleton className="mb-2 h-7 w-56" />
@@ -78,6 +84,15 @@ export default function PointsProgram() {
 
   const setTier = (label: (typeof TIER_LABELS)[number], field: "minVisits" | "minSpend", value: number | null) =>
     setTierForm((t) => (t ? { ...t, [label]: { ...t[label], [field]: value } } : t));
+
+  const saveTriggers = async () => {
+    try {
+      await update.mutateAsync({ messagingTriggers: triggersForm });
+      toast.success("Triggers saved!");
+    } catch (err) {
+      toast.error((err as Error).message || "Couldn't save that — try again.");
+    }
+  };
 
   // Inherit and override are two explicit, visible states rather than "an
   // empty box means inherit". Emptying a field to go back to inheriting was
@@ -220,6 +235,62 @@ export default function PointsProgram() {
         ))}
         <Button onClick={saveTiers} disabled={update.isPending} size="lg">
           {update.isPending ? "Saving…" : "Save tiers"}
+        </Button>
+      </div>
+
+      <div className="mt-6 flex flex-col gap-4 rounded-[var(--radius-card)] border border-[var(--line)] bg-[var(--surface)] shadow-ambient p-6">
+        <h3 className="text-sm font-bold text-[var(--ink)]">Triggers</h3>
+
+        <div className="flex flex-wrap items-center gap-3 border-t border-[var(--line)] pt-4 first:border-t-0 first:pt-0">
+          <span className="w-28 text-sm font-semibold text-[var(--ink)]">Milestone</span>
+          <input
+            type="number"
+            min={1}
+            step="1"
+            placeholder="Visit count"
+            value={triggersForm.milestone.visitCount ?? ""}
+            onChange={(e) =>
+              setTriggersForm((t) =>
+                t ? { ...t, milestone: { visitCount: e.target.value === "" ? null : Number(e.target.value) } } : t
+              )
+            }
+            className="w-32 rounded-[var(--radius-btn)] border border-[var(--line)] bg-[var(--surface)] px-4 py-3 text-sm focus:border-[var(--primary)] focus:outline-none"
+          />
+          <span className="text-xs text-[var(--muted)]">visits — empty means off</span>
+        </div>
+
+        <div className="flex flex-wrap items-center gap-3 border-t border-[var(--line)] pt-4">
+          <span className="w-28 text-sm font-semibold text-[var(--ink)]">Inactivity</span>
+          <input
+            type="number"
+            min={1}
+            step="1"
+            placeholder="Days"
+            value={triggersForm.inactivity.days ?? ""}
+            onChange={(e) =>
+              setTriggersForm((t) =>
+                t ? { ...t, inactivity: { days: e.target.value === "" ? null : Number(e.target.value) } } : t
+              )
+            }
+            className="w-32 rounded-[var(--radius-btn)] border border-[var(--line)] bg-[var(--surface)] px-4 py-3 text-sm focus:border-[var(--primary)] focus:outline-none"
+          />
+          <span className="text-xs text-[var(--muted)]">days since last visit — empty means off</span>
+        </div>
+
+        <div className="flex flex-wrap items-center gap-3 border-t border-[var(--line)] pt-4">
+          <span className="w-28 text-sm font-semibold text-[var(--ink)]">Birthday</span>
+          <input
+            type="checkbox"
+            checked={triggersForm.birthday.enabled}
+            onChange={(e) =>
+              setTriggersForm((t) => (t ? { ...t, birthday: { enabled: e.target.checked } } : t))
+            }
+          />
+          <span className="text-xs text-[var(--muted)]">send a birthday email</span>
+        </div>
+
+        <Button onClick={saveTriggers} disabled={update.isPending} size="lg">
+          {update.isPending ? "Saving…" : "Save triggers"}
         </Button>
       </div>
     </div>

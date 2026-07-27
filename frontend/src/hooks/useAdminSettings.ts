@@ -66,6 +66,12 @@ export interface TierThresholds {
   Platinum: TierThreshold;
 }
 
+export interface MessagingTriggers {
+  milestone: { visitCount: number | null };
+  inactivity: { days: number | null };
+  birthday: { enabled: boolean };
+}
+
 export interface AdminSettings {
   name: string;
   slug: string;
@@ -84,6 +90,7 @@ export interface AdminSettings {
   companyProgramDefaults: ResolvedProgram | null;
   /** Per-outlet tier thresholds, keyed by fixed label. No inheritance. */
   tierThresholds: TierThresholds;
+  messagingTriggers: MessagingTriggers;
   menuEnabled: boolean;
   // False for a platform-onboarded business with no attached owner — the
   // Subscription nav item/route must be hidden for it (there's nothing to
@@ -102,6 +109,7 @@ export interface AdminSettingsPatch {
   contact?: Partial<AdminContact>;
   program?: Partial<AdminProgram>;
   tierThresholds?: Partial<TierThresholds>;
+  messagingTriggers?: Partial<MessagingTriggers>;
   menuEnabled?: boolean;
 }
 
