@@ -38,6 +38,8 @@ const GlobalVerifyEmail = lazy(() => import('./routes/GlobalVerifyEmail'));
 const ForgotPassword = lazy(() => import('./routes/ForgotPassword'));
 const ResetPassword = lazy(() => import('./routes/ResetPassword'));
 const PlatformLanding = lazy(() => import('./routes/platform/PlatformLanding'));
+const Privacy = lazy(() => import('./routes/platform/legal/Privacy'));
+const Terms = lazy(() => import('./routes/platform/legal/Terms'));
 const PlatformLogin = lazy(() => import('./routes/platform/PlatformLogin'));
 const Companies = lazy(() => import('./routes/platform/Companies'));
 const RegisterCompany = lazy(() => import('./routes/platform/RegisterCompany'));
@@ -105,6 +107,12 @@ export default function App() {
         <Routes>
           {/* Platform (SaaS owner) — unscoped, never tenant-themed. */}
           <Route path="/" element={<PlatformLanding />} />
+          {/* Marketing-site legal pages. Both slugs are in backend
+              RESERVED_SLUGS — these literal routes match before
+              /:companySlug, so a company on either slug would otherwise
+              become unreachable. */}
+          <Route path="/privacy" element={<Privacy />} />
+          <Route path="/terms" element={<Terms />} />
           <Route path="/platform/login" element={<PlatformLogin />} />
           <Route path="/business-login" element={<Navigate to="/admin-login" replace />} />
           {/* Global customer identity: one CustomerAccount works at
