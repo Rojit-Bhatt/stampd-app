@@ -11,6 +11,7 @@ const {
   updateContact
 } = require("../services/platformConfigService");
 const { listRecent } = require("../services/platformAuditService");
+const { listPublicPlans } = require("../services/subscriptionPlanService");
 const {
   getPlatformAnalytics,
   getPlatformCompanyReportRows,
@@ -140,6 +141,18 @@ const downloadCompaniesReport = async (req, res, next) => {
   }
 };
 
+// Public — the marketing pricing section. Wiring pricing to the real plan
+// catalogue is what keeps the page from promising a tier that no
+// subscription key actually grants.
+const getPublicPlans = async (req, res, next) => {
+  try {
+    const plans = await listPublicPlans();
+    res.status(200).json({ success: true, plans });
+  } catch (error) {
+    next(error);
+  }
+};
+
 // Public — the marketing landing page's hero figures. No auth by design;
 // the service guarantees the payload is aggregate-only.
 const getPublicStats = async (req, res, next) => {
@@ -189,6 +202,7 @@ module.exports = {
   getAnalytics,
   downloadCompaniesReport,
   getPublicStats,
+  getPublicPlans,
   getPublicPlatformContact,
   getPlatformContactAdmin,
   patchPlatformContact

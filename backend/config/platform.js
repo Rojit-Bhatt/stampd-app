@@ -69,7 +69,11 @@ const RESERVED_SLUGS = new Set([
   "explore", "platform", "company", "owner",
   "admin-login", "business-login", "customer-login", "customer-register",
   "admin-verify-email", "admin-forgot-password", "admin-reset-password",
-  "verify-email", "reset-password", "forgot-password"
+  "verify-email", "reset-password", "forgot-password",
+  // Marketing-site legal pages. App.tsx matches these literal routes before
+  // /:companySlug, so a company registered on either slug would become
+  // permanently unreachable — exactly the collision this set exists to stop.
+  "privacy", "terms"
 ]);
 
 const isReservedSlug = (slug) => RESERVED_SLUGS.has(String(slug || "").trim().toLowerCase());

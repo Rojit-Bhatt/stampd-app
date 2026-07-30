@@ -51,6 +51,24 @@ const listActivePlans = async () => {
   return { success: true, plans: sorted.map(formatPlan) };
 };
 
+// Public, unauthenticated projection for the marketing pricing section.
+// Deliberately narrower than listActivePlans, whose formatPlan carries
+// outletLimit — a subscription-enforcement detail, not a marketing fact.
+// Builds the response field by field rather than filtering the document: a
+// whitelist cannot leak a field added to the schema later, a blacklist can.
+const listPublicPlans = async () => {
+  const plans = await SubscriptionPlan.find({ isActive: true });
+  return [...plans]
+    .sort((a, b) => (a.sortOrder || 0) - (b.sortOrder || 0))
+    .map((plan) => ({
+      slug: plan.slug,
+      name: plan.name,
+      priceNpr: plan.priceNpr,
+      features: plan.features || [],
+      isMostPopular: Boolean(plan.isMostPopular)
+    }));
+};
+
 const getPlanBySlug = async (slug) => {
   const plan = await SubscriptionPlan.findOne({ slug: normalizeSlug(slug) });
   if (!plan) throw createHttpError("Plan not found.", 404);
@@ -143,6 +161,7 @@ module.exports = {
   ensureDefaultPlansSeeded,
   listAllPlans,
   listActivePlans,
+  listPublicPlans,
   getPlanBySlug,
   createPlan,
   updatePlan,

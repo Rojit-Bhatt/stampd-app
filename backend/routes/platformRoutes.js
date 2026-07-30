@@ -10,6 +10,7 @@ const {
   getAnalytics,
   downloadCompaniesReport,
   getPublicStats,
+  getPublicPlans,
   getPublicPlatformContact,
   getPlatformContactAdmin,
   patchPlatformContact
@@ -41,6 +42,7 @@ router.delete("/admins/:id", verifyToken, isPlatformOwner, deleteAdmin);
 // unthrottled: cheap aggregate reads with no auth surface and no write, same
 // as public-contact. The rate limiters stay scoped to login/registration.
 router.get("/public-stats", getPublicStats);
+router.get("/public-plans", getPublicPlans);
 router.get("/public-contact", getPublicPlatformContact);
 router.get("/contact", verifyToken, isPlatformAdmin, getPlatformContactAdmin);
 router.patch("/contact", verifyToken, isPlatformOwner, patchPlatformContact);
