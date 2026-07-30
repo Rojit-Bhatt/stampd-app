@@ -10,7 +10,10 @@ export interface PlatformContact {
   socials: {
     instagram: string;
     facebook: string;
+    tiktok: string;
     x: string;
+    linkedin: string;
+    youtube: string;
   };
 }
 

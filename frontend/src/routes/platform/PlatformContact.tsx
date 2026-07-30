@@ -13,8 +13,19 @@ const EMPTY_CONTACT: PlatformContactData = {
   address: "",
   hours: "",
   aboutUs: "",
-  socials: { instagram: "", facebook: "", x: "" },
+  socials: { instagram: "", facebook: "", tiktok: "", x: "", linkedin: "", youtube: "" },
 };
+
+type SocialKey = keyof PlatformContactData["socials"];
+
+const SOCIAL_FIELDS: { key: SocialKey; label: string; placeholder: string }[] = [
+  { key: "instagram", label: "Instagram URL", placeholder: "https://instagram.com/…" },
+  { key: "facebook", label: "Facebook URL", placeholder: "https://facebook.com/…" },
+  { key: "tiktok", label: "TikTok URL", placeholder: "https://tiktok.com/@…" },
+  { key: "x", label: "X (Twitter) URL", placeholder: "https://x.com/…" },
+  { key: "linkedin", label: "LinkedIn URL", placeholder: "https://linkedin.com/company/…" },
+  { key: "youtube", label: "YouTube URL", placeholder: "https://youtube.com/@…" },
+];
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const PHONE_RE = /^\+?[0-9\s\-()]{7,20}$/;
@@ -118,30 +129,18 @@ export default function PlatformContact() {
             className="w-full rounded-[var(--radius-btn)] border border-[var(--line)] bg-[var(--bg)] px-4 py-3 text-sm focus:border-[var(--primary)] focus:outline-none"
           />
         </Field>
-        <Field label="Instagram URL">
-          <input
-            value={contact.socials.instagram}
-            onChange={(e) => setSocial("instagram", e.target.value)}
-            placeholder="https://instagram.com/…"
-            className="w-full rounded-[var(--radius-btn)] border border-[var(--line)] bg-[var(--bg)] px-4 py-3 text-sm focus:border-[var(--primary)] focus:outline-none"
-          />
-        </Field>
-        <Field label="Facebook URL">
-          <input
-            value={contact.socials.facebook}
-            onChange={(e) => setSocial("facebook", e.target.value)}
-            placeholder="https://facebook.com/…"
-            className="w-full rounded-[var(--radius-btn)] border border-[var(--line)] bg-[var(--bg)] px-4 py-3 text-sm focus:border-[var(--primary)] focus:outline-none"
-          />
-        </Field>
-        <Field label="X (Twitter) URL">
-          <input
-            value={contact.socials.x}
-            onChange={(e) => setSocial("x", e.target.value)}
-            placeholder="https://x.com/…"
-            className="w-full rounded-[var(--radius-btn)] border border-[var(--line)] bg-[var(--bg)] px-4 py-3 text-sm focus:border-[var(--primary)] focus:outline-none"
-          />
-        </Field>
+        {/* Each network the landing footer can render. Leaving one blank hides
+            its icon there, so this doubles as the on/off switch. */}
+        {SOCIAL_FIELDS.map((s) => (
+          <Field key={s.key} label={s.label}>
+            <input
+              value={contact.socials[s.key] ?? ""}
+              onChange={(e) => setSocial(s.key, e.target.value)}
+              placeholder={s.placeholder}
+              className="w-full rounded-[var(--radius-btn)] border border-[var(--line)] bg-[var(--bg)] px-4 py-3 text-sm focus:border-[var(--primary)] focus:outline-none"
+            />
+          </Field>
+        ))}
 
         <button
           onClick={save}

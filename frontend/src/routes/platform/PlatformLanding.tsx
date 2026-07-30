@@ -39,10 +39,17 @@ export default function PlatformLanding() {
   const contactHref = phone ? `https://wa.me/${phone}` : "#pricing";
 
   return (
-    // No overflow clipping on this element, deliberately: any overflow value
-    // other than `visible` turns it into the sticky scrollport, and the hero's
-    // sticky pin then scrolls away with the page instead of pinning.
-    <main className="min-h-screen bg-[var(--lp-bg)] font-sans antialiased">
+    // Two deliberate omissions on this element:
+    //
+    // No overflow clipping — any overflow value other than `visible` turns it
+    // into the sticky scrollport, and the hero's sticky pin then scrolls away
+    // with the page instead of pinning.
+    //
+    // No background — the page colour comes from html/body via .landing-dark.
+    // What covers the revealed footer on the way down is the scrolling content
+    // below, which carries its own opaque background and `relative z-10`; the
+    // footer sits at z-0 beneath it and is uncovered at the end of the page.
+    <main className="min-h-screen font-sans antialiased">
       <LandingNav contactHref={contactHref} />
 
       {/* The rounded step belongs to the page content's bottom edge, not the
