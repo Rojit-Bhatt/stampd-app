@@ -1,6 +1,8 @@
 import { useEffect, useState } from "react";
+import { Link } from "react-router-dom";
 
 import { StampdLogo } from "../../../components/shared/StampdLogo";
+import { PLATFORM_NAME } from "../../../lib/platform";
 import { NAV_LINKS } from "./data";
 import { RollingLabel, useRollingState } from "./motion/RollingLabel";
 
@@ -47,10 +49,10 @@ export function LandingNav({ contactHref }: { contactHref: string }) {
         }}
       >
         <div className="flex items-center justify-between gap-4">
-          <a href="/" className="flex flex-shrink-0 items-center gap-2">
+          <Link to="/" className="flex flex-shrink-0 items-center gap-2">
             <StampdLogo size={30} />
-            <span className="font-display text-lg text-[var(--lp-ink)]">Stampd</span>
-          </a>
+            <span className="font-display text-lg text-[var(--lp-ink)]">{PLATFORM_NAME}</span>
+          </Link>
 
           <ul className="hidden flex-1 items-center justify-center gap-6 lg:flex">
             {NAV_LINKS.map((link) => (
@@ -68,6 +70,14 @@ export function LandingNav({ contactHref }: { contactHref: string }) {
           </ul>
 
           <div className="flex flex-shrink-0 items-center gap-2">
+            {/* The marketing page is still the front door for staff — the old
+                landing carried this and losing it would strand them. */}
+            <Link
+              to="/admin-login"
+              className="hidden px-3 py-1.5 text-sm text-[var(--lp-muted)] transition-colors hover:text-[var(--lp-ink)] sm:block"
+            >
+              Log in
+            </Link>
             <a
               href={contactHref}
               aria-label="Talk to us"
@@ -127,6 +137,15 @@ export function LandingNav({ contactHref }: { contactHref: string }) {
                 </a>
               </li>
             ))}
+            <li>
+              <Link
+                to="/admin-login"
+                onClick={() => setMenuOpen(false)}
+                className="block rounded-2xl px-3 py-2.5 text-sm text-[var(--lp-muted)] hover:bg-white/[0.06] hover:text-[var(--lp-ink)]"
+              >
+                Log in
+              </Link>
+            </li>
             <li className="mt-2">
               <a
                 href={contactHref}

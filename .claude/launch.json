@@ -9,8 +9,8 @@
     },
     {
       "name": "backend",
-      "runtimeExecutable": "npm",
-      "runtimeArgs": ["run", "dev", "-w", "backend"],
+      "runtimeExecutable": "sh",
+      "runtimeArgs": ["-c", "MONGODB_URI= npm run dev -w backend"],
       "port": 5001
     }
   ],

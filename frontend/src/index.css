@@ -224,6 +224,19 @@ body {
   background-color: var(--lp-bg);
 }
 
+/* The global html/body `overflow-x: hidden` backstop above turns body into a
+   scroll container, which silently breaks the hero's sticky pin — the section
+   scrolls away instead of pinning. `clip` clips exactly the same overflow
+   WITHOUT establishing a scrollport, so the backstop's anti-pinch-zoom intent
+   survives and sticky still works. Scoped to the landing rather than changed
+   globally, because the rest of the app is built on the original rule.
+   The background is repeated on body so overscroll stays dark. */
+html.landing-dark,
+html.landing-dark body {
+  overflow-x: clip;
+  background-color: var(--lp-bg);
+}
+
 /* The quiet grid that sits under every section BELOW the hero. The hero has
    the interactive dot field instead — the two must never stack. */
 .lp-grid {

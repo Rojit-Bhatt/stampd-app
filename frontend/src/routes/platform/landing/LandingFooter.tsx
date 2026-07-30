@@ -1,5 +1,8 @@
+import { Link } from "react-router-dom";
+
 import { StampdLogo } from "../../../components/shared/StampdLogo";
 import { usePlatformContact } from "../../../hooks/usePlatformContact";
+import { PLATFORM_NAME } from "../../../lib/platform";
 import { FOOTER_LINKS } from "./data";
 import { FooterReveal } from "./motion/FooterReveal";
 
@@ -8,6 +11,15 @@ const SOCIAL_LABELS: Record<string, string> = {
   instagram: "Instagram",
   x: "X",
 };
+
+// Carried over from the previous landing page. These are the only way staff
+// and platform admins reach their consoles from the marketing site, so the
+// redesign must not drop them.
+const SIGN_IN_LINKS = [
+  { heading: "Customers", label: "Customer login", to: "/customer-login" },
+  { heading: "Businesses", label: "Staff & owner login", to: "/admin-login" },
+  { heading: "Platform", label: "Platform admin", to: "/platform/login" },
+];
 
 /**
  * samparka.co's footer, inverted: a cream panel with dark ink, uncovered by
@@ -35,48 +47,70 @@ export function LandingFooter() {
     <FooterReveal>
       <footer className="flex min-h-[60vh] items-end bg-[var(--lp-cream)] px-6 pb-10 pt-20 text-[#14201C] sm:px-10 md:px-16 lg:px-20">
         <div className="mx-auto w-full max-w-6xl">
-          <div className="flex items-center gap-2">
-            <StampdLogo size={30} />
-            <span className="font-display text-lg">Stampd</span>
-          </div>
+          <div className="flex flex-wrap items-start justify-between gap-10">
+            <div>
+              <div className="flex items-center gap-2">
+                <StampdLogo size={30} />
+                <span className="font-display text-lg">{PLATFORM_NAME}</span>
+              </div>
 
-          <nav className="mt-10 flex flex-wrap gap-x-8 gap-y-3">
-            {FOOTER_LINKS.map((link) => (
-              <a
-                key={link.href}
-                href={link.href}
-                className="text-sm text-[#14201C]/70 transition-colors hover:text-[#14201C]"
-              >
-                {link.label}
-              </a>
-            ))}
-          </nav>
+              <nav className="mt-8 flex flex-wrap gap-x-8 gap-y-3">
+                {FOOTER_LINKS.map((link) => (
+                  <a
+                    key={link.href}
+                    href={link.href}
+                    className="text-sm text-[#14201C]/70 transition-colors hover:text-[#14201C]"
+                  >
+                    {link.label}
+                  </a>
+                ))}
+              </nav>
 
-          {socialEntries.length > 0 ? (
-            <div className="mt-6 flex gap-5">
-              {socialEntries.map(([key, url]) => (
-                <a
-                  key={key}
-                  href={url}
-                  target="_blank"
-                  rel="noreferrer noopener"
-                  className="text-sm text-[#14201C]/60 transition-colors hover:text-[#14201C]"
-                >
-                  {SOCIAL_LABELS[key] ?? key}
-                </a>
+              {socialEntries.length > 0 ? (
+                <div className="mt-6 flex gap-5">
+                  {socialEntries.map(([key, url]) => (
+                    <a
+                      key={key}
+                      href={url}
+                      target="_blank"
+                      rel="noreferrer noopener"
+                      className="text-sm text-[#14201C]/60 transition-colors hover:text-[#14201C]"
+                    >
+                      {SOCIAL_LABELS[key] ?? key}
+                    </a>
+                  ))}
+                </div>
+              ) : null}
+            </div>
+
+            <div className="flex flex-wrap gap-x-10 gap-y-6">
+              {SIGN_IN_LINKS.map((group) => (
+                <div key={group.heading}>
+                  <p className="font-mono text-[10px] uppercase tracking-[0.16em] text-[#14201C]/45">
+                    {group.heading}
+                  </p>
+                  <Link
+                    to={group.to}
+                    className="mt-2 block text-sm font-medium text-[#14201C]/80 transition-colors hover:text-[#14201C]"
+                  >
+                    {group.label}
+                  </Link>
+                </div>
               ))}
             </div>
-          ) : null}
+          </div>
 
           <div className="mt-10 border-t border-[#14201C]/10 pt-6">
             <div className="flex flex-wrap items-center gap-x-8 gap-y-3 text-xs text-[#14201C]/60">
-              <span>© {new Date().getFullYear()} Stampd.</span>
-              <a href="/privacy" className="underline-offset-4 hover:underline">
+              <span>
+                © {new Date().getFullYear()} {PLATFORM_NAME}.
+              </span>
+              <Link to="/privacy" className="underline-offset-4 hover:underline">
                 Privacy Policy
-              </a>
-              <a href="/terms" className="underline-offset-4 hover:underline">
+              </Link>
+              <Link to="/terms" className="underline-offset-4 hover:underline">
                 Terms of Service
-              </a>
+              </Link>
             </div>
           </div>
         </div>

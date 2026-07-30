@@ -77,7 +77,9 @@ export const FEATURES = {
     "Everything the counter needs. Nothing it does not. One programme for points, campaigns, rewards and redemption — run from a phone.",
   blocks: [
     {
-      id: "product",
+      // Not "product" — the enclosing section owns that id for the nav anchor,
+      // and two elements sharing one id makes the anchor ambiguous.
+      id: "points-engine",
       kicker: "POINTS ENGINE",
       title: "Points, on your terms",
       body: "Set what a rupee earns and what a reward costs. Change it whenever you like, for one outlet or all of them.",
