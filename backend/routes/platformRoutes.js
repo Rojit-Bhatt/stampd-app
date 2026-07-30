@@ -9,6 +9,7 @@ const {
   getAuditLog,
   getAnalytics,
   downloadCompaniesReport,
+  getPublicStats,
   getPublicPlatformContact,
   getPlatformContactAdmin,
   patchPlatformContact
@@ -36,6 +37,10 @@ router.get("/analytics/companies-report/download", verifyToken, isPlatformAdmin,
 router.get("/admins", verifyToken, isPlatformOwner, getAdmins);
 router.post("/admins", verifyToken, isPlatformOwner, postAdmin);
 router.delete("/admins/:id", verifyToken, isPlatformOwner, deleteAdmin);
+// Public marketing-site reads. Unauthenticated by design, and deliberately
+// unthrottled: cheap aggregate reads with no auth surface and no write, same
+// as public-contact. The rate limiters stay scoped to login/registration.
+router.get("/public-stats", getPublicStats);
 router.get("/public-contact", getPublicPlatformContact);
 router.get("/contact", verifyToken, isPlatformAdmin, getPlatformContactAdmin);
 router.patch("/contact", verifyToken, isPlatformOwner, patchPlatformContact);

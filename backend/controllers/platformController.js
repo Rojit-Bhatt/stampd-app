@@ -14,7 +14,8 @@ const { listRecent } = require("../services/platformAuditService");
 const {
   getPlatformAnalytics,
   getPlatformCompanyReportRows,
-  buildPlatformCompanyReportWorkbook
+  buildPlatformCompanyReportWorkbook,
+  getPublicStats: getPublicStatsService
 } = require("../services/platformAnalyticsService");
 const User = require("../models/User");
 
@@ -139,6 +140,17 @@ const downloadCompaniesReport = async (req, res, next) => {
   }
 };
 
+// Public — the marketing landing page's hero figures. No auth by design;
+// the service guarantees the payload is aggregate-only.
+const getPublicStats = async (req, res, next) => {
+  try {
+    const stats = await getPublicStatsService();
+    res.status(200).json({ success: true, stats });
+  } catch (error) {
+    next(error);
+  }
+};
+
 const getPublicPlatformContact = async (req, res, next) => {
   try {
     const contact = await getContact();
@@ -176,6 +188,7 @@ module.exports = {
   getAuditLog,
   getAnalytics,
   downloadCompaniesReport,
+  getPublicStats,
   getPublicPlatformContact,
   getPlatformContactAdmin,
   patchPlatformContact

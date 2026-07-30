@@ -235,4 +235,49 @@ const buildPlatformCompanyReportWorkbook = async ({ rows, start, end }) => {
   return workbook.xlsx.writeBuffer();
 };
 
-module.exports = { getPlatformAnalytics, getPlatformTierDistribution, getPlatformCompanyReportRows, buildPlatformCompanyReportWorkbook };
+// Below this many outlets the landing page shows no figures at all. A
+// pre-launch platform reporting "3 outlets" reads worse than reporting
+// nothing, and there is no honest way to dress up a small number.
+const PUBLIC_STATS_MIN_OUTLETS = 5;
+
+// Round DOWN to two significant figures — 1,247 -> 1,200. Never rounds up:
+// the page must not claim more than the platform has. Values under 100 pass
+// through as whole numbers, since flooring them further would erase them.
+const floorToTwoSigFigs = (n) => {
+  if (!Number.isFinite(n) || n <= 0) return 0;
+  if (n < 100) return Math.floor(n);
+  const magnitude = Math.pow(10, Math.floor(Math.log10(n)) - 1);
+  return Math.floor(n / magnitude) * magnitude;
+};
+
+// Public, unauthenticated counterpart to getPlatformAnalytics — the three
+// figures the marketing landing page shows. Same deliberate cross-tenant
+// aggregation as the rest of this file, but with a much harder rule: the
+// response is consumed by an anonymous visitor, so it carries counts and
+// sums ONLY. No id, slug, name or per-tenant breakdown may appear here.
+const getPublicStats = async () => {
+  const outletsTotal = await Organization.countDocuments({});
+  if (outletsTotal < PUBLIC_STATS_MIN_OUTLETS) return { visible: false };
+
+  // Distinct people, not per-outlet memberships — the same reason
+  // getPlatformAnalytics counts CustomerAccount rather than summing User.
+  const customersTotal = await CustomerAccount.countDocuments({});
+
+  // Query the window, filter the type in JS: the established pattern in this
+  // file, and it keeps the query to a single top-level $gte the mock DB
+  // actually supports.
+  const since = new Date(Date.now() - 30 * DAY_MS);
+  const txns = await PointsTransaction.find({ createdAt: { $gte: since } });
+  const pointsCenti = txns
+    .filter((t) => t.type === "earn")
+    .reduce((sum, t) => sum + t.pointsCenti, 0);
+
+  return {
+    visible: true,
+    outlets: floorToTwoSigFigs(outletsTotal),
+    customers: floorToTwoSigFigs(customersTotal),
+    pointsIssuedMonth: floorToTwoSigFigs(Math.round(toPoints(pointsCenti)))
+  };
+};
+
+module.exports = { getPlatformAnalytics, getPlatformTierDistribution, getPlatformCompanyReportRows, buildPlatformCompanyReportWorkbook, getPublicStats };
