@@ -201,3 +201,34 @@ body {
   -ms-overflow-style: none;
   scrollbar-width: none;
 }
+
+/* ---- Platform landing page — "Stampd concept 2b" ----
+
+   A dark, self-contained marketing surface. These tokens are scoped to
+   .landing-dark (added to <html> for the lifetime of the / route only) and
+   MUST NOT be promoted to :root — every console in this app is light, and
+   inheriting a dark ink token would wreck all of them.
+
+   The concept's ambient radial glows are deliberately absent. Green appears
+   as a solid fill only, and only where it means value or action; the
+   terracotta belongs to the logo mark alone. */
+.landing-dark {
+  --lp-bg: #14201C;
+  --lp-panel: #1D2F28;
+  --lp-ink: #F3ECE2;
+  --lp-muted: rgba(243, 236, 226, 0.62);
+  --lp-line: rgba(243, 236, 226, 0.12);
+  --lp-green: #0FA968;
+  --lp-terra: #C15D2C;
+  --lp-cream: #F3ECE2;
+  background-color: var(--lp-bg);
+}
+
+/* The quiet grid that sits under every section BELOW the hero. The hero has
+   the interactive dot field instead — the two must never stack. */
+.lp-grid {
+  background-image:
+    linear-gradient(rgba(243, 236, 226, 0.03) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(243, 236, 226, 0.03) 1px, transparent 1px);
+  background-size: 64px 64px;
+}
