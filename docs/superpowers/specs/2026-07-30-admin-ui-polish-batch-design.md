@@ -26,7 +26,7 @@ restyle of a component we already have.
 
 | Component | File | Consumers |
 |---|---|---|
-| `Switch` | `frontend/src/components/ui/switch.tsx` | Points triggers; the customer-info toggles in a later batch |
+| `Switch` | `frontend/src/components/ui/switch.tsx` | Points triggers; the customer-info toggles in a later batch — **shadcn/Radix, not kokonutui** (see below) |
 | `Loader` | `frontend/src/components/ui/loader.tsx` | `AdminGuard`, `AdminVerifyEmail`, `VerifyEmail`, `GlobalVerifyEmail`, `GlobalCustomerLayout` |
 | `FileDrop` | `frontend/src/components/shared/FileDrop.tsx` | Reward/Event modals, `Branding` logo + banner, `MenuManagement` xlsx import |
 | `DynamicText` | `frontend/src/components/shared/DynamicText.tsx` | `CustomerDashboard` greeting |
@@ -46,9 +46,19 @@ restyle of a component we already have.
 No new dependencies are required. `motion`, `clsx`, `tailwind-merge` and
 `class-variance-authority` are already in `frontend/package.json`.
 
-**`Switch` is a generic on/off primitive, not a theme toggle.** Dark mode is
-out of scope for this batch (see the roadmap doc for why). The switch exists
-because the settings rows need it.
+**`Switch` does not come from kokonutui.** Their `switch-button` is not a
+generic toggle at all — it is a theme button hardwired to `next-themes` that
+only flips light/dark, and with dark mode out of scope it has no job here. The
+settings rows need a real two-state control, so `Switch` is the standard
+shadcn/Radix `switch` (`@radix-ui/react-switch`), which is the only new
+dependency this batch adds and matches the existing Radix kit in
+`components/ui/`.
+
+The other four kokonutui pieces need **no** new dependencies — their registry
+manifests ask only for `motion` and `lucide-react`, both already installed.
+`profile-dropdown` additionally wants the `dropdown-menu` primitive, which is
+already in `components/ui/` and currently unused; wiring it up is what retires
+one of the six pieces of dead scaffold rather than adding a seventh.
 
 **`FileDrop` has two modes.** `mode="image"` resizes client-side, encodes
 WebP, uploads, and yields an image id. `mode="file"` passes the raw `File`
@@ -75,6 +85,11 @@ multiplies a problem that already exists.
 
 #### The model
 
+**This is not a new pattern — it is `CustomerAvatar` applied to a second case.**
+That model already solves exactly this problem (binary out of the hot document,
+served by one endpoint) and its header comment gives the same reasoning. The
+new model follows its conventions rather than inventing parallel ones.
+
 New `backend/models/Image.js`:
 
 ```
@@ -83,10 +98,9 @@ New `backend/models/Image.js`:
   organizationId,   // required — scoped like every other loyalty record
   ownerType,        // "branding_logo" | "branding_banner" | "reward" | "event"
   ownerId,          // null until a save claims it; see orphan cleanup
-  data,             // Buffer
-  contentType,      // "image/webp" | "image/jpeg" | "image/png"
-  width, height,
-  bytes,
+  mimeType,         // "image/webp" | "image/jpeg" | "image/png"
+  dataBase64,       // String, NOT Buffer
+  byteSize,
   createdAt
 }
 ```
@@ -95,22 +109,40 @@ New `backend/models/Image.js`:
 new collection that carries tenant data carries the scope, and every query
 filters on it.
 
+**`dataBase64` is a string, not a Buffer**, matching `CustomerAvatar` — the
+in-memory mock DB round-trips plain JSON values, and a string needs no special
+handling from it. The ~33% base64 overhead is charged against an image the
+client has already resized and WebP-encoded, so rows stay small.
+
 #### The service
 
 `backend/services/imageService.js`:
 
-- `createImage({ organizationId, ownerType, buffer, contentType, width, height })`
-  — enforces a byte ceiling (**512 KB**; a 640px WebP banner lands far under
-  it, so anything above is a client bug or an attack) and rejects any
-  `contentType` outside the three above.
+- `createImage({ organizationId, ownerType, buffer })` — enforces a byte
+  ceiling (**512 KB**; a 800px WebP banner lands far under it, so anything
+  above is a client bug or an attack) and **decides the type from the bytes**.
 - `getImage(id)` — unscoped by necessity; see the access note below.
+- `claimImage({ id, organizationId, ownerId })` — stamps the owner on save.
 - `deleteImage({ id, organizationId })` — **scoped**. An outlet admin can only
   delete their own outlet's images.
 
+**The stored type is sniffed from the bytes, never taken from the multipart
+part's declared Content-Type** — that header is written by the uploader and
+proves nothing, and the served response echoes the type back, so trusting the
+label would let anyone store arbitrary content and have it handed back under a
+type of their choosing. `customerAccountService.sniffImageType` already
+implements exactly this check against a closed list of PNG / JPEG / WebP.
+**SVG is absent from that list and must stay absent: it is a document, not an
+image, and it executes script in the origin that serves it.**
+
+Rather than copy it, `sniffImageType` moves to `backend/utils/imageBytes.js`
+and both services import it. Two divergent copies of a security check is the
+failure mode worth spending one small refactor to avoid.
+
 Mock-DB constraints apply: no `findById` (use `findOne({ _id })`), no
 `updateMany`, no aggregation, top-level equality / `$or` / `$lte` / `$gte`
-only. None of the above needs anything the mock can't do. Buffers live fine in
-the in-memory store.
+only. `deleteOne` and `deleteMany` **are** implemented by the mock
+(`utils/mockMongoose.js`), so the sweep below can use `deleteMany`.
 
 #### The endpoints
 
@@ -118,8 +150,15 @@ the in-memory store.
   body. Returns `{ id, url }`. `organizationId` comes from the JWT, never the
   request body.
 - `GET /api/images/:id` — **public**, mounted alongside the other public route
-  groups. Responds with `Cache-Control: public, max-age=31536000, immutable`
-  and an ETag.
+  groups. Mirrors `getAvatarController` exactly: a `/^[a-f\d]{24}$/i` shape
+  check before the lookup (a malformed id reaches real mongoose as a CastError
+  and surfaces as a 500, which this endpoint would hit constantly from stale
+  URLs), then `Cache-Control: public, max-age=31536000, immutable`,
+  `X-Content-Type-Options: nosniff`, and the sniffed `Content-Type`.
+
+`immutable` is safe without a version parameter here because ids are never
+reused — a replaced image is a new row with a new id, and the document points
+at the new one. This is why `Image` rows are never updated in place.
 
 **Why the read endpoint is public.** An `<img>` tag carries no Authorization
 header. Every image in this scheme is already public-facing content — outlet
@@ -157,13 +196,12 @@ than base64 did.
 
 **Abandoned uploads.** An admin who uploads an image and then cancels the modal
 leaves a row with `ownerId: null` and no owner that will ever claim it. These
-are swept opportunistically inside `createImage`: query
-`{ organizationId, ownerId: null, createdAt: { $lte: <24h ago> } }`, take at
-most 20 rows, delete them individually. Both operators are mock-DB safe
-(top-level equality and `$lte`), and individual deletes are required because
-the mock has no `deleteMany`. **No cron job exists in this codebase and none is
-being added** — the sweep is bounded and piggybacks on a request that is
-already writing.
+are swept opportunistically inside `createImage`:
+`deleteMany({ organizationId, ownerId: null, createdAt: { $lte: <24h ago> } })`.
+Both operators are mock-DB safe (top-level equality and `$lte`), and the mock
+implements `deleteMany`. **No cron job exists in this codebase and none is
+being added** — the sweep piggybacks on a request that is already writing, and
+is scoped to the uploading outlet so it can never touch another tenant's rows.
 
 #### Client encoding
 
