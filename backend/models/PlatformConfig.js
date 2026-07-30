@@ -14,10 +14,16 @@ const PlatformConfigSchema = new mongoose.Schema({
     address: { type: String, default: "" },
     hours: { type: String, default: "" },
     aboutUs: { type: String, default: "" },
+    // Every network is optional and defaults to "". The landing footer renders
+    // only the ones with a URL set, so an unconfigured platform shows no dead
+    // icons rather than a row of placeholders.
     socials: {
       instagram: { type: String, default: "" },
       facebook: { type: String, default: "" },
-      x: { type: String, default: "" }
+      tiktok: { type: String, default: "" },
+      x: { type: String, default: "" },
+      linkedin: { type: String, default: "" },
+      youtube: { type: String, default: "" }
     }
   }
 });

@@ -37,8 +37,8 @@ export function WhatsAppFloat() {
       // z-40 keeps it under the nav (z-50). The border matters once the cream
       // footer is fully revealed — without it a cream pill on a cream plane
       // has no edge.
-      className={`fixed bottom-6 right-6 z-40 flex h-14 items-center gap-3 overflow-hidden rounded-[74px] border border-[#14201C]/20 bg-[var(--lp-cream)] text-[#14201C] shadow-[0_8px_30px_rgba(0,0,0,0.35)] transition-[width,padding] duration-300 motion-reduce:transition-none ${
-        expanded ? "w-[188px] px-5" : "w-14 justify-center px-0"
+      className={`fixed bottom-6 right-6 z-40 flex h-14 items-center overflow-hidden rounded-[74px] border border-[#14201C]/20 bg-[var(--lp-cream)] text-[#14201C] shadow-[0_8px_30px_rgba(0,0,0,0.35)] transition-[width,padding] duration-300 motion-reduce:transition-none ${
+        expanded ? "w-[188px] gap-3 px-5" : "w-14 justify-center gap-0 px-0"
       }`}
     >
       <svg viewBox="0 0 24 24" className="h-6 w-6 flex-shrink-0" aria-hidden="true">
@@ -54,9 +54,14 @@ export function WhatsAppFloat() {
           fill="currentColor"
         />
       </svg>
+      {/* The label must collapse its WIDTH, not just its opacity. A zero-opacity
+          label still takes ~83px of layout, and `justify-center` then centres
+          icon+label together — pushing the icon clean out of the 56px circle,
+          where `overflow-hidden` clips it away. That renders as an empty cream
+          disc with no glyph at all. */}
       <span
-        className={`whitespace-nowrap text-sm font-medium transition-opacity duration-200 ${
-          expanded ? "opacity-100" : "opacity-0"
+        className={`overflow-hidden whitespace-nowrap text-sm font-medium transition-all duration-200 motion-reduce:transition-none ${
+          expanded ? "w-auto opacity-100" : "w-0 opacity-0"
         }`}
       >
         Chat with us
