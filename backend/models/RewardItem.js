@@ -14,6 +14,9 @@ const RewardItemSchema = new mongoose.Schema({
   name: { type: String, required: true, trim: true },
   description: { type: String, default: "", trim: true },
   imageUrl: { type: String, default: "", trim: true },
+  // Points at an Image row when the reward's photo was uploaded through
+  // FileDrop. Wins over imageUrl on read — see lib/images.ts resolveImageUrl.
+  imageId: { type: String, default: null },
 
   // INTEGER centipoints (utils/pointsMath.js). Required — unlike a MenuItem,
   // a RewardItem with no points price has no reason to exist.
