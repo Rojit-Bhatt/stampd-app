@@ -28,6 +28,7 @@ const { listEvents, createEventController, updateEventController, deleteEventCon
 const campaignController = require("../controllers/campaignController");
 const rewardController = require("../controllers/rewardController");
 const broadcastController = require("../controllers/broadcastController");
+const { uploadImageFile, uploadImage, deleteImage } = require("../controllers/imageController");
 const { verifyToken, isBusinessAdmin } = require("../middleware/authMiddleware");
 
 const router = express.Router();
@@ -59,6 +60,11 @@ router.get("/campaigns", verifyToken, isBusinessAdmin, campaignController.list);
 router.post("/campaigns", verifyToken, isBusinessAdmin, campaignController.create);
 router.patch("/campaigns/:id", verifyToken, isBusinessAdmin, campaignController.update);
 router.delete("/campaigns/:id", verifyToken, isBusinessAdmin, campaignController.remove);
+
+// Uploaded pictures for rewards, events and branding. The tenant comes from
+// the JWT, never the request body — see imageController.
+router.post("/images", verifyToken, isBusinessAdmin, uploadImageFile, uploadImage);
+router.delete("/images/:id", verifyToken, isBusinessAdmin, deleteImage);
 
 router.get("/rewards", verifyToken, isBusinessAdmin, rewardController.list);
 router.post("/rewards", verifyToken, isBusinessAdmin, rewardController.create);
