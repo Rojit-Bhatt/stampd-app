@@ -24,6 +24,7 @@ import { useAccount } from "../hooks/useAccount";
 import { apiRequest } from "../lib/api";
 import { tenantPath } from "../lib/tenantPath";
 import { PointsBalanceCard } from "../components/customer/PointsBalanceCard";
+import { DynamicText } from "../components/shared/DynamicText";
 import { Badge } from "@/components/ui/badge";
 
 function TiktokIcon({ className = "h-4 w-4" }: { className?: string }) {
@@ -131,7 +132,10 @@ export default function CustomerDashboard() {
       {/* The shared top bar lives in CustomerLayout; this is content beneath. */}
       <header className="mb-5">
         <h1 className="font-display text-2xl font-bold leading-tight text-[var(--ink)]">
-          Welcome back{firstName ? `, ${firstName}` : ""}
+          <DynamicText
+            words={["नमस्ते", "Hello", "Namaste"]}
+            settled={`Welcome back${firstName ? `, ${firstName}` : ""}`}
+          />
         </h1>
         {/* Said once, here. It used to also repeat verbatim in a card below. */}
         <p className="mt-0.5 text-sm text-[var(--muted)]">{awayText}</p>
