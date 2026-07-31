@@ -3,28 +3,29 @@ import { AnimatePresence, motion } from "motion/react";
 import { useMotion } from "../../lib/motion";
 
 interface DynamicTextProps {
-  /** Cycled through once, quickly, on mount. */
+  /** Cycled through on a loop, ahead of the real text. */
   words: string[];
   /** What it comes to rest on and stays as. */
   settled: string;
   className?: string;
 }
 
+/** How long each word holds before advancing to the next. */
+const HOLD_MS = 1600;
+
 /**
- * Runs through a handful of greetings and lands on the real one. The cycle
- * happens once per mount, never loops — a permanently animating greeting is
- * a distraction on a page whose actual job is showing a balance.
+ * Cycles through a handful of greetings, then the real one, on a loop.
+ * Reduced motion gets the final text with no cycle at all.
  */
 export function DynamicText({ words, settled, className }: DynamicTextProps) {
   const m = useMotion();
   const sequence = [...words, settled];
-  // A reduced-motion user gets the final text immediately, with no cycle.
-  const [index, setIndex] = useState(m.prefersReduced ? sequence.length - 1 : 0);
+  const settledIndex = sequence.length - 1;
+  const [index, setIndex] = useState(m.prefersReduced ? settledIndex : 0);
 
   useEffect(() => {
     if (m.prefersReduced) return;
-    if (index >= sequence.length - 1) return;
-    const timer = setTimeout(() => setIndex((i) => i + 1), 300);
+    const timer = setTimeout(() => setIndex((i) => (i + 1) % sequence.length), HOLD_MS);
     return () => clearTimeout(timer);
   }, [index, sequence.length, m.prefersReduced]);
 
