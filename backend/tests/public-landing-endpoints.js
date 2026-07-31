@@ -82,6 +82,9 @@ async function main() {
     const { isReservedSlug } = require("../config/platform");
     check("privacy is a reserved slug", isReservedSlug("privacy"));
     check("terms is a reserved slug", isReservedSlug("terms"));
+    // App.tsx matches /review-qr literally, before /:companySlug. A company
+    // registered on that slug would be permanently unreachable.
+    check("review-qr is a reserved slug", isReservedSlug("review-qr"));
     check("reserved-slug check is case-insensitive", isReservedSlug("Privacy"));
 
     if (failures === 0) console.log("\nAll public landing endpoint checks passed.");
