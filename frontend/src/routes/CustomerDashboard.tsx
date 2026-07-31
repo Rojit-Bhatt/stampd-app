@@ -8,7 +8,6 @@ import {
   Instagram,
   Facebook,
   Twitter,
-  Calendar,
   Gift,
   Zap,
   Star,
@@ -24,6 +23,7 @@ import { useAccount } from "../hooks/useAccount";
 import { apiRequest } from "../lib/api";
 import { tenantPath } from "../lib/tenantPath";
 import { PointsBalanceCard } from "../components/customer/PointsBalanceCard";
+import { EventCard } from "../components/customer/EventCard";
 import { DynamicText } from "../components/shared/DynamicText";
 import { Badge } from "@/components/ui/badge";
 
@@ -37,10 +37,6 @@ function TiktokIcon({ className = "h-4 w-4" }: { className?: string }) {
       <path d="M12.525.02c1.31-.02 2.61-.01 3.91-.02.08 1.53.63 3.02 1.59 4.23.95.1 1.9.1 2.85.1v3.91c-.95 0-1.9 0-2.85-.1-.28.87-.85 1.62-1.59 2.16v4.61c.05 1.34-.33 2.68-1.08 3.79-.75 1.11-1.85 1.9-3.13 2.23-1.28.33-2.63.14-3.79-.53-1.16-.67-1.98-1.78-2.31-3.13-.33-1.28-.14-2.63.53-3.79.67-1.16 1.78-1.98 3.13-2.31V14.1c-.67.11-1.32.37-1.89.77-.57.4-1.01.94-1.29 1.58-.28.64-.37 1.35-.26 2.05.11.7.42 1.35.89 1.88.47.53 1.09.9 1.79 1.07.7.17 1.43.14 2.12-.09.69-.23 1.29-.65 1.73-1.22.44-.57.69-1.27.72-1.99V4.65c-.11-1.54.51-3.07 1.67-4.1.95-.8 2.16-1.23 3.4-1.23-.08.24-.08.49-.08.73z" />
     </svg>
   );
-}
-
-function formatEventDate(iso: string): string {
-  return new Date(iso).toLocaleDateString(undefined, { month: "short", day: "numeric" });
 }
 
 const DAY_LABELS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
@@ -326,37 +322,8 @@ export default function CustomerDashboard() {
             <Section title="Upcoming events">
               <ul className="flex flex-col gap-3.5">
                 {upcomingEvents.map((event) => (
-                  <li key={event.id} className="flex gap-3">
-                    {event.imageUrl && (
-                      <img
-                        src={event.imageUrl}
-                        alt=""
-                        className="h-14 w-14 flex-shrink-0 rounded-[var(--radius-field)] object-cover"
-                      />
-                    )}
-                    <div className="min-w-0 flex-1">
-                      <div
-                        className="flex items-center gap-1.5 text-[11px] font-bold"
-                        style={{ color: "var(--brand-ink)" }}
-                      >
-                        <Calendar className="h-3.5 w-3.5" />
-                        {formatEventDate(event.date)}
-                        {event.time ? ` · ${event.time}` : ""}
-                      </div>
-                      <div className="truncate text-sm font-semibold text-[var(--ink)]">
-                        {event.title}
-                      </div>
-                      {event.location && (
-                        <div className="truncate text-[13px] text-[var(--muted)]">
-                          {event.location}
-                        </div>
-                      )}
-                      {event.description && (
-                        <div className="truncate text-[13px] text-[var(--muted)]">
-                          {event.description}
-                        </div>
-                      )}
-                    </div>
+                  <li key={event.id}>
+                    <EventCard event={event} />
                   </li>
                 ))}
               </ul>
