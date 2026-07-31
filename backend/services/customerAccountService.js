@@ -14,6 +14,7 @@ const PendingClaim = require("../models/PendingClaim");
 const { ensureUserPointsBalance, formatAuthPayload } = require("./authService");
 const { effectiveBalanceCenti, expiresAtFor } = require("./pointsService");
 const { toPoints } = require("../utils/pointsMath");
+const { sniffImageType } = require("../utils/imageBytes");
 const { generateGlobalSessionToken } = require("../utils/tokenUtils");
 const { resolveProgram } = require("./programService");
 const { resolveGoogleLink } = require("../utils/googleLink");
@@ -602,33 +603,6 @@ const getMyTenants = async ({ customerAccountId }) => {
 // slipped through unresized, and tight enough that the collection can't be
 // used as free storage.
 const MAX_AVATAR_BYTES = 256 * 1024;
-
-/**
- * The stored type is decided by the BYTES, never by the multipart part's
- * declared Content-Type — that header is written by the uploader and proves
- * nothing. Since the served response echoes this type back with the image,
- * trusting the label would let anyone store arbitrary content and have us
- * hand it back under a type of their choosing.
- *
- * Deliberately a closed list of three raster formats. SVG is absent and must
- * stay absent: it is a document, not an image, and it executes script in the
- * origin that serves it.
- */
-const sniffImageType = (buffer) => {
-  if (buffer.length < 12) return null;
-  // PNG: \x89PNG\r\n\x1a\n
-  if (buffer.subarray(0, 8).equals(Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]))) {
-    return "image/png";
-  }
-  // JPEG: FF D8 FF
-  if (buffer[0] === 0xff && buffer[1] === 0xd8 && buffer[2] === 0xff) return "image/jpeg";
-  // WebP: "RIFF" .... "WEBP"
-  if (buffer.subarray(0, 4).toString("ascii") === "RIFF" &&
-      buffer.subarray(8, 12).toString("ascii") === "WEBP") {
-    return "image/webp";
-  }
-  return null;
-};
 
 const setAvatar = async ({ customerAccountId, buffer }) => {
   if (!buffer || !buffer.length) throw createHttpError("An image file is required.", 400);
