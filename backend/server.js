@@ -55,6 +55,7 @@ const authRoutes = require("./routes/authRoutes");
 const adminRoutes = require("./routes/adminRoutes");
 const pointsRoutes = require("./routes/pointsRoutes");
 const reviewsRoutes = require("./routes/reviewsRoutes");
+const imageRoutes = require("./routes/imageRoutes");
 const platformRoutes = require("./routes/platformRoutes");
 const tenantRoutes = require("./routes/tenantRoutes");
 const menuRoutes = require("./routes/menuRoutes");
@@ -133,6 +134,9 @@ app.use("/api/admin", adminRoutes);
 // Customer loyalty (earn, redeem, balance, history), tenant from the JWT.
 app.use("/api/points", pointsRoutes);
 app.use("/api/reviews", reviewsRoutes);
+// Public: an <img> tag carries neither an Authorization header nor tenant
+// slug headers, so this sits outside resolveTenant deliberately.
+app.use("/api/images", imageRoutes);
 
 // Dev/test-only helper endpoints, mounted only against the in-memory mock DB
 // (mock DB only). Never available against a real database / in production.

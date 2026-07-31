@@ -5,6 +5,7 @@ const { BUSINESS_CATEGORIES } = require("../config/platform");
 const { getSubscriptionSummary } = require("../services/subscriptionService");
 const { resolveProgram, getOverriddenFields } = require("../services/programService");
 const Company = require("../models/Company");
+const { claimImage, deleteImage } = require("../services/imageService");
 
 const createHttpError = (message, statusCode) => {
   const error = new Error(message);
@@ -114,10 +115,37 @@ const updateMySettings = async (req, res, next) => {
     }
 
     if (branding !== undefined && typeof branding === "object") {
+      const previousLogoImageId = organization.branding.logoImageId;
+      const previousBannerImageId = organization.branding.bannerImageId;
+
       organization.branding = {
         ...organization.branding,
         ...branding
       };
+
+      // An uploaded image starts unowned. Saving the branding that uses it
+      // claims it, and the row it replaced becomes unreachable — delete it
+      // rather than leave it to accumulate, which is what makes this an
+      // optimisation instead of a slower leak.
+      const nextLogoImageId = organization.branding.logoImageId;
+      if (nextLogoImageId !== previousLogoImageId) {
+        if (nextLogoImageId) {
+          await claimImage({ id: nextLogoImageId, organizationId: organization._id, ownerId: organization._id });
+        }
+        if (previousLogoImageId) {
+          await deleteImage({ id: previousLogoImageId, organizationId: organization._id });
+        }
+      }
+
+      const nextBannerImageId = organization.branding.bannerImageId;
+      if (nextBannerImageId !== previousBannerImageId) {
+        if (nextBannerImageId) {
+          await claimImage({ id: nextBannerImageId, organizationId: organization._id, ownerId: organization._id });
+        }
+        if (previousBannerImageId) {
+          await deleteImage({ id: previousBannerImageId, organizationId: organization._id });
+        }
+      }
     }
 
     if (contact !== undefined && typeof contact === "object") {

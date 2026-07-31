@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { Link, useParams, useSearchParams } from "react-router-dom";
 import { apiRequest } from "../lib/api";
 import { tenantPath } from "../lib/tenantPath";
+import { Loader } from "../components/ui/loader";
 
 // Verify tokens are single-use, so firing the request twice for the same
 // token would 400 on the second call even though the first succeeded. In
@@ -54,7 +55,7 @@ export default function VerifyEmail() {
     <div className="flex min-h-screen items-center justify-center bg-[var(--bg)] px-4">
       <div className="w-full max-w-sm text-center">
         {state === "loading" ? (
-          <p className="text-sm text-[var(--muted)]">Verifying…</p>
+          <Loader title="Verifying your email" subtitle="This only takes a second" size="sm" />
         ) : (
           <>
             <h2 className="font-display text-[22px] font-bold text-[var(--ink)]">
