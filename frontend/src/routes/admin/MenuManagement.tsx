@@ -1,6 +1,6 @@
-import { useMemo, useRef, useState } from "react";
+import { useMemo, useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { Trash2, Plus, Download, UploadCloud, Search } from "lucide-react";
+import { Trash2, Plus, Download, Search } from "lucide-react";
 import toast from "react-hot-toast";
 import { apiRequest, apiUrl, tenantHeaders } from "../../lib/api";
 import { useAdminSettings, useUpdateAdminSettings } from "../../hooks/useAdminSettings";
@@ -8,6 +8,7 @@ import { useAdminAuth } from "../../context/AdminAuthContext";
 import { Skeleton } from "../../components/ui/skeleton";
 import { ConfirmDialog } from "../../components/shared/ConfirmDialog";
 import { MenuImportPreviewModal, type MenuImportPreview } from "../../components/admin/MenuImportPreviewModal";
+import { FileDrop } from "../../components/shared/FileDrop";
 
 interface MenuItem {
   id?: string;
@@ -51,14 +52,11 @@ export default function MenuManagement() {
   const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null);
   const [previewing, setPreviewing] = useState(false);
   const [approving, setApproving] = useState(false);
-  const [dragActive, setDragActive] = useState(false);
   const [preview, setPreview] = useState<MenuImportPreview | null>(null);
   const [previewOpen, setPreviewOpen] = useState(false);
   const [search, setSearch] = useState("");
   const [categoryFilter, setCategoryFilter] = useState("All");
   const [statusFilter, setStatusFilter] = useState<"All" | "Available" | "Sold out">("All");
-  const fileInputRef = useRef<HTMLInputElement | null>(null);
-
   const menuEnabled = settings?.menuEnabled ?? false;
 
   const invalidate = () => qc.invalidateQueries({ queryKey: ["adminMenu"] });
@@ -95,7 +93,6 @@ export default function MenuManagement() {
       toast.error((err as Error).message || "Couldn't read that file — check the format.");
     } finally {
       setPreviewing(false);
-      if (fileInputRef.current) fileInputRef.current.value = "";
     }
   };
 
@@ -199,61 +196,15 @@ export default function MenuManagement() {
           Columns: Name (required), Price, Points Price, Category, Description. You'll review what will change before anything is saved.
         </p>
 
-        <div
-          onDragOver={(e) => {
-            e.preventDefault();
-            setDragActive(true);
-          }}
-          onDragLeave={() => setDragActive(false)}
-          onDrop={(e) => {
-            e.preventDefault();
-            setDragActive(false);
-            const file = e.dataTransfer.files?.[0];
-            if (file) previewFile(file);
-          }}
-          onClick={() => fileInputRef.current?.click()}
-          className="flex cursor-pointer flex-col items-center justify-center gap-3 rounded-[var(--radius-btn)] border-2 border-dashed px-6 py-8 text-center transition-colors hover:border-[var(--brand)]"
-          style={{
-            borderColor: dragActive ? "var(--brand)" : "var(--line)",
-            background: dragActive ? "var(--plat-soft)" : "var(--bg)",
-          }}
-        >
-          <UploadCloud className="h-8 w-8" style={{ color: "var(--primary-deep)" }} />
-          <div className="text-sm font-bold text-[var(--ink)]">
-            {previewing ? "Reading your file…" : "Drag your .xlsx file here, or click to choose one"}
-          </div>
-          <div className="text-[12px] text-[var(--muted)] mb-1">.xlsx or .xls, up to 5MB</div>
-          
-          <button
-            type="button"
-            onClick={(e) => {
-              e.stopPropagation();
-              fileInputRef.current?.click();
-            }}
-            className="inline-flex items-center gap-1.5 rounded-[11px] bg-[var(--brand)] text-white px-4 py-2 text-sm font-bold hover:opacity-90 transition-opacity"
-          >
-            <UploadCloud className="h-4 w-4" /> Upload Menu
-          </button>
-
-          <input
-            ref={fileInputRef}
-            type="file"
-            accept=".xlsx,.xls"
-            className="hidden"
-            onChange={(e) => {
-              const file = e.target.files?.[0];
-              if (file) previewFile(file);
-            }}
-          />
-        </div>
+        <FileDrop
+          mode="file"
+          accept=".xlsx,.xls"
+          maxBytes={5 * 1024 * 1024}
+          onFilePicked={(file) => void previewFile(file)}
+          label={previewing ? "Reading your file…" : "Drag your .xlsx file here, or click to choose one"}
+        />
 
         <div className="mt-3 flex flex-wrap gap-2">
-          <button
-            onClick={() => fileInputRef.current?.click()}
-            className="inline-flex items-center gap-1.5 rounded-[11px] border border-[var(--line)] bg-[var(--bg)] px-3.5 py-2.5 text-sm font-bold hover:bg-[var(--plat-soft)]"
-          >
-            <UploadCloud className="h-4 w-4" /> Select file to upload
-          </button>
           <button
             onClick={downloadTemplate}
             className="inline-flex items-center gap-1.5 rounded-[11px] border border-[var(--line)] bg-[var(--bg)] px-3.5 py-2.5 text-sm font-bold hover:bg-[var(--plat-soft)]"
