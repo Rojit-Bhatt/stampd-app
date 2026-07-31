@@ -1,9 +1,24 @@
 const Event = require("../models/Event");
+const { claimImage, deleteImage } = require("./imageService");
 
 const createHttpError = (message, statusCode) => {
   const error = new Error(message);
   error.statusCode = statusCode;
   return error;
+};
+
+// An uploaded image starts unowned. Saving the row that uses it claims it,
+// and the row it replaced becomes unreachable — delete it rather than leave
+// it to accumulate, which is what makes this an optimisation instead of a
+// slower leak.
+const applyImage = async ({ organizationId, ownerId, nextImageId, previousImageId }) => {
+  if (nextImageId === previousImageId) return;
+  if (nextImageId) {
+    await claimImage({ id: nextImageId, organizationId, ownerId });
+  }
+  if (previousImageId) {
+    await deleteImage({ id: previousImageId, organizationId });
+  }
 };
 
 const listForOrg = async (organizationId) => {
@@ -12,7 +27,7 @@ const listForOrg = async (organizationId) => {
 
 const createEvent = async (
   organizationId,
-  { title, date, time, location, description, imageUrl }
+  { title, date, time, location, description, imageUrl, imageId }
 ) => {
   if (!title) {
     throw createHttpError("Event title is required.", 400);
@@ -28,7 +43,13 @@ const createEvent = async (
     time: time !== undefined ? time : "",
     location: location !== undefined ? location : "",
     description: description !== undefined ? description : "",
-    imageUrl: imageUrl !== undefined ? imageUrl : ""
+    imageUrl: imageUrl !== undefined ? imageUrl : "",
+    imageId: imageId || null
+  });
+
+  await applyImage({
+    organizationId, ownerId: event._id.toString(),
+    nextImageId: event.imageId, previousImageId: null
   });
 
   return event;
@@ -36,9 +57,15 @@ const createEvent = async (
 
 // Only these fields may be changed via the API — never organizationId or
 // _id, so an admin can't move an event into (or out of) another tenant.
-const MUTABLE_EVENT_FIELDS = ["title", "date", "time", "location", "description", "imageUrl"];
+const MUTABLE_EVENT_FIELDS = ["title", "date", "time", "location", "description", "imageUrl", "imageId"];
 
 const updateEvent = async (organizationId, eventId, updates) => {
+  const existing = await Event.findOne({ _id: eventId, organizationId });
+  if (!existing) {
+    throw createHttpError("Event not found.", 404);
+  }
+  const previousImageId = existing.imageId || null;
+
   const safeUpdates = {};
   for (const field of MUTABLE_EVENT_FIELDS) {
     if (updates[field] !== undefined) {
@@ -56,10 +83,22 @@ const updateEvent = async (organizationId, eventId, updates) => {
     throw createHttpError("Event not found.", 404);
   }
 
+  if (safeUpdates.imageId !== undefined) {
+    await applyImage({
+      organizationId, ownerId: updatedEvent._id.toString(),
+      nextImageId: updatedEvent.imageId, previousImageId
+    });
+  }
+
   return updatedEvent;
 };
 
 const deleteEvent = async (organizationId, eventId) => {
+  const existing = await Event.findOne({ _id: eventId, organizationId });
+  if (!existing) {
+    throw createHttpError("Event not found.", 404);
+  }
+
   const result = await Event.deleteOne({ _id: eventId, organizationId });
 
   const deletedCount =
@@ -67,6 +106,10 @@ const deleteEvent = async (organizationId, eventId) => {
 
   if (!deletedCount) {
     throw createHttpError("Event not found.", 404);
+  }
+
+  if (existing.imageId) {
+    await deleteImage({ id: existing.imageId, organizationId });
   }
 
   return { success: true };

@@ -11,6 +11,9 @@ const EventSchema = new mongoose.Schema({
   location: { type: String, default: "", trim: true },
   description: { type: String, default: "", trim: true },
   imageUrl: { type: String, default: "", trim: true },
+  // Points at an Image row when the event's photo was uploaded through
+  // FileDrop. Wins over imageUrl on read — see lib/images.ts resolveImageUrl.
+  imageId: { type: String, default: null },
   createdAt: { type: Date, default: Date.now }
 });
 
