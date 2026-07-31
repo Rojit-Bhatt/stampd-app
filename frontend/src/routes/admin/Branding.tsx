@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState } from "react";
 import toast from "react-hot-toast";
 import {
   useAdminSettings,
@@ -9,44 +9,8 @@ import {
 } from "../../hooks/useAdminSettings";
 import { Skeleton } from "../../components/ui/skeleton";
 import { darken, identityAccent, collidesWithValueGreen } from "../../lib/color";
-
-async function resizeImageToBase64(file: File, width: number, height: number, mode: "square" | "aspect"): Promise<string> {
-  const bitmap = await createImageBitmap(file);
-  try {
-    const canvas = document.createElement("canvas");
-    const ctx = canvas.getContext("2d");
-    if (!ctx) throw new Error("Could not process image.");
-
-    if (mode === "square") {
-      const edge = Math.min(bitmap.width, bitmap.height);
-      const sx = (bitmap.width - edge) / 2;
-      const sy = (bitmap.height - edge) / 2;
-      canvas.width = width;
-      canvas.height = height;
-      ctx.drawImage(bitmap, sx, sy, edge, edge, 0, 0, width, height);
-    } else {
-      const targetRatio = width / height;
-      const srcRatio = bitmap.width / bitmap.height;
-      let sx = 0, sy = 0, sWidth = bitmap.width, sHeight = bitmap.height;
-
-      if (srcRatio > targetRatio) {
-        sWidth = bitmap.height * targetRatio;
-        sx = (bitmap.width - sWidth) / 2;
-      } else {
-        sHeight = bitmap.width / targetRatio;
-        sy = (bitmap.height - sHeight) / 2;
-      }
-
-      canvas.width = width;
-      canvas.height = height;
-      ctx.drawImage(bitmap, sx, sy, sWidth, sHeight, 0, 0, width, height);
-    }
-
-    return canvas.toDataURL("image/webp", 0.85);
-  } finally {
-    bitmap.close();
-  }
-}
+import { FileDrop } from "../../components/shared/FileDrop";
+import { resolveImageUrl } from "../../lib/images";
 
 const SWATCHES = ["#B5533C", "#8B2635", "#7A5CA8", "#2F7E8C", "#C9852B", "#C24B7A", "#3F7A5C", "#2B2B2B"];
 
@@ -66,9 +30,6 @@ export default function Branding() {
   const [name, setName] = useState("");
   const [category, setCategory] = useState<BusinessCategory>("other");
   const [brand, setBrand] = useState<AdminBranding | null>(null);
-
-  const logoInputRef = useRef<HTMLInputElement>(null);
-  const bannerInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     if (settings && !brand) {
@@ -131,6 +92,8 @@ export default function Branding() {
 
   const initial = (name || "?").charAt(0).toUpperCase();
   const deep = darken(brand.primaryColor);
+  const logoSrc = resolveImageUrl(brand.logoImageId, brand.logoUrl);
+  const bannerSrc = resolveImageUrl(brand.bannerImageId, brand.bannerUrl);
 
   return (
     <div>
@@ -208,114 +171,40 @@ export default function Branding() {
 
           <div className="flex flex-col gap-1.5">
             <label className="text-sm font-bold">Logo</label>
-            <div className="flex items-center gap-4">
-              {brand.logoUrl ? (
-                <img
-                  src={brand.logoUrl}
-                  alt="Logo"
-                  className="h-16 w-16 rounded-[15px] border border-[var(--line)] object-cover bg-white"
-                />
-              ) : (
-                <div className="flex h-16 w-16 items-center justify-center rounded-[15px] border border-dashed border-[var(--line)] bg-[var(--bg)] font-display text-lg font-bold text-[var(--muted)]">
-                  {initial}
-                </div>
-              )}
-              <div className="flex flex-col gap-1.5">
-                <div className="flex gap-2">
-                  <button
-                    type="button"
-                    onClick={() => logoInputRef.current?.click()}
-                    className="rounded-[9px] border border-[var(--line)] bg-[var(--bg)] px-3 py-1.5 text-xs font-bold hover:bg-[var(--plat-soft)] transition-colors"
-                  >
-                    Choose logo
-                  </button>
-                  {brand.logoUrl && (
-                    <button
-                      type="button"
-                      onClick={() => set("logoUrl", "")}
-                      className="rounded-[9px] border border-[var(--warn-soft)] bg-white text-[var(--warn)] px-3 py-1.5 text-xs font-bold hover:bg-[var(--warn-soft)] transition-colors"
-                    >
-                      Remove
-                    </button>
-                  )}
-                </div>
-                <span className="text-[11px] text-[var(--muted)]">Square image, up to 5MB</span>
-              </div>
-              <input
-                ref={logoInputRef}
-                type="file"
-                accept="image/*"
-                className="hidden"
-                onChange={async (e) => {
-                  const file = e.target.files?.[0];
-                  if (file) {
-                    try {
-                      const base64 = await resizeImageToBase64(file, 256, 256, "square");
-                      set("logoUrl", base64);
-                      toast.success("Logo loaded!");
-                    } catch (err) {
-                      toast.error("Could not read logo image.");
-                    }
-                  }
-                  e.target.value = "";
-                }}
-              />
-            </div>
+            <FileDrop
+              mode="image"
+              ownerType="branding_logo"
+              previewUrl={resolveImageUrl(brand.logoImageId, brand.logoUrl) || null}
+              onImageUploaded={({ id }) => {
+                set("logoImageId", id);
+                toast.success("Logo loaded!");
+              }}
+              onRemove={() => {
+                set("logoImageId", null);
+                set("logoUrl", "");
+              }}
+              label="Click to choose a logo, or drag one here"
+            />
+            <span className="text-[11px] text-[var(--muted)]">Square image, up to 512KB</span>
           </div>
 
           <div className="flex flex-col gap-1.5">
             <label className="text-sm font-bold">Banner / Cover picture</label>
-            <div className="flex flex-col gap-3">
-              {brand.bannerUrl ? (
-                <img
-                  src={brand.bannerUrl}
-                  alt="Banner"
-                  className="h-28 w-full rounded-[15px] border border-[var(--line)] object-cover bg-[var(--bg)]"
-                />
-              ) : (
-                <div className="flex h-28 w-full items-center justify-center rounded-[15px] border border-dashed border-[var(--line)] bg-[var(--bg)] text-sm font-medium text-[var(--muted)]">
-                  No cover picture uploaded
-                </div>
-              )}
-              <div className="flex items-center gap-4">
-                <button
-                  type="button"
-                  onClick={() => bannerInputRef.current?.click()}
-                  className="rounded-[9px] border border-[var(--line)] bg-[var(--bg)] px-3.5 py-2 text-xs font-bold hover:bg-[var(--plat-soft)] transition-colors"
-                >
-                  Choose cover photo
-                </button>
-                {brand.bannerUrl && (
-                  <button
-                    type="button"
-                    onClick={() => set("bannerUrl", "")}
-                    className="rounded-[9px] border border-[var(--warn-soft)] bg-white text-[var(--warn)] px-3.5 py-2 text-xs font-bold hover:bg-[var(--warn-soft)] transition-colors"
-                  >
-                    Remove
-                  </button>
-                )}
-                <span className="text-[11px] text-[var(--muted)]">Recommended: 800x300 landscape photo</span>
-              </div>
-              <input
-                ref={bannerInputRef}
-                type="file"
-                accept="image/*"
-                className="hidden"
-                onChange={async (e) => {
-                  const file = e.target.files?.[0];
-                  if (file) {
-                    try {
-                      const base64 = await resizeImageToBase64(file, 800, 300, "aspect");
-                      set("bannerUrl", base64);
-                      toast.success("Banner image loaded!");
-                    } catch (err) {
-                      toast.error("Could not read banner image.");
-                    }
-                  }
-                  e.target.value = "";
-                }}
-              />
-            </div>
+            <FileDrop
+              mode="image"
+              ownerType="branding_banner"
+              previewUrl={resolveImageUrl(brand.bannerImageId, brand.bannerUrl) || null}
+              onImageUploaded={({ id }) => {
+                set("bannerImageId", id);
+                toast.success("Banner image loaded!");
+              }}
+              onRemove={() => {
+                set("bannerImageId", null);
+                set("bannerUrl", "");
+              }}
+              label="Click to choose a banner, or drag one here"
+            />
+            <span className="text-[11px] text-[var(--muted)]">Recommended: 800x300 landscape photo</span>
           </div>
 
           <button
@@ -337,13 +226,13 @@ export default function Branding() {
             <div
               className="flex h-[120px] items-end p-4"
               style={
-                brand.bannerUrl
-                  ? { backgroundImage: `url(${brand.bannerUrl})`, backgroundSize: "cover", backgroundPosition: "center" }
+                bannerSrc
+                  ? { backgroundImage: `url(${bannerSrc})`, backgroundSize: "cover", backgroundPosition: "center" }
                   : { background: `linear-gradient(150deg, ${brand.primaryColor}, ${deep})` }
               }
             >
-              {brand.logoUrl ? (
-                <img src={brand.logoUrl} alt="" className="h-[50px] w-[50px] rounded-[15px] bg-white object-cover" />
+              {logoSrc ? (
+                <img src={logoSrc} alt="" className="h-[50px] w-[50px] rounded-[15px] bg-white object-cover" />
               ) : (
                 <div
                   className="flex h-[50px] w-[50px] items-center justify-center rounded-[15px] bg-white font-display text-lg font-bold"

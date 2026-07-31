@@ -28,6 +28,11 @@ const OrganizationSchema = new mongoose.Schema({
     tagline: { type: String, default: "" },
     logoUrl: { type: String, default: "" },
     bannerUrl: { type: String, default: "" },
+    // Point at an Image row. When set it wins over the legacy inline value
+    // above, which stays readable so existing base64 branding keeps working
+    // without a forced migration.
+    logoImageId: { type: String, default: null },
+    bannerImageId: { type: String, default: null },
     primaryColor: { type: String, default: "#7c3f1d" }
   },
 

@@ -102,6 +102,29 @@ async function main() {
 
     const gone = await fetch(`${baseUrl}/api/images/${up.body.id}`);
     check("deleted image is gone", gone.status === 404, gone.status);
+
+    // --- claiming on save, and replacing an owned image ---
+    const first = await upload(PNG_1X1, { token: outletA.adminToken, ownerType: "branding_logo" });
+    await api("/api/admin/settings", {
+      method: "PATCH", token: outletA.adminToken,
+      body: { branding: { logoImageId: first.body.id } },
+    });
+    const second = await upload(WEBP_1X1, {
+      token: outletA.adminToken, ownerType: "branding_logo", type: "image/webp", filename: "b.webp",
+    });
+    await api("/api/admin/settings", {
+      method: "PATCH", token: outletA.adminToken,
+      body: { branding: { logoImageId: second.body.id } },
+    });
+    const replaced = await fetch(`${baseUrl}/api/images/${first.body.id}`);
+    check("the replaced branding image is deleted", replaced.status === 404, replaced.status);
+    const current = await fetch(`${baseUrl}/api/images/${second.body.id}`);
+    check("the current branding image survives", current.status === 200, current.status);
+
+    // A claimed image is no longer an "abandoned upload" — outlet B still
+    // cannot delete it, same as any owned image.
+    const delClaimedByB = await api(`/api/admin/images/${second.body.id}`, { method: "DELETE", token: outletB.adminToken });
+    check("outlet B cannot delete outlet A's claimed logo", delClaimedByB.status === 404, delClaimedByB.status);
   } finally {
     stop();
   }
