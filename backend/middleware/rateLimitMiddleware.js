@@ -63,4 +63,17 @@ const uploadLimiter = rateLimit({
   handler: jsonHandler("Too many uploads. Please wait a while and try again."),
 });
 
-module.exports = { authLimiter, registrationLimiter, uploadLimiter };
+// Google Places lookups from the public /review-qr tool. Unauthenticated, on a
+// marketing page, and every call that gets past the guards is billed by Google
+// — so this is a cost control, not just an abuse control. Its own bucket
+// rather than reusing authLimiter: a visitor hunting for their shop should
+// never be able to burn the budget that protects the login endpoints.
+const placesLimiter = rateLimit({
+  windowMs: 5 * MINUTE,
+  limit: 30,
+  standardHeaders: true,
+  legacyHeaders: false,
+  handler: jsonHandler("Too many searches. Please wait a few minutes and try again."),
+});
+
+module.exports = { authLimiter, registrationLimiter, uploadLimiter, placesLimiter };
