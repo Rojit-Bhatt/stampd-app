@@ -1,9 +1,10 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 
 import { usePlatformContact } from "../../hooks/usePlatformContact";
 import { LandingFooter } from "./landing/LandingFooter";
 import { LandingNav } from "./landing/LandingNav";
 import { toWaNumber } from "./landing/WhatsAppFloat";
+import { PlaceSearch, type SelectedPlace } from "./reviewqr/PlaceSearch";
 
 // A free tool on the marketing site: paste or find your Google listing, get a
 // printable flyer with the review QR on it. Public, unauthenticated, and
@@ -15,6 +16,7 @@ import { toWaNumber } from "./landing/WhatsAppFloat";
 
 export default function ReviewQrGenerator() {
   const { data: contact } = usePlatformContact();
+  const [place, setPlace] = useState<SelectedPlace | null>(null);
 
   useEffect(() => {
     const previousTitle = document.title;
@@ -51,6 +53,16 @@ export default function ReviewQrGenerator() {
               Customers scan it and land straight on your review form. No
               account needed.
             </p>
+
+            <div className="mt-12">
+              <PlaceSearch onSelect={setPlace} />
+            </div>
+
+            {place ? (
+              <p className="mt-8 text-sm text-[var(--lp-muted)]">
+                Selected: <span className="text-[var(--lp-ink)]">{place.name}</span>
+              </p>
+            ) : null}
           </div>
         </section>
       </div>
