@@ -3,6 +3,7 @@ import { useNavigate, useParams } from "react-router-dom";
 import { useAdminAuth } from "../../context/AdminAuthContext";
 import { useAdminSettings } from "../../hooks/useAdminSettings";
 import { SuspendedOverlay } from "./SuspendedOverlay";
+import { Loader } from "../ui/loader";
 
 export function AdminGuard({ children }: { children: React.ReactNode }) {
   const { user, isLoading, logout } = useAdminAuth();
@@ -70,9 +71,7 @@ export function AdminGuard({ children }: { children: React.ReactNode }) {
   if (isLoading || (user && user.role === "business_admin" && settingsLoading && !suspended && !suspendedLatched)) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-[var(--bg)]">
-        <div className="text-xs font-bold uppercase tracking-[0.2em] text-[var(--muted)] animate-pulse">
-          Verifying credentials...
-        </div>
+        <Loader title="One moment" subtitle="Checking you in" size="md" />
       </div>
     );
   }

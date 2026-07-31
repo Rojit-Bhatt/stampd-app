@@ -3,6 +3,7 @@ import { Link, useSearchParams } from "react-router-dom";
 import { apiRequest } from "../lib/api";
 import { PLATFORM_NAME } from "../lib/platform";
 import { StampdLogo } from "../components/shared/StampdLogo";
+import { Loader } from "../components/ui/loader";
 
 interface VerifyResponse {
   success: boolean;
@@ -65,7 +66,7 @@ export default function AdminVerifyEmail() {
       <div className="w-full max-w-sm text-center">
         <StampdLogo size={44} tile className="mx-auto mb-3.5" />
         {state === "loading" ? (
-          <p className="text-sm text-[var(--muted)]">Verifying…</p>
+          <Loader title="Verifying your email" subtitle="This only takes a second" size="sm" />
         ) : (
           <>
             <h2 className="font-display text-[22px] font-bold text-[var(--ink)]">
