@@ -10,6 +10,8 @@ import {
 import { Skeleton } from "../../components/ui/skeleton";
 import { SegmentedControl, SegmentedControlItem } from "@/components/ui/segmented-control";
 import { Button } from "@/components/ui/button";
+import { Switch } from "@/components/ui/switch";
+import { SettingRow } from "../../components/shared/SettingRow";
 
 type Field = keyof AdminProgram;
 
@@ -241,53 +243,65 @@ export default function PointsProgram() {
       <div className="mt-6 flex flex-col gap-4 rounded-[var(--radius-card)] border border-[var(--line)] bg-[var(--surface)] shadow-ambient p-6">
         <h3 className="text-sm font-bold text-[var(--ink)]">Triggers</h3>
 
-        <div className="flex flex-wrap items-center gap-3 border-t border-[var(--line)] pt-4 first:border-t-0 first:pt-0">
-          <span className="w-28 text-sm font-semibold text-[var(--ink)]">Milestone</span>
-          <input
-            type="number"
-            min={1}
-            step="1"
-            placeholder="Visit count"
-            value={triggersForm.milestone.visitCount ?? ""}
-            onChange={(e) =>
-              setTriggersForm((t) =>
-                t ? { ...t, milestone: { visitCount: e.target.value === "" ? null : Number(e.target.value) } } : t
-              )
+        <SettingRow label="Milestone" description="Celebrate a customer's Nth visit.">
+          <Switch
+            checked={triggersForm.milestone.visitCount !== null}
+            onCheckedChange={(v) =>
+              setTriggersForm((t) => (t ? { ...t, milestone: { visitCount: v ? 10 : null } } : t))
             }
-            className="w-32 rounded-[var(--radius-btn)] border border-[var(--line)] bg-[var(--surface)] px-4 py-3 text-sm focus:border-[var(--primary)] focus:outline-none"
+            aria-label="Milestone trigger"
           />
-          <span className="text-xs text-[var(--muted)]">visits — empty means off</span>
-        </div>
+          {triggersForm.milestone.visitCount !== null && (
+            <input
+              type="number"
+              min={1}
+              step="1"
+              value={triggersForm.milestone.visitCount}
+              onChange={(e) =>
+                setTriggersForm((t) =>
+                  t ? { ...t, milestone: { visitCount: e.target.value === "" ? 1 : Number(e.target.value) } } : t,
+                )
+              }
+              className="w-24 rounded-[var(--radius-btn)] border border-[var(--line)] bg-[var(--surface)] px-3 py-2 text-sm focus:border-[var(--primary)] focus:outline-none"
+              aria-label="Visit count"
+            />
+          )}
+        </SettingRow>
 
-        <div className="flex flex-wrap items-center gap-3 border-t border-[var(--line)] pt-4">
-          <span className="w-28 text-sm font-semibold text-[var(--ink)]">Inactivity</span>
-          <input
-            type="number"
-            min={1}
-            step="1"
-            placeholder="Days"
-            value={triggersForm.inactivity.days ?? ""}
-            onChange={(e) =>
-              setTriggersForm((t) =>
-                t ? { ...t, inactivity: { days: e.target.value === "" ? null : Number(e.target.value) } } : t
-              )
+        <SettingRow label="Inactivity" description="Reach out after a customer has been away this long.">
+          <Switch
+            checked={triggersForm.inactivity.days !== null}
+            onCheckedChange={(v) =>
+              setTriggersForm((t) => (t ? { ...t, inactivity: { days: v ? 30 : null } } : t))
             }
-            className="w-32 rounded-[var(--radius-btn)] border border-[var(--line)] bg-[var(--surface)] px-4 py-3 text-sm focus:border-[var(--primary)] focus:outline-none"
+            aria-label="Inactivity trigger"
           />
-          <span className="text-xs text-[var(--muted)]">days since last visit — empty means off</span>
-        </div>
+          {triggersForm.inactivity.days !== null && (
+            <input
+              type="number"
+              min={1}
+              step="1"
+              value={triggersForm.inactivity.days}
+              onChange={(e) =>
+                setTriggersForm((t) =>
+                  t ? { ...t, inactivity: { days: e.target.value === "" ? 1 : Number(e.target.value) } } : t,
+                )
+              }
+              className="w-24 rounded-[var(--radius-btn)] border border-[var(--line)] bg-[var(--surface)] px-3 py-2 text-sm focus:border-[var(--primary)] focus:outline-none"
+              aria-label="Days"
+            />
+          )}
+        </SettingRow>
 
-        <div className="flex flex-wrap items-center gap-3 border-t border-[var(--line)] pt-4">
-          <span className="w-28 text-sm font-semibold text-[var(--ink)]">Birthday</span>
-          <input
-            type="checkbox"
+        <SettingRow label="Birthday" description="Send a birthday email.">
+          <Switch
             checked={triggersForm.birthday.enabled}
-            onChange={(e) =>
-              setTriggersForm((t) => (t ? { ...t, birthday: { enabled: e.target.checked } } : t))
+            onCheckedChange={(v) =>
+              setTriggersForm((t) => (t ? { ...t, birthday: { enabled: v } } : t))
             }
+            aria-label="Send a birthday email"
           />
-          <span className="text-xs text-[var(--muted)]">send a birthday email</span>
-        </div>
+        </SettingRow>
 
         <Button onClick={saveTriggers} disabled={update.isPending} size="lg">
           {update.isPending ? "Saving…" : "Save triggers"}
