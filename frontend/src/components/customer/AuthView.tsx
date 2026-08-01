@@ -21,20 +21,31 @@ const loginSchema = z.object({
   password: z.string().min(6, "Password must be at least 6 characters."),
 });
 
-const registerSchema = z.object({
-  name: z.string().trim().min(2, "Name must be at least 2 characters."),
-  email: z.string().trim().email("Please enter a valid email address."),
-  password: z.string().min(6, "Password must be at least 6 characters."),
-  phone: z
-    .string()
-    .trim()
-    .refine((v) => v.replace(/\D/g, "").replace(/^0+/, "").length >= 7, "Enter a valid phone number."),
-  emailOptIn: z.boolean().default(false),
-  smsOptIn: z.boolean().default(false),
-});
+function buildRegisterSchema(customerInfo: { requireDateOfBirth: boolean; requireGender: boolean } | undefined) {
+  return z.object({
+    name: z.string().trim().min(2, "Name must be at least 2 characters."),
+    email: z.string().trim().email("Please enter a valid email address."),
+    password: z.string().min(6, "Password must be at least 6 characters."),
+    phone: z
+      .string()
+      .trim()
+      .refine((v) => v.replace(/\D/g, "").replace(/^0+/, "").length >= 7, "Enter a valid phone number."),
+    emailOptIn: z.boolean().default(false),
+    smsOptIn: z.boolean().default(false),
+    birthdayMonth: customerInfo?.requireDateOfBirth
+      ? z.number({ required_error: "Date of birth is required here." }).min(1).max(12)
+      : z.number().min(1).max(12).optional(),
+    birthdayDay: customerInfo?.requireDateOfBirth
+      ? z.number({ required_error: "Date of birth is required here." }).min(1).max(31)
+      : z.number().min(1).max(31).optional(),
+    gender: customerInfo?.requireGender
+      ? z.enum(["male", "female", "other", "prefer_not_to_say"], { required_error: "Gender is required here." })
+      : z.enum(["male", "female", "other", "prefer_not_to_say"]).optional(),
+  });
+}
 
 type LoginFormValues = z.infer<typeof loginSchema>;
-type RegisterFormValues = z.infer<typeof registerSchema>;
+type RegisterFormValues = z.infer<ReturnType<typeof buildRegisterSchema>>;
 
 export function AuthView({ mode }: { mode: Mode }) {
   const navigate = useNavigate();
@@ -58,7 +69,7 @@ export function AuthView({ mode }: { mode: Mode }) {
     defaultValues: { email: "", password: "" },
   });
   const registerForm = useForm<RegisterFormValues>({
-    resolver: zodResolver(registerSchema),
+    resolver: zodResolver(buildRegisterSchema(tenant?.customerInfo)),
     defaultValues: { name: "", email: "", password: "", phone: "", emailOptIn: false, smsOptIn: false },
   });
 
@@ -86,6 +97,7 @@ export function AuthView({ mode }: { mode: Mode }) {
         name: data.name, email: data.email, password: data.password, phone: `+977${local}`,
         marketingEmailConsent: data.emailOptIn, marketingSmsConsent: data.smsOptIn,
         companySlug, outletSlug: slug,
+        birthdayMonth: data.birthdayMonth, birthdayDay: data.birthdayDay, gender: data.gender ?? undefined,
       });
       await ensureTenantSession(slug, tenant?.id ?? null);
       toast.success("Welcome! You can verify your email later before redeeming.", { id: toastId });
@@ -155,7 +167,11 @@ export function AuthView({ mode }: { mode: Mode }) {
           <SubmitButton loading={isSubmitting} label="Sign in" />
         </form>
       ) : (
-        <form onSubmit={registerForm.handleSubmit(onRegisterSubmit)} className="flex flex-col gap-3">
+        <form
+          key={tenant ? "ready" : "loading"}
+          onSubmit={registerForm.handleSubmit(onRegisterSubmit)}
+          className="flex flex-col gap-3"
+        >
           <Field label="Full name" icon={<User className="h-4 w-4 text-[var(--soft)]" />}>
             <input
               type="text"
@@ -190,6 +206,50 @@ export function AuthView({ mode }: { mode: Mode }) {
           </Field>
           {registerForm.formState.errors.phone && (
             <Err msg={registerForm.formState.errors.phone.message} />
+          )}
+
+          {tenant?.customerInfo.requireDateOfBirth && (
+            <>
+              <div className="flex gap-2">
+                <Field label="Birth month" icon={<span className="text-xs text-[var(--soft)]">MM</span>}>
+                  <input
+                    type="number" min={1} max={12} placeholder="Month"
+                    {...registerForm.register("birthdayMonth", { valueAsNumber: true })}
+                    className="w-full bg-transparent text-sm text-[var(--ink)] placeholder:text-[var(--soft)] focus:outline-none"
+                  />
+                </Field>
+                <Field label="Birth day" icon={<span className="text-xs text-[var(--soft)]">DD</span>}>
+                  <input
+                    type="number" min={1} max={31} placeholder="Day"
+                    {...registerForm.register("birthdayDay", { valueAsNumber: true })}
+                    className="w-full bg-transparent text-sm text-[var(--ink)] placeholder:text-[var(--soft)] focus:outline-none"
+                  />
+                </Field>
+              </div>
+              {(registerForm.formState.errors.birthdayMonth || registerForm.formState.errors.birthdayDay) && (
+                <Err msg="This business needs your date of birth to sign up." />
+              )}
+            </>
+          )}
+
+          {tenant?.customerInfo.requireGender && (
+            <>
+              <label className="block">
+                <span className="mb-1.5 block text-[13px] font-semibold text-[var(--ink)]">Gender</span>
+                <select
+                  {...registerForm.register("gender")}
+                  defaultValue=""
+                  className="w-full rounded-[var(--radius-field)] border border-[var(--line)] bg-[var(--bg)] px-3.5 py-2.5 text-sm text-[var(--ink)] focus:border-[var(--primary)] focus:outline-none"
+                >
+                  <option value="" disabled>Select one</option>
+                  <option value="male">Male</option>
+                  <option value="female">Female</option>
+                  <option value="other">Other</option>
+                  <option value="prefer_not_to_say">Prefer not to say</option>
+                </select>
+              </label>
+              {registerForm.formState.errors.gender && <Err msg="Gender is required here." />}
+            </>
           )}
 
           <Field label="Password" icon={<Lock className="h-4 w-4 text-[var(--soft)]" />}>
