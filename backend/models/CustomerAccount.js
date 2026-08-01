@@ -36,6 +36,11 @@ const CustomerAccountSchema = new mongoose.Schema({
   },
   birthdayMonth: { type: Number, min: 1, max: 12, default: null },
   birthdayDay: { type: Number, min: 1, max: 31, default: null },
+  gender: {
+    type: String,
+    enum: ["male", "female", "other", "prefer_not_to_say", null],
+    default: null
+  },
   createdAt: { type: Date, default: Date.now }
 });
 

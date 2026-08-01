@@ -100,13 +100,14 @@ const updateProfileController = async (req, res, next) => {
 
 const updatePreferencesController = async (req, res, next) => {
   try {
-    const { emailOptIn, smsOptIn, birthdayMonth, birthdayDay } = req.body;
+    const { emailOptIn, smsOptIn, birthdayMonth, birthdayDay, gender } = req.body;
     const result = await updatePreferences({
       customerAccountId: req.customerAccount.id,
       emailOptIn,
       smsOptIn,
       birthdayMonth,
-      birthdayDay
+      birthdayDay,
+      gender
     });
     res.status(200).json(result);
   } catch (error) {

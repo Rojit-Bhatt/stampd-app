@@ -73,7 +73,8 @@ const formatAccountSummary = (account) => ({
   avatarVersion: account.avatarVersion || 0,
   marketingConsent: account.marketingConsent,
   birthdayMonth: account.birthdayMonth ?? null,
-  birthdayDay: account.birthdayDay ?? null
+  birthdayDay: account.birthdayDay ?? null,
+  gender: account.gender ?? null
 });
 
 const formatGlobalSessionPayload = (account) => ({
@@ -338,7 +339,9 @@ const updateAccountProfile = async ({ customerAccountId, name }) => {
   return formatAccountPayload(account);
 };
 
-const updatePreferences = async ({ customerAccountId, emailOptIn, smsOptIn, birthdayMonth, birthdayDay }) => {
+const GENDER_VALUES = ["male", "female", "other", "prefer_not_to_say"];
+
+const updatePreferences = async ({ customerAccountId, emailOptIn, smsOptIn, birthdayMonth, birthdayDay, gender }) => {
   const account = await CustomerAccount.findOne({ _id: customerAccountId });
   if (!account) throw createHttpError("Account not found.", 404);
 
@@ -353,6 +356,12 @@ const updatePreferences = async ({ customerAccountId, emailOptIn, smsOptIn, birt
   }
   if (birthdayDay !== undefined) {
     account.birthdayDay = birthdayDay === null ? null : Number(birthdayDay);
+  }
+  if (gender !== undefined) {
+    if (gender !== null && !GENDER_VALUES.includes(gender)) {
+      throw createHttpError("That's not a valid gender value.", 400);
+    }
+    account.gender = gender;
   }
 
   await account.save();
