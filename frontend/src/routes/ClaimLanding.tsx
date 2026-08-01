@@ -238,13 +238,11 @@ export default function ClaimLanding() {
   const onRegister = async (name: string, email: string, password: string, phone: string) => {
     setBusy(true);
     try {
-      await registerUser(
+      await registerUser({
         name, email, password, phone,
-        undefined,
-        undefined,
-        pendingClaimId ?? undefined,
-        claimSecret ?? undefined,
-      );
+        pendingClaimId: pendingClaimId ?? undefined,
+        claimSecret: claimSecret ?? undefined,
+      });
       await ensureTenantSession(slug, tenant?.id ?? null);
       if (pendingClaimId) {
         setStage("fulfilling");

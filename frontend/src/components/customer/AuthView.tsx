@@ -82,7 +82,11 @@ export function AuthView({ mode }: { mode: Mode }) {
     const toastId = toast.loading("Setting up your account…");
     try {
       const local = data.phone.replace(/\D/g, "").replace(/^0+/, "");
-      await registerUser(data.name, data.email, data.password, `+977${local}`, data.emailOptIn, data.smsOptIn);
+      await registerUser({
+        name: data.name, email: data.email, password: data.password, phone: `+977${local}`,
+        marketingEmailConsent: data.emailOptIn, marketingSmsConsent: data.smsOptIn,
+        companySlug, outletSlug: slug,
+      });
       await ensureTenantSession(slug, tenant?.id ?? null);
       toast.success("Welcome! You can verify your email later before redeeming.", { id: toastId });
       navigate(tenantPath(companySlug, slug, "dashboard"));

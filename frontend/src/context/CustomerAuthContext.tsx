@@ -51,19 +51,26 @@ interface CustomerAuthContextType {
   // to actually enter a specific cafe (exactly what TenantSessionSync
   // already does on every page mount).
   login: (email: string, password: string) => Promise<void>;
-  registerUser: (
-    name: string,
-    email: string,
-    password: string,
-    phone: string,
-    marketingEmailConsent?: boolean,
-    marketingSmsConsent?: boolean,
-    pendingClaimId?: string,
+  registerUser: (options: {
+    name: string;
+    email: string;
+    password: string;
+    phone: string;
+    marketingEmailConsent?: boolean;
+    marketingSmsConsent?: boolean;
+    pendingClaimId?: string;
     // Proof the caller actually scanned the QR. Register is unauthenticated,
     // so without this a pending claim could be bound by anyone who guessed
     // its id — see pendingClaimService.linkPendingClaimToAccount.
-    claimSecret?: string,
-  ) => Promise<void>;
+    claimSecret?: string;
+    // Only sent by the tenant-scoped register form — the one registration
+    // surface with an outlet in scope to check required fields against.
+    companySlug?: string;
+    outletSlug?: string;
+    birthdayMonth?: number;
+    birthdayDay?: number;
+    gender?: Gender;
+  }) => Promise<void>;
   loginWithGoogle: (idToken: string) => Promise<{ needsPhone: boolean }>;
   completeProfile: (phone: string) => Promise<void>;
   // Silently exchanges an existing global session for a tenant JWT for
@@ -188,19 +195,16 @@ export function CustomerAuthProvider({ children }: { children: React.ReactNode }
     persistGlobal(res.token, res.account);
   };
 
-  const registerUser = async (
-    name: string,
-    email: string,
-    password: string,
-    phone: string,
-    marketingEmailConsent?: boolean,
-    marketingSmsConsent?: boolean,
-    pendingClaimId?: string,
-    claimSecret?: string,
-  ) => {
+  const registerUser = async (options: {
+    name: string; email: string; password: string; phone: string;
+    marketingEmailConsent?: boolean; marketingSmsConsent?: boolean;
+    pendingClaimId?: string; claimSecret?: string;
+    companySlug?: string; outletSlug?: string;
+    birthdayMonth?: number; birthdayDay?: number; gender?: Gender;
+  }) => {
     const res = await apiRequest<{ success: boolean; token?: string; account?: GlobalAccount; message: string }>(
       "/api/customer-auth/register",
-      { method: "POST", body: { name, email, password, phone, marketingEmailConsent, marketingSmsConsent, pendingClaimId, claimSecret } },
+      { method: "POST", body: options },
     );
     if (!res.success) {
       throw new Error(res.message || "Failed to register.");

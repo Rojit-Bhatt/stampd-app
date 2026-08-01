@@ -38,7 +38,7 @@ export default function GlobalCustomerRegister() {
     const toastId = toast.loading("Setting up your account…");
     try {
       const local = data.phone.replace(/\D/g, "").replace(/^0+/, "");
-      await registerUser(data.name, data.email, data.password, `+977${local}`);
+      await registerUser({ name: data.name, email: data.email, password: data.password, phone: `+977${local}` });
       toast.success("Welcome! You can verify your email later before redeeming.", { id: toastId });
       navigate("/explore");
     } catch (err) {
