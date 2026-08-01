@@ -5,6 +5,7 @@ import { usePlatformContact } from "../../../hooks/usePlatformContact";
 import { PLATFORM_NAME } from "../../../lib/platform";
 import { FOOTER_LINKS } from "./data";
 import { FooterReveal } from "./motion/FooterReveal";
+import { NavLinkItem } from "./primitives";
 import { SOCIAL_ICONS, SOCIAL_LABELS, SOCIAL_ORDER, type SocialKey } from "./socialIcons";
 import { toWaNumber } from "./WhatsAppFloat";
 
@@ -140,10 +141,8 @@ export function LandingFooter() {
 
             <Column heading="Product">
               {FOOTER_LINKS.map((link) => (
-                <li key={link.href}>
-                  <a href={link.href} className={linkClass}>
-                    {link.label}
-                  </a>
+                <li key={link.label}>
+                  <NavLinkItem link={link} className={linkClass} />
                 </li>
               ))}
             </Column>

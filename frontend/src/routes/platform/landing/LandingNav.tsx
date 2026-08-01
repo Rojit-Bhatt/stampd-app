@@ -5,6 +5,7 @@ import { StampdLogo } from "../../../components/shared/StampdLogo";
 import { PLATFORM_NAME } from "../../../lib/platform";
 import { NAV_LINKS } from "./data";
 import { RollingLabel, useRollingState } from "./motion/RollingLabel";
+import { NavLinkItem } from "./primitives";
 
 /**
  * Nav chrome copied from samparka.co: a centred glass pill that hides on
@@ -56,15 +57,15 @@ export function LandingNav({ contactHref }: { contactHref: string }) {
 
           <ul className="hidden flex-1 items-center justify-center gap-6 lg:flex">
             {NAV_LINKS.map((link) => (
-              <li key={link.href}>
-                <a
-                  href={link.href}
+              <li key={link.label}>
+                <NavLinkItem
+                  link={link}
                   className="group relative block px-3 py-1.5 text-sm text-[var(--lp-muted)] transition-colors duration-300 hover:text-[var(--lp-ink)]"
                 >
                   {link.label}
                   {/* samparka's glass chip, fading in behind the label. */}
                   <span className="absolute inset-0 -z-10 scale-90 rounded-2xl border border-white/10 bg-white/[0.06] opacity-0 backdrop-blur-[15px] transition-all duration-300 group-hover:scale-100 group-hover:opacity-100 motion-reduce:transition-none" />
-                </a>
+                </NavLinkItem>
               </li>
             ))}
           </ul>
@@ -127,14 +128,12 @@ export function LandingNav({ contactHref }: { contactHref: string }) {
         {menuOpen ? (
           <ul className="mt-4 flex flex-col gap-1 border-t border-white/10 pt-4 lg:hidden">
             {NAV_LINKS.map((link) => (
-              <li key={link.href}>
-                <a
-                  href={link.href}
+              <li key={link.label}>
+                <NavLinkItem
+                  link={link}
                   onClick={() => setMenuOpen(false)}
                   className="block rounded-2xl px-3 py-2.5 text-sm text-[var(--lp-muted)] hover:bg-white/[0.06] hover:text-[var(--lp-ink)]"
-                >
-                  {link.label}
-                </a>
+                />
               </li>
             ))}
             <li>

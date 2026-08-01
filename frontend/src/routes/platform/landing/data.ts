@@ -8,13 +8,21 @@
 // stamps model (the product is points-only), and self-serve signup (a
 // company is registered by the platform owner, so every CTA is "Talk to us").
 
-export const NAV_LINKS = [
-  { label: "Product", href: "#product" },
-  { label: "Rewards", href: "#rewards" },
-  { label: "Campaigns", href: "#campaigns" },
-  { label: "Pricing", href: "#pricing" },
-  { label: "FAQ", href: "#faq" },
-] as const;
+// Rewards and Campaigns used to be separate items pointing at two cards INSIDE
+// the features section — an anchor into the middle of a grid, not a
+// destination. They are folded into Services, which is the section that lists
+// everything the product does. Product is gone for the same reason: it pointed
+// at that same section, so keeping both would be two labels for one place.
+export type NavLink =
+  | { label: string; kind: "anchor"; href: string }
+  | { label: string; kind: "route"; to: string };
+
+export const NAV_LINKS: readonly NavLink[] = [
+  { label: "Services", kind: "anchor", href: "#services" },
+  { label: "Review QR", kind: "route", to: "/review-qr" },
+  { label: "Pricing", kind: "anchor", href: "#pricing" },
+  { label: "FAQ", kind: "anchor", href: "#faq" },
+];
 
 export const HERO = {
   eyebrow: "LOYALTY FOR NEPALI BUSINESSES",
@@ -77,8 +85,8 @@ export const FEATURES = {
     "Everything the counter needs. Nothing it does not. One programme for points, campaigns, rewards and redemption — run from a phone.",
   blocks: [
     {
-      // Not "product" — the enclosing section owns that id for the nav anchor,
-      // and two elements sharing one id makes the anchor ambiguous.
+      // Not "services" — the enclosing section owns that id for the nav
+      // anchor, and two elements sharing one id makes the anchor ambiguous.
       id: "points-engine",
       kicker: "POINTS ENGINE",
       title: "Points, on your terms",

@@ -8,7 +8,7 @@ export function FeaturesSection() {
   const reduced = useReducedMotion();
 
   return (
-    <section id="product" className="lp-grid px-6 py-28 md:px-10">
+    <section id="services" className="lp-grid px-6 py-28 md:px-10">
       <div className="mx-auto max-w-6xl">
         <Eyebrow>{FEATURES.eyebrow}</Eyebrow>
         {/* The section statement reveals word by word as it crosses the

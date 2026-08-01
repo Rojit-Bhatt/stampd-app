@@ -128,7 +128,7 @@ function HeroCopy({ contactHref, children }: { contactHref: string; children?: R
       {children}
       <div className="mt-6 flex flex-wrap gap-3">
         <CtaPill href={contactHref}>{HERO.primaryCta}</CtaPill>
-        <CtaPill href="#product" tone="outline">
+        <CtaPill href="#services" tone="outline">
           {HERO.secondaryCta}
         </CtaPill>
       </div>
