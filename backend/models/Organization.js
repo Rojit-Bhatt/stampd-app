@@ -88,6 +88,11 @@ const OrganizationSchema = new mongoose.Schema({
     }
   },
 
+  customerInfo: {
+    requireDateOfBirth: { type: Boolean, default: false },
+    requireGender: { type: Boolean, default: false }
+  },
+
   // Contact/location/social info the business admin controls, shown to
   // customers on their dashboard. All fields optional — a tenant with
   // nothing filled in just shows no contact section.

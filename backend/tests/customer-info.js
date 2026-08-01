@@ -54,6 +54,43 @@ async function main() {
       body: { gender: null },
     });
     check("gender clears back to null", clearGender.body?.account?.gender === null, clearGender.body);
+
+    // --- per-outlet customerInfo settings ---
+    const outletA = await makeSiblingOutlet(baseUrl, { label: `ciA${Date.now()}` });
+    const outletB = await makeSiblingOutlet(baseUrl, { label: `ciB${Date.now()}` });
+
+    const defaults = await api("/api/admin/settings", { token: outletA.adminToken });
+    check(
+      "customerInfo defaults to both false",
+      defaults.body?.settings?.customerInfo?.requireDateOfBirth === false &&
+        defaults.body?.settings?.customerInfo?.requireGender === false,
+      defaults.body?.settings?.customerInfo,
+    );
+
+    const updated = await api("/api/admin/settings", {
+      method: "PATCH", token: outletA.adminToken,
+      body: { customerInfo: { requireDateOfBirth: true } },
+    });
+    check("requireDateOfBirth turns on", updated.body?.settings?.customerInfo?.requireDateOfBirth === true, updated.body);
+    check(
+      "requireGender is untouched by a partial patch",
+      updated.body?.settings?.customerInfo?.requireGender === false,
+      updated.body,
+    );
+
+    const outletBSettings = await api("/api/admin/settings", { token: outletB.adminToken });
+    check(
+      "outlet B's customerInfo is isolated from outlet A's",
+      outletBSettings.body?.settings?.customerInfo?.requireDateOfBirth === false,
+      outletBSettings.body?.settings?.customerInfo,
+    );
+
+    const publicTenant = await api("/api/tenant", { company: "coffesarowar", outlet: outletA.outletSlug });
+    check(
+      "the public tenant payload carries requireDateOfBirth",
+      publicTenant.body?.tenant?.customerInfo?.requireDateOfBirth === true,
+      publicTenant.body?.tenant?.customerInfo,
+    );
   } finally {
     stop();
   }

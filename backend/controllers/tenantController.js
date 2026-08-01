@@ -37,6 +37,10 @@ const getPublicTenant = async (req, res, next) => {
         program: {
           earnPercent: program.earnPercent,
           pointsExpiryDays: program.pointsExpiryDays
+        },
+        customerInfo: {
+          requireDateOfBirth: organization.customerInfo.requireDateOfBirth,
+          requireGender: organization.customerInfo.requireGender
         }
       }
     });
@@ -87,6 +91,7 @@ const getMySettings = async (req, res, next) => {
         companyProgramDefaults: company ? company.programDefaults : null,
         tierThresholds: organization.tierThresholds,
         messagingTriggers: organization.messagingTriggers,
+        customerInfo: organization.customerInfo,
         menuEnabled: organization.menuEnabled,
         ...(subscriptionReminder ? { subscriptionReminder } : {})
       }
@@ -104,7 +109,7 @@ const updateMySettings = async (req, res, next) => {
       throw createHttpError("Business not found.", 404);
     }
 
-    const { name, branding, contact, program, menuEnabled, category, tierThresholds, messagingTriggers } = req.body;
+    const { name, branding, contact, program, menuEnabled, category, tierThresholds, messagingTriggers, customerInfo } = req.body;
 
     if (name !== undefined) {
       organization.name = name.trim();
@@ -179,6 +184,11 @@ const updateMySettings = async (req, res, next) => {
       };
     }
 
+    if (customerInfo !== undefined && customerInfo !== null && typeof customerInfo === "object") {
+      const current = organization.customerInfo.toObject?.() ?? organization.customerInfo;
+      organization.customerInfo = { ...current, ...customerInfo };
+    }
+
     if (menuEnabled !== undefined) {
       organization.menuEnabled = Boolean(menuEnabled);
     }
@@ -202,6 +212,7 @@ const updateMySettings = async (req, res, next) => {
         companyProgramDefaults: company ? company.programDefaults : null,
         tierThresholds: organization.tierThresholds,
         messagingTriggers: organization.messagingTriggers,
+        customerInfo: organization.customerInfo,
         menuEnabled: organization.menuEnabled
       }
     });
