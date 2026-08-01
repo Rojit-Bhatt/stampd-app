@@ -1,6 +1,8 @@
 import type { ReactNode } from "react";
+import { Link } from "react-router-dom";
 
 import { useCountUp } from "../../../hooks/useCountUp";
+import type { NavLink } from "./data";
 
 /** Small letterspaced label. The one place the landing page uses solid green. */
 export function Eyebrow({ children }: { children: ReactNode }) {
@@ -81,5 +83,42 @@ export function StatValue({ value, label }: { value: number; label: string }) {
         {label}
       </p>
     </div>
+  );
+}
+
+/**
+ * One nav entry, rendered as a router <Link> or a plain anchor depending on
+ * its `kind`. Shared so the desktop nav, the mobile menu and the footer cannot
+ * drift — a route rendered as `<a href>` would trigger a full page reload and
+ * throw away the SPA.
+ *
+ * `children` overrides the label for call sites that decorate it (the desktop
+ * nav nests a glass hover chip inside the link).
+ */
+export function NavLinkItem({
+  link,
+  className,
+  onClick,
+  children,
+}: {
+  link: NavLink;
+  className?: string;
+  onClick?: () => void;
+  children?: ReactNode;
+}) {
+  const content = children ?? link.label;
+
+  if (link.kind === "route") {
+    return (
+      <Link to={link.to} className={className} onClick={onClick}>
+        {content}
+      </Link>
+    );
+  }
+
+  return (
+    <a href={link.href} className={className} onClick={onClick}>
+      {content}
+    </a>
   );
 }

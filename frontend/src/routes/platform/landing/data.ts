@@ -8,13 +8,21 @@
 // stamps model (the product is points-only), and self-serve signup (a
 // company is registered by the platform owner, so every CTA is "Talk to us").
 
-export const NAV_LINKS = [
-  { label: "Product", href: "#product" },
-  { label: "Rewards", href: "#rewards" },
-  { label: "Campaigns", href: "#campaigns" },
-  { label: "Pricing", href: "#pricing" },
-  { label: "FAQ", href: "#faq" },
-] as const;
+// Rewards and Campaigns used to be separate items pointing at two cards INSIDE
+// the features section — an anchor into the middle of a grid, not a
+// destination. They are folded into Services, which is the section that lists
+// everything the product does. Product is gone for the same reason: it pointed
+// at that same section, so keeping both would be two labels for one place.
+export type NavLink =
+  | { label: string; kind: "anchor"; href: string }
+  | { label: string; kind: "route"; to: string };
+
+export const NAV_LINKS: readonly NavLink[] = [
+  { label: "Services", kind: "anchor", href: "#services" },
+  { label: "Review QR", kind: "route", to: "/review-qr" },
+  { label: "Pricing", kind: "anchor", href: "#pricing" },
+  { label: "FAQ", kind: "anchor", href: "#faq" },
+];
 
 export const HERO = {
   eyebrow: "LOYALTY FOR NEPALI BUSINESSES",
@@ -77,42 +85,48 @@ export const FEATURES = {
     "Everything the counter needs. Nothing it does not. One programme for points, campaigns, rewards and redemption — run from a phone.",
   blocks: [
     {
-      // Not "product" — the enclosing section owns that id for the nav anchor,
-      // and two elements sharing one id makes the anchor ambiguous.
+      // Not "services" — the enclosing section owns that id for the nav
+      // anchor, and two elements sharing one id makes the anchor ambiguous.
       id: "points-engine",
       kicker: "POINTS ENGINE",
       title: "Points, on your terms",
       body: "Set what a rupee earns and what a reward costs. Change it whenever you like, for one outlet or all of them.",
+      imageAlt: "The points programme screen, showing the earn rate and expiry settings.",
     },
     {
       id: "campaigns",
       kicker: "CAMPAIGNS",
       title: "Reach them without a poster",
       body: "Double points on a slow Tuesday. A win-back for anyone who has not been in a month.",
+      imageAlt: "The campaigns screen, showing a double-points campaign and its dates.",
     },
     {
       id: "rewards",
       kicker: "REWARDS",
       title: "You set what points buy",
       body: "A free coffee, a discount, a birthday gift.",
+      imageAlt: "The reward catalogue, showing each reward and what it costs in points.",
     },
     {
       id: "redeem",
       kicker: "REDEEM",
       title: "One tap at the counter",
       body: "Scan, points come off, done.",
+      imageAlt: "The counter redeem screen, showing the QR a customer scans.",
     },
     {
       id: "insights",
       kicker: "INSIGHTS",
       title: "Know your regulars by name",
       body: "Visits, repeat rate and what each reward actually costs you — on one screen.",
+      imageAlt: "The outlet overview, showing visit and repeat-rate figures with a chart.",
     },
     {
       id: "multi-outlet",
       kicker: "MULTI-OUTLET",
       title: "One programme, every branch",
       body: "Give each outlet its own rules, or run the same programme across all of them.",
+      imageAlt: "The company console, listing three outlets of one business.",
     },
   ],
 } as const;

@@ -237,6 +237,19 @@ html.landing-dark body {
   background-color: var(--lp-bg);
 }
 
+/* Without this every anchor lands UNDERNEATH the fixed nav pill, hiding the
+   heading the visitor just clicked. 96px is the pill's height plus its top
+   margin. Scoped to the landing because no console has a fixed header. */
+html.landing-dark {
+  scroll-padding-top: 96px;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  html.landing-dark {
+    scroll-behavior: smooth;
+  }
+}
+
 /* The quiet grid that sits under every section BELOW the hero. The hero has
    the interactive dot field instead — the two must never stack. */
 .lp-grid {

@@ -73,7 +73,7 @@ const RESERVED_SLUGS = new Set([
   // Marketing-site legal pages. App.tsx matches these literal routes before
   // /:companySlug, so a company registered on either slug would become
   // permanently unreachable — exactly the collision this set exists to stop.
-  "privacy", "terms"
+  "privacy", "terms", "review-qr"
 ]);
 
 const isReservedSlug = (slug) => RESERVED_SLUGS.has(String(slug || "").trim().toLowerCase());

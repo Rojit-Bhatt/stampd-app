@@ -66,6 +66,7 @@ const subscriptionPlanRoutes = require("./routes/subscriptionPlanRoutes");
 const subscriptionKeyRoutes = require("./routes/subscriptionKeyRoutes");
 const companyRoutes = require("./routes/companyRoutes");
 const adminAuthRoutes = require("./routes/adminAuthRoutes");
+const toolsRoutes = require("./routes/toolsRoutes");
 
 const app = express();
 const PORT = process.env.PORT || (process.env.NODE_ENV === "production" ? 3000 : 5001);
@@ -134,6 +135,9 @@ app.use("/api/admin", adminRoutes);
 // Customer loyalty (earn, redeem, balance, history), tenant from the JWT.
 app.use("/api/points", pointsRoutes);
 app.use("/api/reviews", reviewsRoutes);
+// Public marketing-site tools (e.g. the Google Places autocomplete proxy
+// behind the review-QR flyer generator). No tenant, no auth, no database.
+app.use("/api/tools", toolsRoutes);
 // Public: an <img> tag carries neither an Authorization header nor tenant
 // slug headers, so this sits outside resolveTenant deliberately.
 app.use("/api/images", imageRoutes);

@@ -40,6 +40,7 @@ const ResetPassword = lazy(() => import('./routes/ResetPassword'));
 const PlatformLanding = lazy(() => import('./routes/platform/PlatformLanding'));
 const Privacy = lazy(() => import('./routes/platform/legal/Privacy'));
 const Terms = lazy(() => import('./routes/platform/legal/Terms'));
+const ReviewQrGenerator = lazy(() => import('./routes/platform/ReviewQrGenerator'));
 const PlatformLogin = lazy(() => import('./routes/platform/PlatformLogin'));
 const Companies = lazy(() => import('./routes/platform/Companies'));
 const RegisterCompany = lazy(() => import('./routes/platform/RegisterCompany'));
@@ -113,6 +114,10 @@ export default function App() {
               become unreachable. */}
           <Route path="/privacy" element={<Privacy />} />
           <Route path="/terms" element={<Terms />} />
+          {/* Same reason as /privacy and /terms above: a literal route that
+              matches before /:companySlug, so "review-qr" is reserved in
+              config/platform.js. */}
+          <Route path="/review-qr" element={<ReviewQrGenerator />} />
           <Route path="/platform/login" element={<PlatformLogin />} />
           <Route path="/business-login" element={<Navigate to="/admin-login" replace />} />
           {/* Global customer identity: one CustomerAccount works at
