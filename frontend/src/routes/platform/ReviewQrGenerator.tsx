@@ -5,6 +5,7 @@ import { LandingFooter } from "./landing/LandingFooter";
 import { LandingNav } from "./landing/LandingNav";
 import { toWaNumber } from "./landing/WhatsAppFloat";
 import { PlaceSearch, type SelectedPlace } from "./reviewqr/PlaceSearch";
+import { ReviewFlyer } from "./reviewqr/ReviewFlyer";
 
 // A free tool on the marketing site: paste or find your Google listing, get a
 // printable flyer with the review QR on it. Public, unauthenticated, and
@@ -58,11 +59,7 @@ export default function ReviewQrGenerator() {
               <PlaceSearch onSelect={setPlace} />
             </div>
 
-            {place ? (
-              <p className="mt-8 text-sm text-[var(--lp-muted)]">
-                Selected: <span className="text-[var(--lp-ink)]">{place.name}</span>
-              </p>
-            ) : null}
+            {place ? <ReviewFlyer place={place} /> : null}
           </div>
         </section>
       </div>
