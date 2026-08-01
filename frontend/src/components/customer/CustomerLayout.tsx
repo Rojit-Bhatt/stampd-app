@@ -9,6 +9,7 @@ import { useAccount } from "../../hooks/useAccount";
 import { BottomNav } from "./BottomNav";
 import { ScannerModal } from "./ScannerModal";
 import { CustomerAvatar } from "./CustomerAvatar";
+import { RequiredInfoBanner } from "./RequiredInfoBanner";
 import { tenantPath } from "../../lib/tenantPath";
 
 // The authenticated customer app shell.
@@ -157,6 +158,7 @@ export function CustomerLayout() {
           anything for a SHORT page, since it doesn't move content that's
           already above it, only adds trailing space past it. */}
       <main className="flex-1 pb-28 lg:pb-0">
+        <RequiredInfoBanner />
         <Outlet />
       </main>
 
