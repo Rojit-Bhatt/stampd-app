@@ -74,6 +74,11 @@ export interface MessagingTriggers {
   birthday: { enabled: boolean };
 }
 
+export interface CustomerInfoSettings {
+  requireDateOfBirth: boolean;
+  requireGender: boolean;
+}
+
 export interface AdminSettings {
   name: string;
   slug: string;
@@ -93,6 +98,7 @@ export interface AdminSettings {
   /** Per-outlet tier thresholds, keyed by fixed label. No inheritance. */
   tierThresholds: TierThresholds;
   messagingTriggers: MessagingTriggers;
+  customerInfo: CustomerInfoSettings;
   menuEnabled: boolean;
   // False for a platform-onboarded business with no attached owner — the
   // Subscription nav item/route must be hidden for it (there's nothing to
@@ -112,6 +118,7 @@ export interface AdminSettingsPatch {
   program?: Partial<AdminProgram>;
   tierThresholds?: Partial<TierThresholds>;
   messagingTriggers?: Partial<MessagingTriggers>;
+  customerInfo?: Partial<CustomerInfoSettings>;
   menuEnabled?: boolean;
 }
 
