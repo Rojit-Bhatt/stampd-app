@@ -128,6 +128,75 @@ async function main() {
       meAfterB.body?.infoPromptDismissed === false,
       meAfterB.body,
     );
+
+    // --- blocking enforcement, tenant-scoped registration only ---
+    const requirePatch = await api("/api/admin/settings", {
+      method: "PATCH", token: outletB.adminToken,
+      body: { customerInfo: { requireDateOfBirth: true, requireGender: true } },
+    });
+    check("outlet B's require-both patch succeeds", requirePatch.status === 200, requirePatch);
+    check(
+      "outlet B's settings now require both fields",
+      requirePatch.body?.settings?.customerInfo?.requireDateOfBirth === true &&
+        requirePatch.body?.settings?.customerInfo?.requireGender === true,
+      requirePatch.body?.settings?.customerInfo,
+    );
+
+    const blockedReg = await api("/api/customer-auth/register", {
+      method: "POST",
+      body: {
+        name: "Blocked", email: `blocked_${Date.now()}@test.co`, password: "password123", phone: "9811110097",
+        companySlug: "coffesarowar", outletSlug: outletB.outletSlug,
+      },
+    });
+    check("registration blocks when a required field is missing", blockedReg.status === 400, blockedReg);
+
+    const passedReg = await api("/api/customer-auth/register", {
+      method: "POST",
+      body: {
+        name: "Passed", email: `passed_${Date.now()}@test.co`, password: "password123", phone: "9811110096",
+        companySlug: "coffesarowar", outletSlug: outletB.outletSlug,
+        birthdayMonth: 6, birthdayDay: 15, gender: "female",
+      },
+    });
+    check("registration succeeds once required fields are included", passedReg.status === 201, passedReg);
+
+    const meAfterPassed = await api("/api/customer-auth/preferences", {
+      method: "PATCH", token: passedReg.body.token, body: {},
+    });
+    check(
+      "the account was created WITH those fields already set, no second round-trip",
+      meAfterPassed.body?.account?.birthdayMonth === 6 && meAfterPassed.body?.account?.gender === "female",
+      meAfterPassed.body,
+    );
+
+    const globalReg = await api("/api/customer-auth/register", {
+      method: "POST",
+      body: { name: "Global", email: `global_${Date.now()}@test.co`, password: "password123", phone: "9811110095" },
+    });
+    check(
+      "registration with no companySlug/outletSlug never blocks, regardless of any outlet's settings",
+      globalReg.status === 201,
+      globalReg,
+    );
+
+    // Outlet A picked up requireDateOfBirth: true earlier (the toggle-turns-on
+    // check above), so this proves the NARROWER thing: outlet B's
+    // requireGender never leaked onto outlet A's settings. Registering at
+    // outlet A with DOB but no gender must still succeed.
+    const otherOutletReg = await api("/api/customer-auth/register", {
+      method: "POST",
+      body: {
+        name: "Cross", email: `cross_${Date.now()}@test.co`, password: "password123", phone: "9811110094",
+        companySlug: "coffesarowar", outletSlug: outletA.outletSlug,
+        birthdayMonth: 3, birthdayDay: 10,
+      },
+    });
+    check(
+      "outlet A's requireGender is unaffected by outlet B's requireGender",
+      otherOutletReg.status === 201,
+      otherOutletReg,
+    );
   } finally {
     stop();
   }

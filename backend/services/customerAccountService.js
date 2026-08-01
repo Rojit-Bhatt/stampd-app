@@ -159,12 +159,40 @@ const ensureMembership = async ({ customerAccountId, organizationId, account }) 
   return user;
 };
 
-const registerAccount = async ({ name, email, password, phone, pendingClaimId, claimSecret, marketingEmailConsent, marketingSmsConsent }) => {
+const registerAccount = async ({
+  name, email, password, phone, pendingClaimId, claimSecret, marketingEmailConsent, marketingSmsConsent,
+  companySlug, outletSlug, birthdayMonth, birthdayDay, gender
+}) => {
   if (!name || !email || !password) {
     throw createHttpError("Name, email, and password are required.", 400);
   }
   if (!phone || !phone.trim()) {
     throw createHttpError("Phone number is required.", 400);
+  }
+
+  // Only the tenant-scoped register form sends both slugs — that's the one
+  // registration surface with a submit moment to block. The global form and
+  // the claim-flow inline signup never send them, so this block is skipped
+  // for both, by design.
+  if (companySlug && outletSlug) {
+    // Organization/Company slugs are stored lowercase (schema-level
+    // `lowercase: true`) — resolveTenant always normalizes both slugs the
+    // same way before querying, and this has to match or a mixed-case
+    // outlet slug silently finds no organization.
+    const normalizedCompanySlug = String(companySlug).trim().toLowerCase();
+    const normalizedOutletSlug = String(outletSlug).trim().toLowerCase();
+    const company = await Company.findOne({ slug: normalizedCompanySlug });
+    const organization = company
+      ? await Organization.findOne({ companyId: company._id, slug: normalizedOutletSlug })
+      : null;
+    if (organization) {
+      if (organization.customerInfo.requireDateOfBirth && (birthdayMonth === undefined || birthdayDay === undefined)) {
+        throw createHttpError("This business needs your date of birth to sign up.", 400);
+      }
+      if (organization.customerInfo.requireGender && gender === undefined) {
+        throw createHttpError("This business needs your gender to sign up.", 400);
+      }
+    }
   }
 
   const normalizedEmail = normalizeEmail(email);
@@ -185,6 +213,9 @@ const registerAccount = async ({ name, email, password, phone, pendingClaimId, c
     password: hashedPassword,
     phone: phone.trim(),
     emailVerified: false,
+    ...(birthdayMonth !== undefined ? { birthdayMonth: Number(birthdayMonth) } : {}),
+    ...(birthdayDay !== undefined ? { birthdayDay: Number(birthdayDay) } : {}),
+    ...(gender !== undefined ? { gender } : {}),
     ...(Object.keys(marketingConsent).length ? { marketingConsent } : {})
   });
 

@@ -10,8 +10,14 @@ const {
 
 const register = async (req, res, next) => {
   try {
-    const { name, email, password, phone, pendingClaimId, claimSecret, marketingEmailConsent, marketingSmsConsent } = req.body;
-    const result = await registerAccount({ name, email, password, phone, pendingClaimId, claimSecret, marketingEmailConsent, marketingSmsConsent });
+    const {
+      name, email, password, phone, pendingClaimId, claimSecret, marketingEmailConsent, marketingSmsConsent,
+      companySlug, outletSlug, birthdayMonth, birthdayDay, gender
+    } = req.body;
+    const result = await registerAccount({
+      name, email, password, phone, pendingClaimId, claimSecret, marketingEmailConsent, marketingSmsConsent,
+      companySlug, outletSlug, birthdayMonth, birthdayDay, gender
+    });
     res.status(201).json(result);
   } catch (error) {
     next(error);
