@@ -91,6 +91,43 @@ async function main() {
       publicTenant.body?.tenant?.customerInfo?.requireDateOfBirth === true,
       publicTenant.body?.tenant?.customerInfo,
     );
+
+    // --- infoPromptDismissed lives on the membership, not the account ---
+    const custEmail = `dismiss_${Date.now()}@test.co`;
+    const custReg = await api("/api/customer-auth/register", {
+      method: "POST",
+      body: { name: "Dismiss Test", email: custEmail, password: "password123", phone: "9811110098" },
+    });
+    const custGlobalToken = custReg.body.token;
+
+    const enteredA = await api("/api/customer-auth/enter-tenant", {
+      method: "POST", token: custGlobalToken,
+      company: "coffesarowar", outlet: outletA.outletSlug,
+      body: {},
+    });
+    const enteredB = await api("/api/customer-auth/enter-tenant", {
+      method: "POST", token: custGlobalToken,
+      company: "coffesarowar", outlet: outletB.outletSlug,
+      body: {},
+    });
+    const tenantTokenA = enteredA.body.token;
+    const tenantTokenB = enteredB.body.token;
+
+    const meBefore = await api("/api/account/me", { token: tenantTokenA });
+    check("infoPromptDismissed starts false", meBefore.body?.infoPromptDismissed === false, meBefore.body);
+
+    const dismissed = await api("/api/account/dismiss-info-prompt", { method: "PATCH", token: tenantTokenA });
+    check("dismiss succeeds", dismissed.status === 200, dismissed);
+
+    const meAfterA = await api("/api/account/me", { token: tenantTokenA });
+    check("outlet A's membership is now dismissed", meAfterA.body?.infoPromptDismissed === true, meAfterA.body);
+
+    const meAfterB = await api("/api/account/me", { token: tenantTokenB });
+    check(
+      "outlet B's membership for the SAME global account is untouched",
+      meAfterB.body?.infoPromptDismissed === false,
+      meAfterB.body,
+    );
   } finally {
     stop();
   }

@@ -39,6 +39,14 @@ const updateProfile = async (userId, { name }) => {
   return user;
 };
 
+const dismissInfoPrompt = async (userId) => {
+  const user = await User.findOne({ _id: userId });
+  if (!user) throw createHttpError("Account not found.", 404);
+  user.infoPromptDismissed = true;
+  await user.save();
+  return user;
+};
+
 const changePassword = async (userId, { currentPassword, newPassword }) => {
   if (!currentPassword || !newPassword) {
     throw createHttpError("Current and new password are required.", 400);
@@ -68,5 +76,6 @@ const changePassword = async (userId, { currentPassword, newPassword }) => {
 module.exports = {
   getAccount,
   updateProfile,
+  dismissInfoPrompt,
   changePassword
 };

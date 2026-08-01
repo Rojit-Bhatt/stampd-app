@@ -26,6 +26,10 @@ const UserSchema = new mongoose.Schema({
   },
   address: { type: String, trim: true, default: "" },
   emailVerified: { type: Boolean, default: false },
+  // Per-outlet: a customer who dismisses the required-info banner at one
+  // outlet must still see it at another that also requires the field —
+  // this cannot live on CustomerAccount.
+  infoPromptDismissed: { type: Boolean, default: false },
   role: { type: String, enum: ["customer", "business_admin", "platform"], default: "customer" },
   // Only meaningful when role === "platform". null/unset is treated as
   // "owner" everywhere it's read — this is deliberate so the existing

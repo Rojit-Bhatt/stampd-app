@@ -1,11 +1,12 @@
-const { getAccount, updateProfile, changePassword } = require("../services/accountService");
+const { getAccount, updateProfile, changePassword, dismissInfoPrompt } = require("../services/accountService");
 
 const formatAccount = (user) => ({
   id: user._id.toString(),
   name: user.name,
   email: user.email,
   role: user.role,
-  emailVerified: user.emailVerified
+  emailVerified: user.emailVerified,
+  ...(user.role === "customer" ? { infoPromptDismissed: user.infoPromptDismissed } : {})
 });
 
 const getMe = async (req, res, next) => {
@@ -26,6 +27,15 @@ const updateProfileController = async (req, res, next) => {
   }
 };
 
+const dismissInfoPromptController = async (req, res, next) => {
+  try {
+    const user = await dismissInfoPrompt(req.user.id);
+    res.status(200).json({ success: true, ...formatAccount(user) });
+  } catch (error) {
+    next(error);
+  }
+};
+
 const changePasswordController = async (req, res, next) => {
   try {
     const result = await changePassword(req.user.id, req.body);
@@ -38,5 +48,6 @@ const changePasswordController = async (req, res, next) => {
 module.exports = {
   getMe,
   updateProfileController,
+  dismissInfoPromptController,
   changePasswordController
 };
