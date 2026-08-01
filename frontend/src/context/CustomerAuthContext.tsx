@@ -21,6 +21,8 @@ export interface MarketingConsent {
   push: MarketingConsentChannel;
 }
 
+export type Gender = "male" | "female" | "other" | "prefer_not_to_say" | null;
+
 export interface GlobalAccount {
   id: string;
   name: string;
@@ -31,6 +33,7 @@ export interface GlobalAccount {
   marketingConsent?: MarketingConsent;
   birthdayMonth?: number | null;
   birthdayDay?: number | null;
+  gender?: Gender;
 }
 
 interface CustomerAuthContextType {

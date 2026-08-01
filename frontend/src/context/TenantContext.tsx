@@ -46,6 +46,11 @@ export interface TenantProgram {
   pointsExpiryDays: number;
 }
 
+export interface TenantCustomerInfo {
+  requireDateOfBirth: boolean;
+  requireGender: boolean;
+}
+
 export interface Tenant {
   id: string;
   slug: string;
@@ -55,6 +60,7 @@ export interface Tenant {
   upcomingEvents: TenantEvent[];
   program: TenantProgram;
   menuEnabled: boolean;
+  customerInfo: TenantCustomerInfo;
 }
 
 interface TenantContextValue {
