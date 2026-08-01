@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { LogOut } from "lucide-react";
 import toast from "react-hot-toast";
 
-import { useCustomerAuth, type GlobalAccount } from "../../context/CustomerAuthContext";
+import { useCustomerAuth, type GlobalAccount, type Gender } from "../../context/CustomerAuthContext";
 import { apiRequest } from "../../lib/api";
 import { AvatarPicker } from "./AvatarPicker";
 import { Button } from "@/components/ui/button";
@@ -60,6 +60,7 @@ export function CustomerProfilePanel({ onLogout }: { onLogout: () => void }) {
   const [savingEmailOptIn, setSavingEmailOptIn] = useState(false);
   const [birthdayMonth, setBirthdayMonth] = useState<number | "">(globalAccount?.birthdayMonth ?? "");
   const [birthdayDay, setBirthdayDay] = useState<number | "">(globalAccount?.birthdayDay ?? "");
+  const [gender, setGender] = useState<Gender | "">(globalAccount?.gender ?? "");
   const [savingBirthday, setSavingBirthday] = useState(false);
 
   const [pushEnabled, setPushEnabled] = useState(false);
@@ -178,7 +179,7 @@ export function CustomerProfilePanel({ onLogout }: { onLogout: () => void }) {
     }
   };
 
-  const saveBirthday = async () => {
+  const savePersonalInfo = async () => {
     setSavingBirthday(true);
     try {
       const res = await apiRequest<{ success: boolean; account: GlobalAccount }>(
@@ -186,11 +187,15 @@ export function CustomerProfilePanel({ onLogout }: { onLogout: () => void }) {
         {
           method: "PATCH",
           role: "customer-global",
-          body: { birthdayMonth: birthdayMonth === "" ? null : birthdayMonth, birthdayDay: birthdayDay === "" ? null : birthdayDay },
+          body: {
+            birthdayMonth: birthdayMonth === "" ? null : birthdayMonth,
+            birthdayDay: birthdayDay === "" ? null : birthdayDay,
+            gender: gender === "" ? null : gender,
+          },
         },
       );
       setGlobalAccountData(res.account);
-      toast.success("Birthday saved!");
+      toast.success("Saved!");
     } catch (err) {
       toast.error((err as Error).message || "Couldn't update that — try again.");
     } finally {
@@ -310,9 +315,9 @@ export function CustomerProfilePanel({ onLogout }: { onLogout: () => void }) {
         </label>
       </Card>
 
-      <Card title="Birthday">
-        <p className="mb-3 text-sm text-[var(--muted)]">Optional — we'll send you something nice on the day.</p>
-        <div className="flex items-center gap-2">
+      <Card title="Personal info">
+        <p className="mb-3 text-sm text-[var(--muted)]">Optional — we'll send you something nice on your birthday.</p>
+        <div className="mb-3 flex items-center gap-2">
           <input
             type="number"
             min={1}
@@ -331,7 +336,20 @@ export function CustomerProfilePanel({ onLogout }: { onLogout: () => void }) {
             onChange={(e) => setBirthdayDay(e.target.value === "" ? "" : Number(e.target.value))}
             className="w-20 rounded-[var(--radius-btn)] border border-[var(--line)] bg-[var(--surface)] px-3 py-2 text-sm"
           />
-          <Button onClick={saveBirthday} disabled={savingBirthday}>
+        </div>
+        <select
+          value={gender ?? ""}
+          onChange={(e) => setGender((e.target.value || "") as Gender | "")}
+          className="mb-3 w-full rounded-[var(--radius-btn)] border border-[var(--line)] bg-[var(--surface)] px-3 py-2 text-sm"
+        >
+          <option value="">Gender — prefer not to say</option>
+          <option value="male">Male</option>
+          <option value="female">Female</option>
+          <option value="other">Other</option>
+          <option value="prefer_not_to_say">Prefer not to say</option>
+        </select>
+        <div className="flex items-center gap-2">
+          <Button onClick={savePersonalInfo} disabled={savingBirthday}>
             {savingBirthday ? "Saving…" : "Save"}
           </Button>
         </div>
