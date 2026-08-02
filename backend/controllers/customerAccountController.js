@@ -1,7 +1,7 @@
 const multer = require("multer");
 const {
   registerAccount, loginAccount, authenticateWithGoogle,
-  verifyAccountEmail, resendVerification, forgotPassword, resetPassword,
+  verifyAccountEmail, verifyCustomerOtp, resendVerification, forgotPassword, resetPassword,
   completeProfile, updateAccountProfile, updatePreferences, savePushSubscription, removePushSubscription, changeAccountPassword,
   enterTenant, getMyTenants,
   setAvatar, removeAvatar, getAvatar, MAX_AVATAR_BYTES,
@@ -47,6 +47,16 @@ const googleAuth = async (req, res, next) => {
 const verifyEmailController = async (req, res, next) => {
   try {
     const result = await verifyAccountEmail({ token: req.query.token });
+    res.status(200).json(result);
+  } catch (error) {
+    next(error);
+  }
+};
+
+const verifyOtpController = async (req, res, next) => {
+  try {
+    const { email, code } = req.body;
+    const result = await verifyCustomerOtp({ email, code });
     res.status(200).json(result);
   } catch (error) {
     next(error);
@@ -289,6 +299,7 @@ module.exports = {
   deleteAvatar: deleteAvatarController,
   getAvatar: getAvatarController,
   verifyEmail: verifyEmailController,
+  verifyOtp: verifyOtpController,
   resendVerification: resendVerificationController,
   forgotPassword: forgotPasswordController,
   resetPassword: resetPasswordController,

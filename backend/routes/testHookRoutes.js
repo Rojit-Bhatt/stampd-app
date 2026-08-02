@@ -44,6 +44,45 @@ router.post("/mint-token", resolveTenant, async (req, res, next) => {
   }
 });
 
+// DEV/TEST ONLY. Reads back the current live email_verify code for an
+// account, so a self-contained test can drive the OTP flow without reading
+// email — mirrors /mint-token's role for the link-based flow, but reads
+// instead of mints since the code is generated server-side automatically.
+router.post("/get-otp-code", async (req, res, next) => {
+  try {
+    const { email, kind } = req.body;
+    const normalizedEmail = String(email || "").toLowerCase();
+
+    if (kind === "admin") {
+      const account = await AdminAccount.findOne({ email: normalizedEmail });
+      if (!account) return res.status(404).json({ success: false });
+      const record = await AdminVerificationToken.findOne({
+        adminAccountId: account._id,
+        type: "email_verify",
+        usedAt: null
+      });
+      if (!record) return res.status(404).json({ success: false });
+      return res.json({ success: true, code: record.code, attempts: record.attempts });
+    }
+
+    if (kind === "customer") {
+      const account = await CustomerAccount.findOne({ email: normalizedEmail });
+      if (!account) return res.status(404).json({ success: false });
+      const record = await AccountVerificationToken.findOne({
+        customerAccountId: account._id,
+        type: "email_verify",
+        usedAt: null
+      });
+      if (!record) return res.status(404).json({ success: false });
+      return res.json({ success: true, code: record.code, attempts: record.attempts });
+    }
+
+    res.status(400).json({ success: false, message: "kind must be \"admin\" or \"customer\"." });
+  } catch (error) {
+    next(error);
+  }
+});
+
 // DEV/TEST ONLY. Same idea as /mint-token but for the global CustomerAccount
 // identity — no tenant needed at all.
 router.post("/mint-global-token", async (req, res, next) => {

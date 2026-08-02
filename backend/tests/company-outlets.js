@@ -74,7 +74,7 @@ async function main() {
     // The owner must verify before signing in.
     const unverified = await loginAdmin(`owner-${stamp}@test.com`, "password123");
     check("unverified owner can't sign in -> 403", unverified.status === 403);
-    check("...with EMAIL_NOT_VERIFIED", unverified.body?.code === "EMAIL_NOT_VERIFIED");
+    check("...with NEEDS_VERIFICATION", unverified.body?.code === "NEEDS_VERIFICATION");
 
     const mint = await api("/__test__/mint-admin-token", {
       method: "POST", body: { email: `owner-${stamp}@test.com`, type: "email_verify" },

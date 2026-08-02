@@ -45,12 +45,30 @@ const assertEmailAvailable = async (email) => {
   }
 };
 
+const OTP_TTL_MS = 10 * 60 * 1000;
+
+const generateOtp = () => String(crypto.randomInt(0, 1_000_000)).padStart(6, "0");
+
 const issueToken = async (adminAccountId, type) => {
   const raw = crypto.randomBytes(32).toString("hex");
-  const ttl = type === "email_verify" ? VERIFY_TTL_MS : RESET_TTL_MS;
+  const isVerify = type === "email_verify";
+  const ttl = isVerify ? OTP_TTL_MS : RESET_TTL_MS;
+
+  // Only one live email_verify code at a time — an older email's code must
+  // never be a second valid answer once a newer one has been issued.
+  if (isVerify) {
+    const stale = await AdminVerificationToken.find({ adminAccountId, type: "email_verify", usedAt: null });
+    for (const record of stale) {
+      record.usedAt = new Date();
+      await record.save();
+    }
+  }
+
   await AdminVerificationToken.create({
     adminAccountId,
     type,
+    code: isVerify ? generateOtp() : null,
+    attempts: 0,
     tokenHash: hashToken(raw),
     expiresAt: new Date(Date.now() + ttl),
     usedAt: null
@@ -66,11 +84,11 @@ const issueToken = async (adminAccountId, type) => {
 // enough that an admin gave up and refreshed before ever seeing success.
 const sendAdminVerifyEmail = async (account) => {
   const raw = await issueToken(account._id, "email_verify");
-  const link = buildAdminAuthLink("admin-verify-email", raw);
+  const record = await AdminVerificationToken.findOne({ tokenHash: hashToken(raw) });
   sendEmail({
     to: account.email,
-    subject: "Verify your email",
-    html: `<p>Confirm your email to activate your admin account:</p><p><a href="${link}">${link}</a></p>`
+    subject: "Your Stampd verification code",
+    html: `<p>Your code is <strong>${record.code}</strong>. It expires in 10 minutes.</p>`
   }).catch((err) => console.error(`Failed to email verify-link to ${account.email}:`, err.message));
 };
 
