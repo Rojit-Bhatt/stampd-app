@@ -105,9 +105,15 @@ stay mounted and unchanged.
 
 ### Login on an unverified account
 
-Today, `adminLogin` (and the customer login path) throw
-`403 EMAIL_NOT_VERIFIED` and stop. That becomes, on correct credentials
-against an unverified account:
+**Admin only.** Today `adminLogin` throws `403 EMAIL_NOT_VERIFIED` and stops
+— this is the one login path that actually gates on verification.
+`loginAccount` (customer) does **not**: checked directly against the running
+code, an unverified customer signs in today exactly like a verified one.
+Verification is deferred and enforced per-action instead (redeeming is
+gated; earning, browsing, and signing in are not — see
+`RedeemLanding.tsx`/`CustomerDashboard.tsx` below). That product decision
+stays exactly as it is; this spec only changes *how* verification happens
+once it's triggered, not *when*. So the behavior below is admin-side only:
 
 1. Issue a fresh OTP (same `issueToken` call the resend path already makes —
    invalidating any stale one from account-creation time, which matters most
@@ -147,29 +153,49 @@ used from three places. Built on the free Motion "Clerk sign-in" reference's
   code" and auto-focus the resend button.
 - Resend: 30-second disabled countdown after each send, matching the
   reference. Calls the existing resend endpoint for that identity type.
+- `size: "full" | "inline"` — `"full"` is the card-stack treatment used on
+  `AdminLogin.tsx` (dark landing tokens, larger). `"inline"` is a compact
+  variant (smaller slot boxes, no outer card chrome) that drops into an
+  existing light-theme card or banner without looking like a different
+  product bolted on.
 
 Props: `email: string`, `verify: (code: string) => Promise<void>`,
-`resend: () => Promise<void>`, `onVerified: () => void`. The three call
-sites supply their own `verify`/`resend` bound to `/api/customer-auth/*` or
+`resend: () => Promise<void>`, `onVerified: () => void`, `size`. Each call
+site supplies its own `verify`/`resend` bound to `/api/customer-auth/*` or
 `/api/admin-auth/*` — the component itself knows nothing about which
 identity type it's authenticating.
 
 ### Call sites
 
-- **`GlobalCustomerRegister.tsx`**: on a successful `POST /register`
-  response (`emailVerified: false`, always true for a fresh signup), swap
-  the registration form for `VerifyCodeCard` in place — no navigation, no
-  new route. Matches the Clerk reference's card-stack motion: the
-  registration card scales back and dims, the verify card slides up over it.
-- **`GlobalCustomerLogin.tsx`** / **`AdminLogin.tsx`**: catch
-  `code === "NEEDS_VERIFICATION"` from the login call (replacing today's
-  `EMAIL_NOT_VERIFIED` branch) and render `VerifyCodeCard` in place of the
-  login form, same card-stack motion.
-- `onVerified` on the login-page call sites re-submits the original
-  credentials once verification succeeds, completing the sign-in the visitor
-  was already mid-way through rather than making them retype anything. On
-  the register call site, `onVerified` performs whatever
-  post-registration navigation already happens today (unchanged).
+Four real call sites — the two customer-facing auth pages
+(`GlobalCustomerLogin.tsx`, `GlobalCustomerRegister.tsx`) get **visual
+redesign only** (§3) and no `VerifyCodeCard` integration, because customer
+login and registration never block on verification (see above).
+
+- **`AdminLogin.tsx`** (`size="full"`): catch `code === "NEEDS_VERIFICATION"`
+  from the login call (replacing today's `EMAIL_NOT_VERIFIED` branch,
+  including the `unverifiedEmail`/"Resend verification email" banner it
+  currently renders — line 46 and the JSX block near the bottom of the
+  file) and render `VerifyCodeCard` in place of the login form, matching the
+  Clerk reference's card-stack motion (the form scales back and dims, the
+  verify card slides up over it). `onVerified` re-submits the original
+  credentials, completing the sign-in the admin was already mid-way through.
+- **`CustomerDashboard.tsx`** (`size="inline"`): the existing unverified
+  banner's "Resend" button (the `onClick` that currently posts to
+  `resend-verification` and toasts) opens `VerifyCodeCard` inline within the
+  same banner instead of just toasting. `onVerified` re-fetches the account
+  query so the banner disappears without a page reload.
+- **`CustomerProfilePanel.tsx`** (`size="inline"`): the "Email verification"
+  card's "Resend verification email" button (`resendVerification`) does the
+  same — swaps to `VerifyCodeCard` inline inside that card.
+- **`RedeemLanding.tsx`** (`size="inline"`): the "Verify your email first"
+  gate screen's button (today: resend + toast "check your inbox") swaps to
+  `VerifyCodeCard` inline. `onVerified` here is the one place that matters
+  most functionally — it lets the customer complete the redeem they were
+  actually there for, in the same visit, instead of leaving to check email
+  and losing the counter's redeem QR context.
+
+All four reuse one component; none duplicate the OTP slot-row UI.
 
 ## 3. Page redesign
 
@@ -213,6 +239,9 @@ mobile gets the form alone, full-width):
 `AdminLogin.tsx` keeps its single "sign in" form — there is still no
 self-serve staff registration, so no sign-up tab is added there. Only its
 visual language and its `NEEDS_VERIFICATION` handling change.
+`GlobalCustomerLogin.tsx`/`GlobalCustomerRegister.tsx` get the visual
+treatment and nothing else — no OTP branch, no behavior change, per the
+"keep deferred" decision above.
 
 ## 4. Testing
 
@@ -231,16 +260,21 @@ chain (or it never runs). Covers, for both admin and customer:
 - Old-style link (`GET .../verify-email?token=`) against a record that also
   carries a `code` still verifies successfully — the two paths don't
   interfere with each other on the same record.
-- Login on an unverified account returns `403 NEEDS_VERIFICATION` (not the
-  old `EMAIL_NOT_VERIFIED`) and a fresh `email_verify` record exists,
-  invalidating whatever record existed before the login attempt.
+- Admin login on an unverified account returns `403 NEEDS_VERIFICATION` (not
+  the old `EMAIL_NOT_VERIFIED`) and a fresh `email_verify` record exists,
+  invalidating whatever record existed before the login attempt. Customer
+  login on an unverified account still returns `200` exactly as it does
+  today — this is the regression check for the "keep deferred" decision.
 - Password-reset records (`type: "password_reset"`) never carry a `code`,
   confirming that path is genuinely untouched.
 
-Frontend: `npm run lint` plus manual browser verification of both card-stack
-transitions (register → verify, unverified login → verify), the resend
-countdown, autofill/paste-of-six-digits into the slot row, and reduced-motion
-behavior on the left-panel animation and the wrong-code shake.
+Frontend: `npm run lint` plus manual browser verification of: the
+`AdminLogin.tsx` card-stack transition (unverified login → verify → signed
+in), the three inline `VerifyCodeCard` integrations
+(`CustomerDashboard.tsx`, `CustomerProfilePanel.tsx`, `RedeemLanding.tsx`),
+the resend countdown, autofill/paste-of-six-digits into the slot row, and
+reduced-motion behavior on the left-panel animation and the wrong-code
+shake.
 
 ## Risks
 
