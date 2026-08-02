@@ -106,6 +106,29 @@ export function usePublicCampaigns() {
   });
 }
 
+export type LeaderboardWindow = "all" | "month" | "week";
+
+export interface LeaderboardRow {
+  rank: number;
+  userId: string;
+  name: string;
+  pointsEarned: number;
+  isSelf: boolean;
+}
+
+export function useLeaderboard(window: LeaderboardWindow) {
+  const { companySlug, outletSlug } = useTenant();
+  return useQuery<LeaderboardRow[]>({
+    queryKey: ["leaderboard", companySlug, outletSlug, window],
+    queryFn: async () => {
+      const response = await apiRequest<{ success: boolean; data: { window: LeaderboardWindow; rows: LeaderboardRow[] } }>(
+        `/api/points/leaderboard?window=${window}`,
+      );
+      return response.data?.rows || [];
+    },
+  });
+}
+
 // Formats a points figure for display. Points are fractional (an outlet can
 // return 10% of a bill), but a whole number should read as one — "250", not
 // "250.00".

@@ -6,6 +6,7 @@ const {
   buildCustomersWorkbook,
   buildTransactionsWorkbook,
 } = require("../services/reportService");
+const { getLeaderboard } = require("../services/leaderboardService");
 
 const getDashboard = async (req, res, next) => {
   try {
@@ -32,6 +33,16 @@ const getTierDistribution = async (req, res, next) => {
   try {
     const stats = await getTierDistributionStats(req.user.organizationId);
     res.status(200).json({ success: true, ...stats });
+  } catch (error) {
+    next(error);
+  }
+};
+
+const getLeaderboardReport = async (req, res, next) => {
+  try {
+    const window = req.query.window || "all";
+    const rows = await getLeaderboard(req.user.organizationId, { window });
+    res.status(200).json({ success: true, data: { window, rows } });
   } catch (error) {
     next(error);
   }
@@ -79,6 +90,7 @@ module.exports = {
   getDashboard,
   getSummary,
   getTierDistribution,
+  getLeaderboardReport,
   downloadSummary,
   downloadCustomers,
   downloadTransactions,

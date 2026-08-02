@@ -5,7 +5,8 @@ const {
   getCatalog,
   getCampaigns,
   getBalance,
-  getHistory
+  getHistory,
+  getLeaderboardForCustomer
 } = require("../controllers/pointsController");
 const { verifyToken } = require("../middleware/authMiddleware");
 
@@ -20,5 +21,6 @@ router.get("/catalog", verifyToken, getCatalog);
 router.get("/campaigns", verifyToken, getCampaigns);
 router.get("/balance", verifyToken, getBalance);
 router.get("/history", verifyToken, getHistory);
+router.get("/leaderboard", verifyToken, getLeaderboardForCustomer);
 
 module.exports = router;

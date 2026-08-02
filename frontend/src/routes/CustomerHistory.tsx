@@ -1,11 +1,22 @@
-import { Coins, Gift, Hourglass } from "lucide-react";
+import { useState } from "react";
+import { Coins, Gift, Hourglass, Trophy } from "lucide-react";
 import { motion } from "motion/react";
 
 import { useTenant } from "../context/TenantContext";
-import { usePointsBalance, usePointsHistory, formatPoints, type PointsTransaction } from "../hooks/usePoints";
+import {
+  usePointsBalance,
+  usePointsHistory,
+  useLeaderboard,
+  formatPoints,
+  type PointsTransaction,
+  type LeaderboardWindow,
+} from "../hooks/usePoints";
 import { formatNpr } from "../lib/subscription";
 import { useMotion } from "../lib/motion";
 import { Skeleton } from "../components/ui/skeleton";
+import { SegmentedControl, SegmentedControlItem } from "@/components/ui/segmented-control";
+
+const WINDOW_LABEL: Record<LeaderboardWindow, string> = { all: "All time", month: "This month", week: "This week" };
 
 // A points balance is one number, so what's actually worth showing is how it
 // got there — the ledger, straight from the server, newest first.
@@ -48,6 +59,8 @@ export default function CustomerHistory() {
   const { tenant } = useTenant();
   const { data: points } = usePointsBalance();
   const { data: history = [], isLoading } = usePointsHistory();
+  const [leaderboardWindow, setLeaderboardWindow] = useState<LeaderboardWindow>("all");
+  const { data: leaderboard = [], isLoading: leaderboardLoading } = useLeaderboard(leaderboardWindow);
 
   return (
     <div className="mx-auto w-full max-w-2xl px-5 py-6">
@@ -142,6 +155,57 @@ export default function CustomerHistory() {
           </p>
         </>
       )}
+
+      <div className="mt-8">
+        <div className="mb-3 flex items-center justify-between gap-3">
+          <h2 className="font-display text-lg font-bold text-[var(--ink)]">Leaderboard</h2>
+          <SegmentedControl value={leaderboardWindow} onValueChange={(v) => setLeaderboardWindow(v as LeaderboardWindow)}>
+            <SegmentedControlItem value="week">Week</SegmentedControlItem>
+            <SegmentedControlItem value="month">Month</SegmentedControlItem>
+            <SegmentedControlItem value="all">All time</SegmentedControlItem>
+          </SegmentedControl>
+        </div>
+
+        {leaderboardLoading ? (
+          <div className="rounded-[var(--radius-card)] border border-[var(--line)] bg-[var(--surface)] px-5">
+            {Array.from({ length: 3 }).map((_, i) => (
+              <div key={i} className="flex items-center gap-3 border-b border-[var(--line)] py-4 last:border-0">
+                <Skeleton className="h-6 w-6 rounded-full" />
+                <Skeleton className="h-3.5 flex-1" />
+                <Skeleton className="h-3.5 w-10" />
+              </div>
+            ))}
+          </div>
+        ) : leaderboard.length === 0 ? (
+          <div className="rounded-[var(--radius-card)] border border-[var(--line)] bg-[var(--surface)] px-5 py-10 text-center shadow-ambient">
+            <Trophy className="mx-auto h-6 w-6 text-[var(--soft)]" strokeWidth={1.5} />
+            <p className="mt-3 text-sm text-[var(--muted)]">
+              No one's earned points here yet {leaderboardWindow === "all" ? "" : WINDOW_LABEL[leaderboardWindow].toLowerCase()}.
+            </p>
+          </div>
+        ) : (
+          <ul className="overflow-hidden rounded-[var(--radius-card)] border border-[var(--line)] bg-[var(--surface)] px-5 shadow-ambient">
+            {leaderboard.map((row) => (
+              <li
+                key={row.userId}
+                className="flex items-center gap-3 border-b border-[var(--line)] py-3 last:border-0"
+                style={row.isSelf ? { background: "var(--primary-soft)", marginInline: "-1.25rem", paddingInline: "1.25rem" } : undefined}
+              >
+                <span className="w-6 flex-shrink-0 text-center font-numeral text-sm text-[var(--muted)]">
+                  {row.rank}
+                </span>
+                <span className="min-w-0 flex-1 truncate text-sm font-semibold text-[var(--ink)]">
+                  {row.name}
+                  {row.isSelf ? <span className="ml-1.5 text-xs font-bold text-[var(--primary-deep)]">You</span> : null}
+                </span>
+                <span className="flex-shrink-0 font-numeral text-sm text-[var(--ink)]">
+                  {formatPoints(row.pointsEarned)}
+                </span>
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
     </div>
   );
 }

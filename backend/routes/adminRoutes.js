@@ -20,6 +20,7 @@ const {
   getDashboard,
   getSummary,
   getTierDistribution,
+  getLeaderboardReport,
   downloadSummary,
   downloadCustomers,
   downloadTransactions,
@@ -50,6 +51,7 @@ router.patch("/menu/:id", verifyToken, isBusinessAdmin, updateMenuItem);
 router.delete("/menu/:id", verifyToken, isBusinessAdmin, deleteMenuItem);
 router.get("/dashboard-stats", verifyToken, isBusinessAdmin, getDashboard);
 router.get("/tier-distribution", verifyToken, isBusinessAdmin, getTierDistribution);
+router.get("/leaderboard", verifyToken, isBusinessAdmin, getLeaderboardReport);
 router.get("/reports/summary", verifyToken, isBusinessAdmin, getSummary);
 router.get("/reports/summary/download", verifyToken, isBusinessAdmin, downloadSummary);
 router.get("/reports/customers/download", verifyToken, isBusinessAdmin, downloadCustomers);
