@@ -115,13 +115,24 @@ const deleteEvent = async (organizationId, eventId) => {
   return { success: true };
 };
 
-const getUpcomingForOrg = async (organizationId, limit = 3) => {
-  const startOfToday = new Date();
-  startOfToday.setHours(0, 0, 0, 0);
+function startOfToday() {
+  const d = new Date();
+  d.setHours(0, 0, 0, 0);
+  return d;
+}
 
-  return Event.find({ organizationId, date: { $gte: startOfToday } })
+const getUpcomingForOrg = async (organizationId, limit = 3) => {
+  return Event.find({ organizationId, date: { $gte: startOfToday() } })
     .sort({ date: 1 })
     .limit(limit);
+};
+
+// No organizationId filter, no limit — the cross-tenant events feed
+// (discoveryService.getUpcomingEventsFeed) applies its own cap AFTER
+// dropping events whose outlet/company turns out to be inactive, so a limit
+// here would be premature.
+const getUpcomingAllOrgs = async () => {
+  return Event.find({ date: { $gte: startOfToday() } }).sort({ date: 1 });
 };
 
 module.exports = {
@@ -129,5 +140,6 @@ module.exports = {
   createEvent,
   updateEvent,
   deleteEvent,
-  getUpcomingForOrg
+  getUpcomingForOrg,
+  getUpcomingAllOrgs
 };

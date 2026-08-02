@@ -8,7 +8,7 @@ const {
 const { resolveTenant } = require("../middleware/tenantMiddleware");
 const { verifyGlobalSession } = require("../middleware/customerAuthMiddleware");
 const { authLimiter, registrationLimiter, uploadLimiter } = require("../middleware/rateLimitMiddleware");
-const { discover } = require("../controllers/discoveryController");
+const { discover, events: exploreEvents } = require("../controllers/discoveryController");
 
 const router = express.Router();
 
@@ -48,6 +48,7 @@ router.post("/enter-tenant", resolveTenant, verifyGlobalSession, enterTenant);
 
 // Cross-tenant customer surface (/explore) — global session only, no tenant.
 router.get("/discover", verifyGlobalSession, discover);
+router.get("/events", verifyGlobalSession, exploreEvents);
 router.get("/my-tenants", verifyGlobalSession, getMyTenants);
 
 module.exports = router;
