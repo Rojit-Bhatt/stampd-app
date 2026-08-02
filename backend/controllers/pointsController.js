@@ -10,6 +10,7 @@ const {
   getOutletTransactions,
   getCustomerDetailRows
 } = require("../services/pointsService");
+const { getLeaderboard, formatDisplayName } = require("../services/leaderboardService");
 
 const generateAdminQRToken = async (req, res, next) => {
   try {
@@ -99,6 +100,20 @@ const getHistory = async (req, res, next) => {
   }
 };
 
+const getLeaderboardForCustomer = async (req, res, next) => {
+  try {
+    const window = req.query.window || "all";
+    const rows = await getLeaderboard(req.user.organizationId, { window });
+    const redacted = rows.map((row) => {
+      const isSelf = row.userId === req.user.id;
+      return { ...row, name: isSelf ? row.name : formatDisplayName(row.name), isSelf };
+    });
+    res.status(200).json({ success: true, data: { window, rows: redacted } });
+  } catch (error) {
+    next(error);
+  }
+};
+
 // The admin-facing outlet ledger — every movement, every customer.
 const getTransactions = async (req, res, next) => {
   try {
@@ -139,6 +154,7 @@ module.exports = {
   getCampaigns,
   getBalance,
   getHistory,
+  getLeaderboardForCustomer,
   getTransactions,
   getCustomersList
 };

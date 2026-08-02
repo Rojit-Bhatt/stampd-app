@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "react-router-dom";
-import { Search, Download } from "lucide-react";
+import { Search, Download, Trophy } from "lucide-react";
 import { apiRequest, apiUrl, tenantHeaders } from "../../lib/api";
 import { useAdminSettings } from "../../hooks/useAdminSettings";
 import { useAdminAuth } from "../../context/AdminAuthContext";
@@ -9,6 +9,8 @@ import { useTenant } from "../../context/TenantContext";
 import { tenantPath } from "../../lib/tenantPath";
 import { Skeleton } from "../../components/ui/skeleton";
 import { Badge } from "../../components/ui/badge";
+import { SegmentedControl, SegmentedControlItem } from "@/components/ui/segmented-control";
+import type { LeaderboardRow, LeaderboardWindow } from "../../hooks/usePoints";
 
 interface AdminCustomer {
   id: string;
@@ -38,6 +40,18 @@ export default function AdminCustomers() {
   const { user } = useAdminAuth();
   const orgId = user?.organizationId ?? null;
   const [query, setQuery] = useState("");
+  const [leaderboardWindow, setLeaderboardWindow] = useState<LeaderboardWindow>("all");
+
+  const { data: leaderboard = [], isLoading: leaderboardLoading } = useQuery<LeaderboardRow[]>({
+    queryKey: ["adminLeaderboard", orgId, leaderboardWindow],
+    queryFn: async () => {
+      const res = await apiRequest<{ success: boolean; data: { rows: LeaderboardRow[] } }>(
+        `/api/admin/leaderboard?window=${leaderboardWindow}`,
+        { role: "admin" },
+      );
+      return res.data?.rows || [];
+    },
+  });
 
   const { data: customers = [], isLoading } = useQuery<AdminCustomer[]>({
     queryKey: ["adminCustomers", orgId],
@@ -158,6 +172,47 @@ export default function AdminCustomers() {
             </Link>
           ))
         )}
+      </div>
+
+      <div className="mt-8">
+        <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
+          <h2 className="font-display text-lg font-bold text-[var(--ink)]">Top Customer Leaderboard</h2>
+          <SegmentedControl value={leaderboardWindow} onValueChange={(v) => setLeaderboardWindow(v as LeaderboardWindow)}>
+            <SegmentedControlItem value="week">Week</SegmentedControlItem>
+            <SegmentedControlItem value="month">Month</SegmentedControlItem>
+            <SegmentedControlItem value="all">All time</SegmentedControlItem>
+          </SegmentedControl>
+        </div>
+
+        <div className="shadow-ambient overflow-hidden rounded-[var(--radius-card)] bg-[var(--surface)]">
+          {leaderboardLoading ? (
+            Array.from({ length: 4 }).map((_, i) => (
+              <div key={i} className="flex items-center gap-3 border-b border-[var(--line)] px-5 py-3.5 last:border-b-0">
+                <Skeleton className="h-4 w-6" />
+                <Skeleton className="h-3.5 flex-1" />
+                <Skeleton className="h-3.5 w-12" />
+              </div>
+            ))
+          ) : leaderboard.length === 0 ? (
+            <div className="px-5 py-10 text-center">
+              <Trophy className="mx-auto h-6 w-6 text-[var(--soft)]" strokeWidth={1.5} />
+              <p className="mt-3 text-sm text-[var(--muted)]">No one's earned points here yet.</p>
+            </div>
+          ) : (
+            leaderboard.map((row) => (
+              <div
+                key={row.userId}
+                className="flex items-center gap-4 border-b border-[var(--line)] px-5 py-3.5 last:border-b-0"
+              >
+                <span className="w-6 flex-shrink-0 text-center font-numeral text-sm text-[var(--muted)]">
+                  {row.rank}
+                </span>
+                <span className="min-w-0 flex-1 truncate text-sm font-bold text-[var(--ink)]">{row.name}</span>
+                <span className="flex-shrink-0 text-sm font-semibold text-[var(--ink)]">{row.pointsEarned}</span>
+              </div>
+            ))
+          )}
+        </div>
       </div>
     </div>
   );
