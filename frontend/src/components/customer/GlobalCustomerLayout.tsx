@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Outlet, Link, NavLink, useLocation, useNavigate } from "react-router-dom";
-import { QrCode, Compass, Store, CircleUser } from "lucide-react";
+import { QrCode, Compass, CalendarDays, Store, CircleUser } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 
 import { useCustomerAuth } from "../../context/CustomerAuthContext";
@@ -129,6 +129,7 @@ export function GlobalCustomerLayout() {
 
           <nav className="ml-4 hidden items-center gap-1 lg:flex">
             <Tab to="/explore" icon={Compass} label="Home" variant="top" />
+            <Tab to="/explore/events" icon={CalendarDays} label="Events" variant="top" />
             <Tab to="/explore/mine" icon={Store} label="My businesses" variant="top" />
             <Tab to="/explore/profile" icon={CircleUser} label="Profile" variant="top" />
           </nav>
@@ -176,6 +177,7 @@ export function GlobalCustomerLayout() {
       <footer className="fixed inset-x-0 bottom-0 z-30 flex-shrink-0 px-4 pt-2 pb-[max(1.25rem,env(safe-area-inset-bottom))] lg:hidden">
         <div className="mx-auto flex max-w-md items-center gap-2 rounded-full border border-[var(--line)] bg-[var(--surface)] px-3 py-2 shadow-float">
           <Tab to="/explore" icon={Compass} label="Home" variant="bottom" />
+          <Tab to="/explore/events" icon={CalendarDays} label="Events" variant="bottom" />
           <Tab to="/explore/mine" icon={Store} label="My businesses" variant="bottom" />
           <Tab to="/explore/profile" icon={CircleUser} label="Profile" variant="bottom" />
         </div>
