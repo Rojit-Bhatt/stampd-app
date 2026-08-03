@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { QRCodeSVG } from "qrcode.react";
 import { Zap, QrCode } from "lucide-react";
 import { motion } from "motion/react";
@@ -13,6 +13,7 @@ import { formatPoints } from "../../hooks/usePoints";
 import { useCampaigns } from "../../hooks/useCampaigns";
 import { useMotion } from "../../lib/motion";
 import { CountdownRing } from "../../components/admin/CountdownRing";
+import { StaffPinGate } from "../../components/admin/StaffPinGate";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -56,28 +57,6 @@ export default function GenerateQr() {
   const amountValid = billAmount !== "" && Number.isFinite(parsedAmount) && parsedAmount > 0;
   const pointsPreview = amountValid ? Math.round(parsedAmount * earnPercent * multiplier) / 100 : 0;
 
-  const generate = useCallback(async (amount: number) => {
-    setLoading(true);
-    try {
-      const res = await apiRequest<{
-        success: boolean;
-        data: { token: string; billAmount: number; expiresInSeconds: number };
-      }>("/api/admin/generate-qr", {
-        method: "POST",
-        role: "admin",
-        body: { billAmount: amount },
-      });
-      setToken(res.data.token);
-      setIssuedFor(res.data.billAmount);
-      setTtl(res.data.expiresInSeconds);
-      setIssuedTtl(res.data.expiresInSeconds);
-    } catch (err) {
-      toast.error((err as Error).message || "Couldn't generate a code — try again.");
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
   useEffect(() => {
     if (timerRef.current) clearInterval(timerRef.current);
     if (ttl <= 0) return;
@@ -91,149 +70,187 @@ export default function GenerateQr() {
   const live = token && !expired;
 
   return (
-    <div className="mx-auto max-w-[480px]">
-      <header className="mb-5">
-        <h1 className="font-display text-2xl font-bold text-[var(--ink)]">Earn code</h1>
-        <p className="mt-1 text-sm text-[var(--muted)]">
-          Enter the bill, then have the customer scan.
-        </p>
-      </header>
+    <StaffPinGate required={settings?.staffPinRequired ?? false}>
+      {(pin, onPinRejected) => {
+        // Re-sent with every call — the server re-verifies every action, it
+        // never trusts the client to remember that it verified earlier.
+        const generate = async (amount: number) => {
+          setLoading(true);
+          try {
+            const res = await apiRequest<{
+              success: boolean;
+              data: { token: string; billAmount: number; expiresInSeconds: number };
+            }>("/api/admin/generate-qr", {
+              method: "POST",
+              role: "admin",
+              body: { billAmount: amount, ...(pin ? { pin } : {}) },
+            });
+            setToken(res.data.token);
+            setIssuedFor(res.data.billAmount);
+            setTtl(res.data.expiresInSeconds);
+            setIssuedTtl(res.data.expiresInSeconds);
+          } catch (err) {
+            const e = err as Error & { code?: string };
+            if (e.code === "PIN_REJECTED") {
+              // The PIN was reset mid-shift — drop back to the pad instead
+              // of a bare error on a screen that looks unlocked.
+              onPinRejected();
+              toast.error("That PIN isn't valid anymore — sign in again.");
+            } else {
+              toast.error(e.message || "Couldn't generate a code — try again.");
+            }
+          } finally {
+            setLoading(false);
+          }
+        };
 
-      {/* A live campaign changes what the bill is worth, so it sits above the
-          input rather than beside the result — staff should know before they
-          quote a number, not after. */}
-      {liveCampaign && (
-        <div className="mb-4 flex items-center gap-2.5 rounded-[var(--radius-btn)] bg-[var(--primary-soft)] px-4 py-3">
-          <Zap className="h-4 w-4 shrink-0 text-[var(--primary-deep)]" />
-          <span className="text-sm font-bold text-[var(--primary-deep)]">
-            {liveCampaign.multiplier}× points on right now — {liveCampaign.name}
-          </span>
-        </div>
-      )}
+        return (
+          <div className="mx-auto max-w-[480px]">
+            <header className="mb-5">
+              <h1 className="font-display text-2xl font-bold text-[var(--ink)]">Earn code</h1>
+              <p className="mt-1 text-sm text-[var(--muted)]">
+                Enter the bill, then have the customer scan.
+              </p>
+            </header>
 
-      <div className="rounded-[var(--radius-card)] border border-[var(--line)] bg-[var(--surface)] p-6 shadow-ambient">
-        <label className="block">
-          <span className="mb-1.5 block text-[10px] font-bold uppercase tracking-[0.14em] text-[var(--soft)]">
-            Bill amount
-          </span>
-          <div className="relative">
-            <span className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-sm font-bold text-[var(--soft)]">
-              Rs
-            </span>
-            <Input
-              type="number"
-              inputMode="decimal"
-              min={0}
-              step="0.01"
-              autoFocus
-              value={billAmount}
-              onChange={(e) => setBillAmount(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === "Enter" && amountValid && !loading) generate(parsedAmount);
-              }}
-              placeholder="What did they pay?"
-              className="h-14 pl-11 text-lg font-semibold"
-            />
-          </div>
-        </label>
-
-        {/* The award preview. Serif numeral, because this is the figure the
-            customer is about to be promised. */}
-        <div className="mt-3 flex min-h-[46px] items-center gap-3 border-t border-[var(--line)] pt-3">
-          {amountValid ? (
-            <>
-              <div className="font-numeral text-3xl leading-none text-[var(--primary)]">
-                {formatPoints(pointsPreview)}
-              </div>
-              <div className="text-xs leading-snug text-[var(--muted)]">
-                points · {earnPercent}% back
-                {liveCampaign && (
-                  <>
-                    {" "}
-                    <span className="font-bold text-[var(--primary-deep)]">
-                      · {liveCampaign.multiplier}× {liveCampaign.name}
-                    </span>
-                  </>
-                )}
-              </div>
-            </>
-          ) : (
-            <p className="text-xs text-[var(--soft)]">
-              Required — points are a share of the bill.
-            </p>
-          )}
-        </div>
-
-        <div className="mt-5 flex justify-center">
-          <div className="grid h-[236px] w-[236px] place-items-center rounded-[var(--radius-card)] border border-[var(--line)] bg-white p-4">
-            {live ? (
-              <motion.div
-                key={token}
-                initial={m.pick({ scale: 0.94, opacity: 0 }, { opacity: 0 })}
-                animate={{ scale: 1, opacity: 1 }}
-                transition={m.spring("cardEnter")}
-              >
-                <QRCodeSVG
-                  value={`${tenantUrl(window.location.origin, companySlug, outletSlug, "claim")}?token=${encodeURIComponent(token)}`}
-                  size={200}
-                  level="M"
-                  fgColor="#14201C"
-                />
-              </motion.div>
-            ) : (
-              <div className="flex flex-col items-center gap-2.5 px-4 text-center">
-                <QrCode className="h-8 w-8 text-[var(--soft)]" strokeWidth={1.5} />
-                <span className="text-sm font-semibold text-[var(--ink)]">
-                  {loading
-                    ? "Generating…"
-                    : token
-                      ? "Code expired"
-                      : "Enter a bill to generate"}
+            {/* A live campaign changes what the bill is worth, so it sits above the
+                input rather than beside the result — staff should know before they
+                quote a number, not after. */}
+            {liveCampaign && (
+              <div className="mb-4 flex items-center gap-2.5 rounded-[var(--radius-btn)] bg-[var(--primary-soft)] px-4 py-3">
+                <Zap className="h-4 w-4 shrink-0 text-[var(--primary-deep)]" />
+                <span className="text-sm font-bold text-[var(--primary-deep)]">
+                  {liveCampaign.multiplier}× points on right now — {liveCampaign.name}
                 </span>
-                {token && !loading && (
-                  <span className="text-xs text-[var(--muted)]">
-                    Generate a fresh one — it only takes a tap.
-                  </span>
-                )}
               </div>
             )}
-          </div>
-        </div>
 
-        {live && (
-          <div className="mt-5 flex items-center justify-center gap-4">
-            <CountdownRing remaining={ttl} total={issuedTtl} />
-            <div className="text-left">
-              <div className="text-[13px] leading-snug text-[var(--muted)]">
-                seconds until
-                <br />
-                this code expires
+            <div className="rounded-[var(--radius-card)] border border-[var(--line)] bg-[var(--surface)] p-6 shadow-ambient">
+              <label className="block">
+                <span className="mb-1.5 block text-[10px] font-bold uppercase tracking-[0.14em] text-[var(--soft)]">
+                  Bill amount
+                </span>
+                <div className="relative">
+                  <span className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-sm font-bold text-[var(--soft)]">
+                    Rs
+                  </span>
+                  <Input
+                    type="number"
+                    inputMode="decimal"
+                    min={0}
+                    step="0.01"
+                    autoFocus
+                    value={billAmount}
+                    onChange={(e) => setBillAmount(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" && amountValid && !loading) generate(parsedAmount);
+                    }}
+                    placeholder="What did they pay?"
+                    className="h-14 pl-11 text-lg font-semibold"
+                  />
+                </div>
+              </label>
+
+              {/* The award preview. Serif numeral, because this is the figure the
+                  customer is about to be promised. */}
+              <div className="mt-3 flex min-h-[46px] items-center gap-3 border-t border-[var(--line)] pt-3">
+                {amountValid ? (
+                  <>
+                    <div className="font-numeral text-3xl leading-none text-[var(--primary)]">
+                      {formatPoints(pointsPreview)}
+                    </div>
+                    <div className="text-xs leading-snug text-[var(--muted)]">
+                      points · {earnPercent}% back
+                      {liveCampaign && (
+                        <>
+                          {" "}
+                          <span className="font-bold text-[var(--primary-deep)]">
+                            · {liveCampaign.multiplier}× {liveCampaign.name}
+                          </span>
+                        </>
+                      )}
+                    </div>
+                  </>
+                ) : (
+                  <p className="text-xs text-[var(--soft)]">
+                    Required — points are a share of the bill.
+                  </p>
+                )}
               </div>
-              {issuedFor !== null && (
-                <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
-                  <Badge variant="neutral">For {formatNpr(issuedFor)}</Badge>
-                  {liveCampaign && (
-                    <Badge variant="live">{liveCampaign.multiplier}×</Badge>
+
+              <div className="mt-5 flex justify-center">
+                <div className="grid h-[236px] w-[236px] place-items-center rounded-[var(--radius-card)] border border-[var(--line)] bg-white p-4">
+                  {live ? (
+                    <motion.div
+                      key={token}
+                      initial={m.pick({ scale: 0.94, opacity: 0 }, { opacity: 0 })}
+                      animate={{ scale: 1, opacity: 1 }}
+                      transition={m.spring("cardEnter")}
+                    >
+                      <QRCodeSVG
+                        value={`${tenantUrl(window.location.origin, companySlug, outletSlug, "claim")}?token=${encodeURIComponent(token)}`}
+                        size={200}
+                        level="M"
+                        fgColor="#14201C"
+                      />
+                    </motion.div>
+                  ) : (
+                    <div className="flex flex-col items-center gap-2.5 px-4 text-center">
+                      <QrCode className="h-8 w-8 text-[var(--soft)]" strokeWidth={1.5} />
+                      <span className="text-sm font-semibold text-[var(--ink)]">
+                        {loading
+                          ? "Generating…"
+                          : token
+                            ? "Code expired"
+                            : "Enter a bill to generate"}
+                      </span>
+                      {token && !loading && (
+                        <span className="text-xs text-[var(--muted)]">
+                          Generate a fresh one — it only takes a tap.
+                        </span>
+                      )}
+                    </div>
                   )}
                 </div>
+              </div>
+
+              {live && (
+                <div className="mt-5 flex items-center justify-center gap-4">
+                  <CountdownRing remaining={ttl} total={issuedTtl} />
+                  <div className="text-left">
+                    <div className="text-[13px] leading-snug text-[var(--muted)]">
+                      seconds until
+                      <br />
+                      this code expires
+                    </div>
+                    {issuedFor !== null && (
+                      <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
+                        <Badge variant="neutral">For {formatNpr(issuedFor)}</Badge>
+                        {liveCampaign && (
+                          <Badge variant="live">{liveCampaign.multiplier}×</Badge>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                </div>
               )}
+
+              <Button
+                onClick={() => generate(parsedAmount)}
+                disabled={loading || !amountValid}
+                size="lg"
+                className="mt-6 w-full"
+              >
+                {token ? "Generate new code" : "Generate code"}
+              </Button>
             </div>
+
+            <p className="mt-4 text-center text-[13px] text-[var(--soft)]">
+              Single-use — stops screenshots being re-scanned.
+            </p>
           </div>
-        )}
-
-        <Button
-          onClick={() => generate(parsedAmount)}
-          disabled={loading || !amountValid}
-          size="lg"
-          className="mt-6 w-full"
-        >
-          {token ? "Generate new code" : "Generate code"}
-        </Button>
-      </div>
-
-      <p className="mt-4 text-center text-[13px] text-[var(--soft)]">
-        Single-use — stops screenshots being re-scanned.
-      </p>
-    </div>
+        );
+      }}
+    </StaffPinGate>
   );
 }

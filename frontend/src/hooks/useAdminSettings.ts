@@ -100,6 +100,10 @@ export interface AdminSettings {
   messagingTriggers: MessagingTriggers;
   customerInfo: CustomerInfoSettings;
   menuEnabled: boolean;
+  /** The acting admin's role. null = the outlet's primary admin, full access. */
+  staffRole: "manager" | "staff" | null;
+  /** True once anyone at this outlet has a PIN — see the design doc, §2.2. */
+  staffPinRequired: boolean;
   // False for a platform-onboarded business with no attached owner — the
   // Subscription nav item/route must be hidden for it (there's nothing to
   // show; GET /api/admin/subscription 404s).
