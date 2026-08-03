@@ -147,7 +147,7 @@ export default function CompanyDashboard() {
       {limitInfo && (
         <div className="mb-6 flex flex-wrap items-center justify-between gap-3 rounded-[16px] border border-[var(--warn-soft)] bg-[var(--warn-soft)] px-5 py-4 text-sm" style={{ color: "var(--warn)" }}>
           <span>{limitInfo}</span>
-          <Link to="/company/subscription" className="rounded-full bg-white px-4 py-2 text-xs font-bold" style={{ color: "var(--warn)" }}>
+          <Link to="/company/subscription" className="rounded-full bg-[var(--surface)] px-4 py-2 text-xs font-bold" style={{ color: "var(--warn)" }}>
             View subscription
           </Link>
         </div>
