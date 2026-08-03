@@ -5,6 +5,7 @@ import { useCompanyAuth } from "../../context/CompanyAuthContext";
 import { PLATFORM_NAME } from "../../lib/platform";
 import { StampdLogo } from "../shared/StampdLogo";
 import { AccountMenu } from "../shared/AccountMenu";
+import { ThemeToggle } from "../shared/ThemeToggle";
 
 const NAV = [
   { to: "", end: true, label: "Outlets", Icon: Store },
@@ -77,16 +78,19 @@ export function CompanyLayout() {
         ))}
       </nav>
 
-      <div className="mt-auto border-t border-[var(--line)] pt-3">
-        <AccountMenu
-          initial={account.name.charAt(0).toUpperCase()}
-          name={account.name}
-          email={account.email}
-          settingsPath="/company"
-          onLogout={logout}
-          accent="var(--primary)"
-          dropUp
-        />
+      <div className="mt-auto flex items-center gap-2 border-t border-[var(--line)] pt-3">
+        <div className="min-w-0 flex-1">
+          <AccountMenu
+            initial={account.name.charAt(0).toUpperCase()}
+            name={account.name}
+            email={account.email}
+            settingsPath="/company"
+            onLogout={logout}
+            accent="var(--primary)"
+            dropUp
+          />
+        </div>
+        <ThemeToggle className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-[var(--radius-btn)] text-[var(--muted)] transition-colors hover:bg-[var(--surface-2)] hover:text-[var(--ink)]" />
       </div>
     </>
   );
