@@ -24,6 +24,7 @@ import { useAdminAuth } from "../../context/AdminAuthContext";
 import { useAdminSettings } from "../../hooks/useAdminSettings";
 import { useAccount } from "../../hooks/useAccount";
 import { AccountMenu } from "../shared/AccountMenu";
+import { ThemeToggle } from "../shared/ThemeToggle";
 import { tenantPath } from "../../lib/tenantPath";
 import { Sheet, SheetContent, SheetTitle } from "../ui/sheet";
 
@@ -228,14 +229,17 @@ export function AdminLayout() {
           Redeem
         </NavLink>
 
-        <div className="mt-2 border-t border-[var(--line)] pt-3">
-          <AccountMenu
-            initial={(account?.name || user?.name || "?").charAt(0).toUpperCase()}
-            name={account?.name || user?.name || ""}
-            settingsPath="settings"
-            onLogout={handleLogout}
-            dropUp
-          />
+        <div className="mt-2 flex items-center gap-2 border-t border-[var(--line)] pt-3">
+          <div className="min-w-0 flex-1">
+            <AccountMenu
+              initial={(account?.name || user?.name || "?").charAt(0).toUpperCase()}
+              name={account?.name || user?.name || ""}
+              settingsPath="settings"
+              onLogout={handleLogout}
+              dropUp
+            />
+          </div>
+          <ThemeToggle className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-[var(--radius-btn)] text-[var(--muted)] transition-colors hover:bg-[var(--surface-2)] hover:text-[var(--ink)]" />
         </div>
       </div>
     </>
