@@ -1,4 +1,11 @@
-const { verifyPin } = require("../services/staffService");
+const {
+  verifyPin,
+  listStaff,
+  createStaff,
+  updateStaffRole,
+  deleteStaff,
+  setStaffPin
+} = require("../services/staffService");
 
 // Deliberately NOT behind requireStaffPermission: a "staff" account calling
 // this is the entire point — it's how one identifies itself at the counter.
@@ -30,4 +37,74 @@ const verifyPinController = async (req, res, next) => {
   }
 };
 
-module.exports = { verifyPinController };
+const list = async (req, res, next) => {
+  try {
+    const result = await listStaff({ organizationId: req.user.organizationId, callerUserId: req.user.id });
+    res.status(200).json({ success: true, ...result });
+  } catch (error) {
+    next(error);
+  }
+};
+
+const create = async (req, res, next) => {
+  try {
+    const { name, email, staffRole, password, pin } = req.body;
+    const row = await createStaff({
+      organizationId: req.user.organizationId,
+      callerUserId: req.user.id,
+      name,
+      email,
+      staffRole,
+      password,
+      pin
+    });
+    res.status(201).json({ success: true, ...row });
+  } catch (error) {
+    next(error);
+  }
+};
+
+const updateRole = async (req, res, next) => {
+  try {
+    const row = await updateStaffRole({
+      organizationId: req.user.organizationId,
+      callerUserId: req.user.id,
+      targetId: req.params.id,
+      staffRole: req.body.staffRole
+    });
+    res.status(200).json({ success: true, ...row });
+  } catch (error) {
+    next(error);
+  }
+};
+
+const remove = async (req, res, next) => {
+  try {
+    const result = await deleteStaff({
+      organizationId: req.user.organizationId,
+      callerUserId: req.user.id,
+      targetId: req.params.id
+    });
+    res.status(200).json(result);
+  } catch (error) {
+    next(error);
+  }
+};
+
+const setPin = async (req, res, next) => {
+  try {
+    const row = await setStaffPin({
+      organizationId: req.user.organizationId,
+      callerUserId: req.user.id,
+      callerStaffRole: req.user.staffRole,
+      targetIdParam: req.params.id,
+      pin: req.body.pin,
+      currentPin: req.body.currentPin
+    });
+    res.status(200).json({ success: true, ...row });
+  } catch (error) {
+    next(error);
+  }
+};
+
+module.exports = { verifyPinController, list, create, updateRole, remove, setPin };

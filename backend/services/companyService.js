@@ -218,6 +218,14 @@ const createOutlet = async ({ companyId, name, slug, category, adminName, adminE
   return { organization, adminAccount };
 };
 
+// Picks the outlet's PRIMARY admin account (staffRole === null) among
+// candidates fetched org-scoped. Falls back to the first row if somehow none
+// is primary. The mock DB has no $exists/$ne, so this is a JS filter after
+// the fetch, not a query term — mandatory here, not merely convenient, now
+// that a second outlet_admin AdminAccount can exist per outlet.
+const pickPrimaryAdmin = (candidates) =>
+  candidates.find((a) => a.staffRole === null) || candidates[0] || null;
+
 const listOutlets = async (companyId) => {
   const outlets = await Organization.find({ companyId });
   const rows = await Promise.all(
@@ -225,7 +233,9 @@ const listOutlets = async (companyId) => {
       const customersCount = (
         await User.find({ organizationId: outlet._id, role: "customer" })
       ).length;
-      const admin = await AdminAccount.findOne({ organizationId: outlet._id });
+      // Must show the outlet's actual (primary) admin, not a barista —
+      // ambiguous the moment a second AdminAccount exists at this outlet.
+      const admin = pickPrimaryAdmin(await AdminAccount.find({ organizationId: outlet._id }));
       return {
         ...formatOutlet(outlet),
         customersCount,
@@ -283,9 +293,22 @@ const enterOutlet = async ({ companyId, organizationId }) => {
 
   // The owner acts as that outlet's admin through its existing membership
   // row, so the tenant JWT is byte-identical to the one its own admin gets.
-  const membership = await User.findOne({ organizationId, role: "business_admin" });
-  if (!membership) {
+  // A company owner entering their own outlet must land with FULL access —
+  // resolve every membership's AdminAccount and pick the primary
+  // (staffRole null), not whichever staff row the DB returns first.
+  const memberships = await User.find({ organizationId, role: "business_admin" });
+  if (memberships.length === 0) {
     throw createHttpError("This outlet has no admin account yet.", 404);
+  }
+  const accounts = await Promise.all(
+    memberships.map((m) => (m.adminAccountId ? AdminAccount.findOne({ _id: m.adminAccountId }) : null))
+  );
+  let membership = memberships[0];
+  for (let i = 0; i < memberships.length; i++) {
+    if (accounts[i] && accounts[i].staffRole === null) {
+      membership = memberships[i];
+      break;
+    }
   }
 
   const company = await Company.findOne({ _id: companyId });

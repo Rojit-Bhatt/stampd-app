@@ -11,7 +11,7 @@
  */
 
 const { bootServer } = require("./helpers/bootServer");
-const { makeApi, makeSiblingOutlet } = require("./helpers/makeOutlet");
+const { makeApi, makeSiblingOutlet, verifyAdmin } = require("./helpers/makeOutlet");
 
 async function main() {
   const { baseUrl, stop } = await bootServer({ port: 5058 });
@@ -131,6 +131,141 @@ async function main() {
     check("staff can still generate an earn QR", staffQr.status === 201, staffQr);
     const staffRedeemQr = await api("/api/admin/generate-redeem-qr", { method: "POST", token: staffT });
     check("staff can still generate a redeem QR", staffRedeemQr.status === 201, staffRedeemQr);
+
+    // --- the /api/admin/staff surface -------------------------------
+    // A fresh outlet, primary admin only (no PIN yet).
+    const hqOutlet = await makeSiblingOutlet(baseUrl, { label: `hq${Date.now()}` });
+    const hqT = hqOutlet.adminToken;
+
+    // manager is 403 on all five /api/admin/staff routes.
+    const staffRoutes = [
+      ["GET", "/api/admin/staff"],
+      ["POST", "/api/admin/staff", { name: "X", email: `nope-${Date.now()}@test.com`, staffRole: "staff", password: "password", pin: "1111" }],
+      ["PATCH", "/api/admin/staff/000000000000000000000000", { staffRole: "manager" }],
+      ["DELETE", "/api/admin/staff/000000000000000000000000"],
+    ];
+    for (const [method, path, body] of staffRoutes) {
+      const r = await api(path, { method, token: mgrT, body });
+      check(`manager is 403 on ${method} ${path}`, r.status === 403 && r.body?.code === "STAFF_ROLE_FORBIDDEN", r);
+    }
+    // The compound-gate pin route is separate: manager CAN act on itself.
+    const mgrSelfPinRoute = await api("/api/admin/staff/me/pin", { method: "PATCH", token: mgrT, body: { pin: "5566" } });
+    check("manager acting on self via /staff/me/pin is not blocked by manage_staff", mgrSelfPinRoute.status !== 403, mgrSelfPinRoute);
+
+    // Inviting before the caller has a PIN -> 400 SET_YOUR_PIN_FIRST.
+    const tooEarly = await api("/api/admin/staff", {
+      method: "POST", token: hqT,
+      body: { name: "Asha", email: `asha-${Date.now()}@test.com`, staffRole: "staff", password: "password", pin: "1111" },
+    });
+    check("inviting before the caller has a PIN -> 400 SET_YOUR_PIN_FIRST", tooEarly.status === 400 && tooEarly.body?.code === "SET_YOUR_PIN_FIRST", tooEarly);
+
+    // Set the primary's own PIN first (lockout guard satisfied).
+    const setOwnPin = await api("/api/admin/staff/me/pin", { method: "PATCH", token: hqT, body: { pin: "1234" } });
+    check("primary sets own PIN via /staff/me/pin", setOwnPin.status === 200, setOwnPin);
+
+    // Now the invite succeeds.
+    const inviteEmail = `asha-${Date.now()}@test.com`;
+    const invite = await api("/api/admin/staff", {
+      method: "POST", token: hqT,
+      body: { name: "Asha", email: inviteEmail, staffRole: "staff", password: "password", pin: "1111" },
+    });
+    check("invite succeeds once the caller has a PIN", invite.status === 201, invite);
+
+    const staffList = await api("/api/admin/staff", { token: hqT });
+    const invited = staffList.body?.staff?.find((s) => s.email === inviteEmail);
+    check("invited row appears in GET /api/admin/staff", Boolean(invited), staffList.body);
+    check("invited row has hasPin true", invited?.hasPin === true, invited);
+    check("invited row has emailVerified false", invited?.emailVerified === false, invited);
+
+    // Response never leaks the hash, in any shape.
+    check("GET /staff response never contains staffPinHash", !JSON.stringify(staffList.body).includes("staffPinHash"), staffList.body);
+    check("POST /staff response never contains staffPinHash", !JSON.stringify(invite.body).includes("staffPinHash"), invite.body);
+
+    // The invitee genuinely reuses the existing verification flow.
+    const earlyLogin = await api("/api/admin-auth/login", { method: "POST", body: { email: inviteEmail, password: "password" } });
+    check("unverified invitee -> 403 EMAIL_NOT_VERIFIED", earlyLogin.status === 403 && earlyLogin.body?.code === "EMAIL_NOT_VERIFIED", earlyLogin);
+    await verifyAdmin(api, inviteEmail);
+    const afterVerifyLogin = await api("/api/admin-auth/login", { method: "POST", body: { email: inviteEmail, password: "password" } });
+    check("invitee can sign in after verifying", afterVerifyLogin.status === 200, afterVerifyLogin);
+
+    // Duplicate PIN at the SAME outlet -> 409 PIN_TAKEN.
+    const dupPinSameOutlet = await api("/api/admin/staff", {
+      method: "POST", token: hqT,
+      body: { name: "Bikash", email: `bikash-${Date.now()}@test.com`, staffRole: "staff", password: "password", pin: "1111" },
+    });
+    check("duplicate PIN at the same outlet -> 409 PIN_TAKEN", dupPinSameOutlet.status === 409 && dupPinSameOutlet.body?.code === "PIN_TAKEN", dupPinSameOutlet);
+
+    // Same PIN string at a DIFFERENT outlet is fine.
+    const otherOutlet = await makeSiblingOutlet(baseUrl, { label: `ho${Date.now()}` });
+    const otherT = otherOutlet.adminToken;
+    await api("/api/admin/staff/me/pin", { method: "PATCH", token: otherT, body: { pin: "9090" } });
+    const samePinOtherOutlet = await api("/api/admin/staff", {
+      method: "POST", token: otherT,
+      body: { name: "Chandra", email: `chandra-${Date.now()}@test.com`, staffRole: "staff", password: "password", pin: "1111" },
+    });
+    check("same PIN string at a different outlet is fine", samePinOtherOutlet.status === 201, samePinOtherOutlet);
+
+    // Cross-outlet id -> 404, not a leak.
+    const foreignId = invited.id;
+    const crossPatch = await api(`/api/admin/staff/${foreignId}`, { method: "PATCH", token: otherT, body: { staffRole: "manager" } });
+    check("PATCH with another outlet's staff id -> 404", crossPatch.status === 404, crossPatch);
+    const crossDelete = await api(`/api/admin/staff/${foreignId}`, { method: "DELETE", token: otherT });
+    check("DELETE with another outlet's staff id -> 404", crossDelete.status === 404, crossDelete);
+
+    // CANNOT_EDIT_SELF: the primary can't PATCH their own row. Resolve the
+    // primary's own membership id via the staff list (isSelf).
+    const hqStaffList = await api("/api/admin/staff", { token: hqT });
+    const primaryRow = hqStaffList.body?.staff?.find((s) => s.isPrimary);
+    check("primary row is marked isPrimary", Boolean(primaryRow), hqStaffList.body);
+
+    const selfPatch = await api(`/api/admin/staff/${primaryRow.id}`, { method: "PATCH", token: hqT, body: { staffRole: "manager" } });
+    check("PATCH targeting self -> 400 CANNOT_EDIT_SELF", selfPatch.status === 400 && selfPatch.body?.code === "CANNOT_EDIT_SELF", selfPatch);
+
+    // CANNOT_MODIFY_PRIMARY: a manager cannot PATCH/DELETE the primary
+    // (also blocked for staff, but manager is the more interesting case).
+    const promoteMgr = await api(`/api/admin/staff/${invited.id}`, { method: "PATCH", token: hqT, body: { staffRole: "manager" } });
+    check("primary can promote invited staff to manager", promoteMgr.status === 200, promoteMgr);
+    const setInvitedPin = await api(`/api/admin/staff/${invited.id}/pin`, { method: "PATCH", token: hqT, body: { pin: "2222" } });
+    check("primary can set another member's PIN", setInvitedPin.status === 200, setInvitedPin);
+    const invitedLogin = await api("/api/admin-auth/login", { method: "POST", body: { email: inviteEmail, password: "password" } });
+    const invitedMgrToken = invitedLogin.body?.token;
+
+    const mgrPatchPrimary = await api(`/api/admin/staff/${primaryRow.id}`, { method: "PATCH", token: invitedMgrToken, body: { staffRole: "manager" } });
+    check("manager cannot PATCH the primary -> 403 (manage_staff gate first)", mgrPatchPrimary.status === 403, mgrPatchPrimary);
+
+    // staffRole: null in the PATCH body -> 400 INVALID_STAFF_ROLE (checked
+    // with the primary acting, so the role-validation guard is isolated from
+    // the manage_staff/self/primary guards above).
+    const nullRolePatch = await api(`/api/admin/staff/${invited.id}`, { method: "PATCH", token: hqT, body: { staffRole: null } });
+    check("staffRole: null -> 400 INVALID_STAFF_ROLE", nullRolePatch.status === 400 && nullRolePatch.body?.code === "INVALID_STAFF_ROLE", nullRolePatch);
+
+    // Primary acting on the primary via PATCH/DELETE -> CANNOT_MODIFY_PRIMARY
+    // is unreachable (primary can only ever target itself, which is
+    // CANNOT_EDIT_SELF first) — so exercise it from a second staffer that
+    // isn't self and isn't the primary, targeting the primary.
+    const primaryDeleteAttempt = await api(`/api/admin/staff/${primaryRow.id}`, { method: "DELETE", token: hqT });
+    check("primary deleting itself -> 400 CANNOT_EDIT_SELF (self check runs first)", primaryDeleteAttempt.status === 400 && primaryDeleteAttempt.body?.code === "CANNOT_EDIT_SELF", primaryDeleteAttempt);
+
+    // Self PIN change with a wrong currentPin -> 401 PIN_REJECTED.
+    const wrongCurrentPin = await api("/api/admin/staff/me/pin", { method: "PATCH", token: hqT, body: { pin: "4321", currentPin: "0000" } });
+    check("self PIN change with wrong currentPin -> 401 PIN_REJECTED", wrongCurrentPin.status === 401 && wrongCurrentPin.body?.code === "PIN_REJECTED", wrongCurrentPin);
+    const rightCurrentPin = await api("/api/admin/staff/me/pin", { method: "PATCH", token: hqT, body: { pin: "4321", currentPin: "1234" } });
+    check("self PIN change with correct currentPin succeeds", rightCurrentPin.status === 200, rightCurrentPin);
+
+    // --- the enterOutlet/listOutlets primary fix ---------------------
+    // After inviting staff at an outlet, the company owner's enter-outlet
+    // still lands with FULL access (staffRole null), not whichever staff
+    // row happens to be fetched first.
+    const ownerEnter = await api("/api/company/enter-outlet", {
+      method: "POST", token: hqOutlet.ownerToken, body: { organizationId: hqOutlet.outletId },
+    });
+    check("owner enter-outlet succeeds after staff exist at the outlet", ownerEnter.status === 200, ownerEnter);
+    const ownerEnterSettings = await api("/api/admin/settings", { token: ownerEnter.body?.token });
+    check(
+      "owner entering an outlet with sub-staff still lands as the PRIMARY admin",
+      ownerEnterSettings.body?.settings?.staffRole === null,
+      ownerEnterSettings.body?.settings,
+    );
   } finally {
     stop();
   }

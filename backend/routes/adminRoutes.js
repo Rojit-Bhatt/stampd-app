@@ -29,7 +29,7 @@ const campaignController = require("../controllers/campaignController");
 const rewardController = require("../controllers/rewardController");
 const broadcastController = require("../controllers/broadcastController");
 const { uploadImageFile, uploadImage, deleteImage } = require("../controllers/imageController");
-const { verifyPinController } = require("../controllers/staffController");
+const staffController = require("../controllers/staffController");
 const { verifyToken, isBusinessAdmin, requireStaffPermission } = require("../middleware/authMiddleware");
 const { pinLimiter } = require("../middleware/rateLimitMiddleware");
 
@@ -40,6 +40,7 @@ const canSettings = requireStaffPermission("manage_settings");
 const canCatalog = requireStaffPermission("manage_catalog");
 const canMarketing = requireStaffPermission("manage_marketing");
 const canReports = requireStaffPermission("view_reports");
+const canStaff = requireStaffPermission("manage_staff");
 
 // Deliberately left OPEN to every role, including "staff" — see the design
 // doc §1.3: GET /settings (AdminGuard revalidates against it; a 403 here
@@ -56,7 +57,7 @@ router.post("/generate-qr", verifyToken, isBusinessAdmin, generateAdminQRToken);
 router.post("/generate-redeem-qr", verifyToken, isBusinessAdmin, generateAdminRedeemToken);
 // Deliberately NOT behind requireStaffPermission: a "staff" account calling
 // this is the entire point. Rate-limited instead.
-router.post("/verify-pin", verifyToken, isBusinessAdmin, pinLimiter, verifyPinController);
+router.post("/verify-pin", verifyToken, isBusinessAdmin, pinLimiter, staffController.verifyPinController);
 router.get("/transactions", verifyToken, isBusinessAdmin, canReports, getTransactions);
 router.get("/customers", verifyToken, isBusinessAdmin, canReports, getCustomersList);
 router.get("/settings", verifyToken, isBusinessAdmin, getMySettings);
@@ -105,5 +106,15 @@ router.post("/broadcasts", verifyToken, isBusinessAdmin, canMarketing, broadcast
 router.get("/broadcasts/:id", verifyToken, isBusinessAdmin, canMarketing, broadcastController.detail);
 router.patch("/broadcasts/:id", verifyToken, isBusinessAdmin, canMarketing, broadcastController.update);
 router.delete("/broadcasts/:id", verifyToken, isBusinessAdmin, canMarketing, broadcastController.remove);
+
+router.get("/staff", verifyToken, isBusinessAdmin, canStaff, staffController.list);
+router.post("/staff", verifyToken, isBusinessAdmin, canStaff, staffController.create);
+router.patch("/staff/:id", verifyToken, isBusinessAdmin, canStaff, staffController.updateRole);
+router.delete("/staff/:id", verifyToken, isBusinessAdmin, canStaff, staffController.remove);
+// The one compound gate: manage_staff OR self. A manager cannot manage_staff,
+// so without the self path it could never set a PIN and would be locked out
+// of the counter the moment the outlet turns PINs on. Enforced in the
+// service, which is why canStaff is absent here.
+router.patch("/staff/:id/pin", verifyToken, isBusinessAdmin, pinLimiter, staffController.setPin);
 
 module.exports = router;
