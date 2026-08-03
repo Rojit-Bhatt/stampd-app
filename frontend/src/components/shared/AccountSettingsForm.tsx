@@ -1,9 +1,10 @@
 import { useEffect, useState } from "react";
 import toast from "react-hot-toast";
-import { LogOut } from "lucide-react";
+import { LogOut, User, ShieldCheck } from "lucide-react";
 import { apiRequest } from "../../lib/api";
 import { useAccount, useUpdateProfile, useChangePassword } from "../../hooks/useAccount";
 import { Skeleton } from "../ui/skeleton";
+import { ProfileShell, type ProfileSection } from "./profile/ProfileShell";
 
 interface AccountSettingsFormProps {
   role: "admin" | "customer" | "platform";
@@ -93,74 +94,93 @@ export function AccountSettingsForm({ role, onLogout }: AccountSettingsFormProps
     }
   };
 
-  return (
-    <div className="flex max-w-[480px] flex-col gap-6">
-      <div className="rounded-[var(--radius-card)] border border-[var(--line)] bg-[var(--surface)] shadow-ambient p-5">
-        <div className="mb-3 text-sm font-bold">Profile</div>
-        <label className="mb-1.5 block text-sm font-bold">Name</label>
-        <input
-          value={name}
-          onChange={(e) => setName(e.target.value)}
-          className="mb-3 w-full rounded-[var(--radius-btn)] border border-[var(--line)] bg-[var(--bg)] px-4 py-3 text-sm focus:border-[var(--primary)] focus:outline-none"
-        />
-        <div className="mb-3 text-[13px] text-[var(--muted)]">{account.email}</div>
-        <button
-          onClick={saveName}
-          disabled={updateProfile.isPending || !name.trim()}
-          className="rounded-[var(--radius-btn)] px-5 py-2.5 text-sm font-bold text-white transition-opacity hover:opacity-90 disabled:opacity-50"
-          style={{ background: "var(--primary)" }}
-        >
-          {updateProfile.isPending ? "Saving…" : "Save name"}
-        </button>
-      </div>
-
-      {role !== "platform" && (
-        <div className="rounded-[var(--radius-card)] border border-[var(--line)] bg-[var(--surface)] shadow-ambient p-5">
-          <div className="mb-2 text-sm font-bold">Email verification</div>
-          <div className="mb-3 text-[13px] text-[var(--muted)]">
-            {account.emailVerified
-              ? "Verified"
-              : role === "customer"
-                ? "Not verified — you can still earn points, but you'll need this to redeem them."
-                : "Not verified"}
-          </div>
-          {!account.emailVerified && (
-            <button
-              onClick={resendVerification}
-              disabled={resending}
-              className="rounded-[var(--radius-btn)] border border-[var(--line)] bg-[var(--bg)] px-4 py-2 text-sm font-bold disabled:opacity-50"
-            >
-              {resending ? "Sending…" : "Resend verification email"}
-            </button>
-          )}
+  const sections: ProfileSection[] = [
+    {
+      id: "profile",
+      label: "Profile",
+      icon: User,
+      content: (
+        <div className="max-w-[480px] rounded-[var(--radius-card)] border border-[var(--line)] bg-[var(--surface)] shadow-ambient p-5">
+          <div className="mb-3 text-sm font-bold">Profile</div>
+          <label className="mb-1.5 block text-sm font-bold">Name</label>
+          <input
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            className="mb-3 w-full rounded-[var(--radius-btn)] border border-[var(--line)] bg-[var(--bg)] px-4 py-3 text-sm focus:border-[var(--primary)] focus:outline-none"
+          />
+          <div className="mb-3 text-[13px] text-[var(--muted)]">{account.email}</div>
+          <button
+            onClick={saveName}
+            disabled={updateProfile.isPending || !name.trim()}
+            className="rounded-[var(--radius-btn)] px-5 py-2.5 text-sm font-bold text-white transition-opacity hover:opacity-90 disabled:opacity-50"
+            style={{ background: "var(--primary)" }}
+          >
+            {updateProfile.isPending ? "Saving…" : "Save name"}
+          </button>
         </div>
-      )}
+      ),
+    },
+    {
+      id: "security",
+      label: "Security",
+      icon: ShieldCheck,
+      content: (
+        <div className="flex max-w-[480px] flex-col gap-6">
+          {role !== "platform" && (
+            <div className="rounded-[var(--radius-card)] border border-[var(--line)] bg-[var(--surface)] shadow-ambient p-5">
+              <div className="mb-2 text-sm font-bold">Email verification</div>
+              <div className="mb-3 text-[13px] text-[var(--muted)]">
+                {account.emailVerified
+                  ? "Verified"
+                  : role === "customer"
+                    ? "Not verified — you can still earn points, but you'll need this to redeem them."
+                    : "Not verified"}
+              </div>
+              {!account.emailVerified && (
+                <button
+                  onClick={resendVerification}
+                  disabled={resending}
+                  className="rounded-[var(--radius-btn)] border border-[var(--line)] bg-[var(--bg)] px-4 py-2 text-sm font-bold disabled:opacity-50"
+                >
+                  {resending ? "Sending…" : "Resend verification email"}
+                </button>
+              )}
+            </div>
+          )}
 
-      <div className="rounded-[var(--radius-card)] border border-[var(--line)] bg-[var(--surface)] shadow-ambient p-5">
-        <div className="mb-3 text-sm font-bold">Change password</div>
-        <label className="mb-1.5 block text-sm font-bold">Current password</label>
-        <input
-          type="password"
-          value={currentPassword}
-          onChange={(e) => setCurrentPassword(e.target.value)}
-          className="mb-3 w-full rounded-[var(--radius-btn)] border border-[var(--line)] bg-[var(--bg)] px-4 py-3 text-sm focus:border-[var(--primary)] focus:outline-none"
-        />
-        <label className="mb-1.5 block text-sm font-bold">New password</label>
-        <input
-          type="password"
-          value={newPassword}
-          onChange={(e) => setNewPassword(e.target.value)}
-          className="mb-3 w-full rounded-[var(--radius-btn)] border border-[var(--line)] bg-[var(--bg)] px-4 py-3 text-sm focus:border-[var(--primary)] focus:outline-none"
-        />
-        <button
-          onClick={savePassword}
-          disabled={changePassword.isPending || !currentPassword || !newPassword}
-          className="rounded-[var(--radius-btn)] px-5 py-2.5 text-sm font-bold text-white transition-opacity hover:opacity-90 disabled:opacity-50"
-          style={{ background: "var(--primary)" }}
-        >
-          {changePassword.isPending ? "Saving…" : "Update password"}
-        </button>
-      </div>
+          <div className="rounded-[var(--radius-card)] border border-[var(--line)] bg-[var(--surface)] shadow-ambient p-5">
+            <div className="mb-3 text-sm font-bold">Change password</div>
+            <label className="mb-1.5 block text-sm font-bold">Current password</label>
+            <input
+              type="password"
+              value={currentPassword}
+              onChange={(e) => setCurrentPassword(e.target.value)}
+              className="mb-3 w-full rounded-[var(--radius-btn)] border border-[var(--line)] bg-[var(--bg)] px-4 py-3 text-sm focus:border-[var(--primary)] focus:outline-none"
+            />
+            <label className="mb-1.5 block text-sm font-bold">New password</label>
+            <input
+              type="password"
+              value={newPassword}
+              onChange={(e) => setNewPassword(e.target.value)}
+              className="mb-3 w-full rounded-[var(--radius-btn)] border border-[var(--line)] bg-[var(--bg)] px-4 py-3 text-sm focus:border-[var(--primary)] focus:outline-none"
+            />
+            <button
+              onClick={savePassword}
+              disabled={changePassword.isPending || !currentPassword || !newPassword}
+              className="rounded-[var(--radius-btn)] px-5 py-2.5 text-sm font-bold text-white transition-opacity hover:opacity-90 disabled:opacity-50"
+              style={{ background: "var(--primary)" }}
+            >
+              {changePassword.isPending ? "Saving…" : "Update password"}
+            </button>
+          </div>
+        </div>
+      ),
+    },
+  ];
+
+  return (
+    <div className="flex flex-col gap-6">
+      <ProfileShell sections={sections} />
 
       {onLogout && (
         <button
