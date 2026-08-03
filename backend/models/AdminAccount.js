@@ -28,6 +28,20 @@ const AdminAccountSchema = new mongoose.Schema({
   // outlet_admin   -> runs exactly one outlet's console; organizationId set.
   kind: { type: String, enum: ["company_owner", "outlet_admin"], required: true },
 
+  // Only meaningful when kind === "outlet_admin". null/unset means FULL
+  // access, including managing other staff — deliberate, so every outlet
+  // admin that existed before this field keeps working with no migration.
+  // Exactly the convention User.platformRole already uses one layer up.
+  //
+  //   null      -> the outlet's primary admin. Everything.
+  //   "manager" -> everything except managing other staff.
+  //   "staff"   -> the counter only: generate an earn QR, generate a redeem QR.
+  //
+  // The enum lists only the two ASSIGNABLE values. null is reachable as a
+  // default but is never something a client can set: an outlet has exactly
+  // one primary admin, created with the outlet.
+  staffRole: { type: String, enum: ["manager", "staff"], default: null },
+
   companyId: { type: mongoose.Schema.Types.ObjectId, ref: "Company", required: true },
   // Null for a company_owner. Set for an outlet_admin — the one outlet it
   // administers.
@@ -39,13 +53,24 @@ const AdminAccountSchema = new mongoose.Schema({
 // The whole staff email namespace, in one enforceable index.
 AdminAccountSchema.index({ email: 1 }, { unique: true });
 AdminAccountSchema.index({ companyId: 1, kind: 1 });
-// One admin account per outlet. Partial rather than sparse — company_owner
-// rows carry organizationId present-but-null, which sparse would NOT
-// exclude, so they'd all collide on null (same reasoning as User's
-// customerAccountId index).
+// One PRIMARY admin per outlet. This used to be "one admin account per
+// outlet" full stop; sub-admins end that, but the intent behind it — one
+// unambiguous primary, so "the outlet's admin" is a well-defined lookup —
+// survives, expressed more precisely. Managers and staff (staffRole set) are
+// unconstrained.
+//
+// Indexes are not enforced by the mock DB, so this is ALSO asserted in the
+// service: staffService.createStaff always writes a non-null staffRole, and
+// no code path assigns null.
 AdminAccountSchema.index(
   { organizationId: 1 },
-  { unique: true, partialFilterExpression: { organizationId: { $type: "objectId" } } }
+  {
+    unique: true,
+    partialFilterExpression: {
+      organizationId: { $type: "objectId" },
+      staffRole: null
+    }
+  }
 );
 
 module.exports = mongoose.model("AdminAccount", AdminAccountSchema);

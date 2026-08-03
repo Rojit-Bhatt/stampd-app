@@ -13,6 +13,11 @@ const createHttpError = (message, statusCode) => {
   return error;
 };
 
+// Stub: whether the outlet requires a staff PIN for counter operations.
+// Task 4 replaces this with the actual staffService import. For now,
+// always returns false — the field doesn't exist yet.
+const outletRequiresPin = async (_organizationId) => false;
+
 const getPublicTenant = async (req, res, next) => {
   try {
     const { organization } = req;
@@ -93,6 +98,14 @@ const getMySettings = async (req, res, next) => {
         messagingTriggers: organization.messagingTriggers,
         customerInfo: organization.customerInfo,
         menuEnabled: organization.menuEnabled,
+        // The acting admin's own role, so the console can hide what the
+        // server would refuse anyway. null = primary admin, full access.
+        staffRole: req.user.staffRole,
+        // Whether the two counter routes demand a PIN here. True iff at
+        // least one membership at this outlet has one set — see the design
+        // doc, §2.2: setting the first PIN is the switch that turns the
+        // feature on for the whole outlet.
+        staffPinRequired: await outletRequiresPin(organization._id),
         ...(subscriptionReminder ? { subscriptionReminder } : {})
       }
     });
