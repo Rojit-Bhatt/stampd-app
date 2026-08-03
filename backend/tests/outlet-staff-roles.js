@@ -183,7 +183,7 @@ async function main() {
 
     // The invitee genuinely reuses the existing verification flow.
     const earlyLogin = await api("/api/admin-auth/login", { method: "POST", body: { email: inviteEmail, password: "password" } });
-    check("unverified invitee -> 403 EMAIL_NOT_VERIFIED", earlyLogin.status === 403 && earlyLogin.body?.code === "EMAIL_NOT_VERIFIED", earlyLogin);
+    check("unverified invitee -> 403 NEEDS_VERIFICATION", earlyLogin.status === 403 && earlyLogin.body?.code === "NEEDS_VERIFICATION", earlyLogin);
     await verifyAdmin(api, inviteEmail);
     const afterVerifyLogin = await api("/api/admin-auth/login", { method: "POST", body: { email: inviteEmail, password: "password" } });
     check("invitee can sign in after verifying", afterVerifyLogin.status === 200, afterVerifyLogin);
