@@ -237,7 +237,7 @@ export default function AdminContact() {
                       type="button"
                       onClick={() => updateDayHour(index, { isOpen: !dh.isOpen })}
                       className={`relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
-                        dh.isOpen ? "bg-[var(--primary)]" : "bg-gray-200"
+                        dh.isOpen ? "bg-[var(--primary)]" : "bg-[var(--surface-2)]"
                       }`}
                       id={`toggle-${dh.day.toLowerCase()}`}
                     >
@@ -356,7 +356,17 @@ export default function AdminContact() {
           <div className="mb-2.5 text-center text-[11px] font-bold uppercase tracking-wider text-[var(--soft)]">
             Live preview
           </div>
-          <div className="overflow-hidden rounded-[24px] border border-[var(--line)] bg-white p-4 shadow-lg">
+          <div
+            className="overflow-hidden rounded-[24px] border p-4 shadow-lg"
+            style={{
+              background: "#FFFFFF",
+              borderColor: "#E4E9E6",
+              ["--ink" as any]: "#14201C",
+              ["--muted" as any]: "#5C6B64",
+              ["--bg" as any]: "#F7F8F7",
+              ["--line" as any]: "#E4E9E6",
+            }}
+          >
             {contact.address && (
               <iframe
                 title="Location preview"

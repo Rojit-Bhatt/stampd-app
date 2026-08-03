@@ -143,7 +143,7 @@ export default function CompanyDetail() {
           <button
             onClick={() => setConfirmOpen(true)}
             disabled={setStatus.isPending}
-            className="rounded-[var(--radius-btn)] border bg-white px-4 py-2.5 font-bold disabled:opacity-50"
+            className="rounded-[var(--radius-btn)] border bg-[var(--surface)] px-4 py-2.5 font-bold disabled:opacity-50"
             style={{
               borderColor: suspended ? "var(--ok-soft)" : "var(--warn-soft)",
               color: suspended ? "var(--ok)" : "var(--warn)",

@@ -13,7 +13,7 @@ export function SuspendedOverlay({ onLogout }: SuspendedOverlayProps) {
         </p>
         <button
           onClick={onLogout}
-          className="stamp-interactive mt-5 rounded-full border border-[var(--line)] bg-white px-5 py-2.5 text-sm font-bold"
+          className="stamp-interactive mt-5 rounded-full border border-[var(--line)] bg-[var(--surface)] px-5 py-2.5 text-sm font-bold"
         >
           Log out
         </button>

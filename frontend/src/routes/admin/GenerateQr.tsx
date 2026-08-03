@@ -165,7 +165,16 @@ export default function GenerateQr() {
         </div>
 
         <div className="mt-5 flex justify-center">
-          <div className="grid h-[236px] w-[236px] place-items-center rounded-[var(--radius-card)] border border-[var(--line)] bg-white p-4">
+          <div
+            className="grid h-[236px] w-[236px] place-items-center rounded-[var(--radius-card)] border p-4"
+            style={{
+              background: "#FFFFFF",
+              borderColor: "#E4E9E6",
+              ["--ink" as any]: "#14201C",
+              ["--muted" as any]: "#5C6B64",
+              ["--soft" as any]: "#8B9A93",
+            }}
+          >
             {live ? (
               <motion.div
                 key={token}

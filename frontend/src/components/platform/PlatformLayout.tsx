@@ -7,6 +7,7 @@ import { usePlatformAuth } from "../../context/PlatformAuthContext";
 import { PLATFORM_NAME } from "../../lib/platform";
 import { useAccount } from "../../hooks/useAccount";
 import { AccountMenu } from "../shared/AccountMenu";
+import { ThemeToggle } from "../shared/ThemeToggle";
 import { StampdLogo } from "../shared/StampdLogo";
 import { apiRequest } from "../../lib/api";
 import {
@@ -162,7 +163,7 @@ export function PlatformLayout() {
       {/* Dark chrome, on purpose: this console is not a tenant's and should
           never be mistaken for one. The outlet console is light and warm;
           this one is a data desk. */}
-      <header className="sticky top-0 z-30 bg-[var(--ink)] text-[#E9F0EC]">
+      <header className="sticky top-0 z-30 bg-[#14201C] text-[#E9F0EC]">
         <div className="mx-auto flex w-full max-w-[1400px] items-center gap-4 px-6 py-3">
           <NavLink to="/platform" className="flex flex-shrink-0 items-center gap-2.5">
             <StampdLogo size={26} />
@@ -198,6 +199,8 @@ export function PlatformLayout() {
             <span className="hidden lg:inline">Search</span>
             <CommandShortcut className="hidden text-[#6E8578] lg:inline">⌘K</CommandShortcut>
           </button>
+
+          <ThemeToggle className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-[var(--radius-btn)] bg-white/10 text-[#8DA79A] transition-colors hover:text-white" />
 
           <div className="flex-shrink-0">
             <AccountMenu

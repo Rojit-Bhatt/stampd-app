@@ -222,7 +222,19 @@ export default function Branding() {
           <div className="mb-2.5 text-center text-[11px] font-bold uppercase tracking-wider text-[var(--soft)]">
             Live preview
           </div>
-          <div className="overflow-hidden rounded-[28px] border border-[var(--line)] bg-white shadow-lg">
+          <div
+            className="overflow-hidden rounded-[28px] border shadow-lg"
+            style={{
+              background: "#FFFFFF",
+              borderColor: "#E4E9E6",
+              ["--ink" as any]: "#14201C",
+              ["--muted" as any]: "#5C6B64",
+              ["--soft" as any]: "#8B9A93",
+              ["--surface" as any]: "#FFFFFF",
+              ["--line" as any]: "#E4E9E6",
+              ["--primary" as any]: "#0FA968",
+            }}
+          >
             <div
               className="flex h-[120px] items-end p-4"
               style={

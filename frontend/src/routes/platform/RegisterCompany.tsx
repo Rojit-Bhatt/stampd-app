@@ -92,7 +92,7 @@ export default function RegisterCompany() {
         <Link to="/platform" className="mb-3.5 inline-block text-[13px] text-[var(--muted)]">
           ← Companies
         </Link>
-        <div className="shadow-ambient rounded-[var(--radius-card)] border border-[#CBE4D6] bg-[var(--ok-soft)] p-8 text-center">
+        <div className="shadow-ambient rounded-[var(--radius-card)] border border-[var(--ok)]/30 bg-[var(--ok-soft)] p-8 text-center">
           <div
             className="mx-auto mb-4 flex h-15 w-15 items-center justify-center rounded-full text-white"
             style={{ width: 60, height: 60, background: "var(--ok)" }}
@@ -106,7 +106,7 @@ export default function RegisterCompany() {
             We've emailed {done.ownerEmail || "the owner"} a link to verify their address. They sign
             in here once they have — then they can add their outlets.
           </p>
-          <div className="mb-4 flex items-center justify-between gap-2.5 rounded-[var(--radius-btn)] border border-[var(--line)] bg-white px-4 py-3">
+          <div className="mb-4 flex items-center justify-between gap-2.5 rounded-[var(--radius-btn)] border border-[var(--line)] bg-[var(--surface)] px-4 py-3">
             <span className="truncate font-mono text-sm" style={{ color: "var(--primary-deep)" }}>
               {url}
             </span>
@@ -125,7 +125,7 @@ export default function RegisterCompany() {
           <div className="flex justify-center gap-2.5">
             <Link
               to="/platform"
-              className="rounded-full border border-[var(--line)] bg-white px-5 py-3 text-sm font-bold"
+              className="rounded-full border border-[var(--line)] bg-[var(--surface)] px-5 py-3 text-sm font-bold"
             >
               Back to companies
             </Link>
