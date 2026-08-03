@@ -1,4 +1,4 @@
-import type { ReactNode } from "react";
+import { useState, type ReactNode } from "react";
 import {
   MailWarning,
   MapPin,
@@ -14,6 +14,7 @@ import {
   Heart,
 } from "lucide-react";
 import { Link } from "react-router-dom";
+import { useQueryClient } from "@tanstack/react-query";
 import toast from "react-hot-toast";
 
 import { useTenant } from "../context/TenantContext";
@@ -25,6 +26,7 @@ import { tenantPath } from "../lib/tenantPath";
 import { PointsBalanceCard } from "../components/customer/PointsBalanceCard";
 import { EventCard } from "../components/customer/EventCard";
 import { DynamicText } from "../components/shared/DynamicText";
+import { VerifyCodeCard } from "../components/shared/auth/VerifyCodeCard";
 import { Badge } from "@/components/ui/badge";
 
 function TiktokIcon({ className = "h-4 w-4" }: { className?: string }) {
@@ -76,6 +78,8 @@ function Section({
 export default function CustomerDashboard() {
   const { data: account } = useAccount("customer");
   const unverified = account?.emailVerified === false;
+  const [showVerify, setShowVerify] = useState(false);
+  const queryClient = useQueryClient();
   const { tenant, companySlug, outletSlug } = useTenant();
   const { data: points, isLoading: cardLoading } = usePointsBalance();
   const { data: catalog = [] } = useRewardCatalog();
@@ -148,30 +152,43 @@ export default function CustomerDashboard() {
           style={{ background: "var(--warn-soft)", color: "var(--warn)" }}
         >
           <MailWarning className="mt-0.5 h-5 w-5 flex-shrink-0" />
-          <div className="text-sm">
-            <span className="font-bold">
-              You're collecting points fine — verify your email before you spend them.
-            </span>{" "}
-            <button
-              onClick={async () => {
-                try {
+          <div className="w-full text-sm">
+            {showVerify ? (
+              <VerifyCodeCard
+                size="inline"
+                email={account?.email || ""}
+                verify={async (code) => {
                   // The GLOBAL endpoint, not the tenant-scoped /api/auth one:
                   // only this path flips CustomerAccount.emailVerified and
                   // fans it out to every outlet membership. The tenant link
                   // would verify this outlet's row alone.
+                  await apiRequest("/api/customer-auth/verify-otp", {
+                    method: "POST",
+                    body: { email: account?.email, code },
+                  });
+                }}
+                resend={async () => {
                   await apiRequest("/api/customer-auth/resend-verification", {
                     method: "POST",
                     body: { email: account?.email },
                   });
-                  toast.success("Verification email sent — check your inbox.");
-                } catch {
-                  toast.error("Couldn't resend that — try again in a bit.");
-                }
-              }}
-              className="font-bold underline"
-            >
-              Resend
-            </button>
+                }}
+                onVerified={() => {
+                  toast.success("Email verified!");
+                  setShowVerify(false);
+                  queryClient.invalidateQueries({ queryKey: ["account", "customer"] });
+                }}
+              />
+            ) : (
+              <>
+                <span className="font-bold">
+                  You're collecting points fine — verify your email before you spend them.
+                </span>{" "}
+                <button onClick={() => setShowVerify(true)} className="font-bold underline">
+                  Verify now
+                </button>
+              </>
+            )}
           </div>
         </div>
       )}

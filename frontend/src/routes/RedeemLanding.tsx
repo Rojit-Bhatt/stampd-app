@@ -10,6 +10,7 @@ import { apiRequest } from "../lib/api";
 import { tenantPath } from "../lib/tenantPath";
 import { RedeemCelebration } from "../components/customer/RedeemCelebration";
 import { RewardCard } from "../components/customer/RewardCard";
+import { VerifyCodeCard } from "../components/shared/auth/VerifyCodeCard";
 import { Skeleton } from "../components/ui/skeleton";
 import { Button } from "@/components/ui/button";
 import {
@@ -52,7 +53,6 @@ export default function RedeemLanding() {
   const [pending, setPending] = useState<PendingReward | null>(null);
   const [result, setResult] = useState<RedeemResult["data"] | null>(null);
   const [needsVerification, setNeedsVerification] = useState(false);
-  const [resending, setResending] = useState(false);
 
   const balance = points?.balance ?? 0;
 
@@ -117,37 +117,32 @@ export default function RedeemLanding() {
           </span>
           <p className="text-sm text-[var(--muted)]">
             Your {formatPoints(balance)} points are safe — we just need to know this email is
-            really yours before you spend them. Tap the link we sent to{" "}
-            <span className="font-semibold text-[var(--ink)]">{globalAccount.email}</span>, then
-            scan the counter's code again.
+            really yours before you spend them.
           </p>
-          <Button
-            size="lg"
-            className="mt-5 w-full"
-            disabled={resending}
-            onClick={async () => {
-              setResending(true);
-              try {
+          <div className="mt-5">
+            <VerifyCodeCard
+              size="inline"
+              email={globalAccount.email}
+              verify={async (code) => {
+                await apiRequest("/api/customer-auth/verify-otp", {
+                  method: "POST",
+                  body: { email: globalAccount.email, code },
+                });
+              }}
+              resend={async () => {
                 await apiRequest("/api/customer-auth/resend-verification", {
                   method: "POST",
                   body: { email: globalAccount.email },
                 });
-                toast.success("Sent — check your inbox.");
-              } catch {
-                toast.error("Couldn't resend that — try again in a bit.");
-              } finally {
-                setResending(false);
-              }
-            }}
-          >
-            {resending ? (
-              <>
-                <Loader2 className="animate-spin" /> Sending…
-              </>
-            ) : (
-              "Resend the verification email"
-            )}
-          </Button>
+              }}
+              onVerified={() => {
+                toast.success("Verified — you can redeem now.");
+                setNeedsVerification(false);
+                qc.invalidateQueries({ queryKey: ["pointsBalance", companySlug, outletSlug] });
+                qc.invalidateQueries({ queryKey: ["rewardCatalog", companySlug, outletSlug] });
+              }}
+            />
+          </div>
         </div>
       </Shell>
     );
