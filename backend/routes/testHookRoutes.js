@@ -440,4 +440,24 @@ router.post("/set-staff-role", async (req, res, next) => {
   }
 });
 
+// DEV/TEST ONLY. Hash and set a staff PIN directly on an admin's outlet
+// membership, so a suite can exercise verify-pin before the real
+// PATCH /api/admin/staff/:id/pin endpoint exists (Task 5). The real path
+// goes through staffService.hashPin at the same SALT_ROUNDS.
+router.post("/set-staff-pin", async (req, res, next) => {
+  try {
+    const bcrypt = require("bcryptjs");
+    const { email, pin } = req.body;
+    const account = await AdminAccount.findOne({ email: String(email || "").toLowerCase() });
+    if (!account) return res.status(404).json({ success: false });
+    const membership = await User.findOne({ organizationId: account.organizationId, adminAccountId: account._id });
+    if (!membership) return res.status(404).json({ success: false });
+    membership.staffPinHash = await bcrypt.hash(String(pin), 10);
+    await membership.save();
+    res.json({ success: true });
+  } catch (error) {
+    next(error);
+  }
+});
+
 module.exports = router;

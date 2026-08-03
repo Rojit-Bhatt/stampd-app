@@ -29,7 +29,9 @@ const campaignController = require("../controllers/campaignController");
 const rewardController = require("../controllers/rewardController");
 const broadcastController = require("../controllers/broadcastController");
 const { uploadImageFile, uploadImage, deleteImage } = require("../controllers/imageController");
+const { verifyPinController } = require("../controllers/staffController");
 const { verifyToken, isBusinessAdmin, requireStaffPermission } = require("../middleware/authMiddleware");
+const { pinLimiter } = require("../middleware/rateLimitMiddleware");
 
 const router = express.Router();
 
@@ -52,6 +54,9 @@ const canReports = requireStaffPermission("view_reports");
 // redeem carries nothing and lets the customer pick after scanning.
 router.post("/generate-qr", verifyToken, isBusinessAdmin, generateAdminQRToken);
 router.post("/generate-redeem-qr", verifyToken, isBusinessAdmin, generateAdminRedeemToken);
+// Deliberately NOT behind requireStaffPermission: a "staff" account calling
+// this is the entire point. Rate-limited instead.
+router.post("/verify-pin", verifyToken, isBusinessAdmin, pinLimiter, verifyPinController);
 router.get("/transactions", verifyToken, isBusinessAdmin, canReports, getTransactions);
 router.get("/customers", verifyToken, isBusinessAdmin, canReports, getCustomersList);
 router.get("/settings", verifyToken, isBusinessAdmin, getMySettings);

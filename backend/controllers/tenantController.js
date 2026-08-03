@@ -6,17 +6,13 @@ const { getSubscriptionSummary } = require("../services/subscriptionService");
 const { resolveProgram, getOverriddenFields } = require("../services/programService");
 const Company = require("../models/Company");
 const { claimImage, deleteImage } = require("../services/imageService");
+const { outletRequiresPin } = require("../services/staffService");
 
 const createHttpError = (message, statusCode) => {
   const error = new Error(message);
   error.statusCode = statusCode;
   return error;
 };
-
-// Stub: whether the outlet requires a staff PIN for counter operations.
-// Task 4 replaces this with the actual staffService import. For now,
-// always returns false — the field doesn't exist yet.
-const outletRequiresPin = async (_organizationId) => false;
 
 const getPublicTenant = async (req, res, next) => {
   try {
