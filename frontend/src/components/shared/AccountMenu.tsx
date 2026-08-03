@@ -13,7 +13,9 @@ interface AccountMenuProps {
   /** Hide the name/email below xl — for horizontal bars where space is tight. */
   compact?: boolean;
   email?: string;
-  settingsPath: string;
+  /** Omit to hide the Settings item entirely — a "staff"-role outlet admin
+   *  never reaches Settings; every route behind it 403s. */
+  settingsPath?: string;
   onLogout: () => void;
   accent?: string;
   dropUp?: boolean;
@@ -38,12 +40,14 @@ export function AccountMenu({ initial, name, email, settingsPath, onLogout, acce
       </DropdownMenuTrigger>
 
       <DropdownMenuContent side={dropUp ? "top" : "bottom"} align="start" className="w-[220px]">
-        <DropdownMenuItem asChild>
-          <Link to={settingsPath} className="cursor-pointer">
-            <Settings />
-            Settings
-          </Link>
-        </DropdownMenuItem>
+        {settingsPath && (
+          <DropdownMenuItem asChild>
+            <Link to={settingsPath} className="cursor-pointer">
+              <Settings />
+              Settings
+            </Link>
+          </DropdownMenuItem>
+        )}
         <DropdownMenuItem destructive onClick={onLogout}>
           <LogOut />
           Log out

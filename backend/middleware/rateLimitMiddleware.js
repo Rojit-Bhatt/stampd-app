@@ -76,4 +76,38 @@ const placesLimiter = rateLimit({
   handler: jsonHandler("Too many searches. Please wait a few minutes and try again."),
 });
 
-module.exports = { authLimiter, registrationLimiter, uploadLimiter, placesLimiter };
+// 20 attempts / minute / IP, shared across verify-pin AND the two counter
+// routes that re-verify a PIN inline.
+//
+// Its own bucket, never authLimiter's: a barista fumbling their PIN must not
+// burn the budget that protects the login endpoints.
+//
+// 20/min is deliberately above what a busy counter does (a till generating a
+// QR more than twenty times a minute is not a real till) and far below what a
+// 10,000-value sweep needs — at 20/min an exhaustive search takes over eight
+// hours of sustained traffic from a single IP against an endpoint that ALSO
+// requires a valid tenant JWT for that exact outlet. The PIN is an
+// attribution layer among people who already share a device and a login, not
+// a perimeter; the perimeter is the JWT, and it is unchanged.
+//
+// `skip` is what makes it safe to hang this on the counter routes at all:
+// only a request that actually CARRIES a pin consumes the budget. A request
+// with no `pin` is not a PIN attempt and is not counted. This is NOT an
+// optimisation: without it, every existing suite that generates QR codes in
+// a loop (points-earn.js alone does eleven, integration-qa.js and
+// multi-tenant-isolation.js more) would start tripping a limiter it has no
+// idea exists — the same shared 127.0.0.1 bucket that rate-limiting.js
+// relies on to trip deliberately. Skipping pin-less requests keeps the
+// counter routes byte-identical for every outlet that hasn't turned PINs on.
+// express.json() is mounted globally before every route in server.js, so
+// req.body is populated by the time `skip` runs.
+const pinLimiter = rateLimit({
+  windowMs: MINUTE,
+  limit: 20,
+  standardHeaders: true,
+  legacyHeaders: false,
+  skip: (req) => typeof req.body?.pin !== "string",
+  handler: jsonHandler("Too many attempts. Please wait a minute and try again."),
+});
+
+module.exports = { authLimiter, registrationLimiter, uploadLimiter, placesLimiter, pinLimiter };

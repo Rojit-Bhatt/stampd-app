@@ -52,6 +52,15 @@ const UserSchema = new mongoose.Schema({
   // outlet list and the login's redirect are one query. Null for
   // customer/platform rows.
   companyId: { type: mongoose.Schema.Types.ObjectId, ref: "Company", default: null },
+  // bcrypt hash of a 4-digit counter PIN, or null. Lives on the outlet-scoped
+  // MEMBERSHIP, not on the global AdminAccount: a PIN is a counter credential
+  // for one till, not an identity, and this row is also what
+  // PointsTransaction.performedByUserId points at — so verifying a PIN and
+  // resolving an attribution are one lookup instead of two.
+  //
+  // Hashing doesn't make four digits strong; it makes a database read
+  // insufficient to impersonate someone at the counter, which is the threat.
+  staffPinHash: { type: String, default: null },
   createdAt: { type: Date, default: Date.now }
 });
 

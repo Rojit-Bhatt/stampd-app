@@ -116,6 +116,12 @@ export function AdminLayout() {
     : BASE_MANAGEMENT_NAV;
   const { data: account } = useAccount("admin");
 
+  // A "staff" account (the counter only) gets Overview, Transactions,
+  // Customers, Reports and the whole Manage section 403ing behind it server-
+  // side — the nav collapses to match rather than dangling links to pages
+  // that render as failed queries.
+  const staffOnly = settings?.staffRole === "staff";
+
   const name = settings?.name || "Business";
   const initial = name.charAt(0).toUpperCase();
   const brand = settings?.branding?.primaryColor || "#0FA968";
@@ -135,6 +141,15 @@ export function AdminLayout() {
   useEffect(() => {
     setMobileNavOpen(false);
   }, [location.pathname]);
+
+  // A staff account landing on the console index would otherwise render
+  // Overview — a page of failed queries, since every read it needs 403s.
+  // Land it on the one page it can actually use instead.
+  useEffect(() => {
+    if (staffOnly && companySlug && slug && location.pathname === tenantPath(companySlug, slug, "admin")) {
+      navigate(tenantPath(companySlug, slug, "admin/generate"), { replace: true });
+    }
+  }, [staffOnly, companySlug, slug, location.pathname, navigate]);
 
   const toggleGroup = (label: string) => {
     setOpenGroups((prev) => {
@@ -166,50 +181,55 @@ export function AdminLayout() {
         </div>
       </div>
 
-      <nav className="flex flex-col gap-0.5">
-        {NAV.map((item) =>
-          isGroup(item) ? (
-            <div key={item.label}>
-              <button
-                onClick={() => toggleGroup(item.label)}
-                className="flex w-full items-center gap-3 rounded-[var(--radius-btn)] px-3.5 py-2.5 text-[13.5px] font-semibold text-[var(--muted)] transition-colors hover:bg-[var(--surface-2)] hover:text-[var(--ink)]"
-                aria-expanded={openGroups.has(item.label)}
-              >
+      {/* Overview, Transactions, Customers, Reports and the whole Manage
+          section all sit behind routes a "staff" account 403s on server-side
+          — dropped for it entirely rather than left as dead links. */}
+      {!staffOnly && (
+        <nav className="flex flex-col gap-0.5">
+          {NAV.map((item) =>
+            isGroup(item) ? (
+              <div key={item.label}>
+                <button
+                  onClick={() => toggleGroup(item.label)}
+                  className="flex w-full items-center gap-3 rounded-[var(--radius-btn)] px-3.5 py-2.5 text-[13.5px] font-semibold text-[var(--muted)] transition-colors hover:bg-[var(--surface-2)] hover:text-[var(--ink)]"
+                  aria-expanded={openGroups.has(item.label)}
+                >
+                  <item.Icon className="h-4 w-4" />
+                  <span className="flex-1 text-left">{item.label}</span>
+                  <ChevronDown
+                    className="h-3.5 w-3.5 flex-shrink-0 transition-transform"
+                    style={{ transform: openGroups.has(item.label) ? "rotate(180deg)" : undefined }}
+                  />
+                </button>
+                {openGroups.has(item.label) && (
+                  <div className="ml-4 flex flex-col gap-0.5 border-l border-[var(--line)] pl-3">
+                    {item.children.map((child) => (
+                      <NavLink key={child.to} to={child.to} className={navLinkClass}>
+                        {child.label}
+                      </NavLink>
+                    ))}
+                  </div>
+                )}
+              </div>
+            ) : (
+              <NavLink key={item.to || "overview"} to={item.to} end={item.end} className={navLinkClass}>
                 <item.Icon className="h-4 w-4" />
-                <span className="flex-1 text-left">{item.label}</span>
-                <ChevronDown
-                  className="h-3.5 w-3.5 flex-shrink-0 transition-transform"
-                  style={{ transform: openGroups.has(item.label) ? "rotate(180deg)" : undefined }}
-                />
-              </button>
-              {openGroups.has(item.label) && (
-                <div className="ml-4 flex flex-col gap-0.5 border-l border-[var(--line)] pl-3">
-                  {item.children.map((child) => (
-                    <NavLink key={child.to} to={child.to} className={navLinkClass}>
-                      {child.label}
-                    </NavLink>
-                  ))}
-                </div>
-              )}
-            </div>
-          ) : (
-            <NavLink key={item.to || "overview"} to={item.to} end={item.end} className={navLinkClass}>
+                {item.label}
+              </NavLink>
+            ),
+          )}
+
+          <div className="mb-1 mt-5 px-3.5 text-[10px] font-bold uppercase tracking-[0.16em] text-[var(--soft)]">
+            Manage
+          </div>
+          {managementNav.map((item) => (
+            <NavLink key={item.to} to={item.to} className={navLinkClass}>
               <item.Icon className="h-4 w-4" />
               {item.label}
             </NavLink>
-          ),
-        )}
-
-        <div className="mb-1 mt-5 px-3.5 text-[10px] font-bold uppercase tracking-[0.16em] text-[var(--soft)]">
-          Manage
-        </div>
-        {managementNav.map((item) => (
-          <NavLink key={item.to} to={item.to} className={navLinkClass}>
-            <item.Icon className="h-4 w-4" />
-            {item.label}
-          </NavLink>
-        ))}
-      </nav>
+          ))}
+        </nav>
+      )}
 
       {/* The two counter actions, pinned. Everything above is something staff
           look at; these are the things they DO, dozens of times a shift. */}
@@ -234,7 +254,7 @@ export function AdminLayout() {
             <AccountMenu
               initial={(account?.name || user?.name || "?").charAt(0).toUpperCase()}
               name={account?.name || user?.name || ""}
-              settingsPath="settings"
+              settingsPath={staffOnly ? undefined : "settings"}
               onLogout={handleLogout}
               dropUp
             />

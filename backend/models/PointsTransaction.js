@@ -54,6 +54,16 @@ const PointsTransactionSchema = new mongoose.Schema({
   // no one initiates.
   token: { type: String, default: null },
 
+  // Which staff member was at the counter. Null for every row written before
+  // this existed and for every outlet that hasn't turned PINs on — an absent
+  // attribution is a real state, not a defect. Never set on `expire` rows:
+  // no one initiates those.
+  performedByUserId: { type: mongoose.Schema.Types.ObjectId, ref: "User", default: null },
+  // Denormalized for the same reason rewardName and campaignName above are:
+  // the membership can be deleted, and the ledger has to keep saying who did
+  // this after the row it names is gone.
+  performedByName: { type: String, default: "" },
+
   createdAt: { type: Date, default: Date.now }
 });
 

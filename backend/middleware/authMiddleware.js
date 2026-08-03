@@ -2,6 +2,7 @@ const { verifyAuthToken } = require("../utils/tokenUtils");
 const User = require("../models/User");
 const Organization = require("../models/Organization");
 const Company = require("../models/Company");
+const AdminAccount = require("../models/AdminAccount");
 
 const extractToken = (req) => {
   const authHeader = req.headers.authorization;
@@ -74,6 +75,19 @@ const verifyToken = async (req, _res, next) => {
       }
     }
 
+    // Only meaningful for role === "business_admin". Read fresh from the DB
+    // on every request rather than trusting the JWT — same reasoning as
+    // platformRole below: a demotion must take effect immediately, not ride
+    // out the rest of JWT_EXPIRES_IN.
+    //
+    // A business_admin row with no adminAccountId resolves to null, i.e. full
+    // access. That is the no-migration promise, not an oversight.
+    let staffRole = null;
+    if (user.role === "business_admin" && user.adminAccountId) {
+      const adminAccount = await AdminAccount.findOne({ _id: user.adminAccountId });
+      staffRole = adminAccount ? (adminAccount.staffRole || null) : null;
+    }
+
     req.user = {
       id: decoded.userId,
       role: decoded.role,
@@ -85,7 +99,10 @@ const verifyToken = async (req, _res, next) => {
       // every request (the `user` row is already fetched above for the
       // suspended-tenant check) rather than trusting the JWT, so a
       // demotion/promotion takes effect immediately, not just on next login.
-      platformRole: user.role === "platform" ? (user.platformRole || "owner") : null
+      platformRole: user.role === "platform" ? (user.platformRole || "owner") : null,
+      // "manager" | "staff" | null. null means the outlet's primary admin
+      // (or any account predating this field) — full access.
+      staffRole
     };
 
     next();
@@ -126,9 +143,52 @@ const isPlatformOwner = (req, res, next) => {
   next();
 };
 
+// The outlet-console counterpart to isPlatformOwner: a second, ADDITIONAL
+// gate mounted after isBusinessAdmin, never instead of it. isBusinessAdmin
+// still decides whether you are this outlet's staff at all; this decides
+// which parts of the console that entitles you to.
+//
+// Actions are coarse on purpose — one per console AREA, not per route — so
+// a new route in an existing area cannot land ungated behind a
+// plausible-looking new action name.
+const STAFF_ACTIONS = [
+  "manage_settings",   // PATCH /settings: branding, contact, points program, tiers
+  "manage_catalog",    // menu + rewards + images
+  "manage_marketing",  // campaigns + events + broadcasts
+  "view_reports",      // dashboard, reports, downloads, ledger, customer roster
+  "manage_staff"       // the sub-admin surface itself
+];
+
+const staffRoleAllows = (staffRole, action) => {
+  if (!staffRole) return true;                    // primary admin / pre-roles
+  if (staffRole === "manager") return action !== "manage_staff";
+  return false;                                   // "staff": the counter only
+};
+
+const requireStaffPermission = (action) => {
+  if (!STAFF_ACTIONS.includes(action)) {
+    throw new Error(`Unknown staff permission action: ${action}`);
+  }
+  return (req, res, next) => {
+    if (!req.user || !staffRoleAllows(req.user.staffRole, action)) {
+      // One message for all five actions. Naming the action back would tell a
+      // restricted account the shape of the model it's being kept out of, and
+      // buys a legitimate user nothing they can act on.
+      return res.status(403).json({
+        success: false,
+        message: "Forbidden: this action isn't available for your role.",
+        code: "STAFF_ROLE_FORBIDDEN"
+      });
+    }
+    next();
+  };
+};
+
 module.exports = {
   verifyToken,
   isBusinessAdmin,
   isPlatformAdmin,
-  isPlatformOwner
+  isPlatformOwner,
+  requireStaffPermission,
+  staffRoleAllows
 };

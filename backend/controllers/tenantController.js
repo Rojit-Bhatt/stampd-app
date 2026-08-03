@@ -6,6 +6,7 @@ const { getSubscriptionSummary } = require("../services/subscriptionService");
 const { resolveProgram, getOverriddenFields } = require("../services/programService");
 const Company = require("../models/Company");
 const { claimImage, deleteImage } = require("../services/imageService");
+const { outletRequiresPin } = require("../services/staffService");
 
 const createHttpError = (message, statusCode) => {
   const error = new Error(message);
@@ -93,6 +94,14 @@ const getMySettings = async (req, res, next) => {
         messagingTriggers: organization.messagingTriggers,
         customerInfo: organization.customerInfo,
         menuEnabled: organization.menuEnabled,
+        // The acting admin's own role, so the console can hide what the
+        // server would refuse anyway. null = primary admin, full access.
+        staffRole: req.user.staffRole,
+        // Whether the two counter routes demand a PIN here. True iff at
+        // least one membership at this outlet has one set — see the design
+        // doc, §2.2: setting the first PIN is the switch that turns the
+        // feature on for the whole outlet.
+        staffPinRequired: await outletRequiresPin(organization._id),
         ...(subscriptionReminder ? { subscriptionReminder } : {})
       }
     });
