@@ -55,7 +55,7 @@ export function MenuImportPreviewModal({ open, onOpenChange, preview, onApprove,
 
         <div className="mt-3 flex flex-col gap-4">
           {newRows.length > 0 && (
-            <section className="rounded-[var(--radius-btn)] border border-[#CBE4D6] bg-[var(--ok-soft)] p-4">
+            <section className="rounded-[var(--radius-btn)] border border-[var(--ok)]/30 bg-[var(--ok-soft)] p-4">
               <div className="mb-2 text-sm font-bold" style={{ color: "var(--ok)" }}>
                 We found {newRows.length} brand new item{newRows.length === 1 ? "" : "s"} to add
               </div>
@@ -74,7 +74,7 @@ export function MenuImportPreviewModal({ open, onOpenChange, preview, onApprove,
           )}
 
           {changedRows.length > 0 && (
-            <section className="rounded-[var(--radius-btn)] border border-[#EBDCAE] bg-[var(--warn-soft)] p-4">
+            <section className="rounded-[var(--radius-btn)] border border-[var(--warn)]/30 bg-[var(--warn-soft)] p-4">
               <div className="mb-2 text-sm font-bold" style={{ color: "var(--warn)" }}>
                 We found {changedRows.length} item{changedRows.length === 1 ? "" : "s"} with changes
               </div>

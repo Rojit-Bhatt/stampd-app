@@ -92,7 +92,7 @@ export default function RegisterCompany() {
         <Link to="/platform" className="mb-3.5 inline-block text-[13px] text-[var(--muted)]">
           ← Companies
         </Link>
-        <div className="shadow-ambient rounded-[var(--radius-card)] border border-[#CBE4D6] bg-[var(--ok-soft)] p-8 text-center">
+        <div className="shadow-ambient rounded-[var(--radius-card)] border border-[var(--ok)]/30 bg-[var(--ok-soft)] p-8 text-center">
           <div
             className="mx-auto mb-4 flex h-15 w-15 items-center justify-center rounded-full text-white"
             style={{ width: 60, height: 60, background: "var(--ok)" }}

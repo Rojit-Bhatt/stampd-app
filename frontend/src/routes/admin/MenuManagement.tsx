@@ -178,7 +178,7 @@ export default function MenuManagement() {
         <button
           onClick={() => updateSettings.mutate({ menuEnabled: !menuEnabled })}
           className="relative h-8 w-14 rounded-full transition-colors"
-          style={{ background: menuEnabled ? "var(--brand)" : "#DDD2CB" }}
+          style={{ background: menuEnabled ? "var(--brand)" : "var(--line)" }}
           aria-pressed={menuEnabled}
           aria-label="Toggle menu visibility"
         >
