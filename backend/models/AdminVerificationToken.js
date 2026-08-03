@@ -10,6 +10,8 @@ const mongoose = require("mongoose");
 const AdminVerificationTokenSchema = new mongoose.Schema({
   adminAccountId: { type: mongoose.Schema.Types.ObjectId, ref: "AdminAccount", required: true },
   type: { type: String, enum: ["email_verify", "password_reset"], required: true },
+  code: { type: String, default: null },
+  attempts: { type: Number, default: 0 },
   tokenHash: { type: String, required: true, index: true },
   expiresAt: { type: Date, required: true },
   usedAt: { type: Date, default: null },

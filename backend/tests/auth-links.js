@@ -39,6 +39,11 @@ const check = (name, cond, extra) => {
 const emailedLinks = [];
 const LINK_RE = /https?:\/\/[^\s"'<>)]+/g;
 
+// Email verification (admin and customer) now sends a 6-digit code instead
+// of a link — captured the same way, off the same stub stdout.
+const emailedCodes = [];
+const CODE_RE = /Your code is <strong>(\d{6})<\/strong>/g;
+
 function bootCapturing() {
   const serverPath = path.resolve(__dirname, "../server.js");
   const env = { ...process.env, PORT: String(PORT), SMTP_HOST: "", MONGODB_URI: "" };
@@ -48,6 +53,9 @@ function bootCapturing() {
     const text = d.toString();
     for (const m of text.match(LINK_RE) || []) {
       if (m.includes("token=")) emailedLinks.push(m);
+    }
+    for (const m of text.matchAll(CODE_RE)) {
+      emailedCodes.push(m[1]);
     }
   };
   child.stdout.on("data", onData);
@@ -88,6 +96,7 @@ function frontendTopLevelRoutes() {
 }
 
 const lastLink = () => emailedLinks[emailedLinks.length - 1];
+const lastCode = () => emailedCodes[emailedCodes.length - 1];
 
 async function main() {
   const { stop } = await bootCapturing();
@@ -152,13 +161,14 @@ async function main() {
       check("it points at reset-password", segments[2] === "reset-password", segments);
     }
 
-    // --- Slug-less staff links --------------------------------------
-    console.log("\n== A staff verification link ==");
+    // --- Slug-less staff verification (now a code, not a link) ------
+    console.log("\n== A staff verification code ==");
     // Registering a company emails its owner. Platform-admin only.
     const platform = await api("/api/platform/login", {
       method: "POST", slug: null, body: { email: "admin@stampd.co", password: "password" },
     });
     emailedLinks.length = 0;
+    emailedCodes.length = 0;
     const suffix = Date.now();
     const reg = await fetch(`${BASE}/api/platform/companies`, {
       method: "POST",
@@ -174,26 +184,21 @@ async function main() {
     check("a company was registered", reg.status === 201, reg.body);
     await new Promise((r) => setTimeout(r, 300));
 
-    const adminLink = lastLink();
-    check("the new owner was emailed a link", Boolean(adminLink), emailedLinks);
-    if (adminLink) {
-      const url = new URL(adminLink);
-      const segments = url.pathname.split("/").filter(Boolean);
-      check("the staff link is slug-less (one segment)", segments.length === 1, segments);
-      // THE assertion that was missing. This link pointed at a route that
-      // did not exist, so every new admin landed on /explore and could never
-      // verify — then login refused them forever with 403.
-      check(
-        `the staff link's route "/${segments[0]}" EXISTS in App.tsx`,
-        routes.includes(segments[0]),
-        { link: url.pathname, knownRoutes: routes },
-      );
-      check("it carries a token", Boolean(url.searchParams.get("token")), url.search);
-
-      const verified = await fetch(
-        `${BASE}/api/admin-auth/verify-email?token=${url.searchParams.get("token")}`,
-      ).then(async (r) => ({ status: r.status, body: await r.json().catch(() => null) }));
-      check("the emailed token verifies the admin", verified.status === 200, verified.body);
+    // Admin email-verify switched from a link to a 6-digit OTP code (see
+    // docs/superpowers/specs/2026-08-02-auth-redesign-otp-verification-design.md).
+    // No link is emitted for this flow any more — the old "route exists"
+    // regression this suite was built to catch doesn't apply to a code, so
+    // this asserts the new mechanism instead: a real code arrives, and it
+    // actually verifies and unlocks login.
+    check("no link was emailed for admin verification (OTP now)", emailedLinks.length === 0, emailedLinks);
+    const adminCode = lastCode();
+    check("the new owner was emailed a 6-digit code", Boolean(adminCode), emailedCodes);
+    if (adminCode) {
+      const verified = await api("/api/admin-auth/verify-otp", {
+        method: "POST", slug: null,
+        body: { email: `owner+${suffix}@link.test`, code: adminCode },
+      });
+      check("the emailed code verifies the admin", verified.status === 200, verified.body);
 
       const login = await api("/api/admin-auth/login", {
         method: "POST", slug: null,

@@ -49,10 +49,11 @@ const adminLogin = async ({ email, password }) => {
   }
 
   if (!account.emailVerified) {
+    await sendAdminVerifyEmail(account);
     throw createHttpError(
-      "Verify your email before signing in — check your inbox.",
+      "Verify your email before signing in — check your inbox for your code.",
       403,
-      "EMAIL_NOT_VERIFIED"
+      "NEEDS_VERIFICATION"
     );
   }
 
@@ -133,6 +134,55 @@ const verifyAdminEmail = async ({ token }) => {
   return { success: true, message: "Email verified. You can now sign in." };
 };
 
+const verifyAdminOtp = async ({ email, code }) => {
+  if (!email || !code) {
+    throw createHttpError("Email and code are required.", 400);
+  }
+
+  const account = await AdminAccount.findOne({ email: normalizeEmail(email) });
+  if (!account) {
+    throw createHttpError("This code is invalid or has expired.", 400, "OTP_EXPIRED");
+  }
+
+  const record = await AdminVerificationToken.findOne({
+    adminAccountId: account._id,
+    type: "email_verify",
+    usedAt: null
+  });
+
+  if (!record || record.expiresAt.getTime() < Date.now()) {
+    throw createHttpError("This code is invalid or has expired.", 400, "OTP_EXPIRED");
+  }
+
+  if (record.code !== code) {
+    record.attempts += 1;
+    if (record.attempts >= 5) {
+      record.usedAt = new Date();
+      await record.save();
+      throw createHttpError("Too many wrong attempts. Request a new code.", 429, "OTP_LOCKED");
+    }
+    await record.save();
+    throw createHttpError("That code is incorrect.", 400, "OTP_INCORRECT");
+  }
+
+  record.usedAt = new Date();
+  await record.save();
+
+  account.emailVerified = true;
+  await account.save();
+
+  // Keep the denormalized copy on the membership row in sync, the same way
+  // verifyAdminEmail (the link-based path) does.
+  if (account.organizationId) {
+    await User.updateOne(
+      { organizationId: account.organizationId, adminAccountId: account._id },
+      { $set: { emailVerified: true } }
+    );
+  }
+
+  return { success: true, message: "Email verified. You can now sign in." };
+};
+
 const resendAdminVerification = async ({ email }) => {
   if (email) {
     const account = await AdminAccount.findOne({ email: normalizeEmail(email) });
@@ -197,6 +247,7 @@ const resetAdminPassword = async ({ token, password }) => {
 module.exports = {
   adminLogin,
   verifyAdminEmail,
+  verifyAdminOtp,
   resendAdminVerification,
   forgotAdminPassword,
   resetAdminPassword

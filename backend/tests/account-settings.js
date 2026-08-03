@@ -96,7 +96,7 @@ async function main() {
       body: { email: sibling.adminEmail, password: "password" },
     });
     check("a new outlet's admin can't sign in before verifying -> 403", unverifiedLogin.status === 403);
-    check("...with EMAIL_NOT_VERIFIED", unverifiedLogin.body?.code === "EMAIL_NOT_VERIFIED");
+    check("...with NEEDS_VERIFICATION", unverifiedLogin.body?.code === "NEEDS_VERIFICATION");
 
     const mintAdminVerify = await api("/__test__/mint-admin-token", {
       method: "POST", slug: undefined,

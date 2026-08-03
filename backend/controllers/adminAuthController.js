@@ -1,6 +1,7 @@
 const {
   adminLogin,
   verifyAdminEmail,
+  verifyAdminOtp,
   resendAdminVerification,
   forgotAdminPassword,
   resetAdminPassword
@@ -19,6 +20,16 @@ const login = async (req, res, next) => {
 const verifyEmail = async (req, res, next) => {
   try {
     const result = await verifyAdminEmail({ token: req.query.token });
+    res.status(200).json(result);
+  } catch (error) {
+    next(error);
+  }
+};
+
+const verifyOtp = async (req, res, next) => {
+  try {
+    const { email, code } = req.body;
+    const result = await verifyAdminOtp({ email, code });
     res.status(200).json(result);
   } catch (error) {
     next(error);
@@ -53,4 +64,4 @@ const resetPassword = async (req, res, next) => {
   }
 };
 
-module.exports = { login, verifyEmail, resendVerification, forgotPassword, resetPassword };
+module.exports = { login, verifyEmail, verifyOtp, resendVerification, forgotPassword, resetPassword };

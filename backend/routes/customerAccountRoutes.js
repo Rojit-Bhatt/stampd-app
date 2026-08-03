@@ -1,7 +1,7 @@
 const express = require("express");
 const {
   register, login, googleAuth,
-  verifyEmail, resendVerification, forgotPassword, resetPassword,
+  verifyEmail, verifyOtp, resendVerification, forgotPassword, resetPassword,
   completeProfile, updateProfile, updatePreferences, savePushSubscription, removePushSubscription, changePassword, enterTenant, getMyTenants,
   uploadAvatarFile, uploadAvatar, deleteAvatar, getAvatar
 } = require("../controllers/customerAccountController");
@@ -19,6 +19,7 @@ router.post("/register", registrationLimiter, register);
 router.post("/login", authLimiter, login);
 router.post("/google", googleAuth);
 router.get("/verify-email", verifyEmail);
+router.post("/verify-otp", authLimiter, verifyOtp);
 router.post("/resend-verification", registrationLimiter, resendVerification);
 router.post("/forgot-password", registrationLimiter, forgotPassword);
 router.post("/reset-password", resetPassword);

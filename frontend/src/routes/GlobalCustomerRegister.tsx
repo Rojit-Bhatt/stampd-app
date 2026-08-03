@@ -7,7 +7,7 @@ import * as z from "zod";
 import toast from "react-hot-toast";
 import { useCustomerAuth } from "../context/CustomerAuthContext";
 import { PLATFORM_NAME } from "../lib/platform";
-import { StampdLogo } from "../components/shared/StampdLogo";
+import { AuthSplitShell } from "../components/shared/auth/AuthSplitShell";
 
 const registerSchema = z.object({
   name: z.string().trim().min(2, "Name must be at least 2 characters."),
@@ -23,6 +23,11 @@ type RegisterFormValues = z.infer<typeof registerSchema>;
 // Slug-less global signup — mirrors AuthView.tsx's register half + its
 // "check your email" interstitial. Registering doesn't log in (registerAccount
 // only sends a verification email), matching the existing per-tenant UX.
+//
+// Visual redesign only — verification stays deferred here (the account can
+// browse and earn unverified; only redeeming is gated), so there is no OTP
+// step at signup. That happens wherever verification IS later triggered —
+// see CustomerDashboard.tsx, CustomerProfilePanel.tsx, RedeemLanding.tsx.
 export default function GlobalCustomerRegister() {
   const navigate = useNavigate();
   const { registerUser } = useCustomerAuth();
@@ -50,50 +55,50 @@ export default function GlobalCustomerRegister() {
 
   return (
     <Shell>
-      <h1 className="font-display text-[25px] font-bold text-[var(--ink)]">Create your account</h1>
-      <p className="mb-6 mt-1 text-sm text-[var(--muted)]">
+      <h1 className="font-display text-[25px] font-bold text-[var(--lp-ink)]">Create your account</h1>
+      <p className="mb-6 mt-1 text-sm text-[var(--lp-muted)]">
         One account works at every business on {PLATFORM_NAME}.
       </p>
 
       <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col gap-3">
-        <Field label="Full name" icon={<User className="h-4 w-4 text-[var(--soft)]" />}>
+        <Field label="Full name" icon={<User className="h-4 w-4 text-[var(--lp-muted)]" />}>
           <input
             type="text"
             placeholder="Your name"
             {...register("name")}
-            className="w-full bg-transparent text-sm text-[var(--ink)] placeholder:text-[var(--soft)] focus:outline-none"
+            className="w-full bg-transparent text-sm text-[var(--lp-ink)] placeholder:text-[var(--lp-muted)] focus:outline-none"
           />
         </Field>
         {errors.name && <Err msg={errors.name.message} />}
 
-        <Field label="Email" icon={<Mail className="h-4 w-4 text-[var(--soft)]" />}>
+        <Field label="Email" icon={<Mail className="h-4 w-4 text-[var(--lp-muted)]" />}>
           <input
             type="email"
             placeholder="you@email.com"
             {...register("email")}
-            className="w-full bg-transparent text-sm text-[var(--ink)] placeholder:text-[var(--soft)] focus:outline-none"
+            className="w-full bg-transparent text-sm text-[var(--lp-ink)] placeholder:text-[var(--lp-muted)] focus:outline-none"
           />
         </Field>
         {errors.email && <Err msg={errors.email.message} />}
 
-        <Field label="Phone" icon={<Phone className="h-4 w-4 text-[var(--soft)]" />}>
-          <span className="text-sm text-[var(--soft)]">+977</span>
+        <Field label="Phone" icon={<Phone className="h-4 w-4 text-[var(--lp-muted)]" />}>
+          <span className="text-sm text-[var(--lp-muted)]">+977</span>
           <input
             type="tel"
             inputMode="numeric"
             placeholder="98XXXXXXXX"
             {...register("phone")}
-            className="w-full bg-transparent text-sm text-[var(--ink)] placeholder:text-[var(--soft)] focus:outline-none"
+            className="w-full bg-transparent text-sm text-[var(--lp-ink)] placeholder:text-[var(--lp-muted)] focus:outline-none"
           />
         </Field>
         {errors.phone && <Err msg={errors.phone.message} />}
 
-        <Field label="Password" icon={<Lock className="h-4 w-4 text-[var(--soft)]" />}>
+        <Field label="Password" icon={<Lock className="h-4 w-4 text-[var(--lp-muted)]" />}>
           <input
             type="password"
             placeholder="••••••••"
             {...register("password")}
-            className="w-full bg-transparent text-sm text-[var(--ink)] placeholder:text-[var(--soft)] focus:outline-none"
+            className="w-full bg-transparent text-sm text-[var(--lp-ink)] placeholder:text-[var(--lp-muted)] focus:outline-none"
           />
         </Field>
         {errors.password && <Err msg={errors.password.message} />}
@@ -101,16 +106,15 @@ export default function GlobalCustomerRegister() {
         <button
           type="submit"
           disabled={isSubmitting}
-          className="stamp-interactive mt-2 w-full rounded-full py-4 text-[15px] font-bold text-white disabled:opacity-50"
-          style={{ background: "var(--primary)" }}
+          className="mt-2 w-full rounded-[74px] bg-[var(--lp-cream)] py-4 text-[15px] font-bold text-[#14201C] transition-transform duration-200 hover:scale-105 disabled:opacity-50 motion-reduce:transition-none motion-reduce:hover:scale-100"
         >
           {isSubmitting ? "Please wait…" : "Create account"}
         </button>
       </form>
 
-      <p className="mt-6 text-center text-[13px] text-[var(--muted)]">
+      <p className="mt-6 text-center text-[13px] text-[var(--lp-muted)]">
         Already a member?{" "}
-        <Link to="/customer-login" className="font-bold text-[var(--primary-deep)] hover:underline">
+        <Link to="/customer-login" className="font-bold text-[var(--lp-green)] hover:underline">
           Sign in
         </Link>
       </p>
@@ -119,21 +123,14 @@ export default function GlobalCustomerRegister() {
 }
 
 function Shell({ children }: { children: React.ReactNode }) {
-  return (
-    <div className="flex min-h-screen w-full items-center justify-center bg-[var(--bg)] px-4 py-10">
-      <div className="w-full max-w-sm">
-        <StampdLogo size={56} tile className="mb-4" />
-        {children}
-      </div>
-    </div>
-  );
+  return <AuthSplitShell>{children}</AuthSplitShell>;
 }
 
 function Field({ label, icon, children }: { label: string; icon: React.ReactNode; children: React.ReactNode }) {
   return (
     <label className="block">
-      <span className="mb-1.5 block text-[13px] font-semibold text-[var(--ink)]">{label}</span>
-      <div className="flex items-center gap-3 rounded-[var(--radius-btn)] border border-[var(--line)] bg-[var(--bg)] px-4 py-3.5 transition-colors focus-within:border-[var(--primary)]">
+      <span className="mb-1.5 block text-[13px] font-semibold text-[var(--lp-ink)]">{label}</span>
+      <div className="flex items-center gap-3 rounded-2xl border border-[var(--lp-line)] bg-white/[0.04] px-4 py-3.5 transition-colors focus-within:border-[var(--lp-green)]">
         <span>{icon}</span>
         {children}
       </div>
@@ -142,5 +139,5 @@ function Field({ label, icon, children }: { label: string; icon: React.ReactNode
 }
 
 function Err({ msg }: { msg?: string }) {
-  return <p className="pl-1 text-xs font-semibold text-[var(--err)]">{msg}</p>;
+  return <p className="pl-1 text-xs font-semibold text-[var(--lp-terra)]">{msg}</p>;
 }

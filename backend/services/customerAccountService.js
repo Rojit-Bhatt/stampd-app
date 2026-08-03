@@ -34,18 +34,35 @@ const hashToken = (raw) => crypto.createHash("sha256").update(raw).digest("hex")
 
 const normalizeEmail = (email) => email.trim().toLowerCase();
 
-const createHttpError = (message, statusCode) => {
+const createHttpError = (message, statusCode, code) => {
   const error = new Error(message);
   error.statusCode = statusCode;
+  if (code) error.code = code;
   return error;
 };
 
+const OTP_TTL_MS = 10 * 60 * 1000;
+
+const generateOtp = () => String(crypto.randomInt(0, 1_000_000)).padStart(6, "0");
+
 const issueToken = async (customerAccountId, type) => {
   const raw = crypto.randomBytes(32).toString("hex");
-  const ttl = type === "email_verify" ? VERIFY_TTL_MS : RESET_TTL_MS;
+  const isVerify = type === "email_verify";
+  const ttl = isVerify ? OTP_TTL_MS : RESET_TTL_MS;
+
+  if (isVerify) {
+    const stale = await AccountVerificationToken.find({ customerAccountId, type: "email_verify", usedAt: null });
+    for (const record of stale) {
+      record.usedAt = new Date();
+      await record.save();
+    }
+  }
+
   await AccountVerificationToken.create({
     customerAccountId,
     type,
+    code: isVerify ? generateOtp() : null,
+    attempts: 0,
     tokenHash: hashToken(raw),
     expiresAt: new Date(Date.now() + ttl),
     usedAt: null
@@ -57,12 +74,12 @@ const issueToken = async (customerAccountId, type) => {
 // fire-and-forget so its latency never blocks the caller's response.
 const sendVerifyEmail = async (account) => {
   const raw = await issueToken(account._id, "email_verify");
-  const link = buildGlobalAuthLink("verify-email", raw);
+  const record = await AccountVerificationToken.findOne({ tokenHash: hashToken(raw) });
   sendEmail({
     to: account.email,
-    subject: "Verify your email",
-    html: `<p>Confirm your email to activate your account:</p><p><a href="${link}">${link}</a></p>`
-  }).catch((err) => console.error(`Failed to email verify-link to ${account.email}:`, err.message));
+    subject: "Your Stampd verification code",
+    html: `<p>Your code is <strong>${record.code}</strong>. It expires in 10 minutes.</p>`
+  }).catch((err) => console.error(`Failed to email verify-code to ${account.email}:`, err.message));
 };
 
 const formatAccountSummary = (account) => ({
@@ -513,6 +530,51 @@ const verifyAccountEmail = async ({ token }) => {
   return { success: true, message: "Email verified.", fulfilled };
 };
 
+const verifyCustomerOtp = async ({ email, code }) => {
+  if (!email || !code) {
+    throw createHttpError("Email and code are required.", 400);
+  }
+
+  const account = await CustomerAccount.findOne({ email: normalizeEmail(email) });
+  if (!account) {
+    throw createHttpError("This code is invalid or has expired.", 400, "OTP_EXPIRED");
+  }
+
+  const record = await AccountVerificationToken.findOne({
+    customerAccountId: account._id,
+    type: "email_verify",
+    usedAt: null
+  });
+
+  if (!record || record.expiresAt.getTime() < Date.now()) {
+    throw createHttpError("This code is invalid or has expired.", 400, "OTP_EXPIRED");
+  }
+
+  if (record.code !== code) {
+    record.attempts += 1;
+    if (record.attempts >= 5) {
+      record.usedAt = new Date();
+      await record.save();
+      throw createHttpError("Too many wrong attempts. Request a new code.", 429, "OTP_LOCKED");
+    }
+    await record.save();
+    throw createHttpError("That code is incorrect.", 400, "OTP_INCORRECT");
+  }
+
+  record.usedAt = new Date();
+  await record.save();
+
+  account.emailVerified = true;
+  await account.save();
+
+  await syncVerifiedToMemberships(account);
+
+  const { autoFulfillForAccount } = require("./pendingClaimService");
+  const fulfilled = await autoFulfillForAccount(account._id.toString());
+
+  return { success: true, message: "Email verified.", fulfilled };
+};
+
 const resendVerification = async ({ email }) => {
   if (email) {
     const account = await CustomerAccount.findOne({ email: normalizeEmail(email) });
@@ -761,6 +823,7 @@ module.exports = {
   removePushSubscription,
   changeAccountPassword,
   verifyAccountEmail,
+  verifyCustomerOtp,
   resendVerification,
   forgotPassword,
   resetPassword,

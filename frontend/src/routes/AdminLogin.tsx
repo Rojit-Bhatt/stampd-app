@@ -7,7 +7,8 @@ import toast from "react-hot-toast";
 import { apiRequest } from "../lib/api";
 import { tenantPath } from "../lib/tenantPath";
 import { PLATFORM_NAME } from "../lib/platform";
-import { StampdLogo } from "../components/shared/StampdLogo";
+import { AuthSplitShell } from "../components/shared/auth/AuthSplitShell";
+import { VerifyCodeCard } from "../components/shared/auth/VerifyCodeCard";
 
 const schema = z.object({
   email: z.string().trim().email("Please enter a valid email address."),
@@ -41,30 +42,12 @@ export default function AdminLogin() {
     formState: { errors, isSubmitting },
   } = useForm<FormValues>({ resolver: zodResolver(schema) });
 
-  // Set only on EMAIL_NOT_VERIFIED — the one case where "try again" isn't
-  // the fix, and the admin needs a way to get a fresh link without anyone
-  // having to reach into the database for them.
-  const [unverifiedEmail, setUnverifiedEmail] = useState<string | null>(null);
-  const [resending, setResending] = useState(false);
-
-  const resend = async () => {
-    if (!unverifiedEmail) return;
-    setResending(true);
-    try {
-      const res = await apiRequest<{ message: string }>("/api/admin-auth/resend-verification", {
-        method: "POST",
-        body: { email: unverifiedEmail },
-      });
-      toast.success(res.message || "If that account exists and needs verification, a new link was sent.");
-    } catch (err: any) {
-      toast.error(err.message || "Couldn't resend — try again.");
-    } finally {
-      setResending(false);
-    }
-  };
+  // Set only on NEEDS_VERIFICATION — the one case where "try again" isn't
+  // the fix. Holds the credentials so onVerified can complete the sign-in
+  // the admin was already mid-way through, without retyping anything.
+  const [pendingVerify, setPendingVerify] = useState<{ email: string; password: string } | null>(null);
 
   const onSubmit = async (data: FormValues) => {
-    setUnverifiedEmail(null);
     const id = toast.loading("Signing you in…");
     try {
       const res = await apiRequest<LoginResponse>("/api/admin-auth/login", {
@@ -95,78 +78,99 @@ export default function AdminLogin() {
       toast.success(`Welcome back, ${res.outlet?.name}!`, { id });
       window.location.href = tenantPath(res.company.slug, res.outlet!.slug, "admin");
     } catch (err: any) {
-      if (err.code === "EMAIL_NOT_VERIFIED") {
-        toast.error("Verify your email first — check your inbox for the link.", { id });
-        setUnverifiedEmail(data.email);
+      if (err.code === "NEEDS_VERIFICATION") {
+        toast.dismiss(id);
+        setPendingVerify({ email: data.email, password: data.password });
         return;
       }
       toast.error(err.message || "Couldn't sign you in — try again.", { id });
     }
   };
 
+  const verifyOtp = async (code: string) => {
+    await apiRequest("/api/admin-auth/verify-otp", {
+      method: "POST",
+      body: { email: pendingVerify!.email, code },
+    });
+  };
+
+  const resendOtp = async () => {
+    await apiRequest("/api/admin-auth/resend-verification", {
+      method: "POST",
+      body: { email: pendingVerify!.email },
+    });
+  };
+
+  const onVerified = () => {
+    toast.success("Email verified — signing you in…");
+    const creds = pendingVerify!;
+    setPendingVerify(null);
+    onSubmit({ email: creds.email, password: creds.password });
+  };
+
   return (
-    <div className="flex min-h-screen w-full items-center justify-center bg-[var(--bg)] px-4">
-      <div className="w-full max-w-sm">
-        <div className="mb-6 text-center">
-          <StampdLogo size={44} tile className="mx-auto mb-3.5" />
-          <h1 className="font-display text-2xl font-bold text-[var(--ink)]">Business sign in</h1>
-          <p className="mt-1 text-sm text-[var(--muted)]">
-            For company owners and outlet staff alike.
-          </p>
+    <AuthSplitShell>
+      {pendingVerify ? (
+        <div>
+          <h1 className="font-display text-2xl font-bold text-[var(--lp-ink)]">Check your email</h1>
+          <p className="mt-1 text-sm text-[var(--lp-muted)]">One more step before you're in.</p>
+          <div className="mt-6">
+            <VerifyCodeCard
+              size="full"
+              email={pendingVerify.email}
+              verify={verifyOtp}
+              resend={resendOtp}
+              onVerified={onVerified}
+            />
+          </div>
         </div>
+      ) : (
+        <>
+          <div className="mb-6 text-center">
+            <h1 className="font-display text-2xl font-bold text-[var(--lp-ink)]">Business sign in</h1>
+            <p className="mt-1 text-sm text-[var(--lp-muted)]">
+              For company owners and outlet staff alike.
+            </p>
+          </div>
 
-        <div className="rounded-[var(--radius-card)] border border-[var(--line)] bg-[var(--surface)] p-6 shadow-ambient">
-          <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col gap-3">
-            <input
-              type="email"
-              placeholder="Email"
-              autoComplete="username"
-              {...register("email")}
-              className="rounded-[var(--radius-btn)] border border-[var(--line)] bg-[var(--bg)] px-4 py-3.5 text-sm focus:border-[var(--primary)] focus:outline-none"
-            />
-            {errors.email && <p className="pl-1 text-xs font-semibold text-[var(--err)]">{errors.email.message}</p>}
-            <input
-              type="password"
-              placeholder="Password"
-              autoComplete="current-password"
-              {...register("password")}
-              className="rounded-[var(--radius-btn)] border border-[var(--line)] bg-[var(--bg)] px-4 py-3.5 text-sm focus:border-[var(--primary)] focus:outline-none"
-            />
-            {errors.password && <p className="pl-1 text-xs font-semibold text-[var(--err)]">{errors.password.message}</p>}
-            <button
-              type="submit"
-              disabled={isSubmitting}
-              className="mt-2 w-full rounded-[var(--radius-btn)] py-4 text-[15px] font-bold text-white transition-opacity hover:opacity-90 disabled:opacity-50"
-              style={{ background: "var(--primary)" }}
-            >
-              {isSubmitting ? "Signing you in…" : "Sign in"}
-            </button>
-          </form>
-
-          {unverifiedEmail && (
-            <div className="mt-4 rounded-[var(--radius-btn)] border border-[var(--line)] bg-[var(--bg)] p-3.5 text-center text-[13px] text-[var(--muted)]">
-              Didn't get the link, or it expired?{" "}
+          <div className="rounded-[20px] border border-[var(--lp-line)] bg-white/[0.04] p-6">
+            <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col gap-3">
+              <input
+                type="email"
+                placeholder="Email"
+                autoComplete="username"
+                {...register("email")}
+                className="rounded-2xl border border-[var(--lp-line)] bg-white/[0.04] px-4 py-3.5 text-sm text-[var(--lp-ink)] placeholder:text-[var(--lp-muted)] focus:border-[var(--lp-green)] focus:outline-none"
+              />
+              {errors.email && <p className="pl-1 text-xs font-semibold text-[var(--lp-terra)]">{errors.email.message}</p>}
+              <input
+                type="password"
+                placeholder="Password"
+                autoComplete="current-password"
+                {...register("password")}
+                className="rounded-2xl border border-[var(--lp-line)] bg-white/[0.04] px-4 py-3.5 text-sm text-[var(--lp-ink)] placeholder:text-[var(--lp-muted)] focus:border-[var(--lp-green)] focus:outline-none"
+              />
+              {errors.password && <p className="pl-1 text-xs font-semibold text-[var(--lp-terra)]">{errors.password.message}</p>}
               <button
-                type="button"
-                onClick={resend}
-                disabled={resending}
-                className="font-bold text-[var(--primary-deep)] hover:underline disabled:opacity-50"
+                type="submit"
+                disabled={isSubmitting}
+                className="mt-2 w-full rounded-[74px] bg-[var(--lp-cream)] py-4 text-[15px] font-bold text-[#14201C] transition-transform duration-200 hover:scale-105 disabled:opacity-50 motion-reduce:transition-none motion-reduce:hover:scale-100"
               >
-                {resending ? "Sending…" : "Resend verification email"}
+                {isSubmitting ? "Signing you in…" : "Sign in"}
               </button>
-            </div>
-          )}
+            </form>
 
-          <p className="mt-4 text-center text-[13px] text-[var(--muted)]">
-            <Link to="/admin-forgot-password" className="hover:text-[var(--ink)]">Forgot password?</Link>
+            <p className="mt-4 text-center text-[13px] text-[var(--lp-muted)]">
+              <Link to="/admin-forgot-password" className="hover:text-[var(--lp-ink)]">Forgot password?</Link>
+            </p>
+          </div>
+
+          <p className="mt-5 text-center text-[13px] text-[var(--lp-muted)]">
+            Want to bring your business onto {PLATFORM_NAME}?{" "}
+            <Link to="/" className="font-bold text-[var(--lp-green)] hover:underline">Get in touch</Link>
           </p>
-        </div>
-
-        <p className="mt-5 text-center text-[13px] text-[var(--muted)]">
-          Want to bring your business onto {PLATFORM_NAME}?{" "}
-          <Link to="/" className="font-bold text-[var(--primary-deep)] hover:underline">Get in touch</Link>
-        </p>
-      </div>
-    </div>
+        </>
+      )}
+    </AuthSplitShell>
   );
 }

@@ -5,6 +5,7 @@ import toast from "react-hot-toast";
 import { useCustomerAuth, type GlobalAccount, type Gender } from "../../context/CustomerAuthContext";
 import { apiRequest } from "../../lib/api";
 import { AvatarPicker } from "./AvatarPicker";
+import { VerifyCodeCard } from "../shared/auth/VerifyCodeCard";
 import { Button } from "@/components/ui/button";
 
 /**
@@ -52,7 +53,7 @@ export function CustomerProfilePanel({ onLogout }: { onLogout: () => void }) {
   const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [savingPassword, setSavingPassword] = useState(false);
-  const [resending, setResending] = useState(false);
+  const [showVerify, setShowVerify] = useState(false);
 
   const [emailOptIn, setEmailOptIn] = useState(globalAccount?.marketingConsent?.email?.granted ?? false);
   const [smsOptIn, setSmsOptIn] = useState(globalAccount?.marketingConsent?.sms?.granted ?? false);
@@ -245,17 +246,14 @@ export function CustomerProfilePanel({ onLogout }: { onLogout: () => void }) {
   };
 
   const resendVerification = async () => {
-    setResending(true);
     try {
       await apiRequest("/api/customer-auth/resend-verification", {
         method: "POST",
         body: { email: globalAccount.email },
       });
-      toast.success("Verification email sent — check your inbox.");
+      toast.success("A new code is on its way — check your inbox.");
     } catch {
       toast.error("Couldn't resend that — try again in a bit.");
-    } finally {
-      setResending(false);
     }
   };
 
@@ -362,9 +360,28 @@ export function CustomerProfilePanel({ onLogout }: { onLogout: () => void }) {
             : "Not verified — you can still earn points, but you'll need this to redeem them."}
         </div>
         {!globalAccount.emailVerified && (
-          <Button variant="outline" onClick={resendVerification} disabled={resending}>
-            {resending ? "Sending…" : "Resend verification email"}
-          </Button>
+          showVerify ? (
+            <VerifyCodeCard
+              size="inline"
+              email={globalAccount.email}
+              verify={async (code) => {
+                await apiRequest("/api/customer-auth/verify-otp", {
+                  method: "POST",
+                  body: { email: globalAccount.email, code },
+                });
+              }}
+              resend={resendVerification}
+              onVerified={() => {
+                toast.success("Email verified!");
+                setShowVerify(false);
+                setGlobalAccountData({ ...globalAccount, emailVerified: true });
+              }}
+            />
+          ) : (
+            <Button variant="outline" onClick={() => setShowVerify(true)}>
+              Verify email
+            </Button>
+          )
         )}
       </Card>
 
