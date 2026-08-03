@@ -356,7 +356,17 @@ export default function AdminContact() {
           <div className="mb-2.5 text-center text-[11px] font-bold uppercase tracking-wider text-[var(--soft)]">
             Live preview
           </div>
-          <div className="overflow-hidden rounded-[24px] border border-[var(--line)] bg-white p-4 shadow-lg">
+          <div
+            className="overflow-hidden rounded-[24px] border p-4 shadow-lg"
+            style={{
+              background: "#FFFFFF",
+              borderColor: "#E4E9E6",
+              ["--ink" as any]: "#14201C",
+              ["--muted" as any]: "#5C6B64",
+              ["--bg" as any]: "#F7F8F7",
+              ["--line" as any]: "#E4E9E6",
+            }}
+          >
             {contact.address && (
               <iframe
                 title="Location preview"
