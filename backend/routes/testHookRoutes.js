@@ -424,4 +424,20 @@ router.get("/sms-send-log-count", async (req, res, next) => {
   }
 });
 
+// DEV/TEST ONLY. Set an existing AdminAccount's staffRole directly, so a
+// suite can exercise the permission matrix without first standing up the
+// whole invite flow. The real path is POST /api/admin/staff.
+router.post("/set-staff-role", async (req, res, next) => {
+  try {
+    const { email, staffRole } = req.body;
+    const account = await AdminAccount.findOne({ email: String(email || "").toLowerCase() });
+    if (!account) return res.status(404).json({ success: false });
+    account.staffRole = staffRole || null;
+    await account.save();
+    res.json({ success: true });
+  } catch (error) {
+    next(error);
+  }
+});
+
 module.exports = router;

@@ -54,6 +54,83 @@ async function main() {
       method: "POST", token: t, body: { name: "Free Coffee", pointsPrice: 10 },
     });
     check("existing admin still creates rewards", reward.status === 201 || reward.status === 200, reward);
+
+    // --- the 403 matrix -------------------------------------------
+    // Two more sibling outlets, each demoted to a role, so the matrix is
+    // asserted against real tokens rather than a unit-tested predicate.
+    const staffOutlet = await makeSiblingOutlet(baseUrl, { label: `st${Date.now()}` });
+    await api("/__test__/set-staff-role", {
+      method: "POST", body: { email: staffOutlet.adminEmail, staffRole: "staff" },
+    });
+    const staffT = staffOutlet.adminToken;
+
+    const mgrOutlet = await makeSiblingOutlet(baseUrl, { label: `mg${Date.now()}` });
+    await api("/__test__/set-staff-role", {
+      method: "POST", body: { email: mgrOutlet.adminEmail, staffRole: "manager" },
+    });
+    const mgrT = mgrOutlet.adminToken;
+
+    // The token is re-verified against the DB on every request, so the
+    // demotion applies to the ALREADY-ISSUED token with no re-login. Assert
+    // that directly — it's the reason staffRole is resolved in verifyToken
+    // rather than baked into the JWT.
+    const staffSettings = await api("/api/admin/settings", { token: staffT });
+    check(
+      "a demotion applies to an already-issued token",
+      staffSettings.body?.settings?.staffRole === "staff",
+      staffSettings.body?.settings,
+    );
+
+    // GET /settings must stay OPEN for staff: AdminGuard revalidates against
+    // it, and a 403 here would log the account out in a loop.
+    check("staff can still READ settings", staffSettings.status === 200, staffSettings);
+
+    const blocked = [
+      ["manage_settings", "PATCH", "/api/admin/settings", { name: "Nope" }],
+      ["view_reports",    "GET",   "/api/admin/reports/customers/download"],
+      ["view_reports",    "GET",   "/api/admin/reports/summary"],
+      ["view_reports",    "GET",   "/api/admin/dashboard-stats"],
+      ["view_reports",    "GET",   "/api/admin/transactions"],
+      ["view_reports",    "GET",   "/api/admin/customers"],
+      ["manage_catalog",  "POST",  "/api/admin/rewards", { name: "X", pointsPrice: 1 }],
+      ["manage_catalog",  "POST",  "/api/admin/menu", { name: "X", price: 1 }],
+      ["manage_marketing","POST",  "/api/admin/campaigns", { name: "X", multiplier: 2 }],
+      ["manage_marketing","POST",  "/api/admin/events", { title: "X" }],
+      ["manage_marketing","GET",   "/api/admin/broadcasts"],
+    ];
+
+    for (const [action, method, path, body] of blocked) {
+      const r = await api(path, { method, token: staffT, body });
+      check(
+        `staff is 403 on ${method} ${path} (${action})`,
+        r.status === 403 && r.body?.code === "STAFF_ROLE_FORBIDDEN",
+        r,
+      );
+    }
+
+    // A manager passes every one of those.
+    for (const [, method, path, body] of blocked) {
+      const r = await api(path, { method, token: mgrT, body });
+      check(`manager is NOT 403 on ${method} ${path}`, r.status !== 403, r);
+    }
+
+    // Reads the counter genuinely needs stay open for staff. Campaigns
+    // especially: GenerateQr.tsx reads it to show the live multiplier BEFORE
+    // staff quote a number, so gating it would make them quote the wrong one.
+    for (const path of ["/api/admin/campaigns", "/api/admin/menu", "/api/admin/rewards", "/api/admin/events"]) {
+      const r = await api(path, { token: staffT });
+      check(`staff can still read ${path}`, r.status === 200, r);
+    }
+
+    // And the counter itself is untouched by the role. Both routes already
+    // return 201 (unrelated to this feature) — asserting the real status,
+    // not a bare "not 403", so this can't pass by accident.
+    const staffQr = await api("/api/admin/generate-qr", {
+      method: "POST", token: staffT, body: { billAmount: 500 },
+    });
+    check("staff can still generate an earn QR", staffQr.status === 201, staffQr);
+    const staffRedeemQr = await api("/api/admin/generate-redeem-qr", { method: "POST", token: staffT });
+    check("staff can still generate a redeem QR", staffRedeemQr.status === 201, staffRedeemQr);
   } finally {
     stop();
   }
