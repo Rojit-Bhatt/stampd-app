@@ -24,6 +24,7 @@ import { useAdminAuth } from "../../context/AdminAuthContext";
 import { useAdminSettings } from "../../hooks/useAdminSettings";
 import { useAccount } from "../../hooks/useAccount";
 import { AccountMenu } from "../shared/AccountMenu";
+import { OrgSwitcher } from "./OrgSwitcher";
 import { ThemeToggle } from "../shared/ThemeToggle";
 import { tenantPath } from "../../lib/tenantPath";
 import { Sheet, SheetContent, SheetTitle } from "../ui/sheet";
@@ -248,6 +249,8 @@ export function AdminLayout() {
           <TicketCheck className="h-4 w-4" />
           Redeem
         </NavLink>
+
+        <OrgSwitcher />
 
         <div className="mt-2 flex items-center gap-2 border-t border-[var(--line)] pt-3">
           <div className="min-w-0 flex-1">
