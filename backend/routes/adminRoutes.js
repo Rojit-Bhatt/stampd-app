@@ -53,8 +53,11 @@ const canStaff = requireStaffPermission("manage_staff");
 //
 // Both sides of the counter are staff-initiated: earn carries the bill,
 // redeem carries nothing and lets the customer pick after scanning.
-router.post("/generate-qr", verifyToken, isBusinessAdmin, generateAdminQRToken);
-router.post("/generate-redeem-qr", verifyToken, isBusinessAdmin, generateAdminRedeemToken);
+// pinLimiter shares its bucket with verify-pin, so the inline PIN
+// re-verification here can't be used to sweep the PIN space at a looser
+// rate — and its `skip` means a PIN-less outlet is never counted at all.
+router.post("/generate-qr", verifyToken, isBusinessAdmin, pinLimiter, generateAdminQRToken);
+router.post("/generate-redeem-qr", verifyToken, isBusinessAdmin, pinLimiter, generateAdminRedeemToken);
 // Deliberately NOT behind requireStaffPermission: a "staff" account calling
 // this is the entire point. Rate-limited instead.
 router.post("/verify-pin", verifyToken, isBusinessAdmin, pinLimiter, staffController.verifyPinController);

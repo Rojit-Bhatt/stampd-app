@@ -75,6 +75,10 @@ const convertTokenToPendingClaim = async ({ token, organizationId }) => {
             organizationId,
             billAmount: consumedToken.billAmount,
             generatedBy: consumedToken.generatedBy,
+            // Carried forward the same way generatedBy is — decided at the
+            // counter, written at the ledger, minutes apart.
+            performedByUserId: consumedToken.performedByUserId || null,
+            performedByName: consumedToken.performedByName || "",
             sourceToken: token,
             claimSecret,
             customerAccountId: null,
@@ -203,7 +207,9 @@ const fulfillPendingClaim = async ({ pendingClaimId, organizationId, customerAcc
         billAmount: claim.billAmount,
         org,
         now: new Date(),
-        token: claim.sourceToken
+        token: claim.sourceToken,
+        performedByUserId: claim.performedByUserId || null,
+        performedByName: claim.performedByName || ""
       });
 
       // Same atomic single-use guard pattern as DynamicQRToken.isUsed.

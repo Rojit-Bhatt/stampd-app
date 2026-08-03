@@ -181,7 +181,7 @@ const settleExpiryInTransaction = async ({ session, organizationId, userId, now 
 
 // --- token generation -------------------------------------------------
 
-const generateQRToken = async (adminUserId, organizationId, billAmount) => {
+const generateQRToken = async (adminUserId, organizationId, billAmount, { performedByUserId = null, performedByName = "" } = {}) => {
   if (!adminUserId) {
     throw createHttpError("Admin user context is required.", 401);
   }
@@ -195,7 +195,12 @@ const generateQRToken = async (adminUserId, organizationId, billAmount) => {
     generatedBy: adminUserId,
     organizationId,
     purpose: "earn",
-    billAmount: storedBillAmount
+    billAmount: storedBillAmount,
+    // Which staff member identified themselves via PIN, if this outlet uses
+    // them. Null/"" for a PIN-less outlet — carried forward to
+    // PendingClaim/PointsTransaction at claim time.
+    performedByUserId,
+    performedByName
   });
 
   // A preview only. The authoritative number is computed again at claim time
@@ -222,7 +227,7 @@ const generateQRToken = async (adminUserId, organizationId, billAmount) => {
 // The redeem side of the counter. Staff-initiated for the same reason earn
 // is: a customer must never be able to move their own balance. Carries no
 // bill and no item — the customer picks the reward after scanning.
-const generateRedeemToken = async (adminUserId, organizationId) => {
+const generateRedeemToken = async (adminUserId, organizationId, { performedByUserId = null, performedByName = "" } = {}) => {
   if (!adminUserId) {
     throw createHttpError("Admin user context is required.", 401);
   }
@@ -235,7 +240,9 @@ const generateRedeemToken = async (adminUserId, organizationId) => {
     generatedBy: adminUserId,
     organizationId,
     purpose: "redeem",
-    billAmount: null
+    billAmount: null,
+    performedByUserId,
+    performedByName
   });
 
   return {
@@ -306,7 +313,10 @@ const consumeDynamicQrToken = async ({ token, organizationId, session, purpose =
 // There is no cooldown: every bill earns. The token's single-use guard
 // already stops the same scan being replayed, and two genuine bills in one
 // hour are two genuine earns.
-const awardPointsInTransaction = async ({ session, userId, organizationId, billAmount, org, now, token }) => {
+const awardPointsInTransaction = async ({
+  session, userId, organizationId, billAmount, org, now, token,
+  performedByUserId = null, performedByName = ""
+}) => {
   const program = await loadProgram(org);
   const amount = parseBillAmountOrThrow(billAmount);
 
@@ -345,6 +355,8 @@ const awardPointsInTransaction = async ({ session, userId, organizationId, billA
         campaignId: campaign ? campaign._id : null,
         campaignName: campaign ? campaign.name : "",
         token,
+        performedByUserId,
+        performedByName,
         createdAt: now
       }
     ],
@@ -402,7 +414,9 @@ const claimPoints = async ({ token, userId, role, organizationId }) => {
       const now = new Date();
       const existingToken = await consumeDynamicQrToken({ token, organizationId, session, purpose: "earn" });
       responsePayload = await awardPointsInTransaction({
-        session, userId, organizationId, billAmount: existingToken.billAmount, org, now, token
+        session, userId, organizationId, billAmount: existingToken.billAmount, org, now, token,
+        performedByUserId: existingToken.performedByUserId || null,
+        performedByName: existingToken.performedByName || ""
       });
     });
 
@@ -530,7 +544,10 @@ const redeemPoints = async ({ token, itemId, kind, userId, role, organizationId 
 
     await session.withTransaction(async () => {
       const now = new Date();
-      await consumeDynamicQrToken({ token, organizationId, session, purpose: "redeem" });
+      // Redeem's only staff-side moment is here, at generate — the customer
+      // confirms the redemption on their own phone. Capturing the return
+      // value (previously discarded) is the only change to this call.
+      const consumedToken = await consumeDynamicQrToken({ token, organizationId, session, purpose: "redeem" });
       await settleExpiryInTransaction({ session, organizationId, userId, now });
 
       // The $gte guard IS the sufficient-funds check — checking the balance
@@ -567,6 +584,8 @@ const redeemPoints = async ({ token, itemId, kind, userId, role, organizationId 
             rewardRef: item.doc._id,
             rewardName: item.name,
             token,
+            performedByUserId: consumedToken.performedByUserId || null,
+            performedByName: consumedToken.performedByName || "",
             createdAt: now
           }
         ],
@@ -634,6 +653,13 @@ const formatTransaction = (txn) => ({
   // Both fields are present together or absent together.
   campaignName: txn.campaignName || null,
   multiplier: txn.campaignName ? txn.multiplier : null,
+  // Which staff member was at the counter, when the outlet uses PINs. Null
+  // for a row written before this existed or at a PIN-less outlet — see the
+  // design doc §6: visible on the row, but no report slices BY this column,
+  // that's a separate reporting feature. Shared by both the admin ledger
+  // and the customer's own history — a staff first name isn't sensitive.
+  performedByUserId: txn.performedByUserId ? txn.performedByUserId.toString() : null,
+  performedByName: txn.performedByName || "",
   createdAt: txn.createdAt
 });
 

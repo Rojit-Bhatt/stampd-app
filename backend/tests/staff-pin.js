@@ -34,6 +34,26 @@ async function main() {
   };
   const api = makeApi(baseUrl);
 
+  // Registers, verifies and logs in a customer at an outlet under the
+  // seeded "coffesarowar" company (every makeSiblingOutlet lives there),
+  // via the legacy tenant-scoped /api/auth flow.
+  const makeCustomer = async (outletSlug) => {
+    const email = `cust_${Date.now()}_${Math.random().toString(36).slice(2, 8)}@test.co`;
+    await api("/api/auth/register", {
+      method: "POST", company: "coffesarowar", outlet: outletSlug,
+      body: { name: "Test Customer", email, password: "password", phone: "+9779800003333" },
+    });
+    const mint = await api("/__test__/mint-token", {
+      method: "POST", company: "coffesarowar", outlet: outletSlug,
+      body: { email, type: "email_verify" },
+    });
+    await api(`/api/auth/verify-email?token=${mint.body.token}`, { company: "coffesarowar", outlet: outletSlug });
+    const login = await api("/api/auth/login", {
+      method: "POST", company: "coffesarowar", outlet: outletSlug, body: { email, password: "password" },
+    });
+    return login.body.token;
+  };
+
   try {
     // --- 1. a fresh outlet requires no PIN ---------------------------
     const outletA = await makeSiblingOutlet(baseUrl, { label: `pa${Date.now()}` });
@@ -84,6 +104,96 @@ async function main() {
       if (r.status === 429) anyThrottled = true;
     }
     check("25 pin-less generate-qr calls are never throttled", !anyThrottled);
+
+    // --- Task 6: ledger attribution --------------------------------------
+
+    // A genuinely PIN-less outlet: a full earn (generate -> claim) lands a
+    // transaction with performedByUserId null.
+    const outletD = await makeSiblingOutlet(baseUrl, { label: `pd${Date.now()}` });
+    const tD = outletD.adminToken;
+    const custD = await makeCustomer(outletD.outletSlug);
+
+    const qrD = await api("/api/admin/generate-qr", { method: "POST", token: tD, body: { billAmount: 100 } });
+    check("no-PIN outlet: generate-qr succeeds without a pin", qrD.status === 201, qrD);
+    const claimD = await api("/api/points/claim", {
+      method: "POST", token: custD, company: "coffesarowar", outlet: outletD.outletSlug,
+      body: { token: qrD.body.data.token },
+    });
+    check("no-PIN outlet: claim succeeds", claimD.status === 200, claimD);
+
+    const txD = await api("/api/admin/transactions", { token: tD });
+    const earnRowD = txD.body?.data?.find((t) => t.type === "earn");
+    check("no-PIN outlet: earn row has performedByUserId null", earnRowD?.performedByUserId === null, earnRowD);
+    check("no-PIN outlet: earn row has performedByName empty", earnRowD?.performedByName === "", earnRowD);
+
+    // A PIN outlet (outletA, from earlier steps): the counter demands and
+    // stamps attribution. A raw PIN only — a client-supplied staffUserId is
+    // never a substitute.
+    const noPinQr = await api("/api/admin/generate-qr", { method: "POST", token: tA, body: { billAmount: 100 } });
+    check(
+      "PIN outlet: generate-qr with no pin -> 403 STAFF_PIN_REQUIRED",
+      noPinQr.status === 403 && noPinQr.body?.code === "STAFF_PIN_REQUIRED",
+      noPinQr,
+    );
+
+    const staffUserIdQr = await api("/api/admin/generate-qr", {
+      method: "POST", token: tA, body: { billAmount: 100, staffUserId: "000000000000000000000000" },
+    });
+    check(
+      "PIN outlet: a client-supplied staffUserId with no pin is still 403",
+      staffUserIdQr.status === 403 && staffUserIdQr.body?.code === "STAFF_PIN_REQUIRED",
+      staffUserIdQr,
+    );
+
+    const wrongPinQr = await api("/api/admin/generate-qr", { method: "POST", token: tA, body: { billAmount: 100, pin: "9999" } });
+    check(
+      "PIN outlet: generate-qr with a wrong pin -> 401 PIN_REJECTED",
+      wrongPinQr.status === 401 && wrongPinQr.body?.code === "PIN_REJECTED",
+      wrongPinQr,
+    );
+
+    const rightPinQr = await api("/api/admin/generate-qr", { method: "POST", token: tA, body: { billAmount: 100, pin: "1234" } });
+    check("PIN outlet: generate-qr with the right pin succeeds", rightPinQr.status === 201, rightPinQr);
+
+    const custA = await makeCustomer(outletA.outletSlug);
+    const claimA = await api("/api/points/claim", {
+      method: "POST", token: custA, company: "coffesarowar", outlet: outletA.outletSlug,
+      body: { token: rightPinQr.body.data.token },
+    });
+    check("PIN outlet: claim succeeds", claimA.status === 200, claimA);
+
+    const txAfterEarn = await api("/api/admin/transactions", { token: tA });
+    const attributedEarn = txAfterEarn.body?.data?.find((t) => t.type === "earn" && t.performedByUserId);
+    check("PIN outlet: earn row is stamped with the verifying staff member", Boolean(attributedEarn), txAfterEarn.body);
+    check("PIN outlet: performedByName is non-empty on the earn row", Boolean(attributedEarn?.performedByName), attributedEarn);
+
+    // Redeem side — attributed at generate-redeem-qr, the only staff-side
+    // moment; the customer confirms the redemption on their own phone.
+    const noPinRedeemQr = await api("/api/admin/generate-redeem-qr", { method: "POST", token: tA, body: {} });
+    check(
+      "PIN outlet: generate-redeem-qr with no pin -> 403 STAFF_PIN_REQUIRED",
+      noPinRedeemQr.status === 403 && noPinRedeemQr.body?.code === "STAFF_PIN_REQUIRED",
+      noPinRedeemQr,
+    );
+
+    const reward = await api("/api/admin/rewards", {
+      method: "POST", token: tA, body: { name: "Attribution Test Reward", pointsPrice: 5 },
+    });
+    check("reward created for the redeem attribution check", reward.status === 201, reward);
+
+    const rightPinRedeemQr = await api("/api/admin/generate-redeem-qr", { method: "POST", token: tA, body: { pin: "1234" } });
+    check("PIN outlet: generate-redeem-qr with the right pin succeeds", rightPinRedeemQr.status === 201, rightPinRedeemQr);
+
+    const redeemResult = await api("/api/points/redeem", {
+      method: "POST", token: custA, company: "coffesarowar", outlet: outletA.outletSlug,
+      body: { token: rightPinRedeemQr.body.data.token, itemId: reward.body?.reward?.id, kind: "reward" },
+    });
+    check("PIN outlet: redeem succeeds", redeemResult.status === 200, redeemResult);
+
+    const txAfterRedeem = await api("/api/admin/transactions", { token: tA });
+    const attributedRedeem = txAfterRedeem.body?.data?.find((t) => t.type === "redeem" && t.performedByUserId);
+    check("PIN outlet: redeem row is stamped with the verifying staff member", Boolean(attributedRedeem), txAfterRedeem.body);
+    check("PIN outlet: performedByName is non-empty on the redeem row", Boolean(attributedRedeem?.performedByName), attributedRedeem);
 
     // --- 8. LAST: the limiter actually trips ----------------------------
     // Poisons the shared per-IP bucket, so nothing after this may assert on

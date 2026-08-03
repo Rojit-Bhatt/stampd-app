@@ -288,12 +288,38 @@ const setStaffPin = async ({ organizationId, callerUserId, callerStaffRole, targ
   return formatStaffRow(target, adminAccount, callerUserId);
 };
 
+// Shared by both counter-route controllers. Enforces the design doc's §3.3
+// rule and resolves what should be stamped onto the generated token in one
+// place:
+//   outlet doesn't use PINs -> {} (pin ignored entirely, behaviour unchanged)
+//   pin missing             -> 403 STAFF_PIN_REQUIRED
+//   pin malformed           -> 400 INVALID_PIN_FORMAT (via verifyPin)
+//   pin doesn't match       -> 401 PIN_REJECTED
+//   pin matches             -> {performedByUserId, performedByName}
+// Takes a raw PIN only — never a client-supplied staffUserId. A verified
+// identity handed back to the client and then handed forward by it is not a
+// verified identity.
+const resolvePinAttribution = async ({ organizationId, pin }) => {
+  if (!(await outletRequiresPin(organizationId))) {
+    return {};
+  }
+  if (typeof pin !== "string") {
+    throw createHttpError("A staff PIN is required at this counter.", 403, "STAFF_PIN_REQUIRED");
+  }
+  const staff = await verifyPin({ organizationId, pin });
+  if (!staff) {
+    throw createHttpError("That PIN doesn't match anyone here.", 401, "PIN_REJECTED");
+  }
+  return { performedByUserId: staff.userId, performedByName: staff.name };
+};
+
 module.exports = {
   outletRequiresPin,
   assertPinFormat,
   assertPinAvailable,
   hashPin,
   verifyPin,
+  resolvePinAttribution,
   listStaff,
   createStaff,
   updateStaffRole,

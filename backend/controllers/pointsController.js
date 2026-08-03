@@ -10,10 +10,12 @@ const {
   getOutletTransactions,
   getCustomerDetailRows
 } = require("../services/pointsService");
+const { resolvePinAttribution } = require("../services/staffService");
 
 const generateAdminQRToken = async (req, res, next) => {
   try {
-    const result = await generateQRToken(req.user.id, req.user.organizationId, req.body.billAmount);
+    const attribution = await resolvePinAttribution({ organizationId: req.user.organizationId, pin: req.body.pin });
+    const result = await generateQRToken(req.user.id, req.user.organizationId, req.body.billAmount, attribution);
     res.status(201).json(result);
   } catch (error) {
     next(error);
@@ -22,7 +24,8 @@ const generateAdminQRToken = async (req, res, next) => {
 
 const generateAdminRedeemToken = async (req, res, next) => {
   try {
-    const result = await generateRedeemToken(req.user.id, req.user.organizationId);
+    const attribution = await resolvePinAttribution({ organizationId: req.user.organizationId, pin: req.body.pin });
+    const result = await generateRedeemToken(req.user.id, req.user.organizationId, attribution);
     res.status(201).json(result);
   } catch (error) {
     next(error);
