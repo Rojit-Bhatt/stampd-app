@@ -23,6 +23,15 @@ const DynamicQRTokenSchema = new mongoose.Schema({
   // null on a redeem token.
   billAmount: { type: Number, default: null },
 
+  // Which staff member identified themselves via PIN when this token was
+  // generated. Null for a PIN-less outlet. Carried forward onto
+  // PendingClaim/PointsTransaction — the attribution is decided at the
+  // counter but written at the ledger, minutes apart on the earn path, and
+  // this is one of the two artifacts that already bridge that gap (see
+  // generatedBy above).
+  performedByUserId: { type: mongoose.Schema.Types.ObjectId, ref: "User", default: null },
+  performedByName: { type: String, default: "" },
+
   createdAt: { type: Date, default: Date.now }
 });
 

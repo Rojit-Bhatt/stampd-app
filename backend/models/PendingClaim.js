@@ -12,6 +12,13 @@ const PendingClaimSchema = new mongoose.Schema({
   // for audit/idempotency (see pendingClaimService.convertTokenToPendingClaim).
   sourceToken: { type: String, required: true },
 
+  // Carried forward from the DynamicQRToken this claim was converted from —
+  // the attribution is decided at the counter but written at the ledger,
+  // minutes apart on the earn path, and this is the other artifact (besides
+  // DynamicQRToken itself) that bridges that gap, same as generatedBy above.
+  performedByUserId: { type: mongoose.Schema.Types.ObjectId, ref: "User", default: null },
+  performedByName: { type: String, default: "" },
+
   // Proof that the caller is the person who actually scanned the QR.
   //
   // This exists because a PendingClaim's _id is NOT a secret: it is an
