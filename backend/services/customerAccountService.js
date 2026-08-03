@@ -18,6 +18,7 @@ const { sniffImageType } = require("../utils/imageBytes");
 const { generateGlobalSessionToken } = require("../utils/tokenUtils");
 const { resolveProgram } = require("./programService");
 const { resolveGoogleLink } = require("../utils/googleLink");
+const { createNotification } = require("./notificationService");
 const { sendEmail } = require("./emailService");
 
 const SALT_ROUNDS = 10;
@@ -152,6 +153,13 @@ const ensureMembership = async ({ customerAccountId, organizationId, account }) 
     });
 
     await ensureUserPointsBalance(user._id, organizationId);
+
+    createNotification({
+      organizationId,
+      type: "new_customer",
+      message: `${account.name} joined.`
+    }).catch((err) => console.error("Notification create failed:", err.message));
+
     return user;
   }
 

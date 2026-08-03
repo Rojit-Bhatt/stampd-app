@@ -14,6 +14,7 @@ const { resolveActiveMultiplier } = require("./campaignService");
 const { resolveTier } = require("./tierService");
 const { checkMilestoneTrigger } = require("./messagingService");
 const { evaluateBroadcasts } = require("./broadcastService");
+const { createNotification } = require("./notificationService");
 const { earnCenti, toPoints } = require("../utils/pointsMath");
 const { resolveDateRange } = require("../utils/dateRange");
 
@@ -602,6 +603,12 @@ const redeemPoints = async ({ token, itemId, kind, userId, role, organizationId 
         }
       };
     });
+
+    createNotification({
+      organizationId,
+      type: "redemption",
+      message: `${redeemer.name} redeemed ${item.name}.`
+    }).catch((err) => console.error("Notification create failed:", err.message));
 
     return responsePayload;
   } finally {

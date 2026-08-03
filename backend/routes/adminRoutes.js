@@ -31,6 +31,7 @@ const rewardController = require("../controllers/rewardController");
 const broadcastController = require("../controllers/broadcastController");
 const { uploadImageFile, uploadImage, deleteImage } = require("../controllers/imageController");
 const staffController = require("../controllers/staffController");
+const { getNotifications, postMarkRead, postMarkAllRead } = require("../controllers/notificationController");
 const { verifyToken, isBusinessAdmin, requireStaffPermission } = require("../middleware/authMiddleware");
 const { pinLimiter } = require("../middleware/rateLimitMiddleware");
 
@@ -121,5 +122,9 @@ router.delete("/staff/:id", verifyToken, isBusinessAdmin, canStaff, staffControl
 // of the counter the moment the outlet turns PINs on. Enforced in the
 // service, which is why canStaff is absent here.
 router.patch("/staff/:id/pin", verifyToken, isBusinessAdmin, pinLimiter, staffController.setPin);
+
+router.get("/notifications", verifyToken, isBusinessAdmin, getNotifications);
+router.post("/notifications/:id/read", verifyToken, isBusinessAdmin, postMarkRead);
+router.post("/notifications/read-all", verifyToken, isBusinessAdmin, postMarkAllRead);
 
 module.exports = router;
