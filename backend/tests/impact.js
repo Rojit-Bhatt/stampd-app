@@ -119,6 +119,93 @@ async function main() {
       toteRow?.rewardValueNpr === null,
       toteRow,
     );
+
+    console.log("\n== Outlet impact ==");
+
+    const impact = await api("/api/admin/impact", { token: adminToken });
+    check("the impact endpoint answers", impact.status === 200, impact.body);
+
+    // Our tester earned exactly once above, so at this point they are a
+    // customer but not a repeat customer.
+    check("the tester counts as a customer", impact.body?.customers >= 1, impact.body);
+    check("one earn is not yet a repeat", impact.body?.repeatCustomers === 0, impact.body);
+    check("retention is 0% with no repeats", impact.body?.retentionPercent === 0, impact.body);
+
+    // A membership with no earn must not dilute the denominator: /explore
+    // provisions one of these every time somebody merely opens the page.
+    const lurkerEmail = `lurker_${Date.now()}@test.co`;
+    await api("/api/auth/register", {
+      method: "POST",
+      body: { name: "Lurker", email: lurkerEmail, password: "password", phone: "+9779800005555" },
+    });
+    const beforeLurker = impact.body.customers;
+    const afterLurker = await api("/api/admin/impact", { token: adminToken });
+    check(
+      "a membership with no earn is not a customer",
+      afterLurker.body?.customers === beforeLurker,
+      { before: beforeLurker, after: afterLurker.body?.customers },
+    );
+
+    // Second earn: now a repeat customer, and ALL their revenue counts as
+    // repeat revenue — the first visit included.
+    await earn(500);
+    const impact2 = await api("/api/admin/impact", { token: adminToken });
+    check("a second earn makes a repeat customer", impact2.body?.repeatCustomers === 1, impact2.body);
+    check(
+      "repeat revenue includes the repeat customer's first visit",
+      impact2.body?.repeatRevenue === 20500,
+      impact2.body,
+    );
+    check(
+      "avg spend per repeat customer is repeat revenue over repeat customers",
+      impact2.body?.avgSpendPerRepeatCustomer === 20500,
+      impact2.body,
+    );
+    check(
+      "retention is repeat over customers as a percentage",
+      impact2.body?.retentionPercent === Math.round((1 / impact2.body.customers) * 100),
+      impact2.body,
+    );
+
+    console.log("\n== Reward cost coverage ==");
+
+    // Two redemptions happened above: House Coffee (valued at 180) and the
+    // tote (points-only, no rupee value).
+    check("both redemptions are counted", impact2.body?.redemptionCount === 2, impact2.body);
+    check("only the menu one carries a value", impact2.body?.rewardValueRedeemed === 180, impact2.body);
+    check(
+      "coverage reports valued vs total honestly",
+      impact2.body?.rewardValueCoverage?.valued === 1 &&
+        impact2.body?.rewardValueCoverage?.total === 2,
+      impact2.body?.rewardValueCoverage,
+    );
+
+    console.log("\n== Milestones ==");
+
+    const byKey = Object.fromEntries((impact2.body?.milestones || []).map((m) => [m.key, m]));
+    check("first redemption is achieved", byKey.first_redemption?.achieved === true, byKey);
+    check("1000 customers is not achieved", byKey.customers_1000?.achieved === false, byKey);
+    check("every milestone carries a label", (impact2.body?.milestones || []).every((m) => Boolean(m.label)), byKey);
+
+    console.log("\n== Cross-tenant isolation ==");
+
+    // durbarmarg has its own history. Its impact must share no figure that
+    // could only have come from patan's ledger.
+    const otherLogin = await api("/api/admin-auth/login", {
+      method: "POST",
+      body: { email: "durbarmarg@coffesarowar.com", password: "password" },
+    });
+    const otherImpact = await api("/api/admin/impact", { token: otherLogin.body.token });
+    check("the sibling outlet answers too", otherImpact.status === 200, otherImpact.body);
+    check(
+      "a sibling outlet does not see this outlet's revenue",
+      otherImpact.body?.revenueTracked !== impact2.body?.revenueTracked,
+      { sibling: otherImpact.body?.revenueTracked, mine: impact2.body?.revenueTracked },
+    );
+
+    // And the endpoint is staff-only.
+    const anon = await api("/api/admin/impact");
+    check("impact requires authentication", anon.status === 401, anon.status);
   } finally {
     stop();
   }

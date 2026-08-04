@@ -19,6 +19,7 @@ const {
 const {
   getDashboard,
   getSummary,
+  getImpact,
   getTierDistribution,
   getLeaderboardReport,
   downloadSummary,
@@ -78,6 +79,8 @@ router.get("/dashboard-stats", verifyToken, isBusinessAdmin, canReports, getDash
 router.get("/tier-distribution", verifyToken, isBusinessAdmin, canReports, getTierDistribution);
 router.get("/leaderboard", verifyToken, isBusinessAdmin, canReports, getLeaderboardReport);
 router.get("/reports/summary", verifyToken, isBusinessAdmin, canReports, getSummary);
+// The value view. A report, so it sits behind the same view_reports gate.
+router.get("/impact", verifyToken, isBusinessAdmin, canReports, getImpact);
 router.get("/reports/summary/download", verifyToken, isBusinessAdmin, canReports, downloadSummary);
 router.get("/reports/customers/download", verifyToken, isBusinessAdmin, canReports, downloadCustomers);
 router.get("/reports/transactions/download", verifyToken, isBusinessAdmin, canReports, downloadTransactions);
