@@ -72,6 +72,7 @@ const MenuManagement = lazy(() => import('./routes/admin/MenuManagement'));
 const AdminEvents = lazy(() => import('./routes/admin/AdminEvents'));
 const AdminReportsSummary = lazy(() => import('./routes/admin/AdminReportsSummary'));
 const AdminReportsCustomers = lazy(() => import('./routes/admin/AdminReportsCustomers'));
+const AdminImpact = lazy(() => import('./routes/admin/AdminImpact'));
 const AdminTransactions = lazy(() => import('./routes/admin/AdminTransactions'));
 const AdminCampaigns = lazy(() => import('./routes/admin/AdminCampaigns'));
 const AdminBroadcasts = lazy(() => import('./routes/admin/AdminBroadcasts'));
@@ -214,6 +215,7 @@ export default function App() {
               <Route path="subscription" element={<AdminSubscription />} />
               <Route path="reports/summary" element={<AdminReportsSummary />} />
               <Route path="reports/customers" element={<AdminReportsCustomers />} />
+              <Route path="reports/impact" element={<AdminImpact />} />
               <Route path="transactions" element={<AdminTransactions />} />
               <Route path="campaigns" element={<AdminCampaigns />} />
               <Route path="broadcasts" element={<AdminBroadcasts />} />
