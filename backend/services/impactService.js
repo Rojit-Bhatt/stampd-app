@@ -220,13 +220,19 @@ const buildRoi = async (companyId, revenueSinceSubscription) => {
   if (!plan) return null;
 
   const intervalDays = plan.billingIntervalDays || 365;
-  const monthlyCost = round2(plan.priceNpr / (intervalDays / 30));
+  // Whole rupees: NPR prices are whole numbers everywhere else in the app
+  // (SubscriptionPlan.priceNpr, formatNpr), and "Rs 205.4/month" next to
+  // "Rs 7,450" reads as a defect rather than as precision.
+  const monthlyCost = Math.round(plan.priceNpr / (intervalDays / 30));
 
   // Floored at 1: a company three days into its first month would otherwise
   // divide by ~0.1 and read as 30X.
   const elapsedMs = Date.now() - new Date(subscription.createdAt).getTime();
   const monthsElapsed = Math.max(1, round2(elapsedMs / MONTH_MS));
-  const costToDate = round2(monthlyCost * monthsElapsed);
+  // The exact figure drives the ratio; only the displayed total is rounded,
+  // so the multiple never inherits a rounding error.
+  const costToDateExact = monthlyCost * monthsElapsed;
+  const costToDate = Math.round(costToDateExact);
 
   return {
     planName: plan.name,
@@ -237,7 +243,7 @@ const buildRoi = async (companyId, revenueSinceSubscription) => {
     revenueSinceSubscription: round2(revenueSinceSubscription),
     // Reported as-is, including below 1. An owner who catches one inflated
     // number stops trusting the whole page.
-    roiMultiple: costToDate > 0 ? round2(revenueSinceSubscription / costToDate) : null
+    roiMultiple: costToDateExact > 0 ? round2(revenueSinceSubscription / costToDateExact) : null
   };
 };
 

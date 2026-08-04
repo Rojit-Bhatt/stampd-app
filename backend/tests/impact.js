@@ -310,20 +310,20 @@ async function main() {
     check("a plan-backed company exposes ROI", Boolean(roi), roiImpact.body);
     check("the plan is named", roi?.planName === "Growth", roi);
     check(
-      "monthly cost is the annual price over twelve-ish months",
-      Math.abs(roi.monthlyCost - 2499 / (365 / 30)) < 0.01,
+      "monthly cost is the annual price over twelve-ish months, in whole rupees",
+      roi?.monthlyCost === Math.round(2499 / (365 / 30)),
       roi,
     );
     check("months elapsed never drops below 1", roi?.monthsElapsed === 1, roi);
     check(
       "cost to date is the monthly cost over the elapsed months",
-      Math.abs(roi.costToDate - roi.monthlyCost * roi.monthsElapsed) < 0.01,
+      roi.costToDate === Math.round(roi.monthlyCost * roi.monthsElapsed),
       roi,
     );
     check("revenue since subscription is the one bill", roi?.revenueSinceSubscription === 100, roi);
     check(
       "the multiple is revenue over cost",
-      Math.abs(roi.roiMultiple - roi.revenueSinceSubscription / roi.costToDate) < 0.01,
+      Math.abs(roi.roiMultiple - roi.revenueSinceSubscription / (roi.monthlyCost * roi.monthsElapsed)) < 0.01,
       roi,
     );
     // The whole point: a programme that has not paid for itself yet must say

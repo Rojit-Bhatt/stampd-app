@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { NavLink, Outlet, useNavigate, useLocation } from "react-router-dom";
-import { Store, CreditCard, BarChart3, Menu, X } from "lucide-react";
+import { Store, CreditCard, BarChart3, Sparkles, Menu, X } from "lucide-react";
 import { useCompanyAuth } from "../../context/CompanyAuthContext";
 import { PLATFORM_NAME } from "../../lib/platform";
 import { StampdLogo } from "../shared/StampdLogo";
@@ -10,6 +10,7 @@ import { ThemeToggle } from "../shared/ThemeToggle";
 const NAV = [
   { to: "", end: true, label: "Outlets", Icon: Store },
   { to: "reports", label: "Reports", Icon: BarChart3 },
+  { to: "impact", label: "Impact", Icon: Sparkles },
   { to: "subscription", label: "Subscription", Icon: CreditCard },
 ];
 

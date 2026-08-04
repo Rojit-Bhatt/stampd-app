@@ -56,6 +56,7 @@ const SubscriptionKeys = lazy(() => import('./routes/platform/SubscriptionKeys')
 const CompanyDashboard = lazy(() => import('./routes/company/CompanyDashboard'));
 const CompanySubscription = lazy(() => import('./routes/company/CompanySubscription'));
 const CompanyReports = lazy(() => import('./routes/company/CompanyReports'));
+const CompanyImpact = lazy(() => import('./routes/company/CompanyImpact'));
 const AdminLogin = lazy(() => import('./routes/AdminLogin'));
 const AdminVerifyEmail = lazy(() => import('./routes/AdminVerifyEmail'));
 const AdminForgotPassword = lazy(() => import('./routes/AdminForgotPassword'));
@@ -160,6 +161,7 @@ export default function App() {
           <Route path="/company" element={<CompanyLayout />}>
             <Route index element={<CompanyDashboard />} />
             <Route path="reports" element={<CompanyReports />} />
+            <Route path="impact" element={<CompanyImpact />} />
             <Route path="subscription" element={<CompanySubscription />} />
           </Route>
 
