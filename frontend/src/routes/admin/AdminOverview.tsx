@@ -20,7 +20,6 @@ import { SeriesBar } from "@/components/charts/series-bar";
 import { BarChart } from "@/components/charts/bar-chart";
 import { Bar } from "@/components/charts/bar";
 import { BarXAxis } from "@/components/charts/bar-x-axis";
-import { BarYAxis } from "@/components/charts/bar-y-axis";
 import { Grid } from "@/components/charts/grid";
 import { XAxis } from "@/components/charts/x-axis";
 import { YAxis } from "@/components/charts/y-axis";
@@ -392,7 +391,7 @@ export default function AdminOverview() {
         >
           <Grid />
           <BarXAxis />
-          <BarYAxis />
+          <YAxis />
           <Bar dataKey="count" fill="var(--chart-line-primary)" />
           <ChartTooltip
             rows={(point) => [
