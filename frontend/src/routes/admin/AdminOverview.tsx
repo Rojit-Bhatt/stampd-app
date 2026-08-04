@@ -14,18 +14,17 @@ import {
   Zap,
   ArrowRight,
 } from "lucide-react";
-import {
-  ResponsiveContainer,
-  LineChart,
-  Line,
-  BarChart,
-  Bar,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip,
-  Legend,
-} from "recharts";
+import { LineChart, Line } from "@/components/charts/line-chart";
+import { ComposedChart } from "@/components/charts/composed-chart";
+import { SeriesBar } from "@/components/charts/series-bar";
+import { BarChart } from "@/components/charts/bar-chart";
+import { Bar } from "@/components/charts/bar";
+import { BarXAxis } from "@/components/charts/bar-x-axis";
+import { Grid } from "@/components/charts/grid";
+import { XAxis } from "@/components/charts/x-axis";
+import { YAxis } from "@/components/charts/y-axis";
+import { ChartTooltip } from "@/components/charts/tooltip";
+import { ChartLegend } from "../../components/shared/ChartLegend";
 
 import { apiRequest, apiUrl, tenantHeaders } from "../../lib/api";
 import { useAdminSettings } from "../../hooks/useAdminSettings";
@@ -82,8 +81,6 @@ interface TierDistribution {
 // contrast against a white card rather than picked by eye.
 const CHART_EARNED_COLOR = "#A8632E";
 const CHART_REDEEMED_COLOR = "#1A6E99";
-
-const shortDate = (iso: string) => new Date(iso).toLocaleDateString(undefined, { month: "short", day: "numeric" });
 
 function timeAgo(iso: string): string {
   const secs = Math.max(0, Math.floor((Date.now() - new Date(iso).getTime()) / 1000));
@@ -196,6 +193,15 @@ export default function AdminOverview() {
       return res;
     },
   });
+
+  const pointsActivityWithNet = useMemo(
+    () =>
+      (dashboardStats?.pointsActivity ?? []).map((row) => ({
+        ...row,
+        net: row.earned - row.redeemed,
+      })),
+    [dashboardStats?.pointsActivity],
+  );
 
   // Flow metrics move week to week and carry a trend. `pointsOutstanding` is a
   // snapshot of what's sitting in balances right now — "how much exists", not
@@ -329,101 +335,70 @@ export default function AdminOverview() {
 
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
         <Panel title="Points velocity" subtitle="Points issued per day, last 14 days.">
-          <ResponsiveContainer width="100%" height={220}>
-            <LineChart data={dashboardStats?.pointsVelocity ?? []} margin={{ top: 4, right: 8, left: -20, bottom: 0 }}>
-              <CartesianGrid stroke="var(--line)" strokeDasharray="3 3" vertical={false} />
-              <XAxis
-                dataKey="date"
-                tickFormatter={shortDate}
-                tick={{ fill: "var(--muted)", fontSize: 12 }}
-                axisLine={{ stroke: "var(--line)" }}
-                tickLine={false}
-                minTickGap={24}
-              />
-              <YAxis tick={{ fill: "var(--muted)", fontSize: 12 }} axisLine={false} tickLine={false} width={36} />
-              <Tooltip
-                labelFormatter={(v) => shortDate(String(v))}
-                contentStyle={{
-                  background: "var(--surface)",
-                  border: "1px solid var(--line)",
-                  borderRadius: 12,
-                }}
-              />
-              <Line
-                type="monotone"
-                dataKey="points"
-                name="Points"
-                stroke="var(--primary)"
-                strokeWidth={2}
-                dot={false}
-                activeDot={{ r: 4 }}
-              />
-            </LineChart>
-          </ResponsiveContainer>
+          <LineChart data={dashboardStats?.pointsVelocity ?? []} xDataKey="date">
+            <Grid />
+            <XAxis />
+            <YAxis />
+            <Line dataKey="points" stroke="var(--chart-line-primary)" strokeWidth={2} />
+            <ChartTooltip
+              rows={(point) => [
+                { color: "var(--chart-line-primary)", label: "Points", value: point.points as number },
+              ]}
+            />
+          </LineChart>
         </Panel>
 
         <Panel title="Points activity" subtitle="Earned vs. redeemed per week, last 8 weeks.">
-          <ResponsiveContainer width="100%" height={220}>
-            <BarChart
-              data={dashboardStats?.pointsActivity ?? []}
-              margin={{ top: 4, right: 8, left: -20, bottom: 0 }}
-              barGap={2}
-            >
-              <CartesianGrid stroke="var(--line)" strokeDasharray="3 3" vertical={false} />
-              <XAxis
-                dataKey="weekStart"
-                tickFormatter={shortDate}
-                tick={{ fill: "var(--muted)", fontSize: 12 }}
-                axisLine={{ stroke: "var(--line)" }}
-                tickLine={false}
-                minTickGap={24}
-              />
-              <YAxis tick={{ fill: "var(--muted)", fontSize: 12 }} axisLine={false} tickLine={false} width={36} />
-              <Tooltip
-                labelFormatter={(v) => shortDate(String(v))}
-                contentStyle={{
-                  background: "var(--surface)",
-                  border: "1px solid var(--line)",
-                  borderRadius: 12,
-                }}
-              />
-              <Legend wrapperStyle={{ fontSize: 12 }} />
-              <Bar dataKey="earned" name="Earned" fill={CHART_EARNED_COLOR} radius={[4, 4, 0, 0]} />
-              <Bar dataKey="redeemed" name="Redeemed" fill={CHART_REDEEMED_COLOR} radius={[4, 4, 0, 0]} />
-            </BarChart>
-          </ResponsiveContainer>
+          <ChartLegend
+            items={[
+              { label: "Earned", color: CHART_EARNED_COLOR },
+              { label: "Redeemed", color: CHART_REDEEMED_COLOR },
+              { label: "Net", color: "var(--ink)" },
+            ]}
+          />
+          <ComposedChart data={pointsActivityWithNet} xDataKey="weekStart">
+            <Grid />
+            <XAxis />
+            <YAxis />
+            <SeriesBar dataKey="earned" fill={CHART_EARNED_COLOR} />
+            <SeriesBar dataKey="redeemed" fill={CHART_REDEEMED_COLOR} />
+            <Line dataKey="net" stroke="var(--ink)" strokeWidth={2} />
+            <ChartTooltip
+              rows={(point) => [
+                { color: CHART_EARNED_COLOR, label: "Earned", value: point.earned as number },
+                { color: CHART_REDEEMED_COLOR, label: "Redeemed", value: point.redeemed as number },
+                { color: "var(--ink)", label: "Net", value: point.net as number },
+              ]}
+            />
+          </ComposedChart>
         </Panel>
       </div>
 
       <Panel title="Tier distribution" subtitle="How many customers fall into each tier right now.">
-        <ResponsiveContainer width="100%" height={220}>
-          <BarChart
-            data={
-              tierDistribution
-                ? [
-                    { label: "Bronze", count: tierDistribution.Bronze },
-                    { label: "Silver", count: tierDistribution.Silver },
-                    { label: "Gold", count: tierDistribution.Gold },
-                    { label: "Platinum", count: tierDistribution.Platinum },
-                    { label: "Untiered", count: tierDistribution.untiered },
-                  ]
-                : []
-            }
-            margin={{ top: 4, right: 8, left: -20, bottom: 0 }}
-          >
-            <CartesianGrid stroke="var(--line)" strokeDasharray="3 3" vertical={false} />
-            <XAxis dataKey="label" tick={{ fill: "var(--muted)", fontSize: 12 }} axisLine={{ stroke: "var(--line)" }} tickLine={false} />
-            <YAxis tick={{ fill: "var(--muted)", fontSize: 12 }} axisLine={false} tickLine={false} width={36} allowDecimals={false} />
-            <Tooltip
-              contentStyle={{
-                background: "var(--surface)",
-                border: "1px solid var(--line)",
-                borderRadius: 12,
-              }}
-            />
-            <Bar dataKey="count" name="Customers" fill="var(--primary)" radius={[4, 4, 0, 0]} />
-          </BarChart>
-        </ResponsiveContainer>
+        <BarChart
+          data={
+            tierDistribution
+              ? [
+                  { label: "Bronze", count: tierDistribution.Bronze },
+                  { label: "Silver", count: tierDistribution.Silver },
+                  { label: "Gold", count: tierDistribution.Gold },
+                  { label: "Platinum", count: tierDistribution.Platinum },
+                  { label: "Untiered", count: tierDistribution.untiered },
+                ]
+              : []
+          }
+          xDataKey="label"
+        >
+          <Grid />
+          <BarXAxis />
+          <YAxis />
+          <Bar dataKey="count" fill="var(--chart-line-primary)" />
+          <ChartTooltip
+            rows={(point) => [
+              { color: "var(--chart-line-primary)", label: "Customers", value: point.count as number },
+            ]}
+          />
+        </BarChart>
       </Panel>
 
       <Panel
