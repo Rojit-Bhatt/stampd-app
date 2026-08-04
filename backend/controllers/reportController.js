@@ -7,6 +7,7 @@ const {
   buildTransactionsWorkbook,
 } = require("../services/reportService");
 const { getLeaderboard } = require("../services/leaderboardService");
+const { getOutletImpact } = require("../services/impactService");
 
 const getDashboard = async (req, res, next) => {
   try {
@@ -24,6 +25,17 @@ const getSummary = async (req, res, next) => {
       endDate: req.query.endDate,
     });
     res.status(200).json({ success: true, ...stats });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// The outlet's value view. Tenant comes from the JWT, never from a slug —
+// an admin can only ever see their own outlet's impact.
+const getImpact = async (req, res, next) => {
+  try {
+    const impact = await getOutletImpact(req.user.organizationId);
+    res.status(200).json({ success: true, ...impact });
   } catch (error) {
     next(error);
   }
@@ -89,6 +101,7 @@ const downloadTransactions = async (req, res, next) => {
 module.exports = {
   getDashboard,
   getSummary,
+  getImpact,
   getTierDistribution,
   getLeaderboardReport,
   downloadSummary,

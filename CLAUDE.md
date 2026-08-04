@@ -133,6 +133,24 @@ Two rules worth not breaking:
 
 `getPlatformCompanyReportRows({startDate, endDate})` is the date-ranged counterpart, one row per company — the cross-company version of `companyReportService.getCompanyRollup` (which stays scoped to one company, company-private, reachable only via `/api/company`). Flows only (new customers, points issued/redeemed, revenue, redemptions); deliberately no points-outstanding/expired column, same reasoning `getCompanyRollup` already gives for why balances never roll up across outlets.
 
+## Impact insights
+
+`impactService.js` answers "has this been worth it?" — the value counterpart to `reportService`'s "what happened?". Two exports: `getOutletImpact(organizationId)` (`GET /api/admin/impact`, behind `view_reports`) and `getCompanyImpact(companyId)` (`GET /api/company/impact`, company-private like `getCompanyRollup`).
+
+**All-time, no date range.** Impact is cumulative by definition; the range-filtered view of the same flows already lives on the Reports pages.
+
+**A "customer" is a membership with ≥1 `earn` row; a "repeat customer" has ≥2.** `/explore` auto-provisions a `User` the moment someone opens an outlet's page, so counting every membership would let browsers who never bought anything drag retention toward zero. `repeatRevenue` counts all of a repeat customer's revenue, first visit included.
+
+Earns are keyed by `customerAccountId`, not by membership row, which is what lets `getCompanyImpact` merge one person across sibling outlets. That makes company-level retention *stricter* than a sum: one earn at each of two outlets is not a repeat customer, because they haven't come back anywhere.
+
+**`PointsTransaction.rewardValueNpr`** is snapshotted at redemption from `MenuItem.price`, and is `null` for a `RewardItem` (points-only by design) and for every row predating the field. Null means "not recorded", never "free" — it's skipped from rupee sums, and the response carries `rewardValueCoverage: {valued, total}` so the UI can say "based on 34 of 51 redemptions" instead of under-reporting.
+
+**ROI is company-only and windowed.** `roiMultiple = revenueSince(subscription.createdAt) / (monthlyCost × monthsElapsed)`. Both sides must span the same window — dividing all-time revenue by a *monthly* price is not a ratio. `subscription.createdAt` is the right start because `subscriptionService` keeps one `Subscription` per company and updates it in place on renewal. `monthsElapsed` floors at 1 so a three-day-old subscription doesn't read as 30X, and a multiple below 1 is reported as-is. Cost figures round to whole NPR for display (`formatNpr` assumes whole rupees) but the multiple divides by the exact cost.
+
+**Nothing on this page is estimated.** The competitor page this was modelled on carries "operations cost avoided" and "staff hours saved" tiles built from invented coefficients; those are deliberately absent, same rule as `/explore` never showing a fabricated rating. Points outstanding is reported in points and never converted to rupees — there is no honest rate.
+
+Milestones are derived live on every read. No stored state, no write hooks, no cron.
+
 ## Backend layering (enforced)
 
 `routes/ → controllers/ → services/ → models/`. Controllers are thin: parse request, call a service, format the response. **All business logic and multi-model writes live in `services/`.** Keep the atomic `findOneAndUpdate` style in `services/pointsService.js` — earn and redeem each use a session + atomic guarded update to prevent double-award/double-spend races.

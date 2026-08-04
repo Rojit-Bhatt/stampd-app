@@ -60,6 +60,7 @@ const NAV: (NavLeaf | NavGroup)[] = [
     children: [
       { to: "reports/summary", label: "Summary report" },
       { to: "reports/customers", label: "Customer report" },
+      { to: "reports/impact", label: "Impact" },
     ],
   },
 ];

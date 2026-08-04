@@ -49,6 +49,18 @@ const PointsTransactionSchema = new mongoose.Schema({
   // Denormalized on purpose: the item can be renamed or deleted from the menu
   // later, and a receipt must still say what was actually handed over.
   rewardName: { type: String, default: "" },
+  // What this reward was worth in rupees, snapshotted at redemption. Only a
+  // MenuItem has a cash price; a RewardItem is points-only by definition (a
+  // tote bag is never sold), so it stays null and is excluded from every
+  // rupee figure rather than counted as zero.
+  //
+  // Snapshotted, not looked up live, for the same reason earnPercent and
+  // multiplier above are: repricing the menu next month must not rewrite
+  // what last month's redemptions cost.
+  //
+  // Null on every row written before this field existed. Consumers report
+  // their own coverage rather than treating an absent value as free.
+  rewardValueNpr: { type: Number, default: null },
 
   // The QR token this movement came from, for audit. Null for expire, which
   // no one initiates.

@@ -584,6 +584,9 @@ const redeemPoints = async ({ token, itemId, kind, userId, role, organizationId 
             rewardKind: item.kind,
             rewardRef: item.doc._id,
             rewardName: item.name,
+            // Only a menu item has a rupee price; a RewardItem is points-only
+            // by design, so this stays null rather than recording it as free.
+            rewardValueNpr: item.kind === "menu" ? (item.doc.price ?? null) : null,
             token,
             performedByUserId: consumedToken.performedByUserId || null,
             performedByName: consumedToken.performedByName || "",
@@ -653,6 +656,9 @@ const formatTransaction = (txn) => ({
   balanceAfter: toPoints(txn.balanceAfterCenti),
   billAmount: txn.billAmount,
   rewardName: txn.rewardName || "",
+  // What the reward was worth in rupees at the moment it was handed over.
+  // Null for a points-only RewardItem and for any row predating the field.
+  rewardValueNpr: txn.rewardValueNpr ?? null,
   // Tied to campaignName, not to the multiplier's own value: gating on
   // `!== 1` would leave campaignName set but multiplier null for a
   // (permitted, if pointless) 1x campaign, and the UI interpolates

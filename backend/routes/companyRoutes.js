@@ -8,7 +8,8 @@ const {
   postEnterOutlet,
   getSubscription,
   postRedeemKey,
-  getRollup
+  getRollup,
+  getImpact
 } = require("../controllers/companyController");
 const { verifyCompanySession } = require("../middleware/companyAuthMiddleware");
 
@@ -28,5 +29,8 @@ router.post("/enter-outlet", postEnterOutlet);
 router.get("/subscription", getSubscription);
 router.post("/subscription/redeem-key", postRedeemKey);
 router.get("/reports/rollup", getRollup);
+// The cross-outlet value view, including ROI against the subscription —
+// which is a company-level fact, so it lives here and nowhere else.
+router.get("/impact", getImpact);
 
 module.exports = router;

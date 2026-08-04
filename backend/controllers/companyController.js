@@ -10,6 +10,7 @@ const {
 const { getSubscriptionSummary } = require("../services/subscriptionService");
 const { redeemKey } = require("../services/subscriptionKeyService");
 const { getCompanyRollup } = require("../services/companyReportService");
+const { getCompanyImpact } = require("../services/impactService");
 
 const getMyCompany = async (req, res, next) => {
   try {
@@ -105,6 +106,17 @@ const getRollup = async (req, res, next) => {
   }
 };
 
+// The company's value view, across every outlet. Company-private: an outlet
+// console has no route to this, by design.
+const getImpact = async (req, res, next) => {
+  try {
+    const impact = await getCompanyImpact(req.companyId);
+    res.status(200).json({ success: true, ...impact });
+  } catch (error) {
+    next(error);
+  }
+};
+
 module.exports = {
   getMyCompany,
   getOutlets,
@@ -114,5 +126,6 @@ module.exports = {
   postEnterOutlet,
   getSubscription,
   postRedeemKey,
-  getRollup
+  getRollup,
+  getImpact
 };
