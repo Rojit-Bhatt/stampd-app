@@ -1,7 +1,15 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { TrendingUp, TrendingDown, Download } from "lucide-react";
-import { ResponsiveContainer, LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip } from "recharts";
+import { LineChart, Line } from "@/components/charts/line-chart";
+import { BarChart } from "@/components/charts/bar-chart";
+import { Bar } from "@/components/charts/bar";
+import { BarXAxis } from "@/components/charts/bar-x-axis";
+import { BarYAxis } from "@/components/charts/bar-y-axis";
+import { Grid } from "@/components/charts/grid";
+import { XAxis } from "@/components/charts/x-axis";
+import { YAxis } from "@/components/charts/y-axis";
+import { ChartTooltip } from "@/components/charts/tooltip";
 import { apiRequest, apiUrl } from "../../lib/api";
 import { Skeleton } from "../../components/ui/skeleton";
 import { DateRangeFilter, defaultDateRange, type DateRangeValue } from "../../components/shared/DateRangeFilter";
@@ -32,8 +40,6 @@ interface PlatformAnalyticsData {
   pointsVelocity: { date: string; points: number }[];
   tierDistribution: TierDistribution;
 }
-
-const shortDate = (iso: string) => new Date(iso).toLocaleDateString(undefined, { month: "short", day: "numeric" });
 
 function TrendBadge({ trend }: { trend: number | null }) {
   if (trend === null) return null;
@@ -196,15 +202,17 @@ export default function PlatformAnalytics() {
         {isLoading || !stats ? (
           <Skeleton className="h-[220px] w-full rounded-xl" />
         ) : (
-          <ResponsiveContainer width="100%" height={220}>
-            <LineChart data={stats.pointsVelocity.map((d) => ({ ...d, label: shortDate(d.date) }))}>
-              <CartesianGrid strokeDasharray="3 3" stroke="var(--line)" />
-              <XAxis dataKey="label" tick={{ fontSize: 12 }} stroke="var(--soft)" />
-              <YAxis tick={{ fontSize: 12 }} stroke="var(--soft)" />
-              <Tooltip />
-              <Line type="monotone" dataKey="points" stroke="var(--primary)" strokeWidth={2} dot={false} />
-            </LineChart>
-          </ResponsiveContainer>
+          <LineChart data={stats.pointsVelocity} xDataKey="date">
+            <Grid />
+            <XAxis />
+            <YAxis />
+            <Line dataKey="points" stroke="var(--chart-line-primary)" strokeWidth={2} />
+            <ChartTooltip
+              rows={(point) => [
+                { color: "var(--chart-line-primary)", label: "Points", value: point.points as number },
+              ]}
+            />
+          </LineChart>
         )}
       </div>
 
@@ -214,23 +222,26 @@ export default function PlatformAnalytics() {
         {isLoading || !stats ? (
           <Skeleton className="h-[220px] w-full rounded-xl" />
         ) : (
-          <ResponsiveContainer width="100%" height={220}>
-            <BarChart
-              data={[
-                { label: "Bronze", count: stats.tierDistribution.Bronze },
-                { label: "Silver", count: stats.tierDistribution.Silver },
-                { label: "Gold", count: stats.tierDistribution.Gold },
-                { label: "Platinum", count: stats.tierDistribution.Platinum },
-                { label: "Untiered", count: stats.tierDistribution.untiered },
+          <BarChart
+            data={[
+              { label: "Bronze", count: stats.tierDistribution.Bronze },
+              { label: "Silver", count: stats.tierDistribution.Silver },
+              { label: "Gold", count: stats.tierDistribution.Gold },
+              { label: "Platinum", count: stats.tierDistribution.Platinum },
+              { label: "Untiered", count: stats.tierDistribution.untiered },
+            ]}
+            xDataKey="label"
+          >
+            <Grid />
+            <BarXAxis />
+            <BarYAxis />
+            <Bar dataKey="count" fill="var(--chart-line-primary)" />
+            <ChartTooltip
+              rows={(point) => [
+                { color: "var(--chart-line-primary)", label: "Businesses", value: point.count as number },
               ]}
-            >
-              <CartesianGrid strokeDasharray="3 3" stroke="var(--line)" />
-              <XAxis dataKey="label" tick={{ fontSize: 12 }} stroke="var(--soft)" />
-              <YAxis tick={{ fontSize: 12 }} stroke="var(--soft)" allowDecimals={false} />
-              <Tooltip />
-              <Bar dataKey="count" fill="var(--primary)" radius={[4, 4, 0, 0]} />
-            </BarChart>
-          </ResponsiveContainer>
+            />
+          </BarChart>
         )}
       </div>
     </div>
