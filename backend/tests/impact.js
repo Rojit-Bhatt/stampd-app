@@ -9,6 +9,7 @@
  */
 
 const { bootServer } = require("./helpers/bootServer");
+const { makeCompanyWithOutlet } = require("./helpers/makeOutlet");
 
 async function main() {
   const { baseUrl, stop } = await bootServer({ port: 5049 });
@@ -21,9 +22,9 @@ async function main() {
   // resolve an outlet — one slug alone can never identify one.
   const COMPANY = "coffesarowar";
   const OUTLET = "patan";
-  const api = (path, { method = "GET", body, token, slug = OUTLET } = {}) => {
+  const api = (path, { method = "GET", body, token, company = COMPANY, slug = OUTLET } = {}) => {
     const headers = { "Content-Type": "application/json" };
-    if (slug) { headers["X-Company-Slug"] = COMPANY; headers["X-Outlet-Slug"] = slug; }
+    if (slug) { headers["X-Company-Slug"] = company; headers["X-Outlet-Slug"] = slug; }
     if (token) headers.Authorization = `Bearer ${token}`;
     return fetch(`${baseUrl}${path}`, {
       method,
@@ -206,6 +207,142 @@ async function main() {
     // And the endpoint is staff-only.
     const anon = await api("/api/admin/impact");
     check("impact requires authentication", anon.status === 401, anon.status);
+
+    console.log("\n== Company impact ==");
+
+    const ownerLogin = await api("/api/admin-auth/login", {
+      method: "POST",
+      body: { email: "owner@coffesarowar.com", password: "password" },
+    });
+    const ownerToken = ownerLogin.body.token;
+    check("logged in as the company owner", Boolean(ownerToken), ownerLogin.body);
+
+    const company = await api("/api/company/impact", { token: ownerToken });
+    check("the company impact endpoint answers", company.status === 200, company.body);
+    check("it lists every outlet", (company.body?.perOutlet || []).length >= 3, company.body?.perOutlet);
+    check(
+      "outlets are sorted by revenue, highest first",
+      (company.body?.perOutlet || []).every(
+        (o, i, arr) => i === 0 || arr[i - 1].revenueTracked >= o.revenueTracked,
+      ),
+      company.body?.perOutlet,
+    );
+
+    const outletRevenueSum = (company.body?.perOutlet || [])
+      .reduce((sum, o) => sum + o.revenueTracked, 0);
+    check(
+      "company revenue equals the sum of its outlets",
+      Math.abs(company.body.revenueTracked - outletRevenueSum) < 0.01,
+      { company: company.body.revenueTracked, sum: outletRevenueSum },
+    );
+
+    console.log("\n== One person at two outlets counts once ==");
+
+    // The seeded customer asha spans two outlets of this company. Summing
+    // per-outlet customer counts would count her twice; the company figure
+    // must de-duplicate on CustomerAccount.
+    const outletCustomerSum = (company.body?.perOutlet || [])
+      .reduce((sum, o) => sum + o.customers, 0);
+    check(
+      "company customers is not the naive sum of per-outlet customers",
+      company.body.customers <= outletCustomerSum,
+      { company: company.body.customers, sum: outletCustomerSum },
+    );
+
+    // Every seeded company is comped with planId: null, so it has no plan
+    // price to compare against and the block is correctly hidden.
+    check("a comped company hides the ROI block", company.body?.roi === null, company.body?.roi);
+
+    console.log("\n== ROI on a real plan-backed subscription ==");
+
+    // The seeded companies can't exercise this, so build one that can: a
+    // fresh company redeems a Growth key (Rs 2,499/year), then takes a
+    // single small bill. Growth works out to ~Rs 205/month, so a Rs 100 bill
+    // must produce a multiple BELOW 1 — the case the reference page this was
+    // modelled on silently floors to "1X".
+    const platformLogin = await api("/api/platform/login", {
+      method: "POST",
+      body: { email: "admin@stampd.co", password: "password" },
+    });
+    const key = await api("/api/platform/subscription-keys", {
+      method: "POST",
+      token: platformLogin.body.token,
+      body: { planSlug: "growth", note: "impact ROI test" },
+    });
+    check("a growth key was generated", key.status === 201, key.body);
+
+    const roiCo = await makeCompanyWithOutlet(baseUrl, { label: `roi${Date.now()}` });
+    const redeemed = await api("/api/company/subscription/redeem-key", {
+      method: "POST",
+      token: roiCo.ownerToken,
+      body: { code: key.body.key.code },
+    });
+    check("the company redeems it", redeemed.status === 200, redeemed.body);
+
+    // One Rs 100 bill at the new company's outlet.
+    const roiCustEmail = `roicust_${Date.now()}@test.co`;
+    const roiTenant = { company: roiCo.companySlug, slug: roiCo.outletSlug };
+    await api("/api/auth/register", {
+      method: "POST",
+      ...roiTenant,
+      body: { name: "ROI Cust", email: roiCustEmail, password: "password", phone: "+9779800006666" },
+    });
+    const roiMint = await api("/__test__/mint-token", {
+      method: "POST", ...roiTenant,
+      body: { email: roiCustEmail, type: "email_verify" },
+    });
+    await api(`/api/auth/verify-email?token=${roiMint.body.token}`, roiTenant);
+    const roiCustLogin = await api("/api/auth/login", {
+      method: "POST", ...roiTenant,
+      body: { email: roiCustEmail, password: "password" },
+    });
+    const roiQr = await api("/api/admin/generate-qr", {
+      method: "POST", ...roiTenant, token: roiCo.adminToken, body: { billAmount: 100 },
+    });
+    const roiEarn = await api("/api/points/claim", {
+      method: "POST", ...roiTenant, token: roiCustLogin.body.token,
+      body: { token: roiQr.body.data.token },
+    });
+    check("the Rs 100 bill earned", roiEarn.status === 200, roiEarn.body);
+
+    const roiImpact = await api("/api/company/impact", { token: roiCo.ownerToken });
+    const roi = roiImpact.body?.roi;
+    check("a plan-backed company exposes ROI", Boolean(roi), roiImpact.body);
+    check("the plan is named", roi?.planName === "Growth", roi);
+    check(
+      "monthly cost is the annual price over twelve-ish months",
+      Math.abs(roi.monthlyCost - 2499 / (365 / 30)) < 0.01,
+      roi,
+    );
+    check("months elapsed never drops below 1", roi?.monthsElapsed === 1, roi);
+    check(
+      "cost to date is the monthly cost over the elapsed months",
+      Math.abs(roi.costToDate - roi.monthlyCost * roi.monthsElapsed) < 0.01,
+      roi,
+    );
+    check("revenue since subscription is the one bill", roi?.revenueSinceSubscription === 100, roi);
+    check(
+      "the multiple is revenue over cost",
+      Math.abs(roi.roiMultiple - roi.revenueSinceSubscription / roi.costToDate) < 0.01,
+      roi,
+    );
+    // The whole point: a programme that has not paid for itself yet must say
+    // so. Flooring this to 1X is what makes the rest of the page untrustworthy.
+    check("a below-1 multiple is reported as-is, not floored", roi?.roiMultiple < 1, roi);
+    check(
+      "revenue since subscription never exceeds all-time revenue",
+      roi.revenueSinceSubscription <= roiImpact.body.revenueTracked + 0.01,
+      { since: roi.revenueSinceSubscription, all: roiImpact.body.revenueTracked },
+    );
+
+    console.log("\n== Company impact stays company-private ==");
+
+    // An outlet admin's tenant JWT must not open the company console's door.
+    const leak = await api("/api/company/impact", { token: adminToken });
+    check("an outlet admin token is rejected", leak.status === 401 || leak.status === 403, leak.status);
+
+    const anonCompany = await api("/api/company/impact");
+    check("company impact requires authentication", anonCompany.status === 401, anonCompany.status);
   } finally {
     stop();
   }

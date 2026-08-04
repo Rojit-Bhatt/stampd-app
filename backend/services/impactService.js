@@ -1,5 +1,8 @@
 const User = require("../models/User");
 const Campaign = require("../models/Campaign");
+const Organization = require("../models/Organization");
+const Subscription = require("../models/Subscription");
+const SubscriptionPlan = require("../models/SubscriptionPlan");
 const PointsTransaction = require("../models/PointsTransaction");
 
 // "Has this been worth it?" — the value counterpart to reportService, which
@@ -192,10 +195,134 @@ const getOutletImpact = async (organizationId) => {
   return presentImpact({ facts, campaignCount });
 };
 
+const DAY_MS = 24 * 60 * 60 * 1000;
+const MONTH_MS = 30 * DAY_MS;
+
+// Does the subscription pay for itself?
+//
+// NOT all-time revenue over a monthly price — that compares a cumulative
+// flow to one month of cost and is not a ratio at all. Both sides span the
+// same window: revenue earned on or after the subscription started, over the
+// cost incurred since the subscription started.
+//
+// subscription.createdAt is the right start. subscriptionService keeps ONE
+// Subscription document per company and updates it in place on renewal, so
+// createdAt is when they began paying, not when they last renewed.
+//
+// Returns null when there is no subscription or no plan attached — a
+// platform-onboarded company has nothing to compare against, and the block
+// is hidden rather than shown empty.
+const buildRoi = async (companyId, revenueSinceSubscription) => {
+  const subscription = await Subscription.findOne({ companyId });
+  if (!subscription || !subscription.planId) return null;
+
+  const plan = await SubscriptionPlan.findOne({ _id: subscription.planId });
+  if (!plan) return null;
+
+  const intervalDays = plan.billingIntervalDays || 365;
+  const monthlyCost = round2(plan.priceNpr / (intervalDays / 30));
+
+  // Floored at 1: a company three days into its first month would otherwise
+  // divide by ~0.1 and read as 30X.
+  const elapsedMs = Date.now() - new Date(subscription.createdAt).getTime();
+  const monthsElapsed = Math.max(1, round2(elapsedMs / MONTH_MS));
+  const costToDate = round2(monthlyCost * monthsElapsed);
+
+  return {
+    planName: plan.name,
+    subscriptionStartedAt: new Date(subscription.createdAt).toISOString(),
+    monthlyCost,
+    monthsElapsed,
+    costToDate,
+    revenueSinceSubscription: round2(revenueSinceSubscription),
+    // Reported as-is, including below 1. An owner who catches one inflated
+    // number stops trusting the whole page.
+    roiMultiple: costToDate > 0 ? round2(revenueSinceSubscription / costToDate) : null
+  };
+};
+
+// The company owner's cross-outlet value view.
+//
+// Deliberately company-private: reachable only through /api/company
+// (verifyCompanySession), never through /api/admin — an outlet's console must
+// never see its siblings' numbers. Same boundary companyReportService holds.
+//
+// Retention at company level merges each person's earns across the company's
+// outlets before counting, because collectOutletFacts keys them by
+// CustomerAccount. That is deliberate and it is stricter than summing: one
+// earn at each of two outlets is NOT a repeat customer — they have not come
+// back anywhere. Each outlet still reads them as single-visit in perOutlet.
+const getCompanyImpact = async (companyId) => {
+  const outlets = await Organization.find({ companyId });
+
+  // Fetched first: the ROI window has to be known before the ledger pass, so
+  // each outlet can accumulate revenue-since alongside revenue-all-time.
+  const subscription = await Subscription.findOne({ companyId });
+  const since = subscription ? new Date(subscription.createdAt) : null;
+
+  const parts = await Promise.all(
+    outlets.map(async (outlet) => {
+      const [facts, campaignCount] = await Promise.all([
+        collectOutletFacts(outlet._id, { since }),
+        Campaign.countDocuments({ organizationId: outlet._id })
+      ]);
+      return { outlet, facts, campaignCount };
+    })
+  );
+
+  const merged = {
+    earnsByAccount: new Map(),
+    revenueTracked: 0,
+    revenueSince: 0,
+    redemptionCount: 0,
+    rewardValueRedeemed: 0,
+    valuedRedemptions: 0,
+    firstActivityAt: null
+  };
+  let campaignCount = 0;
+
+  for (const { facts, campaignCount: outletCampaigns } of parts) {
+    for (const [key, row] of facts.earnsByAccount) {
+      const existing = merged.earnsByAccount.get(key) || { count: 0, revenue: 0 };
+      existing.count += row.count;
+      existing.revenue += row.revenue;
+      merged.earnsByAccount.set(key, existing);
+    }
+    merged.revenueTracked += facts.revenueTracked;
+    merged.revenueSince += facts.revenueSince;
+    merged.redemptionCount += facts.redemptionCount;
+    merged.rewardValueRedeemed += facts.rewardValueRedeemed;
+    merged.valuedRedemptions += facts.valuedRedemptions;
+    if (facts.firstActivityAt && (!merged.firstActivityAt || facts.firstActivityAt < merged.firstActivityAt)) {
+      merged.firstActivityAt = facts.firstActivityAt;
+    }
+    campaignCount += outletCampaigns;
+  }
+
+  const perOutlet = parts
+    .map(({ outlet, facts, campaignCount: outletCampaigns }) => ({
+      outletId: outlet._id.toString(),
+      slug: outlet.slug,
+      name: outlet.name,
+      status: outlet.status,
+      ...presentImpact({ facts, campaignCount: outletCampaigns })
+    }))
+    .sort((a, b) => b.revenueTracked - a.revenueTracked);
+
+  return {
+    ...presentImpact({ facts: merged, campaignCount }),
+    outletCount: outlets.filter((o) => o.status !== "archived").length,
+    roi: await buildRoi(companyId, merged.revenueSince),
+    perOutlet
+  };
+};
+
 module.exports = {
   collectOutletFacts,
   summarizeEarns,
   buildMilestones,
   presentImpact,
-  getOutletImpact
+  getOutletImpact,
+  buildRoi,
+  getCompanyImpact
 };
