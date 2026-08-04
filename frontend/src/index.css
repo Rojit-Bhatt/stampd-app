@@ -103,6 +103,14 @@
   --chart-scale-04: oklch(0.68 0.02 106);
   --chart-scale-05: oklch(0.55 0.025 106);
   --chart-scale-pattern-color: oklch(0.96 0.005 106);
+
+  /* Stampd overrides for bklit's chart tokens — keep chart visuals on the same
+     design system as the rest of the app instead of bklit's own defaults. */
+  --chart-line-primary: var(--primary);
+  --chart-grid: var(--line);
+  --chart-tooltip-background: var(--surface);
+  --chart-tooltip-foreground: var(--ink);
+  --chart-tooltip-muted: var(--muted);
 }
 
 /* Dark set — written now, no toggle shipped. Neutrals are green-tinted
