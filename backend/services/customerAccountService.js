@@ -690,6 +690,8 @@ const getMyTenants = async ({ customerAccountId }) => {
         branding: {
           logoUrl: org.branding.logoUrl,
           bannerUrl: org.branding.bannerUrl,
+          logoImageId: org.branding.logoImageId || null,
+          bannerImageId: org.branding.bannerImageId || null,
           primaryColor: org.branding.primaryColor
         },
         // Same lazy expiry the outlet's own dashboard applies, so a balance

@@ -104,6 +104,16 @@ async function main() {
     const idxLater = titles1.indexOf(`Later Event ${runSuffix}`);
     check("sooner event sorts before the later one despite being created second", idxSooner < idxLater, { idxSooner, idxLater });
     check("outlet attribution present", (feed1.body.events || []).every((e) => e.slug && e.companySlug && e.businessName));
+    check(
+      "feed items include an imageId key (id-based image field)",
+      (feed1.body.events || []).every((e) => Object.prototype.hasOwnProperty.call(e, "imageId")),
+      feed1.body.events,
+    );
+    check(
+      "feed branding includes a logoImageId key",
+      (feed1.body.events || []).every((e) => Object.prototype.hasOwnProperty.call(e.branding, "logoImageId")),
+      feed1.body.events?.map((e) => e.branding),
+    );
 
     // --- a suspended outlet's event disappears from the feed ---
     const outletC = await makeSiblingOutlet(baseUrl, { label: `evc${runSuffix}`, category: "cafe" });

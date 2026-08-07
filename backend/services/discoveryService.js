@@ -44,6 +44,8 @@ const getDiscoverBusinesses = async () => {
         branding: {
           bannerUrl: org.branding.bannerUrl,
           logoUrl: org.branding.logoUrl,
+          bannerImageId: org.branding.bannerImageId || null,
+          logoImageId: org.branding.logoImageId || null,
           primaryColor: org.branding.primaryColor
         },
         contact: {
@@ -103,12 +105,14 @@ const getUpcomingEventsFeed = async (limit = EVENTS_FEED_LIMIT) => {
       location: event.location,
       description: event.description,
       imageUrl: event.imageUrl,
+      imageId: event.imageId || null,
       organizationId: org._id.toString(),
       slug: org.slug,
       companySlug: company.slug,
       businessName: org.name,
       branding: {
         logoUrl: org.branding.logoUrl,
+        logoImageId: org.branding.logoImageId || null,
         primaryColor: org.branding.primaryColor
       }
     });

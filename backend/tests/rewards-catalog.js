@@ -52,9 +52,10 @@ async function main() {
     await earn(2000);
 
     console.log("\n== The catalog merges both collections ==");
+    const FAKE_IMAGE_ID = "64b1f0c9a1b2c3d4e5f60789";
     const rw = await api("/api/admin/rewards", {
       method: "POST", token: adminToken,
-      body: { name: "Enamel Pin", description: "Small, ours.", pointsPrice: 50 },
+      body: { name: "Enamel Pin", description: "Small, ours.", pointsPrice: 50, imageId: FAKE_IMAGE_ID },
     });
     check("a standalone reward is created -> 201", rw.status === 201, rw.body);
     check("its price comes back in points, not centi", rw.body.reward.pointsPrice === 50, rw.body.reward);
@@ -63,6 +64,11 @@ async function main() {
     const byName = Object.fromEntries((cat.body.data || []).map((i) => [i.name, i]));
     check("a priced menu item is in the catalog", byName["House Coffee"]?.kind === "menu", cat.body.data);
     check("the standalone reward is in the catalog", byName["Enamel Pin"]?.kind === "reward", cat.body.data);
+    check(
+      "the reward's imageId survives into the catalog response",
+      byName["Enamel Pin"]?.imageId === FAKE_IMAGE_ID,
+      byName["Enamel Pin"],
+    );
     check(
       "a menu item with no points price stays out",
       !byName["Seasonal Special"],

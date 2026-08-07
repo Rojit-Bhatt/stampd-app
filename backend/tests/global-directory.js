@@ -86,6 +86,12 @@ async function main() {
     check("discover includes newly onboarded tenant B", slugs.includes(SLUG_B));
     const bizB = (discoverList.body?.businesses || []).find((b) => b.slug === SLUG_B);
     check("discover reflects the category set at onboarding", bizB?.category === "bakery");
+    check(
+      "discover branding includes logoImageId/bannerImageId keys (id-based image fields)",
+      bizB && Object.prototype.hasOwnProperty.call(bizB.branding, "logoImageId") &&
+        Object.prototype.hasOwnProperty.call(bizB.branding, "bannerImageId"),
+      bizB?.branding,
+    );
 
     // --- account A enters tenant A only. ---
     const enterA = await api("/api/customer-auth/enter-tenant", {
@@ -110,6 +116,13 @@ async function main() {
     const myOrgSlugsA = (myTenantsA.body?.memberships || []).map((m) => m.slug);
     check("account A my-tenants includes tenant A", myOrgSlugsA.includes(SLUG_A));
     check("account A my-tenants does NOT include tenant B (never entered)", !myOrgSlugsA.includes(SLUG_B));
+    const membershipA = (myTenantsA.body?.memberships || []).find((m) => m.slug === SLUG_A);
+    check(
+      "my-tenants branding includes logoImageId/bannerImageId keys",
+      membershipA && Object.prototype.hasOwnProperty.call(membershipA.branding, "logoImageId") &&
+        Object.prototype.hasOwnProperty.call(membershipA.branding, "bannerImageId"),
+      membershipA?.branding,
+    );
 
     // --- A second, separate CustomerAccount enters tenant B only. ---
     const accountBToken = await registerHelper("account-b");
