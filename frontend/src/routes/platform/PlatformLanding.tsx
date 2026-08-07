@@ -42,7 +42,13 @@ export default function PlatformLanding() {
   useEffect(() => {
     if (!location.hash) return;
     const target = document.querySelector(location.hash);
-    target?.scrollIntoView({ behavior: "smooth" });
+    // "instant", not "smooth": confirmed by direct testing that a smooth
+    // scroll (JS-driven or CSS scroll-behavior-driven) silently no-ops when
+    // triggered in the same tick as a client-side route change — "instant"
+    // works reliably in every case tested (fresh full load and SPA
+    // navigation alike). Landing a click precisely on the right section
+    // beats an animation that may or may not run.
+    target?.scrollIntoView({ behavior: "instant" });
   }, [location.hash]);
 
   // There is no self-serve signup — a company is registered by the platform
