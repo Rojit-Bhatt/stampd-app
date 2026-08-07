@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useNavigate, useParams, useSearchParams } from "react-router-dom";
-import toast from "react-hot-toast";
+import toast from "@/lib/toast";
 import { apiRequest } from "../lib/api";
 import { tenantPath } from "../lib/tenantPath";
 

@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import toast from "react-hot-toast";
+import toast from "@/lib/toast";
 import { Zap } from "lucide-react";
 import {
   useCampaignMutations,

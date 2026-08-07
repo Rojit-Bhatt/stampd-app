@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Plus, Pencil, Trash2, Gift } from "lucide-react";
 import { Link } from "react-router-dom";
-import toast from "react-hot-toast";
+import toast from "@/lib/toast";
 import { apiRequest } from "../../lib/api";
 import { useAdminAuth } from "../../context/AdminAuthContext";
 import { useTenant } from "../../context/TenantContext";

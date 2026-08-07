@@ -15,7 +15,7 @@ import {
 } from "lucide-react";
 import { Link } from "react-router-dom";
 import { useQueryClient } from "@tanstack/react-query";
-import toast from "react-hot-toast";
+import toast from "@/lib/toast";
 
 import { useTenant } from "../context/TenantContext";
 import { usePointsBalance, useRewardCatalog, usePublicCampaigns, formatPoints } from "../hooks/usePoints";

@@ -7,7 +7,7 @@ import { AdminAuthProvider } from './context/AdminAuthContext';
 import { PlatformAuthProvider } from './context/PlatformAuthContext';
 import { CompanyAuthProvider } from './context/CompanyAuthContext';
 import { TenantProvider } from './context/TenantContext';
-import { Toaster } from 'react-hot-toast';
+import { Toaster } from "@/lib/toast";
 import ErrorBoundary from './components/ErrorBoundary';
 import { AdminGuard } from './components/admin/AdminGuard';
 import { AdminLayout } from './components/admin/AdminLayout';
@@ -248,29 +248,7 @@ export default function App() {
               ) : (
                 routes
               )}
-              <Toaster
-                position="bottom-right"
-                // Clears the customer app's floating bottom nav, which
-                // occupies this exact corner on a phone.
-                containerStyle={{ bottom: "calc(5.5rem + env(safe-area-inset-bottom))" }}
-                toastOptions={{
-                  style: {
-                    background: "var(--surface)",
-                    color: "var(--ink)",
-                    border: "1px solid var(--line)",
-                    borderRadius: "var(--radius-btn)",
-                    padding: "10px 14px",
-                    fontSize: "13px",
-                    boxShadow: "0 12px 28px -12px rgba(20,32,28,0.18)",
-                  },
-                  success: {
-                    iconTheme: { primary: "var(--primary)", secondary: "var(--surface)" },
-                  },
-                  error: {
-                    iconTheme: { primary: "var(--muted)", secondary: "var(--surface)" },
-                  },
-                }}
-              />
+              <Toaster />
             </CustomerAuthProvider>
           </AdminAuthProvider>
           </CompanyAuthProvider>

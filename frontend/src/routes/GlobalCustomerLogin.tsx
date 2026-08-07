@@ -5,7 +5,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { GoogleLogin } from "@react-oauth/google";
-import toast from "react-hot-toast";
+import toast from "@/lib/toast";
 import { useCustomerAuth } from "../context/CustomerAuthContext";
 import { PhoneStepModal } from "../components/customer/PhoneStepModal";
 import { AuthSplitShell } from "../components/shared/auth/AuthSplitShell";

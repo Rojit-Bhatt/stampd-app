@@ -1,4 +1,4 @@
-import toast from "react-hot-toast";
+import toast from "@/lib/toast";
 import { useAdminSettings, useUpdateAdminSettings } from "../../hooks/useAdminSettings";
 import { SettingRow } from "../shared/SettingRow";
 import { Switch } from "../ui/switch";

@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Plus, Pencil, Trash2, Zap } from "lucide-react";
-import toast from "react-hot-toast";
+import toast from "@/lib/toast";
 import {
   useCampaigns,
   useCampaignMutations,

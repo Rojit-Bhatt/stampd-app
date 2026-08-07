@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import toast from "react-hot-toast";
+import toast from "@/lib/toast";
 import { apiRequest } from "../../lib/api";
 import { resolveImageUrl } from "../../lib/images";
 import { CreatePreviewModal } from "../shared/CreatePreviewModal";

@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { X, ScanLine, QrCode, CameraOff } from "lucide-react";
 import { Html5Qrcode } from "html5-qrcode";
-import toast from "react-hot-toast";
+import toast from "@/lib/toast";
 import { useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "../../lib/api";
 import { useNavigate } from "react-router-dom";
