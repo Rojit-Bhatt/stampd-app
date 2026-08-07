@@ -1,4 +1,5 @@
 import { useEffect } from "react";
+import { useLocation } from "react-router-dom";
 
 import { usePlatformContact } from "../../hooks/usePlatformContact";
 import { HeroStack } from "./landing/HeroStack";
@@ -19,6 +20,7 @@ import { WhatsAppFloat, toWaNumber } from "./landing/WhatsAppFloat";
 
 export default function PlatformLanding() {
   const { data: contact } = usePlatformContact();
+  const location = useLocation();
 
   useEffect(() => {
     const previousTitle = document.title;
@@ -30,6 +32,18 @@ export default function PlatformLanding() {
       document.documentElement.classList.remove("landing-dark");
     };
   }, []);
+
+  // Arriving here via a Link to "/#services" (e.g. clicked from /review-qr)
+  // is a client-side navigation, not a real page load — the browser's
+  // native same-document anchor scroll never fires. This does it manually.
+  // scroll-padding-top (index.css, scoped to html.landing-dark) already
+  // accounts for the fixed nav pill's height, and applies to
+  // scrollIntoView() calls the same as it would a native anchor jump.
+  useEffect(() => {
+    if (!location.hash) return;
+    const target = document.querySelector(location.hash);
+    target?.scrollIntoView({ behavior: "smooth" });
+  }, [location.hash]);
 
   // There is no self-serve signup — a company is registered by the platform
   // owner — so every CTA on this page resolves to a real conversation.

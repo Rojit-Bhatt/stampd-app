@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import { Link } from "react-router-dom";
+import { Link, useLocation } from "react-router-dom";
 
 import { useCountUp } from "../../../hooks/useCountUp";
 import type { NavLink } from "./data";
@@ -107,10 +107,25 @@ export function NavLinkItem({
   children?: ReactNode;
 }) {
   const content = children ?? link.label;
+  const location = useLocation();
 
   if (link.kind === "route") {
     return (
       <Link to={link.to} className={className} onClick={onClick}>
+        {content}
+      </Link>
+    );
+  }
+
+  // On the landing page itself, a plain same-page anchor scroll already
+  // works natively. From any other route (e.g. /review-qr, which reuses
+  // this same nav), a plain <a href="#services"> just rewrites the hash on
+  // the current path — there's no #services element there to scroll to. A
+  // real react-router navigation to "/" + the hash fixes that; the landing
+  // page's own hash-scroll effect (PlatformLanding.tsx) handles the rest.
+  if (location.pathname !== "/") {
+    return (
+      <Link to={`/${link.href}`} className={className} onClick={onClick}>
         {content}
       </Link>
     );
