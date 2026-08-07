@@ -9,6 +9,7 @@ import { tenantPath } from "../lib/tenantPath";
 import { BUSINESS_CATEGORIES, type BusinessCategory } from "../hooks/useAdminSettings";
 import { distanceKm } from "../lib/geo";
 import { darken } from "../lib/color";
+import { resolveImageUrl } from "../lib/images";
 import { Skeleton } from "../components/ui/skeleton";
 import { InstallAppPrompt } from "../components/customer/InstallAppPrompt";
 import { Input } from "@/components/ui/input";
@@ -218,9 +219,9 @@ function BusinessCard({
       <div
         className="flex h-28 items-end p-4"
         style={
-          business.branding.bannerUrl
+          resolveImageUrl(business.branding.bannerImageId, business.branding.bannerUrl)
             ? {
-                backgroundImage: `url(${business.branding.bannerUrl})`,
+                backgroundImage: `url(${resolveImageUrl(business.branding.bannerImageId, business.branding.bannerUrl)})`,
                 backgroundSize: "cover",
                 backgroundPosition: "center",
               }
@@ -229,9 +230,9 @@ function BusinessCard({
               }
         }
       >
-        {business.branding.logoUrl ? (
+        {resolveImageUrl(business.branding.logoImageId, business.branding.logoUrl) ? (
           <img
-            src={business.branding.logoUrl}
+            src={resolveImageUrl(business.branding.logoImageId, business.branding.logoUrl)}
             alt=""
             className="h-11 w-11 rounded-[var(--radius-field)] bg-white object-cover shadow-modal"
           />

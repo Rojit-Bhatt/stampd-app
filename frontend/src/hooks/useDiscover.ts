@@ -18,6 +18,8 @@ export interface DiscoverBusiness {
   branding: {
     bannerUrl: string;
     logoUrl: string;
+    bannerImageId: string | null;
+    logoImageId: string | null;
     primaryColor: string;
   };
   contact: {

@@ -10,6 +10,8 @@ export interface MyTenantMembership {
   branding: {
     logoUrl: string;
     bannerUrl: string;
+    logoImageId: string | null;
+    bannerImageId: string | null;
     primaryColor: string;
   };
   /** This outlet's balance. Points never pool, so there is no total. */

@@ -5,6 +5,7 @@ import { useMyTenants, type MyTenantMembership } from "../hooks/useMyTenants";
 import { formatPoints } from "../hooks/usePoints";
 import { tenantPath } from "../lib/tenantPath";
 import { darken } from "../lib/color";
+import { resolveImageUrl } from "../lib/images";
 import { Skeleton } from "../components/ui/skeleton";
 import { Button } from "@/components/ui/button";
 
@@ -63,9 +64,9 @@ function MembershipCard({ membership: m }: { membership: MyTenantMembership }) {
     >
       <div className="mb-4 flex items-center gap-3">
         {/* The logo tile is the outlet's identity and keeps its true colour. */}
-        {m.branding.logoUrl ? (
+        {resolveImageUrl(m.branding.logoImageId, m.branding.logoUrl) ? (
           <img
-            src={m.branding.logoUrl}
+            src={resolveImageUrl(m.branding.logoImageId, m.branding.logoUrl)}
             alt=""
             className="h-11 w-11 flex-shrink-0 rounded-[var(--radius-field)] object-cover"
           />
