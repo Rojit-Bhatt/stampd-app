@@ -105,6 +105,32 @@ async function main() {
     });
     check("two earns (800 total) meets Silver (2 visits, 700 spend)", tier3.body.tier === "Silver");
 
+    // Test 3b: meeting only the spend criterion (not visits) still qualifies
+    // under either/or semantics — the admin's explicit requirement. Same
+    // customer as Test 3: 2 visits, 800 total spend.
+    await api("/__test__/set-tier-thresholds", {
+      method: "POST",
+      slug: null,
+      body: {
+        organizationId,
+        tierThresholds: {
+          Bronze: { minVisits: 1, minSpend: 100 },
+          Silver: { minVisits: 5, minSpend: 700 },
+          Gold: { minVisits: null, minSpend: null },
+          Platinum: { minVisits: null, minSpend: null }
+        }
+      }
+    });
+    const tier3b = await api("/__test__/resolve-tier", {
+      method: "POST",
+      slug: null,
+      body: { organizationId, userId }
+    });
+    check(
+      "800 spend across 2 visits meets Silver on spend alone, despite Silver requiring 5 visits",
+      tier3b.body.tier === "Silver",
+    );
+
     // Configure Gold threshold
     await api("/__test__/set-tier-thresholds", {
       method: "POST",
