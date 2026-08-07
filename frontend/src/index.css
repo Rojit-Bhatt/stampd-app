@@ -14,7 +14,6 @@
 
   --color-primary: #0FA968;
   --color-primary-foreground: #ffffff;
-  --color-background: #F7F8F7;
 
   --radius-field: 8px;
   --radius-btn: 12px;
@@ -79,6 +78,9 @@
   --surface-dim: var(--line);
   --ring: var(--primary);
   --secondary: var(--surface-2);
+  --accent: var(--surface-2);
+  --border: var(--line);
+  --destructive: var(--err);
   --chart-1: oklch(0.32 0 none);
   --chart-2: oklch(0.41 0 none);
   --chart-3: oklch(0.54 0 none);
@@ -132,6 +134,9 @@
   --primary-soft: #182019;
   --ring: var(--primary);
   --secondary: var(--surface-2);
+  --accent: var(--surface-2);
+  --border: var(--line);
+  --destructive: var(--err);
 
   --brand: #34D399;
   --brand-deep: #0FA968;
@@ -319,6 +324,25 @@ html.landing-dark {
 }
 
 @theme inline {
+  /* Shadcn/Radix primitives (ui/sheet.tsx, dialog.tsx, alert.tsx,
+     separator.tsx) use Tailwind's own bg-background/text-foreground/
+     ring-ring/etc. utility names, which Tailwind generates from
+     --color-* theme variables — a different namespace from this app's
+     --bg/--ink/etc. design tokens. Defined `inline` (not in the static
+     @theme block above) so they re-resolve against whichever value
+     --background/--foreground/etc. currently holds, including under
+     .dark — a static @theme value is frozen at build time and would
+     never pick up the .dark override, which is exactly the bug this
+     fixes (the mobile nav sheet stayed light-themed under dark mode). */
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-secondary: var(--secondary);
+  --color-accent: var(--accent);
+  --color-border: var(--border);
+  --color-ring: var(--ring);
+  --color-destructive: var(--destructive);
+
   --color-chart-1: var(----chart-1);
   --color-chart-2: var(----chart-2);
   --color-chart-3: var(----chart-3);
