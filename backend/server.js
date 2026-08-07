@@ -102,6 +102,10 @@ app.get("/", (_req, res) => {
   });
 });
 
+app.get("/health", (_req, res) => {
+  res.status(200).json({ status: "ok" });
+});
+
 // Platform super-admin (onboards + manages businesses/tenants).
 app.use("/api/platform", platformRoutes);
 // Subscription plan CRUD (platform-admin-configurable) + public pricing read.
