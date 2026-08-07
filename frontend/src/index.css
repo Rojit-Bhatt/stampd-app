@@ -77,6 +77,8 @@
   --surface-container: var(--surface-2);
   --surface-container-high: var(--surface-2);
   --surface-dim: var(--line);
+  --ring: var(--primary);
+  --secondary: var(--surface-2);
   --chart-1: oklch(0.32 0 none);
   --chart-2: oklch(0.41 0 none);
   --chart-3: oklch(0.54 0 none);
@@ -128,6 +130,8 @@
   --primary: #34D399;
   --primary-deep: #0FA968;
   --primary-soft: #182019;
+  --ring: var(--primary);
+  --secondary: var(--surface-2);
 
   --brand: #34D399;
   --brand-deep: #0FA968;
