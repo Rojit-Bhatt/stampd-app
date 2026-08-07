@@ -45,7 +45,19 @@ export default function AdminRewards() {
   const update = useMutation({
     mutationFn: ({ id, patch }: { id: string; patch: { isActive: boolean } }) =>
       apiRequest(`/api/admin/rewards/${id}`, { method: "PATCH", role: "admin", body: patch }),
-    onSuccess: invalidate,
+    onMutate: async ({ id, patch }) => {
+      await qc.cancelQueries({ queryKey: ["adminRewards"] });
+      const previous = qc.getQueriesData<AdminRewardItem[]>({ queryKey: ["adminRewards"] });
+      qc.setQueriesData<AdminRewardItem[]>({ queryKey: ["adminRewards"] }, (old) =>
+        old?.map((item) => (item.id === id ? { ...item, ...patch } : item)),
+      );
+      return { previous };
+    },
+    onError: (error, _vars, context) => {
+      context?.previous?.forEach(([key, data]) => qc.setQueryData(key, data));
+      toast.error((error as Error).message || "Couldn't update that — try again.");
+    },
+    onSettled: invalidate,
   });
   const remove = useMutation({
     mutationFn: (id: string) => apiRequest(`/api/admin/rewards/${id}`, { method: "DELETE", role: "admin" }),

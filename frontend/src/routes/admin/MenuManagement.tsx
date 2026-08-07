@@ -134,7 +134,19 @@ export default function MenuManagement() {
   const patchItem = useMutation({
     mutationFn: ({ id, body }: { id: string; body: Partial<MenuItem> }) =>
       apiRequest(`/api/admin/menu/${id}`, { method: "PATCH", role: "admin", body }),
-    onSuccess: invalidate,
+    onMutate: async ({ id, body }) => {
+      await qc.cancelQueries({ queryKey: ["adminMenu"] });
+      const previous = qc.getQueriesData<MenuItem[]>({ queryKey: ["adminMenu"] });
+      qc.setQueriesData<MenuItem[]>({ queryKey: ["adminMenu"] }, (old) =>
+        old?.map((item) => (itemId(item) === id ? { ...item, ...body } : item)),
+      );
+      return { previous };
+    },
+    onError: (error, _vars, context) => {
+      context?.previous?.forEach(([key, data]) => qc.setQueryData(key, data));
+      toast.error((error as Error).message || "Couldn't update that — try again.");
+    },
+    onSettled: invalidate,
   });
 
   const deleteItem = useMutation({
