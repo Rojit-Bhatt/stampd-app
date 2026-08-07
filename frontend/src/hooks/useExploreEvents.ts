@@ -9,6 +9,7 @@ export interface ExploreEvent {
   location: string;
   description: string;
   imageUrl: string;
+  imageId: string | null;
   organizationId: string;
   /** The OUTLET slug. Unique only within its company — never a path on its own. */
   slug: string;

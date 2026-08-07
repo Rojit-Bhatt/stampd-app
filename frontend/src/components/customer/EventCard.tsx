@@ -1,20 +1,22 @@
 import { Calendar } from "lucide-react";
 import type { TenantEvent } from "../../context/TenantContext";
+import { resolveImageUrl } from "../../lib/images";
 
 export function formatEventDate(iso: string): string {
   return new Date(iso).toLocaleDateString(undefined, { month: "short", day: "numeric" });
 }
 
 interface EventCardProps {
-  event: Pick<TenantEvent, "title" | "date" | "time" | "location" | "description" | "imageUrl">;
+  event: Pick<TenantEvent, "title" | "date" | "time" | "location" | "description" | "imageUrl" | "imageId">;
 }
 
 export function EventCard({ event }: EventCardProps) {
+  const eventImageUrl = resolveImageUrl(event.imageId, event.imageUrl);
   return (
     <div className="flex gap-3">
-      {event.imageUrl && (
+      {eventImageUrl && (
         <img
-          src={event.imageUrl}
+          src={eventImageUrl}
           alt=""
           className="h-14 w-14 flex-shrink-0 rounded-[var(--radius-field)] object-cover"
         />

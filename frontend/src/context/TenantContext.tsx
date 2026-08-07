@@ -39,6 +39,7 @@ export interface TenantEvent {
   location: string;
   description: string;
   imageUrl: string;
+  imageId: string | null;
 }
 
 export interface TenantProgram {

@@ -100,6 +100,7 @@ export function EventFormModal({ open, onOpenChange, initial, onSaved }: EventFo
     location: draft.location || "Where it happens",
     description: draft.description || "A short description customers will see.",
     imageUrl: resolveImageUrl(draft.imageId, draft.imageUrl),
+    imageId: null,
   };
 
   return (
