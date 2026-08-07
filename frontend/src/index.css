@@ -178,7 +178,7 @@
    purpose (category pills, the My Places strip) keep working — they carry
    their own overflow-x-auto, which this doesn't touch. */
 html {
-  overflow-x: hidden;
+  overflow-x: clip;
   max-width: 100vw;
 }
 
@@ -189,7 +189,7 @@ body {
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   margin: 0;
-  overflow-x: hidden;
+  overflow-x: clip;
   max-width: 100vw;
 }
 
@@ -281,22 +281,20 @@ body {
   background-color: var(--lp-bg);
 }
 
-/* The global html/body `overflow-x: hidden` backstop above turns body into a
-   scroll container, which silently breaks the hero's sticky pin — the section
-   scrolls away instead of pinning. `clip` clips exactly the same overflow
-   WITHOUT establishing a scrollport, so the backstop's anti-pinch-zoom intent
-   survives and sticky still works. Scoped to the landing rather than changed
-   globally, because the rest of the app is built on the original rule.
-   The background is repeated on body so overscroll stays dark. */
+/* The global html/body rule above now uses `clip` (not `hidden`), so this no
+   longer needs its own overflow override — only the landing's dark
+   background, which the global rule doesn't set. The background is repeated
+   on body so overscroll stays dark. */
 html.landing-dark,
 html.landing-dark body {
-  overflow-x: clip;
   background-color: var(--lp-bg);
 }
 
 /* Without this every anchor lands UNDERNEATH the fixed nav pill, hiding the
    heading the visitor just clicked. 96px is the pill's height plus its top
-   margin. Scoped to the landing because no console has a fixed header. */
+   margin. Scoped to the landing because its nav pill's height is unique to
+   this page — other consoles' sticky headers are a different height and
+   don't need scroll-padding at all (they have no in-page anchor links). */
 html.landing-dark {
   scroll-padding-top: 96px;
 }
