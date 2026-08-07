@@ -11,6 +11,7 @@ import { ScannerModal } from "./ScannerModal";
 import { CustomerAvatar } from "./CustomerAvatar";
 import { RequiredInfoBanner } from "./RequiredInfoBanner";
 import { tenantPath } from "../../lib/tenantPath";
+import { resolveImageUrl } from "../../lib/images";
 
 // The authenticated customer app shell.
 //
@@ -98,9 +99,9 @@ export function CustomerLayout() {
           {/* Inside an outlet, the outlet is the identity — its own tile and
               name, in its own colour. Stampd's mark belongs on /explore. */}
           <Link to={path("dashboard")} className="flex min-w-0 items-center gap-2.5">
-            {tenant?.branding?.logoUrl ? (
+            {resolveImageUrl(tenant?.branding?.logoImageId, tenant?.branding?.logoUrl) ? (
               <img
-                src={tenant.branding.logoUrl}
+                src={resolveImageUrl(tenant?.branding?.logoImageId, tenant?.branding?.logoUrl)}
                 alt=""
                 className="h-9 w-9 flex-shrink-0 rounded-[var(--radius-field)] object-cover"
               />

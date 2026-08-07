@@ -9,6 +9,8 @@ export interface TenantBranding {
   tagline: string;
   logoUrl: string;
   bannerUrl: string;
+  logoImageId: string | null;
+  bannerImageId: string | null;
   primaryColor: string;
 }
 

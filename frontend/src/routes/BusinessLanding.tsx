@@ -1,6 +1,7 @@
 import { Link } from "react-router-dom";
 import { useTenant } from "../context/TenantContext";
 import { tenantPath } from "../lib/tenantPath";
+import { resolveImageUrl } from "../lib/images";
 
 // Public, tenant-branded landing shown at /:slug. Join / sign-in entry point.
 export default function BusinessLanding() {
@@ -15,14 +16,14 @@ export default function BusinessLanding() {
         <div
           className="relative flex h-[220px] items-end p-6"
           style={
-            branding?.bannerUrl
-              ? { backgroundImage: `url(${branding.bannerUrl})`, backgroundSize: "cover", backgroundPosition: "center" }
+            resolveImageUrl(branding?.bannerImageId, branding?.bannerUrl)
+              ? { backgroundImage: `url(${resolveImageUrl(branding?.bannerImageId, branding?.bannerUrl)})`, backgroundSize: "cover", backgroundPosition: "center" }
               : { background: "linear-gradient(150deg, var(--brand), var(--brand-deep))" }
           }
         >
-          {branding?.logoUrl ? (
+          {resolveImageUrl(branding?.logoImageId, branding?.logoUrl) ? (
             <img
-              src={branding.logoUrl}
+              src={resolveImageUrl(branding?.logoImageId, branding?.logoUrl)}
               alt={`${tenant?.name} logo`}
               className="h-[66px] w-[66px] rounded-[20px] bg-white object-cover shadow-lg"
             />
