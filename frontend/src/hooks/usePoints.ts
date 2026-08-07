@@ -53,6 +53,7 @@ export interface RewardItem {
   category: string;
   pointsPrice: number;
   imageUrl?: string;
+  imageId?: string | null;
 }
 
 export function usePointsBalance() {

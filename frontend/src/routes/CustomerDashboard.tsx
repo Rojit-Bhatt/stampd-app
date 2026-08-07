@@ -23,6 +23,7 @@ import { useCustomerMenu } from "../hooks/useCustomerMenu";
 import { useAccount } from "../hooks/useAccount";
 import { apiRequest } from "../lib/api";
 import { tenantPath } from "../lib/tenantPath";
+import { resolveImageUrl } from "../lib/images";
 import { PointsBalanceCard } from "../components/customer/PointsBalanceCard";
 import { EventCard } from "../components/customer/EventCard";
 import { DynamicText } from "../components/shared/DynamicText";
@@ -240,11 +241,12 @@ export default function CustomerDashboard() {
               <ul className="flex flex-col gap-3">
                 {catalog.slice(0, 4).map((item) => {
                   const canAfford = item.pointsPrice <= balance;
+                  const itemImageUrl = resolveImageUrl(item.imageId, item.imageUrl);
                   return (
                     <li key={item.id} className="flex items-center gap-3">
-                      {item.imageUrl ? (
+                      {itemImageUrl ? (
                         <img
-                          src={item.imageUrl}
+                          src={itemImageUrl}
                           alt={item.name}
                           className="h-8 w-8 flex-shrink-0 rounded-full object-cover"
                         />
