@@ -32,7 +32,11 @@ const getCompanyRollup = async (companyId, { startDate, endDate } = {}) => {
 
   const perOutlet = await Promise.all(
     outlets.map(async (outlet) => {
-      const customers = await User.find({ organizationId: outlet._id, role: "customer" });
+      const customers = await User.find({
+        organizationId: outlet._id,
+        role: "customer",
+        createdAt: { $gte: start, $lte: end }
+      });
       customers.forEach((c) => {
         distinctCustomerAccountIds.add(
           c.customerAccountId ? c.customerAccountId.toString() : c._id.toString()
@@ -93,12 +97,11 @@ const getCompanyRollup = async (companyId, { startDate, endDate } = {}) => {
     range: { start: start.toISOString(), end: end.toISOString() },
     totals: {
       ...present(totals),
-      // Customer counts are a snapshot of who exists today, not a flow, so
-      // they're never filtered by the date range — a customer who joined
-      // outside the selected window is still a real customer of this outlet.
-      // Distinct CustomerAccounts, not summed per-outlet User rows — a
-      // customer loyal to two outlets of this company must count once, the
-      // same reasoning platformAnalyticsService uses for its platform-wide total.
+      // New customers within the selected range, deduped by distinct
+      // CustomerAccount — a customer loyal to two outlets of this company
+      // must count once, the same reasoning platformAnalyticsService uses
+      // for its platform-wide total. Matches reportService.getSummaryStats'
+      // "new customers" semantics rather than an all-time snapshot.
       customersCount: distinctCustomerAccountIds.size,
       outletCount: perOutlet.filter((o) => o.status !== "archived").length
     },

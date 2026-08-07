@@ -13,8 +13,10 @@
  *
  * Also covers: an omitted range still resolves (the trailing-30-days
  * default) rather than 400ing or silently returning the company's entire
- * history; customer counts are never range-filtered, since they're a
- * snapshot of who exists, not a flow.
+ * history; customer counts ARE range-filtered (new customers in range),
+ * checked loosely (> not ===) because every seed customer in a freshly
+ * booted mock DB is also dated "today", so an exact delta of 1 isn't
+ * achievable here — only that including today strictly increases the count.
  *
  * Run directly: `node tests/company-reports-range.js`
  */
@@ -157,16 +159,21 @@ async function main() {
       durbarmarg(noRange.body),
     );
 
-    console.log("\n== Customer counts are never range-filtered ==");
+    console.log("\n== Customer counts ARE range-filtered (new customers in range) ==");
     check(
-      "durbarmarg's customer count is identical whether the earn is in-range or not",
-      durbarmarg(excluding.body)?.customersCount === durbarmarg(including.body)?.customersCount &&
-        durbarmarg(excluding.body)?.customersCount === baselineCustomers,
-      {
-        baselineCustomers,
-        excluding: durbarmarg(excluding.body)?.customersCount,
-        including: durbarmarg(including.body)?.customersCount,
-      },
+      "a range ending yesterday excludes the customer registered today",
+      durbarmarg(excluding.body)?.customersCount === baselineCustomers,
+      { baselineCustomers, excluding: durbarmarg(excluding.body)?.customersCount },
+    );
+    check(
+      "widening the range to include today includes the customer registered today",
+      durbarmarg(including.body)?.customersCount > durbarmarg(excluding.body)?.customersCount,
+      { excluding: durbarmarg(excluding.body)?.customersCount, including: durbarmarg(including.body)?.customersCount },
+    );
+    check(
+      "the company total customer count also increases once today is in range",
+      including.body.totals.customersCount > before.body.totals.customersCount,
+      { before: before.body.totals.customersCount, after: including.body.totals.customersCount },
     );
   } finally {
     stop();
