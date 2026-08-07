@@ -10,7 +10,7 @@ const {
 } = require("./pointsService");
 const { toPoints } = require("../utils/pointsMath");
 const { resolveDateRange } = require("../utils/dateRange");
-const { TIER_LABELS } = require("../config/platform");
+const { TIER_LABELS, PLATFORM_TIMEZONE } = require("../config/platform");
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 const WEEK_MS = 7 * DAY_MS;
@@ -95,6 +95,34 @@ const getSummaryStats = async (organizationId, { startDate, endDate } = {}) => {
 
 const dayKey = (date) => new Date(date).toISOString().slice(0, 10);
 
+// Midnight, in PLATFORM_TIMEZONE, of the day `date` falls on — as a real UTC
+// instant usable in a Mongo-style {$gte, $lte} range. Not `date.getHours()`
+// tricks: the server runs in UTC in production, and Nepal is UTC+5:45, so a
+// naive UTC midnight would cut "today" off 5h45m early for a Nepali business
+// (the same reasoning campaignService.localDayOfWeek already documents for
+// campaign day-of-week checks).
+const startOfLocalDay = (date, timeZone = PLATFORM_TIMEZONE) => {
+  const parts = new Intl.DateTimeFormat("en-US", {
+    timeZone,
+    year: "numeric", month: "2-digit", day: "2-digit",
+    hour: "2-digit", minute: "2-digit", second: "2-digit",
+    hourCycle: "h23"
+  }).formatToParts(date).reduce((acc, p) => { acc[p.type] = p.value; return acc; }, {});
+
+  // The instant `date` reads as this wall-clock time in `timeZone`. The gap
+  // between that wall-clock reading (misinterpreted as UTC) and the real UTC
+  // instant IS the timezone offset at this moment (handles DST correctly
+  // since it's derived from the real instant, not a fixed +5:45 constant).
+  const wallClockAsUtc = Date.UTC(
+    Number(parts.year), Number(parts.month) - 1, Number(parts.day),
+    Number(parts.hour), Number(parts.minute), Number(parts.second)
+  );
+  const offsetMs = wallClockAsUtc - date.getTime();
+
+  const localMidnightAsUtc = Date.UTC(Number(parts.year), Number(parts.month) - 1, Number(parts.day), 0, 0, 0);
+  return new Date(localMidnightAsUtc - offsetMs);
+};
+
 // Week-over-week % change. Only meaningful for flow metrics (counted within
 // a window) — undefined (null) when the prior window was zero and the
 // current one isn't, since a percentage off zero is not a real number.
@@ -103,13 +131,15 @@ const weekOverWeekTrend = (current, previous) => {
   return current > 0 ? null : 0;
 };
 
-// Backs the Admin Dashboard's 4 KPI tiles + 2 charts. Every number here is
-// real — no fabricated trend/activity data. The mock DB has no aggregation
-// pipeline, so day/week bucketing is plain find() + JS loops.
+// Backs the Admin Dashboard's 4 KPI tiles + 2 charts. newCustomers/
+// pointsIssued/revenue cover TODAY (midnight-to-now in PLATFORM_TIMEZONE)
+// vs YESTERDAY for the trend badge — not a rolling week. Every number here
+// is real — no fabricated trend/activity data. The mock DB has no
+// aggregation pipeline, so day/week bucketing is plain find() + JS loops.
 const getDashboardStats = async (organizationId) => {
   const now = new Date();
-  const currentStart = new Date(now.getTime() - WEEK_MS);
-  const previousStart = new Date(now.getTime() - 2 * WEEK_MS);
+  const currentStart = startOfLocalDay(now);
+  const previousStart = new Date(currentStart.getTime() - DAY_MS);
   const currentRange = { $gte: currentStart, $lte: now };
   const previousRange = { $gte: previousStart, $lte: currentStart };
 

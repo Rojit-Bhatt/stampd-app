@@ -34,9 +34,16 @@ const resolveTier = async (organizationId, customerId, { org, earns } = {}) => {
     const threshold = resolvedOrg.tierThresholds[label];
     if (!threshold) continue;
     const { minVisits, minSpend } = threshold;
-    if (minVisits === null || minVisits === undefined) continue;
-    if (minSpend === null || minSpend === undefined) continue;
-    if (visits >= minVisits && spend >= minSpend) {
+    const hasVisits = minVisits !== null && minVisits !== undefined;
+    const hasSpend = minSpend !== null && minSpend !== undefined;
+    if (!hasVisits && !hasSpend) continue;
+    // Either criterion qualifies, not both — a customer who visits often but
+    // spends modestly (or vice versa) still earns tier credit for the one
+    // habit they actually have. A threshold with only one side configured
+    // (the other left null) is judged solely on the side that's set.
+    const meetsVisits = hasVisits && visits >= minVisits;
+    const meetsSpend = hasSpend && spend >= minSpend;
+    if (meetsVisits || meetsSpend) {
       return label;
     }
   }

@@ -208,9 +208,9 @@ export default function AdminOverview() {
   // "how fast it's moving" — so it deliberately gets no trend badge. Drawing
   // them identically is what makes the two kinds of number get confused.
   const flowKpis: { label: string; metric?: DashboardMetric; format?: (v: number) => string }[] = [
-    { label: "New customers · 7d", metric: dashboardStats?.newCustomers },
-    { label: "Points issued · 7d", metric: dashboardStats?.pointsIssued, format: formatPoints },
-    { label: "Revenue · 7d", metric: dashboardStats?.revenue, format: (v) => `Rs ${v.toLocaleString("en-IN")}` },
+    { label: "New customers · today", metric: dashboardStats?.newCustomers },
+    { label: "Points issued · today", metric: dashboardStats?.pointsIssued, format: formatPoints },
+    { label: "Revenue · today", metric: dashboardStats?.revenue, format: (v) => `Rs ${v.toLocaleString("en-IN")}` },
   ];
 
   const filtered = useMemo(() => {
