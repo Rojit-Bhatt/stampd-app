@@ -26,7 +26,7 @@
 - Consumes: `backend/tests/helpers/bootServer.js`'s existing `bootServer({port, timeoutMs})` → `{baseUrl, stop}` helper (already used by every other test file in `backend/tests/`).
 - Produces: nothing consumed by later tasks — this is a standalone group.
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 Create `backend/tests/health-endpoint.js`:
 
@@ -67,12 +67,12 @@ main().catch((err) => {
 });
 ```
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 Run: `cd backend && node tests/health-endpoint.js`
 Expected: FAIL — connection refused or 404, since `/health` doesn't exist yet.
 
-- [ ] **Step 3: Add the route in `server.js`**
+- [x] **Step 3: Add the route in `server.js`**
 
 Open `backend/server.js` and find the existing block:
 
@@ -95,19 +95,19 @@ app.get("/health", (_req, res) => {
 });
 ```
 
-- [ ] **Step 4: Run test to verify it passes**
+- [x] **Step 4: Run test to verify it passes**
 
 Run: `cd backend && node tests/health-endpoint.js`
 Expected: `✓ GET /health returns 200 {status: "ok"}`, exit code 0.
 
-- [ ] **Step 5: Add to the test chain**
+- [x] **Step 5: Add to the test chain**
 
 Open `backend/package.json`, find the `"test"` script (a chained sequence of `node tests/*.js` runs), and add `&& node tests/health-endpoint.js` to the chain, following the exact same pattern as the neighboring entries.
 
 Run: `cd backend && npm test 2>&1 | tail -20`
 Expected: full suite still passes, including the new health-endpoint line.
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add backend/server.js backend/tests/health-endpoint.js backend/package.json
