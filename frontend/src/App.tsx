@@ -7,7 +7,7 @@ import { AdminAuthProvider } from './context/AdminAuthContext';
 import { PlatformAuthProvider } from './context/PlatformAuthContext';
 import { CompanyAuthProvider } from './context/CompanyAuthContext';
 import { TenantProvider } from './context/TenantContext';
-import { Toaster } from 'react-hot-toast';
+import { Toaster } from "@/lib/toast";
 import ErrorBoundary from './components/ErrorBoundary';
 import { AdminGuard } from './components/admin/AdminGuard';
 import { AdminLayout } from './components/admin/AdminLayout';
@@ -21,6 +21,7 @@ const queryClient = new QueryClient();
 
 // Lazy load pages for route-based code splitting
 const BusinessLanding = lazy(() => import('./routes/BusinessLanding'));
+const LoginSelect = lazy(() => import('./routes/LoginSelect'));
 const GlobalCustomerLogin = lazy(() => import('./routes/GlobalCustomerLogin'));
 const GlobalCustomerRegister = lazy(() => import('./routes/GlobalCustomerRegister'));
 const Explore = lazy(() => import('./routes/Explore'));
@@ -33,6 +34,7 @@ const CustomerDashboard = lazy(() => import('./routes/CustomerDashboard'));
 const CustomerHistory = lazy(() => import('./routes/CustomerHistory'));
 const RedeemLanding = lazy(() => import('./routes/RedeemLanding'));
 const CustomerMenu = lazy(() => import('./routes/CustomerMenu'));
+const CustomerRewards = lazy(() => import('./routes/CustomerRewards'));
 const VerifyEmail = lazy(() => import('./routes/VerifyEmail'));
 const ClaimLanding = lazy(() => import('./routes/ClaimLanding'));
 const GlobalVerifyEmail = lazy(() => import('./routes/GlobalVerifyEmail'));
@@ -121,6 +123,10 @@ export default function App() {
               matches before /:companySlug, so "review-qr" is reserved in
               config/platform.js. */}
           <Route path="/review-qr" element={<ReviewQrGenerator />} />
+          {/* The single entry point every marketing-site "Log in" button
+              points to — verifies business vs customer before either sign-in
+              form renders. Also reserved in config/platform.js. */}
+          <Route path="/login" element={<LoginSelect />} />
           <Route path="/platform/login" element={<PlatformLogin />} />
           <Route path="/business-login" element={<Navigate to="/admin-login" replace />} />
           {/* Global customer identity: one CustomerAccount works at
@@ -190,6 +196,7 @@ export default function App() {
               <Route path="dashboard" element={<CustomerDashboard />} />
               <Route path="history" element={<CustomerHistory />} />
               <Route path="menu" element={<CustomerMenu />} />
+              <Route path="rewards" element={<CustomerRewards />} />
               <Route path="settings" element={<CustomerSettings />} />
             </Route>
 
@@ -248,29 +255,7 @@ export default function App() {
               ) : (
                 routes
               )}
-              <Toaster
-                position="bottom-right"
-                // Clears the customer app's floating bottom nav, which
-                // occupies this exact corner on a phone.
-                containerStyle={{ bottom: "calc(5.5rem + env(safe-area-inset-bottom))" }}
-                toastOptions={{
-                  style: {
-                    background: "var(--surface)",
-                    color: "var(--ink)",
-                    border: "1px solid var(--line)",
-                    borderRadius: "var(--radius-btn)",
-                    padding: "10px 14px",
-                    fontSize: "13px",
-                    boxShadow: "0 12px 28px -12px rgba(20,32,28,0.18)",
-                  },
-                  success: {
-                    iconTheme: { primary: "var(--primary)", secondary: "var(--surface)" },
-                  },
-                  error: {
-                    iconTheme: { primary: "var(--muted)", secondary: "var(--surface)" },
-                  },
-                }}
-              />
+              <Toaster />
             </CustomerAuthProvider>
           </AdminAuthProvider>
           </CompanyAuthProvider>

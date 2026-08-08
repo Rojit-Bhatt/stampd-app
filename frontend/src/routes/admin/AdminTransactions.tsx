@@ -2,7 +2,7 @@ import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "react-router-dom";
 import { Search, Coins, Gift, Hourglass, Download } from "lucide-react";
-import toast from "react-hot-toast";
+import toast from "@/lib/toast";
 import { apiRequest, apiUrl, tenantHeaders } from "../../lib/api";
 import { useTenant } from "../../context/TenantContext";
 import { tenantPath } from "../../lib/tenantPath";

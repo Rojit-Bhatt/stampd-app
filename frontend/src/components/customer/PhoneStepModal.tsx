@@ -1,5 +1,5 @@
 import { useState } from "react";
-import toast from "react-hot-toast";
+import toast from "@/lib/toast";
 import { useCustomerAuth } from "../../context/CustomerAuthContext";
 import { Button } from "@/components/ui/button";
 

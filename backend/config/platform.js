@@ -67,7 +67,7 @@ const SMS_COST_PAISA_PER_MESSAGE = 100; // NPR 1.00
 const RESERVED_SLUGS = new Set([
   "api", "www", "app", "admin", "assets", "static", "public",
   "explore", "platform", "company", "owner",
-  "admin-login", "business-login", "customer-login", "customer-register",
+  "login", "admin-login", "business-login", "customer-login", "customer-register",
   "admin-verify-email", "admin-forgot-password", "admin-reset-password",
   "verify-email", "reset-password", "forgot-password",
   // Marketing-site legal pages. App.tsx matches these literal routes before

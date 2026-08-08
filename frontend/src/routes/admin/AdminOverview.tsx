@@ -25,6 +25,7 @@ import { XAxis } from "@/components/charts/x-axis";
 import { YAxis } from "@/components/charts/y-axis";
 import { ChartTooltip } from "@/components/charts/tooltip";
 import { ChartLegend } from "../../components/shared/ChartLegend";
+import { NotificationStack } from "../../components/admin/NotificationStack";
 
 import { apiRequest, apiUrl, tenantHeaders } from "../../lib/api";
 import { useAdminSettings } from "../../hooks/useAdminSettings";
@@ -245,14 +246,17 @@ export default function AdminOverview() {
 
   return (
     <div className="flex flex-col gap-6">
-      <header>
-        <h1 className="font-display text-[28px] font-bold leading-tight text-[var(--ink)]">
-          {greeting()}
-          {displayName ? `, ${displayName.split(" ")[0]}` : ""}
-        </h1>
-        <p className="mt-0.5 text-sm text-[var(--muted)]">
-          {today} · {settings?.name ?? "your outlet"}
-        </p>
+      <header className="flex items-start justify-between gap-3">
+        <div>
+          <h1 className="font-display text-[28px] font-bold leading-tight text-[var(--ink)]">
+            {greeting()}
+            {displayName ? `, ${displayName.split(" ")[0]}` : ""}
+          </h1>
+          <p className="mt-0.5 text-sm text-[var(--muted)]">
+            {today} · {settings?.name ?? "your outlet"}
+          </p>
+        </div>
+        <NotificationStack />
       </header>
 
       {/* A live multiplier changes what every bill is worth, so staff need to

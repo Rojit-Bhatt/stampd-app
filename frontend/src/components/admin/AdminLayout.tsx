@@ -25,7 +25,6 @@ import { useAdminSettings } from "../../hooks/useAdminSettings";
 import { useAccount } from "../../hooks/useAccount";
 import { AccountMenu } from "../shared/AccountMenu";
 import { OrgSwitcher } from "./OrgSwitcher";
-import { NotificationBell } from "./NotificationBell";
 import { ThemeToggle } from "../shared/ThemeToggle";
 import { tenantPath } from "../../lib/tenantPath";
 import { Sheet, SheetContent, SheetTitle } from "../ui/sheet";
@@ -264,7 +263,6 @@ export function AdminLayout() {
               dropUp
             />
           </div>
-          <NotificationBell />
           <ThemeToggle className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-[var(--radius-btn)] text-[var(--muted)] transition-colors hover:bg-[var(--surface-2)] hover:text-[var(--ink)]" />
         </div>
       </div>

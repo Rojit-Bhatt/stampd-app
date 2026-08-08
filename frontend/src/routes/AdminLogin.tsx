@@ -3,7 +3,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { Link } from "react-router-dom";
-import toast from "react-hot-toast";
+import toast from "@/lib/toast";
 import { apiRequest } from "../lib/api";
 import { tenantPath } from "../lib/tenantPath";
 import { PLATFORM_NAME } from "../lib/platform";
@@ -168,6 +168,9 @@ export default function AdminLogin() {
           <p className="mt-5 text-center text-[13px] text-[var(--lp-muted)]">
             Want to bring your business onto {PLATFORM_NAME}?{" "}
             <Link to="/" className="font-bold text-[var(--lp-green)] hover:underline">Get in touch</Link>
+          </p>
+          <p className="mt-2.5 text-center text-[13px] text-[var(--lp-muted)]">
+            <Link to="/login" className="hover:text-[var(--lp-ink)]">← Back</Link>
           </p>
         </>
       )}

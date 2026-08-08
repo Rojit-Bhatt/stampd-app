@@ -74,7 +74,7 @@ export function LandingNav({ contactHref }: { contactHref: string }) {
             {/* The marketing page is still the front door for staff — the old
                 landing carried this and losing it would strand them. */}
             <Link
-              to="/admin-login"
+              to="/login"
               className="hidden px-3 py-1.5 text-sm text-[var(--lp-muted)] transition-colors hover:text-[var(--lp-ink)] sm:block"
             >
               Log in
@@ -138,7 +138,7 @@ export function LandingNav({ contactHref }: { contactHref: string }) {
             ))}
             <li>
               <Link
-                to="/admin-login"
+                to="/login"
                 onClick={() => setMenuOpen(false)}
                 className="block rounded-2xl px-3 py-2.5 text-sm text-[var(--lp-muted)] hover:bg-white/[0.06] hover:text-[var(--lp-ink)]"
               >

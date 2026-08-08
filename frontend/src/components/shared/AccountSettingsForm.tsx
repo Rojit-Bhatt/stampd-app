@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import toast from "react-hot-toast";
+import toast from "@/lib/toast";
 import { LogOut, User, ShieldCheck } from "lucide-react";
 import { apiRequest } from "../../lib/api";
 import { useAccount, useUpdateProfile, useChangePassword } from "../../hooks/useAccount";

@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useQuery, useQueryClient, useMutation } from "@tanstack/react-query";
 import { Trash2, Plus, Pencil } from "lucide-react";
-import toast from "react-hot-toast";
+import toast from "@/lib/toast";
 import { apiRequest } from "../../lib/api";
 import { useAdminAuth } from "../../context/AdminAuthContext";
 import { Skeleton } from "../../components/ui/skeleton";

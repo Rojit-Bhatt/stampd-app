@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { Camera, Loader2, Trash2 } from "lucide-react";
-import toast from "react-hot-toast";
+import toast from "@/lib/toast";
 
 import { useCustomerAuth, type GlobalAccount } from "../../context/CustomerAuthContext";
 import { apiRequest } from "../../lib/api";

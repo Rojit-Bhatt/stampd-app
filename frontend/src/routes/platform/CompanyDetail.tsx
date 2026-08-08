@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Link, useParams } from "react-router-dom";
-import toast from "react-hot-toast";
+import toast from "@/lib/toast";
 import { apiRequest } from "../../lib/api";
 import type { Company } from "./Companies";
 import { CATEGORY_LABELS } from "../../hooks/useAdminSettings";

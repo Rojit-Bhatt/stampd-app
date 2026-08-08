@@ -22,7 +22,12 @@ interface AdminCustomer {
   lastActivityAt: string | null;
   redemptionCount: number;
   totalSpent: number;
+  createdAt: string;
   history: { id: string; type: "earn" | "redeem" | "expire"; points: number; billAmount: number | null; rewardName: string; createdAt: string }[];
+}
+
+function formatJoinDate(iso: string): string {
+  return new Date(iso).toLocaleDateString(undefined, { month: "long", day: "numeric", year: "numeric" });
 }
 
 function formatVisit(iso: string): string {
@@ -130,6 +135,11 @@ export default function AdminCustomerDetail() {
               <MapPin className="mt-0.5 h-4 w-4 flex-shrink-0 text-[var(--muted)]" />
               {customer.address || "—"}
             </div>
+            {customer.createdAt && (
+              <div className="mt-3 text-xs text-[var(--soft)]">
+                Customer since {formatJoinDate(customer.createdAt)}
+              </div>
+            )}
           </div>
 
           <div className="rounded-[var(--radius-card)] border border-[var(--line)] bg-[var(--surface)] shadow-ambient p-6">

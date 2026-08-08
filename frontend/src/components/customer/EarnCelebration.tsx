@@ -1,3 +1,4 @@
+import { useEffect, useRef } from "react";
 import { ArrowRight, Zap } from "lucide-react";
 import { motion } from "motion/react";
 
@@ -6,6 +7,13 @@ import { formatNpr } from "../../lib/subscription";
 import { useCountUp } from "../../hooks/useCountUp";
 import { useMotion } from "../../lib/motion";
 import { Button } from "@/components/ui/button";
+
+// How long the celebration lingers before auto-advancing — long enough to
+// read the figure and the new balance once the count-up settles, short
+// enough that it doesn't feel stuck. Reduced-motion skips the count-up
+// entirely, so the wait shortens to match.
+const AUTO_ADVANCE_MS = 2200;
+const AUTO_ADVANCE_MS_REDUCED = 1200;
 
 interface EarnCelebrationProps {
   /** Points just added. */
@@ -51,6 +59,19 @@ export function EarnCelebration({
   const m = useMotion();
   const counted = useCountUp(points);
   const hasCampaign = multiplier !== undefined && multiplier > 1;
+
+  // Optimises the flow: no manual tap needed. onDone in a ref so the timer
+  // is set up once on mount and doesn't restart if a parent re-renders with
+  // a new closure — it always calls whatever onDone is current when it fires.
+  const onDoneRef = useRef(onDone);
+  onDoneRef.current = onDone;
+
+  useEffect(() => {
+    const delay = m.prefersReduced ? AUTO_ADVANCE_MS_REDUCED : AUTO_ADVANCE_MS;
+    const timer = setTimeout(() => onDoneRef.current(), delay);
+    return () => clearTimeout(timer);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [m.prefersReduced]);
 
   return (
     <div

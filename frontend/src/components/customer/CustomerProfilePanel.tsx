@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { LogOut, User, Contact, Bell, ShieldCheck, Trash2 } from "lucide-react";
-import toast from "react-hot-toast";
+import toast from "@/lib/toast";
 
 import { useCustomerAuth, type GlobalAccount, type Gender } from "../../context/CustomerAuthContext";
 import { apiRequest } from "../../lib/api";

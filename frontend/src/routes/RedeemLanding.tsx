@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useSearchParams, useNavigate, Link } from "react-router-dom";
 import { useQueryClient } from "@tanstack/react-query";
 import { ChevronLeft, Gift, Loader2, MailWarning } from "lucide-react";
-import toast from "react-hot-toast";
+import toast from "@/lib/toast";
 import { useTenant } from "../context/TenantContext";
 import { useCustomerAuth } from "../context/CustomerAuthContext";
 import { usePointsBalance, useRewardCatalog, formatPoints } from "../hooks/usePoints";

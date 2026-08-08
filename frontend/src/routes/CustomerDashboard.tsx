@@ -8,22 +8,18 @@ import {
   Instagram,
   Facebook,
   Twitter,
-  Gift,
   Zap,
   Star,
   Heart,
 } from "lucide-react";
-import { Link } from "react-router-dom";
 import { useQueryClient } from "@tanstack/react-query";
-import toast from "react-hot-toast";
+import toast from "@/lib/toast";
 
 import { useTenant } from "../context/TenantContext";
 import { usePointsBalance, useRewardCatalog, usePublicCampaigns, formatPoints } from "../hooks/usePoints";
 import { useCustomerMenu } from "../hooks/useCustomerMenu";
 import { useAccount } from "../hooks/useAccount";
 import { apiRequest } from "../lib/api";
-import { tenantPath } from "../lib/tenantPath";
-import { resolveImageUrl } from "../lib/images";
 import { PointsBalanceCard } from "../components/customer/PointsBalanceCard";
 import { EventCard } from "../components/customer/EventCard";
 import { DynamicText } from "../components/shared/DynamicText";
@@ -81,7 +77,7 @@ export default function CustomerDashboard() {
   const unverified = account?.emailVerified === false;
   const [showVerify, setShowVerify] = useState(false);
   const queryClient = useQueryClient();
-  const { tenant, companySlug, outletSlug } = useTenant();
+  const { tenant } = useTenant();
   const { data: points, isLoading: cardLoading } = usePointsBalance();
   const { data: catalog = [] } = useRewardCatalog();
   const { data: campaigns = [] } = usePublicCampaigns();
@@ -225,67 +221,6 @@ export default function CustomerDashboard() {
             isLoading={cardLoading}
             tier={points?.tier ?? null}
           />
-
-          {catalog.length > 0 && (
-            <Section
-              title="Redeem your points"
-              action={
-                <Link
-                  to={tenantPath(companySlug, outletSlug, "history")}
-                  className="text-xs font-bold text-[var(--primary-deep)] hover:underline"
-                >
-                  History
-                </Link>
-              }
-            >
-              <ul className="flex flex-col gap-3">
-                {catalog.slice(0, 4).map((item) => {
-                  const canAfford = item.pointsPrice <= balance;
-                  const itemImageUrl = resolveImageUrl(item.imageId, item.imageUrl);
-                  return (
-                    <li key={item.id} className="flex items-center gap-3">
-                      {itemImageUrl ? (
-                        <img
-                          src={itemImageUrl}
-                          alt={item.name}
-                          className="h-8 w-8 flex-shrink-0 rounded-full object-cover"
-                        />
-                      ) : (
-                        <span
-                          className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full"
-                          style={{
-                            background: canAfford ? "var(--primary-soft)" : "var(--surface-2)",
-                            color: canAfford ? "var(--primary-deep)" : "var(--soft)",
-                          }}
-                        >
-                          <Gift className="h-3.5 w-3.5" />
-                        </span>
-                      )}
-                      <div className="min-w-0 flex-1">
-                        <div className="truncate text-sm font-semibold text-[var(--ink)]">
-                          {item.name}
-                        </div>
-                        {item.description && (
-                          <div className="truncate text-[13px] text-[var(--muted)]">
-                            {item.description}
-                          </div>
-                        )}
-                      </div>
-                      <span
-                        className="flex-shrink-0 font-numeral text-xl leading-none"
-                        style={{ color: canAfford ? "var(--primary)" : "var(--soft)" }}
-                      >
-                        {formatPoints(item.pointsPrice)}
-                      </span>
-                    </li>
-                  );
-                })}
-              </ul>
-              <p className="mt-3.5 text-xs text-[var(--muted)]">
-                Ask the counter to bring up the redeem code, then scan it.
-              </p>
-            </Section>
-          )}
         </div>
 
         <div className="flex flex-col gap-4">

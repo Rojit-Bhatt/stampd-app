@@ -1,7 +1,7 @@
 import { useState } from "react";
 import type { ReactNode } from "react";
 import { motion } from "motion/react";
-import toast from "react-hot-toast";
+import toast from "@/lib/toast";
 
 import { apiRequest } from "../../lib/api";
 import { useMotion } from "../../lib/motion";

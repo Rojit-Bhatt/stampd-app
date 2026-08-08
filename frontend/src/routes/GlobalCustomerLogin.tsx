@@ -5,7 +5,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { GoogleLogin } from "@react-oauth/google";
-import toast from "react-hot-toast";
+import toast from "@/lib/toast";
 import { useCustomerAuth } from "../context/CustomerAuthContext";
 import { PhoneStepModal } from "../components/customer/PhoneStepModal";
 import { AuthSplitShell } from "../components/shared/auth/AuthSplitShell";
@@ -134,6 +134,9 @@ export default function GlobalCustomerLogin() {
           <Link to="/customer-register" className="font-bold text-[var(--lp-green)] hover:underline">
             Create an account
           </Link>
+        </p>
+        <p className="mt-2.5 text-center text-[13px] text-[var(--lp-muted)]">
+          <Link to="/login" className="hover:text-[var(--lp-ink)]">← Back</Link>
         </p>
 
         {showPhoneStep && <PhoneStepModal onDone={() => navigate("/explore")} />}

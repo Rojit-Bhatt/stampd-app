@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import toast from "react-hot-toast";
+import toast from "@/lib/toast";
 import { Facebook, Instagram, Twitter, MapPin, Phone, Mail, Clock, Star } from "lucide-react";
 
 function TiktokIcon({ className = "h-4 w-4" }: { className?: string }) {

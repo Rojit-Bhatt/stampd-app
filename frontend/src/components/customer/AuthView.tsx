@@ -8,7 +8,7 @@ import { GoogleLogin } from "@react-oauth/google";
 import { useCustomerAuth } from "../../context/CustomerAuthContext";
 import { useTenant } from "../../context/TenantContext";
 import { PhoneStepModal } from "./PhoneStepModal";
-import toast from "react-hot-toast";
+import toast from "@/lib/toast";
 import { tenantPath } from "../../lib/tenantPath";
 import { Button } from "@/components/ui/button";
 

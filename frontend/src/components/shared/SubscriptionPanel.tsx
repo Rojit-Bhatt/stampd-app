@@ -1,11 +1,12 @@
 import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import toast from "react-hot-toast";
+import toast from "@/lib/toast";
 import { apiRequest } from "../../lib/api";
 import { Skeleton } from "../ui/skeleton";
 import { Progress } from "@/components/ui/progress";
 import { Button } from "@/components/ui/button";
-import { ShieldCheck, Phone, KeyRound, Check } from "lucide-react";
+import { ShieldCheck, Phone, KeyRound, Check, MessageCircle } from "lucide-react";
+import { toWaNumber } from "../../routes/platform/landing/WhatsAppFloat";
 
 interface SubscriptionSummary {
   planSlug: string;
@@ -128,6 +129,21 @@ export function SubscriptionPanel({ queryKey, fetchPath, redeemPath, role, extra
   const PERPETUAL_DAYS = YEAR_DAYS * 2;
   const isPerpetual = daysLeft !== null && daysLeft > PERPETUAL_DAYS;
 
+  // One template per subscription state, pre-filled with THIS subscription's
+  // own details — plan, status, days left — so whoever answers on WhatsApp
+  // already knows what's being asked about. Landed in the input box, not
+  // sent automatically: the customer can edit before hitting send.
+  const waNumber = contact?.phone ? toWaNumber(contact.phone) : "";
+  const planLabel = humanizePlanSlug(sub?.planSlug || "");
+  const waMessage = !sub
+    ? `Hi! I'd like to set up a Stampd subscription.`
+    : effectiveStatus === "expired"
+      ? `Hi! My Stampd subscription (${planLabel}) has expired${periodEnd ? ` (was due ${periodEnd})` : ""} and I'd like to renew it.`
+      : effectiveStatus === "grace" || (daysLeft !== null && !isPerpetual && daysLeft <= 5)
+        ? `Hi! My Stampd subscription (${planLabel}) is renewing soon${daysLeft !== null ? ` — ${daysLeft} day${daysLeft === 1 ? "" : "s"} left` : ""}, and I'd like to arrange the renewal.`
+        : `Hi! I have a question about my Stampd subscription (${planLabel}).`;
+  const waHref = waNumber ? `https://wa.me/${waNumber}?text=${encodeURIComponent(waMessage)}` : null;
+
   return (
     <div>
       <h1 className="font-display text-[28px] font-bold text-[var(--ink)]">Subscription</h1>
@@ -192,6 +208,17 @@ export function SubscriptionPanel({ queryKey, fetchPath, redeemPath, role, extra
               <div className="mt-1.5 font-bold">
                 {[contact.phone, contact.email].filter(Boolean).join(" · ")}
               </div>
+              {waHref && (
+                <a
+                  href={waHref}
+                  target="_blank"
+                  rel="noreferrer noopener"
+                  className="mt-3 inline-flex items-center gap-2 rounded-[var(--radius-btn)] bg-[var(--warn)] px-3.5 py-2 text-xs font-bold text-white transition-opacity hover:opacity-90"
+                >
+                  <MessageCircle className="h-3.5 w-3.5" />
+                  Talk to us
+                </a>
+              )}
             </div>
           )}
         </div>
@@ -233,7 +260,19 @@ export function SubscriptionPanel({ queryKey, fetchPath, redeemPath, role, extra
                   code box invites the suspicion that something is missing. */}
               <ol className="mt-4 flex flex-col gap-3">
                 {[
-                  { Icon: Phone, text: "Talk to us and pay however suits you — bank, wallet or cash." },
+                  {
+                    Icon: Phone,
+                    text: waHref ? (
+                      <>
+                        <a href={waHref} target="_blank" rel="noreferrer noopener" className="font-bold text-[var(--primary-deep)] hover:underline">
+                          Talk to us
+                        </a>{" "}
+                        and pay however suits you — bank, wallet or cash.
+                      </>
+                    ) : (
+                      "Talk to us and pay however suits you — bank, wallet or cash."
+                    ),
+                  },
                   { Icon: ShieldCheck, text: "We confirm the payment and issue you a key." },
                   { Icon: KeyRound, text: "Enter it below. Your plan starts the moment it's accepted." },
                 ].map((step, i) => (

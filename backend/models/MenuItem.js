@@ -9,6 +9,12 @@ const MenuItemSchema = new mongoose.Schema({
   description: { type: String, default: "", trim: true },
   price: { type: Number, default: null, min: 0 },
 
+  // Optional reward photo, shown in the redeem catalog when the item is
+  // redeemable. Same shape as RewardItem: imageId points at an Image row
+  // (uploaded via FileDrop) and wins over imageUrl — see resolveImageUrl.
+  imageUrl: { type: String, default: "", trim: true },
+  imageId: { type: String, default: null },
+
   // What this item costs in INTEGER centipoints (utils/pointsMath.js).
   // null = menu-only, not redeemable — the default, so adding points to an
   // outlet never silently puts its whole menu up for redemption.

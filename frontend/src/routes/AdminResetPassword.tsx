@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
-import toast from "react-hot-toast";
+import toast from "@/lib/toast";
 import { apiRequest } from "../lib/api";
 import { PLATFORM_NAME } from "../lib/platform";
 import { StampdLogo } from "../components/shared/StampdLogo";

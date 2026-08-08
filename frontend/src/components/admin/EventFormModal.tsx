@@ -1,10 +1,11 @@
 import { useEffect, useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import toast from "react-hot-toast";
+import toast from "@/lib/toast";
 import { apiRequest } from "../../lib/api";
 import { resolveImageUrl } from "../../lib/images";
 import { CreatePreviewModal } from "../shared/CreatePreviewModal";
 import { FileDrop } from "../shared/FileDrop";
+import { TimePicker } from "../ui/TimePicker";
 import { EventCard } from "../customer/EventCard";
 
 export interface AdminEventItem {
@@ -127,12 +128,7 @@ export function EventFormModal({ open, onOpenChange, initial, onSaved }: EventFo
             onChange={(e) => setDraft({ ...draft, date: e.target.value })}
             className="rounded-[11px] border border-[var(--line)] bg-[var(--bg)] px-3.5 py-2.5 text-sm focus:border-[var(--primary)] focus:outline-none"
           />
-          <input
-            value={draft.time}
-            onChange={(e) => setDraft({ ...draft, time: e.target.value })}
-            placeholder="Time (e.g. 7:00 PM)"
-            className="rounded-[11px] border border-[var(--line)] bg-[var(--bg)] px-3.5 py-2.5 text-sm focus:border-[var(--primary)] focus:outline-none"
-          />
+          <TimePicker value={draft.time} onChange={(time) => setDraft({ ...draft, time })} />
           <input
             value={draft.location}
             onChange={(e) => setDraft({ ...draft, location: e.target.value })}

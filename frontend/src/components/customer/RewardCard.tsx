@@ -35,7 +35,9 @@ export function RewardCard({ item, balance, disabled, onSelect }: RewardCardProp
 
       <span className="min-w-0 flex-1">
         <span className="block truncate text-sm font-bold text-[var(--ink)]">{item.name}</span>
-        <span className="block truncate text-[13px] text-[var(--muted)]">
+        {/* No truncate on the description — a long one wraps instead of
+            being clipped, same fix as CustomerMenu's item rows. */}
+        <span className="block text-[13px] leading-relaxed text-[var(--muted)]">
           {canAfford ? item.description || "Ready to redeem" : `${formatPoints(short)} more points needed`}
         </span>
         {/* How close they are, for anything they can't afford yet. An

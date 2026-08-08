@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Plus, Pencil, Trash2, Gift } from "lucide-react";
 import { Link } from "react-router-dom";
-import toast from "react-hot-toast";
+import toast from "@/lib/toast";
 import { apiRequest } from "../../lib/api";
 import { useAdminAuth } from "../../context/AdminAuthContext";
 import { useTenant } from "../../context/TenantContext";
@@ -115,7 +115,7 @@ export default function AdminRewards() {
               <div className="min-w-0 flex-1">
                 <div className="truncate font-bold text-[var(--ink)]">{r.name}</div>
                 {r.description && (
-                  <div className="truncate text-[13px] text-[var(--muted)]">{r.description}</div>
+                  <div className="text-[13px] leading-relaxed text-[var(--muted)]">{r.description}</div>
                 )}
               </div>
               <span className="flex-shrink-0 font-display text-lg font-bold" style={{ color: "var(--primary-deep)" }}>

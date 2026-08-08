@@ -46,16 +46,20 @@ export default function CustomerMenu() {
                   .map((i) => (
                     <div
                       key={i.id}
-                      className="flex items-center gap-3 border-b border-[var(--line)] px-4 py-3.5 last:border-b-0"
+                      className="flex items-start gap-3 border-b border-[var(--line)] px-4 py-3.5 last:border-b-0"
                     >
                       <div className="min-w-0 flex-1">
                         <div className="truncate text-sm font-semibold text-[var(--ink)]">{i.name}</div>
+                        {/* No truncate: a description that doesn't fit one line
+                            wraps and grows the row instead of being clipped. */}
                         {i.description && (
-                          <div className="truncate text-[13px] text-[var(--muted)]">{i.description}</div>
+                          <div className="mt-0.5 text-[13px] leading-relaxed text-[var(--muted)]">
+                            {i.description}
+                          </div>
                         )}
                       </div>
                       {typeof i.price === "number" && (
-                        <span className="text-sm font-bold text-[var(--ink)]">{i.price}</span>
+                        <span className="flex-shrink-0 text-sm font-bold text-[var(--ink)]">{i.price}</span>
                       )}
                     </div>
                   ))}

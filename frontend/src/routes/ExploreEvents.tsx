@@ -54,24 +54,26 @@ function EventListingCard({ event }: { event: ExploreEvent }) {
   return (
     <Link
       to={tenantPath(event.companySlug, event.slug, "dashboard")}
-      className="stamp-interactive flex flex-col gap-3 rounded-[var(--radius-card)] border border-[var(--line)] bg-[var(--surface)] p-4 shadow-ambient"
+      className="stamp-interactive relative block"
     >
-      <div className="flex items-center gap-2">
+      {/* Overlaid on the card's own image, top-left — which business, without
+          wrapping EventCard in a second card. */}
+      <div className="pointer-events-none absolute left-3 top-3 z-10 flex items-center gap-1.5 rounded-full bg-black/45 py-1 pl-1 pr-2.5 backdrop-blur-sm">
         {event.branding.logoUrl ? (
           <img
             src={event.branding.logoUrl}
             alt=""
-            className="h-6 w-6 flex-shrink-0 rounded-full object-cover"
+            className="h-5 w-5 flex-shrink-0 rounded-full object-cover"
           />
         ) : (
           <div
-            className="flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-full text-[11px] font-bold text-white"
+            className="flex h-5 w-5 flex-shrink-0 items-center justify-center rounded-full text-[10px] font-bold text-white"
             style={{ background: event.branding.primaryColor }}
           >
             {initial}
           </div>
         )}
-        <span className="truncate text-xs font-bold text-[var(--muted)]">{event.businessName}</span>
+        <span className="truncate text-[11px] font-bold text-white">{event.businessName}</span>
       </div>
       <EventCard event={event} />
     </Link>

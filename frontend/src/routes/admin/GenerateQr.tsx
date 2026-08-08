@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { QRCodeSVG } from "qrcode.react";
 import { Zap, QrCode } from "lucide-react";
 import { motion } from "motion/react";
-import toast from "react-hot-toast";
+import toast from "@/lib/toast";
 
 import { apiRequest } from "../../lib/api";
 import { useAdminSettings } from "../../hooks/useAdminSettings";
