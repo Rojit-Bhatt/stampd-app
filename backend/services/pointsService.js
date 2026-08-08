@@ -757,6 +757,11 @@ const getCustomerDetailRows = async (organizationId) => {
         customerNo: formattedId,
         customerAccountId: customerAccountIdStr,
         avatarVersion: avatarVersion,
+        // The membership's own createdAt — when they joined THIS outlet, not
+        // the global CustomerAccount's join date, which could leak that they
+        // were a customer somewhere else first (see the isolation invariant:
+        // CustomerAccount is never exposed through an outlet-facing report).
+        createdAt: customer.createdAt,
         pointsBalance: toPoints(effectiveBalanceCenti(balance, now)),
         lifetimePoints: toPoints(lifetimePointsCenti),
         tier,
