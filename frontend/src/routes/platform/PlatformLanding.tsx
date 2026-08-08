@@ -5,6 +5,7 @@ import { usePlatformContact } from "../../hooks/usePlatformContact";
 import { HeroStack } from "./landing/HeroStack";
 import { LandingFooter } from "./landing/LandingFooter";
 import { LandingNav } from "./landing/LandingNav";
+import { ServicesMarquee } from "./landing/Marquee";
 import { CtaSection } from "./landing/SectionCta";
 import { FaqSection } from "./landing/SectionFaq";
 import { PricingSection } from "./landing/SectionPricing";
@@ -77,6 +78,7 @@ export default function PlatformLanding() {
           the dark surface that ends in rounded corners and sweeps away. */}
       <div className="relative z-10 rounded-b-[40px] bg-[var(--lp-bg)]">
         <HeroStack contactHref={contactHref} />
+        <ServicesMarquee />
         <FeaturesSection />
         <PricingSection contactHref={contactHref} />
         <FaqSection />

@@ -314,6 +314,27 @@ html.landing-dark {
   }
 }
 
+/* Infinite CSS marquee (Marquee.tsx) — the track holds two identical copies
+   of the content back to back, and scrolling exactly -50% (one copy's width)
+   is what makes the loop seamless: the second copy is already sitting where
+   the first started. Paused on hover/focus and killed under reduced motion. */
+@keyframes lp-marquee-scroll {
+  from { transform: translateX(0); }
+  to { transform: translateX(-50%); }
+}
+.marquee-track {
+  animation: lp-marquee-scroll 28s linear infinite;
+}
+.marquee-mask:hover .marquee-track,
+.marquee-mask:focus-within .marquee-track {
+  animation-play-state: paused;
+}
+@media (prefers-reduced-motion: reduce) {
+  .marquee-track {
+    animation: none;
+  }
+}
+
 /* The quiet grid that sits under every section BELOW the hero. The hero has
    the interactive dot field instead — the two must never stack. */
 .lp-grid {
