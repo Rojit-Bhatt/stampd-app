@@ -1,4 +1,4 @@
-import { Calendar } from "lucide-react";
+import { Calendar, MapPin, CalendarDays } from "lucide-react";
 import type { TenantEvent } from "../../context/TenantContext";
 import { resolveImageUrl } from "../../lib/images";
 
@@ -10,27 +10,41 @@ interface EventCardProps {
   event: Pick<TenantEvent, "title" | "date" | "time" | "location" | "description" | "imageUrl" | "imageId">;
 }
 
+// Image on top, details below — a poster, not a list row. Nothing here
+// truncates: a description that's too long to show whole is worse than a
+// card that grows to fit it (see the menu-card truncation bug this was
+// modelled to avoid).
 export function EventCard({ event }: EventCardProps) {
   const eventImageUrl = resolveImageUrl(event.imageId, event.imageUrl);
   return (
-    <div className="flex gap-3">
-      {eventImageUrl && (
-        <img
-          src={eventImageUrl}
-          alt=""
-          className="h-14 w-14 flex-shrink-0 rounded-[var(--radius-field)] object-cover"
-        />
+    <div className="overflow-hidden rounded-[var(--radius-card)] border border-[var(--line)] bg-[var(--surface)] shadow-ambient">
+      {eventImageUrl ? (
+        <img src={eventImageUrl} alt="" className="h-36 w-full object-cover" />
+      ) : (
+        <div
+          className="flex h-36 w-full items-center justify-center"
+          style={{ background: "var(--surface-2)" }}
+        >
+          <CalendarDays className="h-8 w-8 text-[var(--soft)]" strokeWidth={1.5} />
+        </div>
       )}
-      <div className="min-w-0 flex-1">
+      <div className="p-4">
         <div className="flex items-center gap-1.5 text-[11px] font-bold" style={{ color: "var(--brand-ink)" }}>
           <Calendar className="h-3.5 w-3.5" />
           {formatEventDate(event.date)}
           {event.time ? ` · ${event.time}` : ""}
         </div>
-        <div className="truncate text-sm font-semibold text-[var(--ink)]">{event.title}</div>
-        {event.location && <div className="truncate text-[13px] text-[var(--muted)]">{event.location}</div>}
+        <div className="mt-1 text-[15px] font-semibold leading-snug text-[var(--ink)]">{event.title}</div>
+        {event.location && (
+          <div className="mt-1 flex items-center gap-1.5 text-[13px] text-[var(--muted)]">
+            <MapPin className="h-3.5 w-3.5 flex-shrink-0" />
+            <span>{event.location}</span>
+          </div>
+        )}
         {event.description && (
-          <div className="truncate text-[13px] text-[var(--muted)]">{event.description}</div>
+          <div className="mt-1.5 whitespace-pre-line text-[13px] leading-relaxed text-[var(--muted)]">
+            {event.description}
+          </div>
         )}
       </div>
     </div>
