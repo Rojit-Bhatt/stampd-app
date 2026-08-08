@@ -9,6 +9,7 @@ import { Skeleton } from "../../components/ui/skeleton";
 import { ConfirmDialog } from "../../components/shared/ConfirmDialog";
 import { MenuImportPreviewModal, type MenuImportPreview } from "../../components/admin/MenuImportPreviewModal";
 import { FileDrop } from "../../components/shared/FileDrop";
+import { MenuRewardModal, type MenuRewardPatch } from "../../components/admin/MenuRewardModal";
 
 interface MenuItem {
   id?: string;
@@ -20,6 +21,8 @@ interface MenuItem {
   // set right here, next to the item it applies to, instead of on a
   // separate Rewards page disconnected from the menu it's describing.
   pointsPrice: number | null;
+  imageUrl?: string;
+  imageId?: string | null;
   category: string;
   isAvailable: boolean;
   isFeatured: boolean;
@@ -57,6 +60,7 @@ export default function MenuManagement() {
   const [search, setSearch] = useState("");
   const [categoryFilter, setCategoryFilter] = useState("All");
   const [statusFilter, setStatusFilter] = useState<"All" | "Available" | "Sold out">("All");
+  const [rewardTarget, setRewardTarget] = useState<MenuItem | null>(null);
   const menuEnabled = settings?.menuEnabled ?? false;
 
   const invalidate = () => qc.invalidateQueries({ queryKey: ["adminMenu"] });
@@ -335,26 +339,22 @@ export default function MenuManagement() {
                   </div>
                 </div>
                 <span className="text-sm font-bold">{typeof i.price === "number" ? i.price : "—"}</span>
-                <label
-                  className="flex flex-shrink-0 items-center gap-1.5 rounded-[10px] border border-[var(--line)] bg-[var(--bg)] px-2.5 py-1.5"
-                  title="Points price — leave blank to keep this item menu-only"
+                <button
+                  onClick={() => setRewardTarget(i)}
+                  title={
+                    i.pointsPrice !== null && i.pointsPrice !== undefined
+                      ? `Redeemable for ${i.pointsPrice} points`
+                      : "Menu-only — click to make redeemable"
+                  }
+                  className="flex-shrink-0 rounded-[10px] border border-[var(--line)] bg-[var(--bg)] px-2.5 py-1.5 text-[11px] font-bold"
+                  style={
+                    i.pointsPrice !== null && i.pointsPrice !== undefined
+                      ? { background: "var(--primary-soft)", color: "var(--primary-deep)", borderColor: "transparent" }
+                      : undefined
+                  }
                 >
-                  <input
-                    type="number"
-                    min={0}
-                    defaultValue={i.pointsPrice ?? ""}
-                    placeholder="—"
-                    onBlur={(e) => {
-                      const raw = e.target.value.trim();
-                      const next = raw === "" ? null : Number(raw);
-                      if (next === (i.pointsPrice ?? null)) return;
-                      patchItem.mutate({ id: itemId(i), body: { pointsPrice: next } });
-                      toast.success(next === null ? `${i.name} is menu-only now.` : `${i.name} costs ${next} points.`);
-                    }}
-                    className="w-14 bg-transparent text-sm focus:outline-none"
-                  />
-                  <span className="text-[11px] text-[var(--muted)]">pts</span>
-                </label>
+                  {i.pointsPrice !== null && i.pointsPrice !== undefined ? `${i.pointsPrice} pts` : "Points"}
+                </button>
                 <button
                   onClick={() =>
                     patchItem.mutate({ id: itemId(i), body: { isAvailable: !i.isAvailable } })
@@ -395,6 +395,22 @@ export default function MenuManagement() {
         Give an item a points price to make it redeemable — leave it blank to keep it menu-only.
         {redeemableCount > 0 ? ` ${redeemableCount} item${redeemableCount === 1 ? " is" : "s are"} redeemable.` : ""}
       </p>
+
+      <MenuRewardModal
+        open={rewardTarget !== null}
+        onOpenChange={(open) => !open && setRewardTarget(null)}
+        item={rewardTarget ? { ...rewardTarget, id: itemId(rewardTarget) } : null}
+        busy={patchItem.isPending}
+        onSave={async (patch: MenuRewardPatch) => {
+          if (!rewardTarget) return;
+          const name = rewardTarget.name;
+          await patchItem.mutateAsync({ id: itemId(rewardTarget), body: patch });
+          toast.success(
+            patch.pointsPrice === null ? `${name} is menu-only now.` : `${name} costs ${patch.pointsPrice} points.`,
+          );
+          setRewardTarget(null);
+        }}
+      />
 
       <MenuImportPreviewModal
         open={previewOpen}
