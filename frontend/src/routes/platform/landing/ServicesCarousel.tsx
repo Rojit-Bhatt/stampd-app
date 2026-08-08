@@ -2,12 +2,14 @@ import { useRef, type RefObject } from "react";
 import { motion, useReducedMotion, useScroll, useTransform } from "motion/react";
 
 import { FEATURES } from "./data";
+import { FEATURE_ART } from "./graphics/FeatureArt";
 
 type Block = (typeof FEATURES.blocks)[number];
 
-// How far a card's image travels against the strip, in px. Enough to read as
-// depth, small enough that the image never uncovers its frame.
-const OFFSET = 36;
+// How far a card's ART travels against the strip, in px — motion.dev's
+// react-carousel-item-offset pattern (parallax the media, not the caption).
+// Enough to read as depth, small enough the art never uncovers its frame.
+const OFFSET = 24;
 
 function ServiceCard({
   block,
@@ -18,6 +20,7 @@ function ServiceCard({
 }) {
   const ref = useRef<HTMLElement>(null);
   const reduced = useReducedMotion();
+  const Art = FEATURE_ART[block.id];
 
   // 0 when the card is entering from the right, 1 when it has left to the
   // left. Measured per card against the strip, which is why nothing here
@@ -30,27 +33,18 @@ function ServiceCard({
   });
 
   const x = useTransform(scrollXProgress, [0, 1], [OFFSET, -OFFSET]);
-  const opacity = useTransform(scrollXProgress, [0, 0.18, 0.82, 1], [0.35, 1, 1, 0.35]);
 
   return (
-    <motion.article
-      ref={ref}
-      style={reduced ? undefined : { opacity }}
-      className="w-[300px] flex-shrink-0 snap-none sm:w-[380px]"
-    >
+    <article ref={ref} className="w-[300px] flex-shrink-0 snap-none sm:w-[380px]">
+      {/* Only the ART parallaxes — the card frame and everything below it
+          (kicker, title, body) stay fully opaque at every scroll position.
+          The old version dimmed the whole card to 0.35 opacity at rest and
+          faded the strip's edges over the text, which is what made it hard
+          to read; neither happens here. */}
       <div className="overflow-hidden rounded-3xl border border-[var(--lp-line)] bg-[var(--lp-panel)]">
-        <motion.img
-          src={`/landing/services/${block.id}.webp`}
-          alt={block.imageAlt}
-          width={1200}
-          height={800}
-          loading="lazy"
-          draggable={false}
-          style={reduced ? undefined : { x }}
-          // Scaled slightly wider than its frame so the offset travel never
-          // exposes an edge.
-          className="w-[112%] max-w-none -translate-x-[6%]"
-        />
+        <motion.div style={reduced ? undefined : { x }} className="h-[220px] w-[112%] -translate-x-[6%]">
+          {Art ? <Art /> : null}
+        </motion.div>
       </div>
 
       <p className="mt-6 font-mono text-[10px] tracking-[0.18em] text-[var(--lp-green)]">
@@ -58,7 +52,7 @@ function ServiceCard({
       </p>
       <h3 className="mt-3 font-display text-xl text-[var(--lp-ink)]">{block.title}</h3>
       <p className="mt-2 text-sm leading-relaxed text-[var(--lp-muted)]">{block.body}</p>
-    </motion.article>
+    </article>
   );
 }
 
