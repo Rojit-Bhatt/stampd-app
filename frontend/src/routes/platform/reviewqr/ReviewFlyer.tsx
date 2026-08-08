@@ -66,6 +66,43 @@ function download(canvas: HTMLCanvasElement, filename: string) {
   }, "image/png");
 }
 
+function loadImage(src: string): Promise<HTMLImageElement> {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    img.onload = () => resolve(img);
+    img.onerror = reject;
+    img.src = src;
+  });
+}
+
+// White background + the QR + a centered logo, replacing the raw transparent
+// QR canvas for the standalone download. Margin matches QR_PANEL's own
+// padding (60px) so the white square reads as a deliberate card, not a crop.
+// The logo is sized to ~18% of the QR's width, comfortably inside the ~15%
+// error-correction budget `level="M"` gives, so it doesn't break scanning.
+async function buildQrOnlyCanvas(qrCanvas: HTMLCanvasElement): Promise<HTMLCanvasElement> {
+  const margin = 60;
+  const size = QR_PX + margin * 2;
+
+  const canvas = document.createElement("canvas");
+  canvas.width = size;
+  canvas.height = size;
+  const ctx = canvas.getContext("2d");
+  if (!ctx) throw new Error("Could not build the QR canvas.");
+
+  ctx.fillStyle = "#FFFFFF";
+  ctx.fillRect(0, 0, size, size);
+  ctx.drawImage(qrCanvas, margin, margin, QR_PX, QR_PX);
+
+  const logo = await loadImage("/pwa-512x512.png");
+  const logoSize = QR_PX * 0.18;
+  const logoX = (size - logoSize) / 2;
+  const logoY = (size - logoSize) / 2;
+  ctx.drawImage(logo, logoX, logoY, logoSize, logoSize);
+
+  return canvas;
+}
+
 function safeFilename(name: string) {
   return name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") || "business";
 }
@@ -204,9 +241,11 @@ export function ReviewFlyer({ place }: { place: SelectedPlace }) {
 
         <button
           type="button"
-          onClick={() => {
+          onClick={async () => {
             const qr = qrWrapRef.current?.querySelector("canvas");
-            if (qr) download(qr, `${slug}-review-qr.png`);
+            if (!qr) return;
+            const composite = await buildQrOnlyCanvas(qr);
+            download(composite, `${slug}-review-qr.png`);
           }}
           className="rounded-[74px] border border-[var(--lp-line)] px-5 py-3 text-sm text-[var(--lp-ink)] transition-colors hover:border-[var(--lp-green)]"
         >
@@ -214,8 +253,8 @@ export function ReviewFlyer({ place }: { place: SelectedPlace }) {
         </button>
 
         <p className="text-sm leading-relaxed text-[var(--lp-muted)]">
-          The QR-only file has a transparent background. Place it on a light
-          background — a dark code on a dark surface will not scan.
+          A print-ready square with a white background and the Stampd mark —
+          stick it up as-is.
         </p>
       </div>
     </div>
