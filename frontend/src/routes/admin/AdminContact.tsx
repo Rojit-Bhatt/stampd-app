@@ -32,8 +32,19 @@ const EMPTY_CONTACT: AdminContactData = {
   socials: { instagram: "", facebook: "", x: "", tiktok: "" },
 };
 
-const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-const PHONE_RE = /^\+?[0-9\s\-()]{7,20}$/;
+const EMAIL_FORMAT_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const ALLOWED_EMAIL_DOMAINS = ["gmail.com", "yahoo.com", "outlook.com", "hotmail.com", "icloud.com"];
+
+function isValidEmail(value: string): boolean {
+  if (!EMAIL_FORMAT_RE.test(value)) return false;
+  const domain = value.split("@")[1]?.toLowerCase();
+  return ALLOWED_EMAIL_DOMAINS.includes(domain);
+}
+
+function isValidPhone(value: string): boolean {
+  const digitsOnly = value.replace(/[^0-9]/g, "").replace(/^977/, "");
+  return /^[0-9]{10}$/.test(digitsOnly);
+}
 
 interface DayHour {
   day: string;
@@ -170,8 +181,8 @@ export default function AdminContact() {
   const setSocial = (k: keyof AdminContactData["socials"], v: string) =>
     setContact((c) => (c ? { ...c, socials: { ...c.socials, [k]: v } } : c));
 
-  const phoneError = contact.phone && !PHONE_RE.test(contact.phone) ? "Enter a valid phone number." : "";
-  const emailError = contact.email && !EMAIL_RE.test(contact.email) ? "Enter a valid email address." : "";
+  const phoneError = contact.phone && !isValidPhone(contact.phone) ? "Enter a valid 10-digit phone number." : "";
+  const emailError = contact.email && !isValidEmail(contact.email) ? "Use a Gmail, Yahoo, Outlook, or other major provider address." : "";
   const hasErrors = Boolean(phoneError || emailError);
 
   const save = async () => {
