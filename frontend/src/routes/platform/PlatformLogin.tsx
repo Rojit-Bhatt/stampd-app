@@ -6,7 +6,7 @@ import { Link, useNavigate } from "react-router-dom";
 import toast from "@/lib/toast";
 import { usePlatformAuth } from "../../context/PlatformAuthContext";
 import { PLATFORM_NAME } from "../../lib/platform";
-import { StampdLogo } from "../../components/shared/StampdLogo";
+import { AuthSplitShell } from "../../components/shared/auth/AuthSplitShell";
 
 const schema = z.object({
   email: z.string().trim().email("Please enter a valid email address."),
@@ -14,6 +14,9 @@ const schema = z.object({
 });
 type FormValues = z.infer<typeof schema>;
 
+// Same shell and card recipe as AdminLogin/GlobalCustomerLogin — the
+// platform admin console is fixed-identity green, not tenant-themed, but the
+// three login screens should still read as one product, not three.
 export default function PlatformLogin() {
   const { user, login, isLoading } = usePlatformAuth();
   const navigate = useNavigate();
@@ -47,51 +50,43 @@ export default function PlatformLogin() {
   };
 
   return (
-    <div className="flex min-h-screen w-full items-center justify-center bg-[var(--bg)] px-4">
-      <div className="w-full max-w-sm">
-        <div className="mb-6 text-center">
-          <StampdLogo size={44} tile className="mx-auto mb-3.5" />
-          <h1 className="font-display text-2xl font-bold text-[var(--ink)]">Platform admin</h1>
-          <p className="mt-1 text-sm text-[var(--muted)]">Sign in to your control panel</p>
-        </div>
-
-        <div className="rounded-[var(--radius-card)] border border-[var(--line)] bg-[var(--surface)] p-6 shadow-ambient">
-          <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col gap-3">
-            <input
-              type="email"
-              placeholder="Email"
-              {...register("email")}
-              className="rounded-[var(--radius-btn)] border border-[var(--line)] bg-[var(--bg)] px-4 py-3.5 text-sm focus:border-[var(--primary)] focus:outline-none"
-            />
-            {errors.email && (
-              <p className="pl-1 text-xs font-semibold text-[var(--err)]">{errors.email.message}</p>
-            )}
-            <input
-              type="password"
-              placeholder="Password"
-              {...register("password")}
-              className="rounded-[var(--radius-btn)] border border-[var(--line)] bg-[var(--bg)] px-4 py-3.5 text-sm focus:border-[var(--primary)] focus:outline-none"
-            />
-            {errors.password && (
-              <p className="pl-1 text-xs font-semibold text-[var(--err)]">{errors.password.message}</p>
-            )}
-            <button
-              type="submit"
-              disabled={busy || isLoading}
-              className="mt-2 w-full rounded-[var(--radius-btn)] py-4 text-[15px] font-bold text-white transition-opacity hover:opacity-90 disabled:opacity-50"
-              style={{ background: "var(--primary)" }}
-            >
-              {busy ? "Signing you in…" : "Sign in"}
-            </button>
-          </form>
-        </div>
-
-        <div className="mt-5 text-center">
-          <Link to="/" className="text-[13px] text-[var(--muted)] hover:text-[var(--ink)]">
-            ← Back to {PLATFORM_NAME}
-          </Link>
-        </div>
+    <AuthSplitShell>
+      <div className="mb-6 text-center">
+        <h1 className="font-display text-2xl font-bold text-[var(--lp-ink)]">Platform admin</h1>
+        <p className="mt-1 text-sm text-[var(--lp-muted)]">Sign in to your control panel</p>
       </div>
-    </div>
+
+      <div className="rounded-[20px] border border-[var(--lp-line)] bg-white/[0.04] p-6">
+        <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col gap-3">
+          <input
+            type="email"
+            placeholder="Email"
+            autoComplete="username"
+            {...register("email")}
+            className="rounded-2xl border border-[var(--lp-line)] bg-white/[0.04] px-4 py-3.5 text-sm text-[var(--lp-ink)] placeholder:text-[var(--lp-muted)] focus:border-[var(--lp-green)] focus:outline-none"
+          />
+          {errors.email && <p className="pl-1 text-xs font-semibold text-[var(--lp-terra)]">{errors.email.message}</p>}
+          <input
+            type="password"
+            placeholder="Password"
+            autoComplete="current-password"
+            {...register("password")}
+            className="rounded-2xl border border-[var(--lp-line)] bg-white/[0.04] px-4 py-3.5 text-sm text-[var(--lp-ink)] placeholder:text-[var(--lp-muted)] focus:border-[var(--lp-green)] focus:outline-none"
+          />
+          {errors.password && <p className="pl-1 text-xs font-semibold text-[var(--lp-terra)]">{errors.password.message}</p>}
+          <button
+            type="submit"
+            disabled={busy || isLoading}
+            className="mt-2 w-full rounded-[74px] bg-[var(--lp-cream)] py-4 text-[15px] font-bold text-[#14201C] transition-transform duration-200 hover:scale-105 disabled:opacity-50 motion-reduce:transition-none motion-reduce:hover:scale-100"
+          >
+            {busy ? "Signing you in…" : "Sign in"}
+          </button>
+        </form>
+      </div>
+
+      <p className="mt-5 text-center text-[13px] text-[var(--lp-muted)]">
+        <Link to="/login" className="hover:text-[var(--lp-ink)]">← Back</Link>
+      </p>
+    </AuthSplitShell>
   );
 }

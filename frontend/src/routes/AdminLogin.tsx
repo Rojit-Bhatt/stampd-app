@@ -169,6 +169,9 @@ export default function AdminLogin() {
             Want to bring your business onto {PLATFORM_NAME}?{" "}
             <Link to="/" className="font-bold text-[var(--lp-green)] hover:underline">Get in touch</Link>
           </p>
+          <p className="mt-2.5 text-center text-[13px] text-[var(--lp-muted)]">
+            <Link to="/login" className="hover:text-[var(--lp-ink)]">← Back</Link>
+          </p>
         </>
       )}
     </AuthSplitShell>

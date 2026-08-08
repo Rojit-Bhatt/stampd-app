@@ -135,6 +135,9 @@ export default function GlobalCustomerLogin() {
             Create an account
           </Link>
         </p>
+        <p className="mt-2.5 text-center text-[13px] text-[var(--lp-muted)]">
+          <Link to="/login" className="hover:text-[var(--lp-ink)]">← Back</Link>
+        </p>
 
         {showPhoneStep && <PhoneStepModal onDone={() => navigate("/explore")} />}
     </AuthSplitShell>

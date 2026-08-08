@@ -21,6 +21,7 @@ const queryClient = new QueryClient();
 
 // Lazy load pages for route-based code splitting
 const BusinessLanding = lazy(() => import('./routes/BusinessLanding'));
+const LoginSelect = lazy(() => import('./routes/LoginSelect'));
 const GlobalCustomerLogin = lazy(() => import('./routes/GlobalCustomerLogin'));
 const GlobalCustomerRegister = lazy(() => import('./routes/GlobalCustomerRegister'));
 const Explore = lazy(() => import('./routes/Explore'));
@@ -122,6 +123,10 @@ export default function App() {
               matches before /:companySlug, so "review-qr" is reserved in
               config/platform.js. */}
           <Route path="/review-qr" element={<ReviewQrGenerator />} />
+          {/* The single entry point every marketing-site "Log in" button
+              points to — verifies business vs customer before either sign-in
+              form renders. Also reserved in config/platform.js. */}
+          <Route path="/login" element={<LoginSelect />} />
           <Route path="/platform/login" element={<PlatformLogin />} />
           <Route path="/business-login" element={<Navigate to="/admin-login" replace />} />
           {/* Global customer identity: one CustomerAccount works at
