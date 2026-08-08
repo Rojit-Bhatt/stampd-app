@@ -9,14 +9,9 @@ import { NavLinkItem } from "./primitives";
 import { SOCIAL_ICONS, SOCIAL_LABELS, SOCIAL_ORDER, type SocialKey } from "./socialIcons";
 import { toWaNumber } from "./WhatsAppFloat";
 
-// Carried over from the previous landing page. These are the only way staff
-// and platform admins reach their consoles from the marketing site, so the
-// redesign must not drop them.
-const SIGN_IN_LINKS = [
-  { label: "Customer login", to: "/customer-login" },
-  { label: "Staff & owner login", to: "/admin-login" },
-  { label: "Platform admin", to: "/platform/login" },
-];
+// Sign-in is reached through the single navbar "Log in" button -> /login now
+// (see LoginSelect.tsx), so the footer no longer needs its own column of
+// console links.
 
 const LEGAL_LINKS = [
   { label: "Privacy Policy", to: "/privacy" },
@@ -73,11 +68,11 @@ export function LandingFooter() {
               "0 8px 40px rgba(0,0,0,0.4), inset 0 1px 0 rgba(243,236,226,0.14)",
           }}
         >
-          {/* Steps 1 -> 2 -> 4 columns. Without the 2-column middle step the
+          {/* Steps 1 -> 2 -> 3 columns. Without the 2-column middle step the
               footer stacks into a single tall column at tablet widths, and a
               revealed footer taller than the viewport can never be fully
               uncovered. */}
-          <div className="grid gap-x-10 gap-y-12 sm:grid-cols-2 lg:grid-cols-[1.4fr_1fr_1fr_1fr]">
+          <div className="grid gap-x-10 gap-y-12 sm:grid-cols-2 lg:grid-cols-[1.4fr_1fr_1fr]">
             <div>
               <div className="flex items-center gap-2">
                 <StampdLogo size={30} />
@@ -143,16 +138,6 @@ export function LandingFooter() {
               {FOOTER_LINKS.map((link) => (
                 <li key={link.label}>
                   <NavLinkItem link={link} className={linkClass} />
-                </li>
-              ))}
-            </Column>
-
-            <Column heading="Sign in">
-              {SIGN_IN_LINKS.map((link) => (
-                <li key={link.to}>
-                  <Link to={link.to} className={linkClass}>
-                    {link.label}
-                  </Link>
                 </li>
               ))}
             </Column>
