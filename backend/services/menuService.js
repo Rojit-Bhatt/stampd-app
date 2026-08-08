@@ -123,7 +123,7 @@ const listForOrg = async (organizationId) => {
 
 const createItem = async (
   organizationId,
-  { name, description, price, category, isAvailable, sortOrder, pointsPrice }
+  { name, description, price, category, isAvailable, sortOrder, pointsPrice, imageUrl, imageId }
 ) => {
   if (!name) {
     throw createHttpError("Menu item name is required.", 400);
@@ -135,6 +135,8 @@ const createItem = async (
     organizationId,
     name: name.trim(),
     description: description !== undefined ? description : "",
+    imageUrl: imageUrl !== undefined ? imageUrl : "",
+    imageId: imageId !== undefined ? imageId : null,
     price: price !== undefined ? parsePrice(price) : null,
     // null = menu-only, the default: giving an outlet a points program must
     // never put its whole menu up for redemption.
@@ -149,7 +151,7 @@ const createItem = async (
 
 // Only these fields may be changed via the API — never organizationId or _id,
 // so an admin can't move an item into (or out of) another tenant.
-const MUTABLE_MENU_FIELDS = ["name", "description", "price", "category", "isAvailable", "isFeatured", "sortOrder"];
+const MUTABLE_MENU_FIELDS = ["name", "description", "price", "category", "isAvailable", "isFeatured", "sortOrder", "imageUrl", "imageId"];
 
 const updateItem = async (organizationId, itemId, updates) => {
   const safeUpdates = {};

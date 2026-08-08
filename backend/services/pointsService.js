@@ -454,7 +454,8 @@ const getRedeemCatalog = async (organizationId) => {
       name: item.name,
       description: item.description || "",
       category: item.category,
-      imageUrl: "",
+      imageUrl: item.imageUrl || "",
+      imageId: item.imageId || null,
       pointsPrice: toPoints(item.pointsPriceCenti)
     }));
 
