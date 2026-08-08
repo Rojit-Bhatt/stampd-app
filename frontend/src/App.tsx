@@ -33,6 +33,7 @@ const CustomerDashboard = lazy(() => import('./routes/CustomerDashboard'));
 const CustomerHistory = lazy(() => import('./routes/CustomerHistory'));
 const RedeemLanding = lazy(() => import('./routes/RedeemLanding'));
 const CustomerMenu = lazy(() => import('./routes/CustomerMenu'));
+const CustomerRewards = lazy(() => import('./routes/CustomerRewards'));
 const VerifyEmail = lazy(() => import('./routes/VerifyEmail'));
 const ClaimLanding = lazy(() => import('./routes/ClaimLanding'));
 const GlobalVerifyEmail = lazy(() => import('./routes/GlobalVerifyEmail'));
@@ -190,6 +191,7 @@ export default function App() {
               <Route path="dashboard" element={<CustomerDashboard />} />
               <Route path="history" element={<CustomerHistory />} />
               <Route path="menu" element={<CustomerMenu />} />
+              <Route path="rewards" element={<CustomerRewards />} />
               <Route path="settings" element={<CustomerSettings />} />
             </Route>
 

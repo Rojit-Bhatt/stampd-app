@@ -1,11 +1,11 @@
 import { Link } from "react-router-dom";
-import { Coffee, QrCode, Coins, UtensilsCrossed, CircleUser } from "lucide-react";
+import { Coffee, QrCode, Coins, UtensilsCrossed, Gift } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 
 import { tenantPath } from "../../lib/tenantPath";
 import { useTenant } from "../../context/TenantContext";
 
-type Tab = "dashboard" | "history" | "menu" | "settings" | "none";
+type Tab = "dashboard" | "history" | "menu" | "rewards" | "none";
 
 interface BottomNavProps {
   slug: string;
@@ -80,7 +80,7 @@ export function BottomNav({ slug, activeTab, onScanClick }: BottomNavProps) {
         <div className="w-14" aria-hidden="true" />
 
         <NavLink to={path("history")} icon={Coins} label="Points" active={activeTab === "history"} />
-        <NavLink to={path("settings")} icon={CircleUser} label="Profile" active={activeTab === "settings"} />
+        <NavLink to={path("rewards")} icon={Gift} label="Rewards" active={activeTab === "rewards"} />
       </div>
     </footer>
   );

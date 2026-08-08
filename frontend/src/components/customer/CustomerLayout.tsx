@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { Outlet, useLocation, useNavigate, Link, NavLink } from "react-router-dom";
-import { QrCode, Coffee, Coins, UtensilsCrossed, CircleUser, ArrowLeft } from "lucide-react";
+import { QrCode, Coffee, Coins, UtensilsCrossed, Gift, ArrowLeft } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 
 import { useCustomerAuth } from "../../context/CustomerAuthContext";
@@ -67,8 +67,8 @@ export function CustomerLayout() {
       ? "dashboard"
       : location.pathname.endsWith("/menu")
         ? "menu"
-        : location.pathname.endsWith("/settings")
-          ? "settings"
+        : location.pathname.endsWith("/rewards")
+          ? "rewards"
           : "none";
 
   const path = (sub: string) => tenantPath(companySlug, slug, sub);
@@ -122,7 +122,7 @@ export function CustomerLayout() {
             <DesktopTab to={path("dashboard")} icon={Coffee} label="Card" />
             <DesktopTab to={path("menu")} icon={UtensilsCrossed} label="Menu" />
             <DesktopTab to={path("history")} icon={Coins} label="Points" />
-            <DesktopTab to={path("settings")} icon={CircleUser} label="Profile" />
+            <DesktopTab to={path("rewards")} icon={Gift} label="Rewards" />
           </nav>
 
           <div className="ml-auto flex flex-shrink-0 items-center gap-2">
