@@ -115,7 +115,7 @@ export default function AdminCampaigns() {
                 </div>
                 <div className="truncate text-[13px] text-[var(--muted)]">{describeSchedule(c)}</div>
                 {c.description && (
-                  <div className="truncate text-[13px] text-[var(--soft)]">{c.description}</div>
+                  <div className="text-[13px] leading-relaxed text-[var(--soft)]">{c.description}</div>
                 )}
               </div>
 
