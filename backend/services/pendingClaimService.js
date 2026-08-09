@@ -188,6 +188,13 @@ const fulfillPendingClaim = async ({ pendingClaimId, organizationId, customerAcc
   const account = await CustomerAccount.findOne({ _id: customerAccountId });
   if (!account) throw createHttpError("Account not found.", 404);
 
+  // Same phone gate as claimPoints — see there for why. Checked before the
+  // award, not before binding above: a claim that fails here just stays
+  // bound-but-unfulfilled, retryable the moment the customer adds a phone.
+  if (!account.phone) {
+    throw createHttpError("Add your phone number before earning points.", 400, "PHONE_REQUIRED");
+  }
+
   // No emailVerified gate here, matching claimPoints: a signup that happened
   // BECAUSE someone scanned a QR at the counter must land its first earn
   // immediately, not hours later when they get round to their inbox.

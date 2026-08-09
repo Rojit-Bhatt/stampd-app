@@ -397,6 +397,12 @@ const claimPoints = async ({ token, userId, role, organizationId }) => {
   if (!claimer) {
     throw createHttpError("Account not found.", 404);
   }
+  // Phone IS required to earn (unlike emailVerified below) — a contact
+  // number has to reach the outlet admin, and Google sign-in is the one path
+  // that can otherwise leave it blank.
+  if (!claimer.phone) {
+    throw createHttpError("Add your phone number before earning points.", 400, "PHONE_REQUIRED");
+  }
   // Deliberately NOT gated on emailVerified. Earning is the moment the
   // customer is standing at the counter with a 30-second QR on screen —
   // bouncing them to their inbox there loses the earn for a bill that was

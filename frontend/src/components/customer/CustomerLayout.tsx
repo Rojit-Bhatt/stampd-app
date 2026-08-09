@@ -10,6 +10,7 @@ import { BottomNav } from "./BottomNav";
 import { ScannerModal } from "./ScannerModal";
 import { CustomerAvatar } from "./CustomerAvatar";
 import { RequiredInfoBanner } from "./RequiredInfoBanner";
+import { PhoneStepModal } from "./PhoneStepModal";
 import { tenantPath } from "../../lib/tenantPath";
 import { resolveImageUrl } from "../../lib/images";
 
@@ -59,6 +60,15 @@ export function CustomerLayout() {
         <div className="h-8 w-8 animate-spin rounded-full border-2 border-[var(--primary)] border-t-transparent" />
       </div>
     );
+  }
+
+  // A contact number has to reach the outlet — Google sign-in is the one
+  // path that can leave it blank, and this is the safety net for a customer
+  // who dodged (or lost) the post-signin prompt: it re-fires on every visit
+  // to the app shell, not just right after a fresh Google login. Completing
+  // it updates globalAccount via context, which clears this on its own.
+  if (globalAccount && !globalAccount.phone) {
+    return <PhoneStepModal onDone={() => {}} />;
   }
 
   const activeTab = location.pathname.endsWith("/history")

@@ -27,6 +27,7 @@ export interface GlobalAccount {
   id: string;
   name: string;
   email: string;
+  phone: string;
   emailVerified: boolean;
   /** 0 = no profile picture. Bumped by the backend on every upload/removal. */
   avatarVersion?: number;

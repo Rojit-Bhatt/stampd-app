@@ -87,6 +87,7 @@ const formatAccountSummary = (account) => ({
   id: account._id.toString(),
   name: account.name,
   email: account.email,
+  phone: account.phone || "",
   emailVerified: account.emailVerified,
   avatarVersion: account.avatarVersion || 0,
   marketingConsent: account.marketingConsent,

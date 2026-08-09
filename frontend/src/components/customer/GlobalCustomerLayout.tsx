@@ -7,6 +7,7 @@ import { useCustomerAuth } from "../../context/CustomerAuthContext";
 import { PLATFORM_NAME } from "../../lib/platform";
 import { GlobalScannerModal } from "./GlobalScannerModal";
 import { CustomerAvatar } from "./CustomerAvatar";
+import { PhoneStepModal } from "./PhoneStepModal";
 import { useMyTenants } from "../../hooks/useMyTenants";
 import { StampdLogo } from "../shared/StampdLogo";
 
@@ -108,6 +109,12 @@ export function GlobalCustomerLayout() {
         <div className="h-8 w-8 animate-spin rounded-full border-2 border-[var(--primary)] border-t-transparent" />
       </div>
     );
+  }
+
+  // Same phone gate as CustomerLayout — see there for why. Explore is the
+  // other shell a customer can land in with a cached-but-phoneless session.
+  if (!globalAccount.phone) {
+    return <PhoneStepModal onDone={() => {}} />;
   }
 
   // location is read so the shell re-renders on navigation; NavLink handles
