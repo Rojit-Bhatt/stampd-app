@@ -33,6 +33,13 @@ export function OutletCardStack() {
 
   const clampedIndex = Math.min(activeIndex, memberships.length - 1);
 
+  const handleSwipe = (direction: "next" | "prev") => {
+    setActiveIndex((i) => {
+      const next = direction === "next" ? i + 1 : i - 1;
+      return Math.max(0, Math.min(memberships.length - 1, next));
+    });
+  };
+
   return (
     <section className="relative mb-7 flex justify-center" style={{ height: "min(50vh, 380px)" }}>
       <div className="relative w-full max-w-sm">
@@ -52,7 +59,12 @@ export function OutletCardStack() {
                   />
                 </div>
               )}
-              <OutletCard membership={m} depth={depth} onTap={() => setActiveIndex(i)} />
+              <OutletCard
+                membership={m}
+                depth={depth}
+                onTap={() => setActiveIndex(i)}
+                onSwipe={handleSwipe}
+              />
             </Fragment>
           );
         })}
@@ -65,10 +77,12 @@ function OutletCard({
   membership,
   depth,
   onTap,
+  onSwipe,
 }: {
   membership: MyTenantMembership;
   depth: number;
   onTap: () => void;
+  onSwipe: (direction: "next" | "prev") => void;
 }) {
   const m = useMotion();
   const logo = resolveImageUrl(membership.branding.logoImageId, membership.branding.logoUrl);
@@ -113,7 +127,24 @@ function OutletCard({
 
   if (depth === 0) {
     return (
-      <motion.div className={cardClassName} style={{ zIndex: 10 - depth }} animate={animate} transition={transition}>
+      <motion.div
+        className={cardClassName}
+        style={{ zIndex: 10 - depth }}
+        animate={animate}
+        transition={transition}
+        drag="y"
+        dragConstraints={{ top: 0, bottom: 0 }}
+        dragElastic={0.5}
+        onDragEnd={(_event, info) => {
+          const DISTANCE_THRESHOLD = 60;
+          const VELOCITY_THRESHOLD = 500;
+          if (info.offset.y < -DISTANCE_THRESHOLD || info.velocity.y < -VELOCITY_THRESHOLD) {
+            onSwipe("next");
+          } else if (info.offset.y > DISTANCE_THRESHOLD || info.velocity.y > VELOCITY_THRESHOLD) {
+            onSwipe("prev");
+          }
+        }}
+      >
         <Link to={tenantPath(membership.companySlug, membership.slug, "dashboard")}>{content}</Link>
       </motion.div>
     );
