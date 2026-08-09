@@ -6,6 +6,7 @@ import type { LucideIcon } from "lucide-react";
 import { useCustomerAuth } from "../../context/CustomerAuthContext";
 import { useTenant } from "../../context/TenantContext";
 import { useAccount } from "../../hooks/useAccount";
+import { useAccountRefresh } from "../../hooks/useAccountRefresh";
 import { BottomNav } from "./BottomNav";
 import { ScannerModal } from "./ScannerModal";
 import { CustomerAvatar } from "./CustomerAvatar";
@@ -47,6 +48,10 @@ export function CustomerLayout() {
   const navigate = useNavigate();
   const location = useLocation();
   const [scanOpen, setScanOpen] = useState(false);
+  // Only revalidates when the cache says "no phone" — see useAccountRefresh.
+  const { isFetching: phoneCheckPending } = useAccountRefresh(
+    Boolean(globalAccount) && !globalAccount?.phone,
+  );
 
   useEffect(() => {
     if (!isLoading && (!user || user.role !== "customer")) {
@@ -67,7 +72,17 @@ export function CustomerLayout() {
   // who dodged (or lost) the post-signin prompt: it re-fires on every visit
   // to the app shell, not just right after a fresh Google login. Completing
   // it updates globalAccount via context, which clears this on its own.
+  // Revalidated first (useAccountRefresh above) since the cache can be stale
+  // rather than genuinely phoneless — e.g. the phone was added from another
+  // device or browser tab and this tab's cached snapshot never heard about it.
   if (globalAccount && !globalAccount.phone) {
+    if (phoneCheckPending) {
+      return (
+        <div className="flex min-h-screen items-center justify-center bg-[var(--bg)]">
+          <div className="h-8 w-8 animate-spin rounded-full border-2 border-[var(--primary)] border-t-transparent" />
+        </div>
+      );
+    }
     return <PhoneStepModal onDone={() => {}} />;
   }
 

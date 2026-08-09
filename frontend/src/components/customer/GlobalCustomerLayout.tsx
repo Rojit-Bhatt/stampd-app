@@ -9,6 +9,7 @@ import { GlobalScannerModal } from "./GlobalScannerModal";
 import { CustomerAvatar } from "./CustomerAvatar";
 import { PhoneStepModal } from "./PhoneStepModal";
 import { useMyTenants } from "../../hooks/useMyTenants";
+import { useAccountRefresh } from "../../hooks/useAccountRefresh";
 import { StampdLogo } from "../shared/StampdLogo";
 
 // The global (cross-tenant) customer shell for /explore + /explore/mine —
@@ -86,6 +87,12 @@ export function GlobalCustomerLayout() {
   const myTenantsStatus = (myTenantsErrorObj as (Error & { status?: number }) | null)?.status;
   const myTenantsError = myTenantsStatus === 401 || myTenantsStatus === 403;
 
+  // Only revalidates when the cache says "no phone" — the common case
+  // (phone already cached) never pays this round trip.
+  const { isFetching: phoneCheckPending } = useAccountRefresh(
+    Boolean(globalAccount) && !globalAccount?.phone,
+  );
+
   useEffect(() => {
     if (!globalAccount) {
       navigate("/customer-login");
@@ -113,7 +120,16 @@ export function GlobalCustomerLayout() {
 
   // Same phone gate as CustomerLayout — see there for why. Explore is the
   // other shell a customer can land in with a cached-but-phoneless session.
+  // Revalidated first (useAccountRefresh above) since the cache can be stale
+  // rather than genuinely phoneless.
   if (!globalAccount.phone) {
+    if (phoneCheckPending) {
+      return (
+        <div className="flex min-h-screen items-center justify-center bg-[var(--bg)]">
+          <div className="h-8 w-8 animate-spin rounded-full border-2 border-[var(--primary)] border-t-transparent" />
+        </div>
+      );
+    }
     return <PhoneStepModal onDone={() => {}} />;
   }
 

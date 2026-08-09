@@ -373,6 +373,17 @@ const authenticateWithGoogle = async ({ idToken }) => {
 // the next ensureMembership re-sync, and a password change reports success
 // while sign-in (which reads CustomerAccount.password) keeps the old one.
 // These are the versions the customer app uses.
+// The client's globalAccount is a localStorage snapshot, refreshed only on
+// explicit actions (login/register/completeProfile) in that browser tab —
+// it can drift stale against the server (e.g. phone added from a different
+// device or tab). Gates like the /explore phone check need to confirm
+// against this before trusting a cached "no phone" as still true.
+const getMe = async ({ customerAccountId }) => {
+  const account = await CustomerAccount.findOne({ _id: customerAccountId });
+  if (!account) throw createHttpError("Account not found.", 404);
+  return formatAccountPayload(account);
+};
+
 const updateAccountProfile = async ({ customerAccountId, name }) => {
   if (!name || !name.trim()) throw createHttpError("Name is required.", 400);
 
@@ -827,6 +838,7 @@ module.exports = {
   registerAccount,
   loginAccount,
   authenticateWithGoogle,
+  getMe,
   completeProfile,
   updateAccountProfile,
   updatePreferences,

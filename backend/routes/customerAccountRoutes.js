@@ -2,7 +2,7 @@ const express = require("express");
 const {
   register, login, googleAuth,
   verifyEmail, verifyOtp, resendVerification, forgotPassword, resetPassword,
-  completeProfile, updateProfile, updatePreferences, savePushSubscription, removePushSubscription, changePassword, enterTenant, getMyTenants,
+  getMe, completeProfile, updateProfile, updatePreferences, savePushSubscription, removePushSubscription, changePassword, enterTenant, getMyTenants,
   uploadAvatarFile, uploadAvatar, deleteAvatar, getAvatar
 } = require("../controllers/customerAccountController");
 const { resolveTenant } = require("../middleware/tenantMiddleware");
@@ -24,6 +24,12 @@ router.post("/resend-verification", registrationLimiter, resendVerification);
 router.post("/forgot-password", registrationLimiter, forgotPassword);
 router.post("/reset-password", resetPassword);
 router.post("/complete-profile", verifyGlobalSession, completeProfile);
+
+// Fresh account snapshot from the server — the client's cached globalAccount
+// (localStorage, refreshed only on explicit login/register/completeProfile
+// in that tab) can drift stale, e.g. phone added from a different device or
+// tab. Gates that trust globalAccount.phone revalidate against this first.
+router.get("/me", verifyGlobalSession, getMe);
 
 // Name and password live on the CustomerAccount. The tenant-scoped
 // /api/account equivalents write the outlet membership row instead, where a
