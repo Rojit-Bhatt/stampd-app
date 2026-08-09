@@ -1,9 +1,10 @@
-import { Fragment, useState } from "react";
+import { Fragment, useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { motion } from "motion/react";
 
 import { useMyTenants, type MyTenantMembership } from "../../hooks/useMyTenants";
 import { useCustomerAuth } from "../../context/CustomerAuthContext";
+import { useExploreHero } from "../../context/ExploreHeroContext";
 import { formatPoints } from "../../hooks/usePoints";
 import { resolveImageUrl } from "../../lib/images";
 import { tenantPath } from "../../lib/tenantPath";
@@ -17,7 +18,16 @@ const MAX_PEEK_DEPTH = 2;
 export function OutletCardStack() {
   const { data: memberships = [] } = useMyTenants();
   const { globalAccount } = useCustomerAuth();
+  const { setHeroColor } = useExploreHero();
   const [activeIndex, setActiveIndex] = useState(0);
+
+  const clampedIndexForColor = memberships.length ? Math.min(activeIndex, memberships.length - 1) : 0;
+  const activeColor = memberships[clampedIndexForColor]?.branding.primaryColor ?? null;
+
+  useEffect(() => {
+    setHeroColor(activeColor);
+    return () => setHeroColor(null);
+  }, [activeColor, setHeroColor]);
 
   if (memberships.length === 0) return null;
 
