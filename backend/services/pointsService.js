@@ -768,16 +768,19 @@ const getCustomerDetailRows = async (organizationId) => {
         lastActivityAt: balance ? balance.lastActivityAt : null,
         redemptionCount: redeems.length,
         totalSpent: Math.round(totalSpent * 100) / 100,
-        history: allTxns.slice(0, 10).map(formatTransaction)
+        history: allTxns.slice(0, 10).map(formatTransaction),
+        earnCount: earns.length
       };
     })
   );
 
-  // Every customer row is returned, including ones with no earn/redeem yet —
-  // a customer who joined (via /explore auto-provisioning, or a claim) but
-  // hasn't transacted is still a real customer of this outlet, and an outlet
-  // needs to see them to follow up.
-  return rows;
+  // /explore auto-provisions a membership the moment someone opens the
+  // outlet's page, before they've ever bought anything — same rule as
+  // impactService's "customer = >=1 earn". Drop those browsers so the admin
+  // Customers list only shows people who actually visited the counter.
+  return rows
+    .filter((row) => row.earnCount > 0)
+    .map(({ earnCount, ...row }) => row);
 };
 
 module.exports = {
