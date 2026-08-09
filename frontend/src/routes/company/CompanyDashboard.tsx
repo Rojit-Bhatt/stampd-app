@@ -129,7 +129,7 @@ export default function CompanyDashboard() {
     <div>
       <div className="mb-6 flex flex-wrap items-end justify-between gap-3">
         <div>
-          <h1 className="font-display text-[30px] font-bold text-[var(--ink)]">Your outlets</h1>
+          <h1 className="font-display text-[28px] font-bold tracking-[-0.015em] text-[var(--ink)]">Your outlets</h1>
           <p className="text-[var(--muted)]">
             {company ? `${company.name} — ` : ""}
             {active.length} active outlet{active.length === 1 ? "" : "s"}, all from one login.

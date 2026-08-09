@@ -25,7 +25,7 @@ export function SectionHead({
   return (
     <div className="max-w-2xl">
       <Eyebrow>{eyebrow}</Eyebrow>
-      <h2 className="mt-4 font-display text-3xl leading-[1.1] text-[var(--lp-ink)] sm:text-4xl md:text-5xl">
+      <h2 className="mt-4 font-display text-3xl leading-[1.1] tracking-[-0.02em] text-[var(--lp-ink)] sm:text-4xl md:text-5xl">
         {title}
       </h2>
       {subtitle ? (

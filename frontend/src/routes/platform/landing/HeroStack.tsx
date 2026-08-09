@@ -120,7 +120,7 @@ function HeroCopy({ contactHref, children }: { contactHref: string; children?: R
   return (
     <div>
       <Eyebrow>{HERO.eyebrow}</Eyebrow>
-      <h1 className="mt-5 font-display text-4xl leading-[1.05] text-[var(--lp-ink)] sm:text-5xl md:text-6xl">
+      <h1 className="mt-5 font-display text-4xl leading-[1.05] tracking-[-0.02em] text-[var(--lp-ink)] sm:text-5xl md:text-6xl">
         {HERO.headline[0]}
         <br />
         {HERO.headline[1]}

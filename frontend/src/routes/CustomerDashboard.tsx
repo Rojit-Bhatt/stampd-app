@@ -59,7 +59,7 @@ function Section({
   children: ReactNode;
 }) {
   return (
-    <section className="rounded-[var(--radius-card)] border border-[var(--line)] bg-[var(--surface)] p-5 shadow-ambient">
+    <section className="rounded-[var(--radius-card)] border border-[var(--line)] bg-[var(--surface)] p-6 shadow-ambient">
       <div className="mb-3.5 flex items-center justify-between gap-3">
         <h2 className="text-[10px] font-bold uppercase tracking-[0.16em] text-[var(--soft)]">
           {title}

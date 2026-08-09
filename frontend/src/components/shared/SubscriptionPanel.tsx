@@ -146,7 +146,7 @@ export function SubscriptionPanel({ queryKey, fetchPath, redeemPath, role, extra
 
   return (
     <div>
-      <h1 className="font-display text-[28px] font-bold text-[var(--ink)]">Subscription</h1>
+      <h1 className="font-display text-[28px] font-bold tracking-[-0.015em] text-[var(--ink)]">Subscription</h1>
       <p className="mb-6 mt-1 text-[var(--muted)]">
         Renewals are arranged with us directly — there's no card on file.
       </p>

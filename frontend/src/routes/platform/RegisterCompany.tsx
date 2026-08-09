@@ -147,7 +147,7 @@ export default function RegisterCompany() {
       <Link to="/platform" className="mb-3.5 inline-block text-[13px] text-[var(--muted)]">
         ← Companies
       </Link>
-      <h1 className="font-display text-[28px] font-bold text-[var(--ink)]">
+      <h1 className="font-display text-[28px] font-bold tracking-[-0.015em] text-[var(--ink)]">
         Register a new company
       </h1>
       <p className="mb-6 text-[var(--muted)]">

@@ -90,7 +90,7 @@ export default function AdminCustomers() {
     <div>
       <div className="mb-6 flex flex-wrap items-end justify-between gap-3">
         <div>
-          <h1 className="font-display text-[28px] font-bold text-[var(--ink)]">Customers</h1>
+          <h1 className="font-display text-[28px] font-bold tracking-[-0.015em] text-[var(--ink)]">Customers</h1>
           <div className="text-[var(--muted)]">
             {isLoading ? <Skeleton className="inline-block h-4 w-40 align-middle" /> : `${customers.length} member${customers.length === 1 ? "" : "s"} of ${settings?.name ?? "your business"}`}
           </div>

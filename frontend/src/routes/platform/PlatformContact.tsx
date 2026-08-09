@@ -81,7 +81,7 @@ export default function PlatformContact() {
 
   return (
     <div>
-      <h1 className="font-display text-[28px] font-bold text-[var(--ink)]">Contact</h1>
+      <h1 className="font-display text-[28px] font-bold tracking-[-0.015em] text-[var(--ink)]">Contact</h1>
       <p className="mb-6 text-[var(--muted)]">
         Shown to visitors on the public Stampd landing page.
       </p>

@@ -103,7 +103,7 @@ export default function PlatformAnalytics() {
 
   return (
     <div>
-      <h1 className="font-display text-[28px] font-bold text-[var(--ink)]">Analytics</h1>
+      <h1 className="font-display text-[28px] font-bold tracking-[-0.015em] text-[var(--ink)]">Analytics</h1>
       <p className="mb-6 text-[var(--muted)]">Rolled up across every business on the platform.</p>
 
       {/* TWO METRIC FAMILIES, DRAWN DIFFERENTLY ON PURPOSE.

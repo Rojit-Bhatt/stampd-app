@@ -65,7 +65,7 @@ export default function PlatformTeam() {
 
   return (
     <div>
-      <h1 className="font-display text-[30px] font-bold text-[var(--ink)]">Team</h1>
+      <h1 className="font-display text-[28px] font-bold tracking-[-0.015em] text-[var(--ink)]">Team</h1>
       <p className="mb-6 text-[var(--muted)]">Platform staff with access to this console.</p>
 
       <div className="mb-6 shadow-ambient overflow-hidden rounded-[var(--radius-card)] bg-[var(--surface)]">

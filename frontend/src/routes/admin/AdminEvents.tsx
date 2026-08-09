@@ -50,7 +50,7 @@ export default function AdminEvents() {
     <div className="max-w-[720px]">
       <div className="mb-5 flex flex-wrap items-end justify-between gap-3">
         <div>
-          <h1 className="font-display text-[28px] font-bold text-[var(--ink)]">Events</h1>
+          <h1 className="font-display text-[28px] font-bold tracking-[-0.015em] text-[var(--ink)]">Events</h1>
           <p className="text-[var(--muted)]">Announce upcoming events to your customers.</p>
         </div>
         <button

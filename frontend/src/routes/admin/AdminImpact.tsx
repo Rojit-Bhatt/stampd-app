@@ -66,7 +66,7 @@ export default function AdminImpact() {
   if (!data || data.customers === 0) {
     return (
       <div>
-        <h1 className="font-display text-[28px] font-bold text-[var(--ink)]">Impact</h1>
+        <h1 className="font-display text-[28px] font-bold tracking-[-0.015em] text-[var(--ink)]">Impact</h1>
         <p className="mb-6 text-[var(--muted)]">What your loyalty programme is doing for the business.</p>
         <div className="rounded-3xl bg-[var(--surface)] p-8 shadow-ambient">
           <p className="text-[var(--ink)]">No visits yet.</p>
@@ -86,7 +86,7 @@ export default function AdminImpact() {
 
   return (
     <div>
-      <h1 className="font-display text-[28px] font-bold text-[var(--ink)]">Impact</h1>
+      <h1 className="font-display text-[28px] font-bold tracking-[-0.015em] text-[var(--ink)]">Impact</h1>
       <p className="mb-6 text-[var(--muted)]">
         What your loyalty programme is doing for the business
         {startedOn ? ` — since ${startedOn}` : ""}.

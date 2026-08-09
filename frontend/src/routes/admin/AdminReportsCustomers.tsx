@@ -18,7 +18,7 @@ export default function AdminReportsCustomers() {
 
   return (
     <div className="max-w-[560px]">
-      <h1 className="font-display text-[28px] font-bold text-[var(--ink)]">Customer report</h1>
+      <h1 className="font-display text-[28px] font-bold tracking-[-0.015em] text-[var(--ink)]">Customer report</h1>
       <p className="mb-6 text-[var(--muted)]">
         Download every customer's contact info, points balance, and lifetime totals as an Excel file.
       </p>

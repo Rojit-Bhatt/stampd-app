@@ -63,7 +63,7 @@ export default function AdminReportsSummary() {
 
   return (
     <div>
-      <h1 className="font-display text-[28px] font-bold text-[var(--ink)]">Summary report</h1>
+      <h1 className="font-display text-[28px] font-bold tracking-[-0.015em] text-[var(--ink)]">Summary report</h1>
       <p className="mb-6 text-[var(--muted)]">Business activity for the selected date range.</p>
 
       <div className="mb-6 flex flex-wrap items-end justify-between gap-4">

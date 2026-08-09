@@ -70,7 +70,7 @@ export default function SubscriptionKeys() {
 
   return (
     <div>
-      <h1 className="font-display text-[30px] font-bold text-[var(--ink)]">Subscription keys</h1>
+      <h1 className="font-display text-[28px] font-bold tracking-[-0.015em] text-[var(--ink)]">Subscription keys</h1>
       <p className="mb-6 text-[var(--muted)]">
         Generate a key after confirming payment with a business over phone/email, then hand it over the same way.
         No payment gateway is wired up — activation is entirely manual.

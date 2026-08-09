@@ -36,7 +36,7 @@ export default function BusinessLanding() {
 
         {/* Body */}
         <div className="flex-1 px-6 pb-8 pt-6">
-          <h1 className="font-display text-[28px] font-bold text-[var(--ink)]">{tenant?.name}</h1>
+          <h1 className="font-display text-[28px] font-bold tracking-[-0.015em] text-[var(--ink)]">{tenant?.name}</h1>
           <p className="mb-6 text-[var(--muted)]">{branding?.tagline}</p>
 
           <div className="shadow-ambient mb-6 rounded-[var(--radius-card)] bg-[var(--surface-2)] p-5">

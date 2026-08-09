@@ -6,7 +6,7 @@ export function CtaSection({ contactHref }: { contactHref: string }) {
     <section className="lp-grid px-6 pb-40 pt-28 md:px-10">
       <div className="mx-auto max-w-3xl text-center">
         <Eyebrow>{CTA.eyebrow}</Eyebrow>
-        <h2 className="mt-5 font-display text-3xl leading-[1.12] text-[var(--lp-ink)] sm:text-4xl md:text-5xl">
+        <h2 className="mt-5 font-display text-3xl leading-[1.12] tracking-[-0.02em] text-[var(--lp-ink)] sm:text-4xl md:text-5xl">
           {CTA.title}
         </h2>
         <div className="mt-9 flex flex-wrap justify-center gap-3">

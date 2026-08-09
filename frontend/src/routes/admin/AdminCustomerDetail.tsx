@@ -111,7 +111,7 @@ export default function AdminCustomerDetail() {
               {customer.name.split(" ").map((w) => w[0]).slice(0, 2).join("").toUpperCase()}
             </span>
             <div className="min-w-0">
-              <h1 className="truncate font-display text-3xl font-bold text-[var(--ink)]">{customer.name}</h1>
+              <h1 className="truncate font-display text-3xl font-bold tracking-[-0.02em] text-[var(--ink)]">{customer.name}</h1>
               <p className="truncate text-sm text-[var(--muted)]">
                 {customer.email} · {customer.customerNo}
               </p>

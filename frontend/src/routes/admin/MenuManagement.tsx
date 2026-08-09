@@ -180,7 +180,7 @@ export default function MenuManagement() {
 
   return (
     <div className="max-w-[860px]">
-      <h1 className="font-display text-[28px] font-bold text-[var(--ink)]">Menu</h1>
+      <h1 className="font-display text-[28px] font-bold tracking-[-0.015em] text-[var(--ink)]">Menu</h1>
       <p className="mb-5 text-[var(--muted)]">A display-only menu customers can browse in the app.</p>
 
       {/* Toggle */}

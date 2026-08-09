@@ -95,7 +95,7 @@ export default function Explore() {
 
       {myTenants.length > 0 && (
         <section className="mb-7">
-          <h2 className="mb-3 font-display text-lg font-bold text-[var(--ink)]">My places</h2>
+          <h2 className="mb-3 font-display text-lg font-bold text-[var(--ink)]">My businesses</h2>
           <div className="hide-scrollbar -mx-5 flex gap-3 overflow-x-auto px-5 pb-1">
             {myTenants.map((m) => (
               <Link

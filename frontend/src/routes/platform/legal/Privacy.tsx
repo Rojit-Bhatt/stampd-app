@@ -196,7 +196,7 @@ export default function Privacy() {
         <a href="/" className="font-mono text-[11px] tracking-[0.18em] text-[var(--lp-green)]">
           ← {PLATFORM_NAME.toUpperCase()}
         </a>
-        <h1 className="mt-6 font-display text-4xl text-[var(--lp-ink)]">Privacy Policy</h1>
+        <h1 className="mt-6 font-display text-4xl tracking-[-0.02em] text-[var(--lp-ink)]">Privacy Policy</h1>
         <p className="mt-3 text-sm text-[var(--lp-muted)]">Last updated: August 2026</p>
 
         <p className="mt-6 rounded-2xl border border-[var(--lp-line)] bg-white/[0.04] px-5 py-4 text-sm leading-relaxed text-[var(--lp-muted)]">

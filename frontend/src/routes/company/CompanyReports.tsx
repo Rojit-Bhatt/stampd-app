@@ -60,7 +60,7 @@ export default function CompanyReports() {
 
   return (
     <div>
-      <h1 className="font-display text-[28px] font-bold text-[var(--ink)]">Reports</h1>
+      <h1 className="font-display text-[28px] font-bold tracking-[-0.015em] text-[var(--ink)]">Reports</h1>
       <p className="mb-6 mt-1 text-[var(--muted)]">Every outlet you run, side by side. Only you see this.</p>
 
       <div className="mb-6">

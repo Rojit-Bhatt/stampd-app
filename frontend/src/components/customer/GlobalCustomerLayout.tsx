@@ -73,8 +73,8 @@ export function GlobalCustomerLayout() {
   const navigate = useNavigate();
   const location = useLocation();
   const [scanOpen, setScanOpen] = useState(false);
-  // Also warms the query cache Explore's "My places" row and ExploreMine both
-  // read from, so switching tabs is instant.
+  // Also warms the query cache Explore's "My businesses" row and ExploreMine
+  // both read from, so switching tabs is instant.
   // `error`, not `isError` — same reason as AdminGuard: once this query has
   // data, a failed background refetch leaves status "success" and isError
   // false, so a session going stale mid-visit would never be caught.
@@ -135,7 +135,7 @@ export function GlobalCustomerLayout() {
           </Link>
 
           <nav className="ml-4 hidden items-center gap-1 lg:flex">
-            <Tab to="/explore" icon={Compass} label="Home" variant="top" />
+            <Tab to="/explore" icon={Compass} label="Discover" variant="top" />
             <Tab to="/explore/events" icon={CalendarDays} label="Events" variant="top" />
             <Tab to="/explore/mine" icon={Store} label="My businesses" variant="top" />
             <Tab to="/explore/profile" icon={CircleUser} label="Profile" variant="top" />
@@ -183,7 +183,7 @@ export function GlobalCustomerLayout() {
           screen. */}
       <footer className="fixed inset-x-0 bottom-0 z-30 flex-shrink-0 px-4 pt-2 pb-[max(1.25rem,env(safe-area-inset-bottom))] lg:hidden">
         <div className="mx-auto flex max-w-md items-center gap-2 rounded-full border border-[var(--line)] bg-[var(--surface)] px-3 py-2 shadow-float">
-          <Tab to="/explore" icon={Compass} label="Home" variant="bottom" />
+          <Tab to="/explore" icon={Compass} label="Discover" variant="bottom" />
           <Tab to="/explore/events" icon={CalendarDays} label="Events" variant="bottom" />
           <Tab to="/explore/mine" icon={Store} label="My businesses" variant="bottom" />
           <Tab to="/explore/profile" icon={CircleUser} label="Profile" variant="bottom" />

@@ -40,7 +40,7 @@ export default function AdminCampaigns() {
     <div className="max-w-[760px]">
       <div className="mb-6 flex flex-wrap items-end justify-between gap-3">
         <div>
-          <h1 className="font-display text-[30px] font-bold text-[var(--ink)]">Campaigns</h1>
+          <h1 className="font-display text-[28px] font-bold tracking-[-0.015em] text-[var(--ink)]">Campaigns</h1>
           <p className="text-[var(--muted)]">
             Multiply what a bill earns for a while.
             {liveCount > 0 ? ` ${liveCount} running right now.` : ""}

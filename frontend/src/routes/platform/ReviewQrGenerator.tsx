@@ -46,7 +46,7 @@ export default function ReviewQrGenerator() {
             <p className="font-mono text-[10px] tracking-[0.18em] text-[var(--lp-green)]">
               FREE TOOL
             </p>
-            <h1 className="mt-5 max-w-3xl font-display text-4xl leading-[1.1] text-[var(--lp-ink)] sm:text-5xl md:text-6xl">
+            <h1 className="mt-5 max-w-3xl font-display text-4xl leading-[1.1] tracking-[-0.02em] text-[var(--lp-ink)] sm:text-5xl md:text-6xl">
               Get more Google reviews.
             </h1>
             <p className="mt-5 max-w-xl text-base leading-relaxed text-[var(--lp-muted)]">

@@ -98,7 +98,7 @@ export default function Plans() {
       <div className="mb-6 flex flex-wrap items-end justify-between gap-3">
         <div>
           <div className="mb-1 text-[11px] font-bold uppercase tracking-[0.15em] text-[var(--soft)]">Revenue settings</div>
-          <h1 className="font-display text-[30px] font-bold text-[var(--ink)]">Subscription plans</h1>
+          <h1 className="font-display text-[28px] font-bold tracking-[-0.015em] text-[var(--ink)]">Subscription plans</h1>
           <p className="text-[var(--muted)]">Configure tiers and outlet limits. Changes affect new activations immediately.</p>
         </div>
         <button

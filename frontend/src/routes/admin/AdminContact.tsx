@@ -206,7 +206,7 @@ export default function AdminContact() {
 
   return (
     <div id="admin-contact-container">
-      <h1 className="font-display text-[28px] font-bold text-[var(--ink)]">Contact & Location</h1>
+      <h1 className="font-display text-[28px] font-bold tracking-[-0.015em] text-[var(--ink)]">Contact & Location</h1>
       <p className="mb-6 text-[var(--muted)]">
         Configure the physical outlet details and links. Changes preview live on the right.
       </p>

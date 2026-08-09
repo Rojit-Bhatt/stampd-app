@@ -13,7 +13,7 @@ export function FeaturesSection() {
             used the reveal, the reveal would stop meaning anything. */}
         <WordReveal
           text={FEATURES.statement}
-          className="mt-5 max-w-4xl font-display text-3xl leading-[1.15] text-[var(--lp-ink)] sm:text-4xl md:text-5xl"
+          className="mt-5 max-w-4xl font-display text-3xl leading-[1.15] tracking-[-0.02em] text-[var(--lp-ink)] sm:text-4xl md:text-5xl"
         />
 
         <ServicesCarousel />
