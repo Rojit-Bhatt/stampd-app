@@ -11,6 +11,7 @@ import { PhoneStepModal } from "./PhoneStepModal";
 import { useMyTenants } from "../../hooks/useMyTenants";
 import { useAccountRefresh } from "../../hooks/useAccountRefresh";
 import { StampdLogo } from "../shared/StampdLogo";
+import { ExploreHeroProvider } from "../../context/ExploreHeroContext";
 
 // The global (cross-tenant) customer shell for /explore + /explore/mine —
 // parallel to CustomerLayout but with no active TenantProvider or tenant JWT:
@@ -138,6 +139,7 @@ export function GlobalCustomerLayout() {
   void location;
 
   return (
+    <ExploreHeroProvider>
     <div className="flex min-h-screen flex-col bg-[var(--bg)]">
       <GlobalScannerModal open={scanOpen} onClose={() => setScanOpen(false)} />
 
@@ -206,6 +208,7 @@ export function GlobalCustomerLayout() {
         </div>
       </footer>
     </div>
+    </ExploreHeroProvider>
   );
 }
 
