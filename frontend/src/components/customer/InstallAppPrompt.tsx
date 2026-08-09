@@ -49,7 +49,7 @@ export function InstallAppPrompt({
       <motion.div
         initial={m.pick({ opacity: 0, y: 8 }, { opacity: 0 })}
         animate={{ opacity: 1, y: 0 }}
-        transition={m.spring("cardEnter")}
+        transition={m.spring("settle")}
         className={`flex items-center gap-3 rounded-[var(--radius-card)] border border-[var(--line)] bg-[var(--surface)] p-4 shadow-ambient ${className}`}
       >
         <span className="flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-[var(--radius-field)] bg-[var(--surface-2)]">

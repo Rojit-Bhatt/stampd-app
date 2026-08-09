@@ -229,7 +229,7 @@ export default function CustomerDashboard() {
               <ul className="flex flex-col gap-3">
                 {upcomingCampaigns.map((c) => (
                   <li key={c.id} className="flex items-center gap-3">
-                    <Badge variant="active" className="flex-shrink-0 font-numeral text-sm">
+                    <Badge variant="active" className="flex-shrink-0 font-numeral font-numeral-sm text-sm">
                       {formatPoints(c.multiplier)}×
                     </Badge>
                     <div className="min-w-0 flex-1">

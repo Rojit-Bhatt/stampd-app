@@ -67,7 +67,7 @@ export function RedeemCelebration({
           <motion.p
             initial={m.pick({ opacity: 0, y: 10 }, { opacity: 0 })}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ ...m.spring("cardEnter"), delay: m.prefersReduced ? 0 : 0.18 }}
+            transition={{ ...m.spring("settle"), delay: m.prefersReduced ? 0 : 0.18 }}
             className="mt-2 font-display text-lg font-bold text-[var(--ink)]"
           >
             {rewardName}
@@ -84,7 +84,7 @@ export function RedeemCelebration({
         <motion.div
           initial={m.pick({ opacity: 0, y: 14 }, { opacity: 0 })}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ ...m.spring("cardEnter"), delay: m.prefersReduced ? 0 : 0.3 }}
+          transition={{ ...m.spring("settle"), delay: m.prefersReduced ? 0 : 0.3 }}
           className="mt-5 rounded-[var(--radius-card)] border border-[var(--line)] bg-[var(--surface)] px-6 py-5 text-center shadow-ambient"
         >
           <div className="text-[10px] font-bold uppercase tracking-[0.16em] text-[var(--soft)]">

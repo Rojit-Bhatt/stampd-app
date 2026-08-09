@@ -208,11 +208,21 @@ body {
 
 /* Every balance, KPI and signed point delta. Tabular figures so a column of
    numbers in the ledger lines up and a counting-up animation doesn't jitter
-   as digit widths change. */
+   as digit widths change.
+
+   Tracking is size-specific, never one fixed value: large numerals read too
+   loose without extra negative tracking, small ones read too tight with it.
+   Base covers the common 24-36px range; -lg/-sm opt in at the extremes. */
 .font-numeral {
   font-family: var(--font-numeral);
   font-variant-numeric: tabular-nums;
   letter-spacing: -0.01em;
+}
+.font-numeral-lg {
+  letter-spacing: -0.02em;
+}
+.font-numeral-sm {
+  letter-spacing: 0em;
 }
 
 .font-mono {

@@ -100,7 +100,7 @@ export default function RedeemPoints() {
                       key={token}
                       initial={m.pick({ scale: 0.94, opacity: 0 }, { opacity: 0 })}
                       animate={{ scale: 1, opacity: 1 }}
-                      transition={m.spring("cardEnter")}
+                      transition={m.spring("settle")}
                     >
                       <QRCodeSVG
                         value={`${tenantUrl(window.location.origin, companySlug, outletSlug, "redeem")}?token=${encodeURIComponent(token)}`}

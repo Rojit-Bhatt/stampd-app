@@ -61,7 +61,7 @@ export function BottomNav({ slug, activeTab, onScanClick }: BottomNavProps) {
   return (
     // pb accounts for the iOS home indicator when installed as a PWA.
     <footer className="fixed inset-x-0 bottom-0 z-30 flex-shrink-0 px-4 pt-2 pb-[max(1.25rem,env(safe-area-inset-bottom))]">
-      <div className="relative mx-auto flex max-w-md items-center justify-between rounded-full border border-[var(--line)] bg-[var(--surface)] px-4 py-2 shadow-float">
+      <div className="relative mx-auto flex max-w-md items-center justify-between rounded-full border border-[var(--line)] bg-[var(--surface)]/85 px-4 py-2 shadow-float backdrop-blur-xl">
         <NavLink to={path("dashboard")} icon={Coffee} label="Card" active={activeTab === "dashboard"} />
         <NavLink to={path("menu")} icon={UtensilsCrossed} label="Menu" active={activeTab === "menu"} />
 

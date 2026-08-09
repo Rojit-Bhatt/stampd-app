@@ -448,7 +448,7 @@ export default function AdminOverview() {
                     <span className="block truncate text-sm font-bold text-[var(--ink)]">{c.name}</span>
                     <span className="block truncate text-xs text-[var(--soft)]">{c.email}</span>
                   </span>
-                  <span className="font-numeral text-lg leading-none text-[var(--ink)]">
+                  <span className="font-numeral font-numeral-sm text-lg leading-none text-[var(--ink)]">
                     {formatPoints(c.pointsBalance)}
                   </span>
                   <span className="hidden w-20 text-right text-[13px] text-[var(--muted)] sm:block">

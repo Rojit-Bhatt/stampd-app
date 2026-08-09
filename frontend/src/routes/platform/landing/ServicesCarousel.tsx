@@ -1,4 +1,4 @@
-import { useRef, type RefObject } from "react";
+import { useEffect, useRef, type RefObject } from "react";
 import { motion, useReducedMotion, useScroll, useTransform } from "motion/react";
 
 import { FEATURES } from "./data";
@@ -58,22 +58,45 @@ function ServiceCard({
 
 export function ServicesCarousel() {
   const stripRef = useRef<HTMLDivElement>(null);
-  const drag = useRef({ active: false, startX: 0, startScroll: 0 });
+  const drag = useRef({ active: false, startX: 0, startScroll: 0, lastX: 0, lastT: 0, velocity: 0 });
+  const momentumFrame = useRef<number | null>(null);
+
+  const stopMomentum = () => {
+    if (momentumFrame.current !== null) {
+      cancelAnimationFrame(momentumFrame.current);
+      momentumFrame.current = null;
+    }
+  };
+
+  useEffect(() => stopMomentum, []);
 
   // Mouse only. Touch already has momentum scrolling, and hijacking pointer
   // events there would replace it with something worse.
   const onPointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
     if (e.pointerType !== "mouse" || !stripRef.current) return;
+    stopMomentum();
+    const now = performance.now();
     drag.current = {
       active: true,
       startX: e.clientX,
       startScroll: stripRef.current.scrollLeft,
+      lastX: e.clientX,
+      lastT: now,
+      velocity: 0,
     };
     stripRef.current.setPointerCapture(e.pointerId);
   };
 
   const onPointerMove = (e: React.PointerEvent<HTMLDivElement>) => {
     if (!drag.current.active || !stripRef.current) return;
+    const now = performance.now();
+    const dt = now - drag.current.lastT;
+    if (dt > 0) {
+      // px/s, negative sign because dragging right (+dx) scrolls left (-scrollLeft).
+      drag.current.velocity = (-(e.clientX - drag.current.lastX) / dt) * 1000;
+    }
+    drag.current.lastX = e.clientX;
+    drag.current.lastT = now;
     stripRef.current.scrollLeft = drag.current.startScroll - (e.clientX - drag.current.startX);
   };
 
@@ -81,6 +104,26 @@ export function ServicesCarousel() {
     if (!drag.current.active || !stripRef.current) return;
     drag.current.active = false;
     stripRef.current.releasePointerCapture(e.pointerId);
+
+    // Velocity handoff: the strip keeps moving at the release speed and
+    // decays frame-by-frame, instead of stopping dead. No snap target to
+    // project onto (this strip is deliberately snap-free, see below), so
+    // momentum decays continuously rather than animating to a computed point.
+    const el = stripRef.current;
+    let velocity = drag.current.velocity;
+    const DECAY = 0.94;
+    const step = () => {
+      velocity *= DECAY;
+      if (Math.abs(velocity) < 4) {
+        momentumFrame.current = null;
+        return;
+      }
+      el.scrollLeft += velocity / 60;
+      momentumFrame.current = requestAnimationFrame(step);
+    };
+    if (Math.abs(velocity) > 20) {
+      momentumFrame.current = requestAnimationFrame(step);
+    }
   };
 
   return (

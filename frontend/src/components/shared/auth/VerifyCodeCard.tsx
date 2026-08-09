@@ -106,7 +106,7 @@ export function VerifyCodeCard({
           <motion.div
             className="relative mt-4 flex gap-2"
             animate={error ? { x: [0, -6, 6, -4, 4, 0] } : { x: 0 }}
-            transition={m.pick(m.spring("numberChange"), { duration: 0 })}
+            transition={m.pick(m.spring("settle"), { duration: 0 })}
           >
             {Array.from({ length: CODE_LENGTH }).map((_, i) => (
               <div

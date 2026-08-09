@@ -35,7 +35,7 @@ export function CardStack({ trigger, children, empty, isEmpty, className }: Card
             initial={m.pick({ opacity: 0, y: -8, scale: 0.97 }, { opacity: 0 })}
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={m.pick({ opacity: 0, y: -8, scale: 0.97 }, { opacity: 0 })}
-            transition={m.spring("cardEnter")}
+            transition={m.spring("settle")}
             className="absolute right-0 top-full z-30 mt-2 w-[320px] max-w-[90vw] origin-top-right rounded-[var(--radius-card)] border border-[var(--line)] bg-[var(--surface)] shadow-float"
           >
             {isEmpty ? (

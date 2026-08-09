@@ -122,7 +122,7 @@ export function FileDrop({
               initial={m.pick({ opacity: 0, scale: 0.96 }, false)}
               animate={{ opacity: 1, scale: 1 }}
               exit={m.pick({ opacity: 0, scale: 0.96 }, { opacity: 0 })}
-              transition={m.spring("cardEnter")}
+              transition={m.spring("settle")}
               className="flex flex-col items-center gap-2"
             >
               <img

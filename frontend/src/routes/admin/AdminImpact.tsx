@@ -96,7 +96,7 @@ export default function AdminImpact() {
       <motion.div
         initial={{ opacity: 0, y: 12 }}
         animate={{ opacity: 1, y: 0 }}
-        transition={m.spring("cardEnter")}
+        transition={m.spring("settle")}
         className="mb-4 rounded-3xl bg-[var(--primary-soft)] p-8 shadow-ambient"
       >
         <p className="text-sm font-semibold text-[var(--primary-deep)]">Customers who came back</p>

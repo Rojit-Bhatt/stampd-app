@@ -1,46 +1,95 @@
 import * as React from "react";
 import * as AlertDialogPrimitive from "@radix-ui/react-alert-dialog";
+import { useControllableState } from "@radix-ui/react-use-controllable-state";
+import { AnimatePresence, motion } from "motion/react";
 
 import { cn } from "@/lib/utils";
+import { useMotion } from "@/lib/motion";
 import { buttonVariants } from "@/components/ui/button";
 
-const AlertDialog = AlertDialogPrimitive.Root;
+// Same forceMount + AnimatePresence pattern as dialog.tsx — see the comment
+// there for why Radix's own Presence can't drive a motion/react spring.
+const AlertDialogOpenContext = React.createContext(false);
+
+const AlertDialog = ({
+  open: openProp,
+  defaultOpen,
+  onOpenChange,
+  children,
+  ...props
+}: AlertDialogPrimitive.AlertDialogProps) => {
+  const [open, setOpen] = useControllableState({
+    prop: openProp,
+    defaultProp: defaultOpen ?? false,
+    onChange: onOpenChange,
+  });
+  return (
+    <AlertDialogPrimitive.Root open={open} onOpenChange={setOpen} {...props}>
+      <AlertDialogOpenContext.Provider value={open ?? false}>{children}</AlertDialogOpenContext.Provider>
+    </AlertDialogPrimitive.Root>
+  );
+};
 
 const AlertDialogTrigger = AlertDialogPrimitive.Trigger;
 
-const AlertDialogPortal = AlertDialogPrimitive.Portal;
+const AlertDialogPortal = ({ children, ...props }: AlertDialogPrimitive.AlertDialogPortalProps) => {
+  const open = React.useContext(AlertDialogOpenContext);
+  return (
+    <AlertDialogPrimitive.Portal forceMount {...props}>
+      <AnimatePresence>{open ? children : null}</AnimatePresence>
+    </AlertDialogPrimitive.Portal>
+  );
+};
 
 const AlertDialogOverlay = React.forwardRef<
   React.ElementRef<typeof AlertDialogPrimitive.Overlay>,
   React.ComponentPropsWithoutRef<typeof AlertDialogPrimitive.Overlay>
->(({ className, ...props }, ref) => (
-  <AlertDialogPrimitive.Overlay
-    className={cn(
-      "fixed inset-0 z-50 bg-black/80 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0",
-      className,
-    )}
-    {...props}
-    ref={ref}
-  />
-));
+>(({ className, ...props }, ref) => {
+  const m = useMotion();
+  return (
+    <AlertDialogPrimitive.Overlay ref={ref} forceMount asChild {...props}>
+      <motion.div
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        exit={{ opacity: 0 }}
+        transition={m.ease("ui")}
+        className={cn("fixed inset-0 z-50 bg-black/80 backdrop-blur-sm", className)}
+      />
+    </AlertDialogPrimitive.Overlay>
+  );
+});
 AlertDialogOverlay.displayName = AlertDialogPrimitive.Overlay.displayName;
 
 const AlertDialogContent = React.forwardRef<
   React.ElementRef<typeof AlertDialogPrimitive.Content>,
   React.ComponentPropsWithoutRef<typeof AlertDialogPrimitive.Content>
->(({ className, ...props }, ref) => (
-  <AlertDialogPortal>
-    <AlertDialogOverlay />
-    <AlertDialogPrimitive.Content
-      ref={ref}
-      className={cn(
-        "fixed left-[50%] top-[50%] z-50 grid w-full max-w-lg translate-x-[-50%] translate-y-[-50%] gap-4 border bg-background p-6 shadow-lg duration-200 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 sm:rounded-lg",
-        className,
-      )}
-      {...props}
-    />
-  </AlertDialogPortal>
-));
+>(({ className, children, ...props }, ref) => {
+  const m = useMotion();
+  return (
+    <AlertDialogPortal>
+      <AlertDialogOverlay />
+      <AlertDialogPrimitive.Content
+        ref={ref}
+        forceMount
+        className="fixed inset-0 z-50 flex items-center justify-center p-4"
+        {...props}
+      >
+        <motion.div
+          initial={{ opacity: 0, scale: m.prefersReduced ? 1 : 0.96 }}
+          animate={{ opacity: 1, scale: 1 }}
+          exit={{ opacity: 0, scale: m.prefersReduced ? 1 : 0.96 }}
+          transition={m.spring("settle")}
+          className={cn(
+            "relative grid w-full max-w-lg gap-4 border bg-background p-6 shadow-lg sm:rounded-lg",
+            className,
+          )}
+        >
+          {children}
+        </motion.div>
+      </AlertDialogPrimitive.Content>
+    </AlertDialogPortal>
+  );
+});
 AlertDialogContent.displayName = AlertDialogPrimitive.Content.displayName;
 
 const AlertDialogHeader = ({ className, ...props }: React.HTMLAttributes<HTMLDivElement>) => (

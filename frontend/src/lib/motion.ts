@@ -15,14 +15,12 @@ import { useReducedMotion } from "motion/react";
 export const INSTANT: Transition = { duration: 0 };
 
 export const SPRINGS = {
+  /** Default UI entrance — dialogs, sheets, cards, numbers. Critically damped, no overshoot. */
+  settle: { type: "spring", stiffness: 260, damping: 26 },
   /** Earn: the coin lands. Overshoots to 1.16 before settling. */
   coinPop: { type: "spring", stiffness: 280, damping: 14 },
   /** Redeem: the exchange. Voucher flips rotateY 90 -> 0. */
   voucherFlip: { type: "spring", stiffness: 220, damping: 18 },
-  /** Balance card entrance: rises and settles. */
-  cardEnter: { type: "spring", stiffness: 220, damping: 20 },
-  /** A number changing in place: scale 0.92 -> 1. */
-  numberChange: { type: "spring", stiffness: 300, damping: 18 },
 } satisfies Record<string, Transition>;
 
 export const EASES = {

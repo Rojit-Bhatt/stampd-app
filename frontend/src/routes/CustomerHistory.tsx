@@ -77,7 +77,7 @@ export default function CustomerHistory() {
         <div className="text-[10px] font-bold uppercase tracking-[0.16em] text-[var(--soft)]">
           Balance
         </div>
-        <div className="mt-1 font-numeral text-[48px] leading-none text-[var(--primary)]">
+        <div className="mt-1 font-numeral font-numeral-lg text-[48px] leading-none text-[var(--primary)]">
           {formatPoints(points?.balance ?? 0)}
         </div>
       </div>
@@ -191,14 +191,14 @@ export default function CustomerHistory() {
                 className="flex items-center gap-3 border-b border-[var(--line)] py-3 last:border-0"
                 style={row.isSelf ? { background: "var(--primary-soft)", marginInline: "-1.25rem", paddingInline: "1.25rem" } : undefined}
               >
-                <span className="w-6 flex-shrink-0 text-center font-numeral text-sm text-[var(--muted)]">
+                <span className="w-6 flex-shrink-0 text-center font-numeral font-numeral-sm text-sm text-[var(--muted)]">
                   {row.rank}
                 </span>
                 <span className="min-w-0 flex-1 truncate text-sm font-semibold text-[var(--ink)]">
                   {row.name}
                   {row.isSelf ? <span className="ml-1.5 text-xs font-bold text-[var(--primary-deep)]">You</span> : null}
                 </span>
-                <span className="flex-shrink-0 font-numeral text-sm text-[var(--ink)]">
+                <span className="flex-shrink-0 font-numeral font-numeral-sm text-sm text-[var(--ink)]">
                   {formatPoints(row.pointsEarned)}
                 </span>
               </li>

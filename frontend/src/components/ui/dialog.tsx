@@ -2,55 +2,105 @@
 
 import * as React from "react";
 import * as DialogPrimitive from "@radix-ui/react-dialog";
+import { useControllableState } from "@radix-ui/react-use-controllable-state";
+import { AnimatePresence, motion } from "motion/react";
 import { X } from "lucide-react";
 
 import { cn } from "@/lib/utils";
+import { useMotion } from "@/lib/motion";
 
-const Dialog = DialogPrimitive.Root;
+// Radix's Presence only detects CSS animations/transitions, so it can't wait
+// on a motion/react spring before unmounting. This wrapper keeps its own
+// `open` state (mirroring whatever the caller passes) and drives an
+// AnimatePresence around forceMount'ed Overlay/Content instead — the spring
+// controls when the DOM node actually leaves, not a CSS animationend event.
+const DialogOpenContext = React.createContext(false);
+
+const Dialog = ({
+  open: openProp,
+  defaultOpen,
+  onOpenChange,
+  children,
+  ...props
+}: DialogPrimitive.DialogProps) => {
+  const [open, setOpen] = useControllableState({
+    prop: openProp,
+    defaultProp: defaultOpen ?? false,
+    onChange: onOpenChange,
+  });
+  return (
+    <DialogPrimitive.Root open={open} onOpenChange={setOpen} {...props}>
+      <DialogOpenContext.Provider value={open ?? false}>{children}</DialogOpenContext.Provider>
+    </DialogPrimitive.Root>
+  );
+};
 
 const DialogTrigger = DialogPrimitive.Trigger;
 
-const DialogPortal = DialogPrimitive.Portal;
-
 const DialogClose = DialogPrimitive.Close;
+
+const DialogPortal = ({ children, ...props }: DialogPrimitive.DialogPortalProps) => {
+  const open = React.useContext(DialogOpenContext);
+  return (
+    <DialogPrimitive.Portal forceMount {...props}>
+      <AnimatePresence>{open ? children : null}</AnimatePresence>
+    </DialogPrimitive.Portal>
+  );
+};
 
 const DialogOverlay = React.forwardRef<
   React.ElementRef<typeof DialogPrimitive.Overlay>,
   React.ComponentPropsWithoutRef<typeof DialogPrimitive.Overlay>
->(({ className, ...props }, ref) => (
-  <DialogPrimitive.Overlay
-    ref={ref}
-    className={cn(
-      "fixed inset-0 z-50 bg-black/80  data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0",
-      className,
-    )}
-    {...props}
-  />
-));
+>(({ className, ...props }, ref) => {
+  const m = useMotion();
+  return (
+    <DialogPrimitive.Overlay ref={ref} forceMount asChild {...props}>
+      <motion.div
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        exit={{ opacity: 0 }}
+        transition={m.ease("ui")}
+        className={cn("fixed inset-0 z-50 bg-black/80 backdrop-blur-sm", className)}
+      />
+    </DialogPrimitive.Overlay>
+  );
+});
 DialogOverlay.displayName = DialogPrimitive.Overlay.displayName;
 
 const DialogContent = React.forwardRef<
   React.ElementRef<typeof DialogPrimitive.Content>,
   React.ComponentPropsWithoutRef<typeof DialogPrimitive.Content>
->(({ className, children, ...props }, ref) => (
-  <DialogPortal>
-    <DialogOverlay />
-    <DialogPrimitive.Content
-      ref={ref}
-      className={cn(
-        "fixed left-[50%] top-[50%] z-50 grid w-full max-w-lg translate-x-[-50%] translate-y-[-50%] gap-4 border bg-background p-6 shadow-lg duration-200 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 sm:rounded-lg",
-        className,
-      )}
-      {...props}
-    >
-      {children}
-      <DialogPrimitive.Close className="absolute right-4 top-4 rounded-sm opacity-70 ring-offset-background cursor-pointer transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:pointer-events-none data-[state=open]:bg-accent data-[state=open]:text-muted-foreground">
-        <X className="h-4 w-4" />
-        <span className="sr-only">Close</span>
-      </DialogPrimitive.Close>
-    </DialogPrimitive.Content>
-  </DialogPortal>
-));
+>(({ className, children, ...props }, ref) => {
+  const m = useMotion();
+  return (
+    <DialogPortal>
+      <DialogOverlay />
+      <DialogPrimitive.Content
+        ref={ref}
+        forceMount
+        className="fixed inset-0 z-50 flex items-center justify-center p-4"
+        {...props}
+      >
+        <motion.div
+          initial={{ opacity: 0, scale: m.prefersReduced ? 1 : 0.96 }}
+          animate={{ opacity: 1, scale: 1 }}
+          exit={{ opacity: 0, scale: m.prefersReduced ? 1 : 0.96 }}
+          transition={m.spring("settle")}
+          className={cn(
+            "relative grid w-full max-w-lg gap-4 border bg-background p-6 shadow-lg sm:rounded-lg",
+            className,
+          )}
+        >
+          {children}
+          <DialogPrimitive.Close className="absolute right-4 top-4 rounded-sm opacity-70 ring-offset-background cursor-pointer transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:pointer-events-none data-[state=open]:bg-accent data-[state=open]:text-muted-foreground">
+            <X className="h-4 w-4" />
+            <span className="sr-only">Close</span>
+          </DialogPrimitive.Close>
+        </motion.div>
+      </DialogPrimitive.Content>
+    </DialogPortal>
+  );
+});
 DialogContent.displayName = DialogPrimitive.Content.displayName;
 
 const DialogHeader = ({ className, ...props }: React.HTMLAttributes<HTMLDivElement>) => (

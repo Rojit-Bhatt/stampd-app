@@ -92,7 +92,7 @@ export function CustomerLayout() {
         tenantName={tenant?.name || ""}
       />
 
-      <header className="sticky top-0 z-20 flex-shrink-0 border-b border-[var(--line)] bg-[var(--surface)]/95 backdrop-blur">
+      <header className="sticky top-0 z-20 flex-shrink-0 bg-[var(--surface)]/95 shadow-[0_1px_16px_-6px_rgba(20,32,28,0.14)] backdrop-blur">
         <div className="mx-auto flex w-full max-w-5xl items-center gap-3 px-5 py-3">
           {/* Every customer arrived either from /explore or a scanned QR —
               either way, /explore is always a safe "up a level" — this is

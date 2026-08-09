@@ -48,7 +48,7 @@ export function PointsBalanceCard({
     <motion.div
       initial={m.pick({ opacity: 0, y: 24 }, { opacity: 0 })}
       animate={{ opacity: 1, y: 0 }}
-      transition={m.spring("cardEnter")}
+      transition={m.spring("settle")}
       className="relative mb-4 overflow-hidden rounded-[var(--radius-card)] border border-[var(--line)] bg-[var(--surface)] p-6 shadow-ambient"
     >
       {/* The one piece of tenant colour on this card. --brand-accent, not
@@ -85,8 +85,8 @@ export function PointsBalanceCard({
             key={balance}
             initial={m.pick({ scale: 0.92, opacity: 0.6 }, false)}
             animate={{ scale: 1, opacity: 1 }}
-            transition={m.spring("numberChange")}
-            className="origin-left font-numeral text-[56px] leading-none text-[var(--primary)]"
+            transition={m.spring("settle")}
+            className="origin-left font-numeral font-numeral-lg text-[56px] leading-none text-[var(--primary)]"
           >
             {formatPoints(balance)}
           </motion.div>

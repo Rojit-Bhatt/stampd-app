@@ -99,7 +99,7 @@ export function EarnCelebration({
         {/* The hero figure. Live count-up value, but aria-live announces the
             final number once rather than every frame. */}
         <div
-          className="mt-1 font-numeral text-[64px] leading-none text-[var(--primary)]"
+          className="mt-1 font-numeral font-numeral-lg text-[64px] leading-none text-[var(--primary)]"
           aria-hidden="true"
         >
           +{formatPoints(counted)}
@@ -115,7 +115,7 @@ export function EarnCelebration({
           <motion.div
             initial={m.pick({ opacity: 0, scale: 0.9 }, { opacity: 0 })}
             animate={{ opacity: 1, scale: 1 }}
-            transition={{ ...m.spring("numberChange"), delay: m.prefersReduced ? 0 : 0.3 }}
+            transition={{ ...m.spring("settle"), delay: m.prefersReduced ? 0 : 0.3 }}
             className="mt-4 inline-flex items-center gap-1.5 rounded-full bg-[var(--primary)] px-3.5 py-1.5 text-xs font-bold text-white"
           >
             <Zap className="h-3.5 w-3.5" />
@@ -126,7 +126,7 @@ export function EarnCelebration({
         <motion.div
           initial={m.pick({ opacity: 0, y: 16 }, { opacity: 0 })}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ ...m.spring("cardEnter"), delay: m.prefersReduced ? 0 : 0.42 }}
+          transition={{ ...m.spring("settle"), delay: m.prefersReduced ? 0 : 0.42 }}
           className="mt-8 rounded-[var(--radius-card)] border border-[var(--line)] bg-[var(--surface)] px-6 py-5 shadow-ambient"
         >
           <div className="text-[10px] font-bold uppercase tracking-[0.16em] text-[var(--soft)]">

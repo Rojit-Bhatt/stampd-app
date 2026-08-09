@@ -55,7 +55,7 @@ export function ClaimStateScreen({
       <motion.div
         initial={m.pick({ opacity: 0, y: 14 }, { opacity: 0 })}
         animate={{ opacity: 1, y: 0 }}
-        transition={m.spring("cardEnter")}
+        transition={m.spring("settle")}
         className="w-full max-w-sm text-center"
       >
         <div

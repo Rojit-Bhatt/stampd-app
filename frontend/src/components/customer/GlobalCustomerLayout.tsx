@@ -125,7 +125,7 @@ export function GlobalCustomerLayout() {
     <div className="flex min-h-screen flex-col bg-[var(--bg)]">
       <GlobalScannerModal open={scanOpen} onClose={() => setScanOpen(false)} />
 
-      <header className="sticky top-0 z-20 flex-shrink-0 border-b border-[var(--line)] bg-[var(--surface)]/95 backdrop-blur">
+      <header className="sticky top-0 z-20 flex-shrink-0 bg-[var(--surface)]/95 shadow-[0_1px_16px_-6px_rgba(20,32,28,0.14)] backdrop-blur">
         <div className="mx-auto flex w-full max-w-5xl items-center gap-3 px-5 py-3">
           <Link to="/explore" className="flex flex-shrink-0 items-center gap-2">
             <StampdLogo size={22} />

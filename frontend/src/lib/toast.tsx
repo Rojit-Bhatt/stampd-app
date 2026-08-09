@@ -15,7 +15,7 @@ import {
 import { AnimatePresence, motion } from "motion/react";
 import { Check, X, Loader2, Info } from "lucide-react";
 
-import { SPRINGS } from "./motion";
+import { useMotion } from "./motion";
 
 type ToastType = "success" | "error" | "loading" | "blank";
 
@@ -141,6 +141,7 @@ function ToastIcon({ type }: { type: ToastType }) {
 // matching the old Toaster position.
 export function Toaster() {
   const items = useSyncExternalStore(subscribe, getSnapshot);
+  const m = useMotion();
   // Cap what's on screen; newest last in array -> render reversed so newest
   // is at the bottom (nearest the corner).
   const visible = items.slice(-4);
@@ -154,8 +155,8 @@ export function Toaster() {
             layout
             initial={{ opacity: 0, y: 24, scale: 0.9 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, scale: 0.9, transition: { duration: 0.15 } }}
-            transition={SPRINGS.cardEnter}
+            exit={{ opacity: 0, scale: 0.9, transition: m.prefersReduced ? { duration: 0 } : { duration: 0.15 } }}
+            transition={m.spring("settle")}
             className="pointer-events-auto flex w-full items-center gap-2.5 rounded-[var(--radius-card)] border border-[var(--line)] bg-[var(--surface)] px-4 py-3 text-[var(--ink)] shadow-float"
             role="status"
           >
