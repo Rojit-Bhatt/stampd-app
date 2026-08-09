@@ -11,6 +11,7 @@ const { logAction } = require("./platformAuditService");
 const { sanitizeProgramInput } = require("./programService");
 const companyService = require("./companyService");
 const { startTrialSubscription } = require("./subscriptionService");
+const { getActiveCustomerCount } = require("./pointsService");
 
 const normalizeEmail = (email) => String(email || "").trim().toLowerCase();
 
@@ -21,9 +22,7 @@ const createHttpError = (message, statusCode) => {
 };
 
 const buildOutletStats = async (outlet) => {
-  const customersCount = (
-    await User.find({ organizationId: outlet._id, role: "customer" })
-  ).length;
+  const customersCount = await getActiveCustomerCount(outlet._id);
   const txns = await PointsTransaction.find({ organizationId: outlet._id });
 
   const pointsIssuedCenti = txns

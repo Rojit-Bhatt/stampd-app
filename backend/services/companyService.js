@@ -11,6 +11,7 @@ const { assertCanAddOutlet } = require("./subscriptionService");
 const { DEFAULT_PROGRAM, BUSINESS_CATEGORIES, isReservedSlug } = require("../config/platform");
 const { sanitizeProgramInput } = require("./programService");
 const { seedDefaultBroadcasts } = require("./broadcastService");
+const { getActiveCustomerCount } = require("./pointsService");
 
 const SALT_ROUNDS = 10;
 const VERIFY_TTL_MS = 24 * 60 * 60 * 1000;
@@ -248,9 +249,7 @@ const listOutlets = async (companyId) => {
   const outlets = await Organization.find({ companyId });
   const rows = await Promise.all(
     outlets.map(async (outlet) => {
-      const customersCount = (
-        await User.find({ organizationId: outlet._id, role: "customer" })
-      ).length;
+      const customersCount = await getActiveCustomerCount(outlet._id);
       // Must show the outlet's actual (primary) admin, not a barista —
       // ambiguous the moment a second AdminAccount exists at this outlet.
       const admin = pickPrimaryAdmin(await AdminAccount.find({ organizationId: outlet._id }));

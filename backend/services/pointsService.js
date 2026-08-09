@@ -789,6 +789,21 @@ const getCustomerDetailRows = async (organizationId) => {
     .map(({ earnCount, ...row }) => row);
 };
 
+// The one shared definition of "customer" for an outlet: a membership with
+// >=1 earn transaction — same rule getCustomerDetailRows and impactService
+// already apply, so every customer count in the app (company console,
+// platform console, outlet console) agrees. A raw `role: "customer"` count
+// also includes /explore browsers auto-provisioned on first page view who
+// never bought anything.
+const getActiveCustomerCount = async (organizationId) => {
+  const [memberships, earnTxns] = await Promise.all([
+    User.find({ organizationId, role: "customer" }),
+    PointsTransaction.find({ organizationId, type: "earn" })
+  ]);
+  const earnedUserIds = new Set(earnTxns.map((t) => t.userId.toString()));
+  return memberships.filter((m) => earnedUserIds.has(m._id.toString())).length;
+};
+
 module.exports = {
   generateQRToken,
   generateRedeemToken,
@@ -800,6 +815,7 @@ module.exports = {
   getPointsHistoryByUserId,
   getOutletTransactions,
   getCustomerDetailRows,
+  getActiveCustomerCount,
   // Reused by pendingClaimService — same logic, no duplication.
   consumeDynamicQrToken,
   awardPointsInTransaction,

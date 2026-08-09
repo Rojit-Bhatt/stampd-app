@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState } from "react";
+import React, { createContext, useContext, useRef, useState } from "react";
 import { apiRequest, decodeJwtPayload } from "../lib/api";
 
 export interface User {
@@ -104,6 +104,17 @@ export function CustomerAuthProvider({ children }: { children: React.ReactNode }
   });
   const [isLoading, setIsLoading] = useState(true);
 
+  // customer_auth_token is a single shared localStorage slot, not one per
+  // outlet — TenantSessionSync fires ensureTenantSession on every outlet
+  // mount, and rapid navigation between two outlets can leave two of these
+  // calls in flight at once. Without this guard, whichever POST resolves
+  // last wins the shared token regardless of which outlet is on screen,
+  // so a page can end up holding (and querying with) another outlet's JWT.
+  // Tracks the most recently REQUESTED outlet so a late-arriving response
+  // for an outlet the user has since navigated away from is discarded
+  // instead of clobbering the current one.
+  const latestTenantRequestRef = useRef<string | null>(null);
+
   const persistTenant = (t: string, u: User) => {
     localStorage.setItem("customer_auth_token", t);
     localStorage.setItem("customer_auth_user", JSON.stringify(u));
@@ -131,6 +142,8 @@ export function CustomerAuthProvider({ children }: { children: React.ReactNode }
   };
 
   const ensureTenantSession = async (_slug: string, tenantOrgId: string | null) => {
+    const requestKey = tenantOrgId || _slug;
+    latestTenantRequestRef.current = requestKey;
     const globalToken = localStorage.getItem("customer_global_session");
 
     if (globalToken) {
@@ -143,12 +156,20 @@ export function CustomerAuthProvider({ children }: { children: React.ReactNode }
           "/api/customer-auth/enter-tenant",
           { method: "POST", role: "customer-global" },
         );
+        // The user may have navigated to a different outlet while this was
+        // in flight — a newer ensureTenantSession call has since become the
+        // latest request. Applying this response now would attach the
+        // outlet this call was FOR onto the outlet now on screen.
+        if (latestTenantRequestRef.current !== requestKey) return;
         if (res.success && res.token && res.user) {
           persistTenant(res.token, res.user);
         }
       } catch (err) {
         // Global session invalid/expired/revoked — drop it and any tenant
-        // token, don't silently keep the customer half-signed-in.
+        // token, don't silently keep the customer half-signed-in. Only act
+        // if this is still the latest request; a stale failure must not
+        // clear a session a newer, successful request just established.
+        if (latestTenantRequestRef.current !== requestKey) return;
         const status = (err as any).status;
         if (status === 401 || status === 403) {
           clearGlobal();
@@ -156,7 +177,7 @@ export function CustomerAuthProvider({ children }: { children: React.ReactNode }
         }
         throw err;
       } finally {
-        setIsLoading(false);
+        if (latestTenantRequestRef.current === requestKey) setIsLoading(false);
       }
       return;
     }
