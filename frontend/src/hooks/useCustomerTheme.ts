@@ -4,9 +4,9 @@ const STORAGE_KEY = "stampd-customer-theme";
 type Theme = "light" | "dark";
 
 function readStoredTheme(): Theme {
-  if (typeof window === "undefined") return "dark";
+  if (typeof window === "undefined") return "light";
   const stored = window.localStorage.getItem(STORAGE_KEY);
-  return stored === "light" ? "light" : "dark";
+  return stored === "dark" ? "dark" : "light";
 }
 
 // Module-level singleton, not per-component state: GlobalCustomerLayout
@@ -33,14 +33,13 @@ function getSnapshot(): Theme {
   return currentTheme;
 }
 
-// Dark is the customer shell's default personality (see the design spec's
-// "Wallet" personality choice) — light is an explicit opt-in, never
-// inferred from prefers-color-scheme.
+// Light is the default — dark is an explicit opt-in, never inferred from
+// prefers-color-scheme.
 export function useCustomerTheme(): { theme: Theme; toggleTheme: () => void } {
   const theme = useSyncExternalStore(subscribe, getSnapshot, getSnapshot);
 
   const toggleTheme = useCallback(() => {
-    setStoredTheme(currentTheme === "dark" ? "light" : "dark");
+    setStoredTheme(currentTheme === "light" ? "dark" : "light");
   }, []);
 
   return { theme, toggleTheme };

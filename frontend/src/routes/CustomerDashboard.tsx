@@ -121,8 +121,6 @@ export default function CustomerDashboard() {
         ? `${formatPoints(nextUp.pointsPrice - balance)} more points for a ${nextUp.name}`
         : "Every rupee you spend earns points here";
 
-  const firstName = (account?.name || "").split(" ")[0];
-
   // The live one already has its own banner above — this is what's next.
   const upcomingCampaigns = campaigns.filter((c) => !c.isLive).slice(0, 3);
 
@@ -133,7 +131,7 @@ export default function CustomerDashboard() {
         <h1 className="text-large-title text-[var(--ink)]">
           <DynamicText
             words={["नमस्ते", "Hello", "Namaste"]}
-            settled={`Welcome back${firstName ? `, ${firstName}` : ""}`}
+            settled="Welcome back"
           />
         </h1>
         {/* Said once, here. It used to also repeat verbatim in a card below. */}
