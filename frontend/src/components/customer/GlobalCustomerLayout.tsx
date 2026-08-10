@@ -74,7 +74,7 @@ export function GlobalCustomerLayout() {
   const navigate = useNavigate();
   const location = useLocation();
   const [scanOpen, setScanOpen] = useState(false);
-  // Also warms the query cache Explore's "My businesses" row and ExploreMine
+  // Also warms the query cache Explore's "My Places" row and ExploreMine
   // both read from, so switching tabs is instant.
   // `error`, not `isError` — same reason as AdminGuard: once this query has
   // data, a failed background refetch leaves status "success" and isError
@@ -153,7 +153,7 @@ export function GlobalCustomerLayout() {
           <nav className="ml-4 hidden items-center gap-1 lg:flex">
             <Tab to="/explore" icon={Compass} label="Discover" variant="top" />
             <Tab to="/explore/events" icon={CalendarDays} label="Events" variant="top" />
-            <Tab to="/explore/mine" icon={Store} label="My businesses" variant="top" />
+            <Tab to="/explore/mine" icon={Store} label="My Places" variant="top" />
             <Tab to="/explore/profile" icon={CircleUser} label="Profile" variant="top" />
           </nav>
 
@@ -201,7 +201,7 @@ export function GlobalCustomerLayout() {
         <div className="mx-auto flex max-w-md items-center gap-2 rounded-full border border-[var(--line)] bg-[var(--surface)] px-3 py-2 shadow-float">
           <Tab to="/explore" icon={Compass} label="Discover" variant="bottom" />
           <Tab to="/explore/events" icon={CalendarDays} label="Events" variant="bottom" />
-          <Tab to="/explore/mine" icon={Store} label="My businesses" variant="bottom" />
+          <Tab to="/explore/mine" icon={Store} label="My Places" variant="bottom" />
           <Tab to="/explore/profile" icon={CircleUser} label="Profile" variant="bottom" />
         </div>
       </footer>

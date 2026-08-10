@@ -15,7 +15,7 @@ export default function ExploreMine() {
   return (
     <div className="mx-auto w-full max-w-3xl px-5 py-6">
       <header className="mb-5">
-        <h1 className="font-display text-2xl font-bold text-[var(--ink)]">My businesses</h1>
+        <h1 className="font-display text-2xl font-bold text-[var(--ink)]">My Places</h1>
         <p className="mt-0.5 text-sm text-[var(--muted)]">
           Every business you've earned points at.
         </p>

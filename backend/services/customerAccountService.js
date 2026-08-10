@@ -674,7 +674,7 @@ const enterTenant = async ({ customerAccountId, organizationId }) => {
 };
 
 // Every business this CustomerAccount already has a membership at, with its
-// real per-outlet points balance — powers the "My Businesses" tab. Balances
+// real per-outlet points balance — powers the "My Places" tab. Balances
 // are per-outlet and never pool, so this is a list of separate balances, not
 // a total.
 // User.find({customerAccountId}) has no organizationId filter, same
