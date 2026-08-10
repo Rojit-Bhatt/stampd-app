@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { Outlet, Link, NavLink, useLocation, useNavigate } from "react-router-dom";
 import { QrCode, Compass, CalendarDays, Store, CircleUser } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
@@ -72,15 +72,30 @@ function Tab({
 }
 
 function GlobalHeader({ onScan, globalAccount }: { onScan: () => void; globalAccount: GlobalAccount }) {
-  const { heroColor, progress } = useExploreHero();
+  const { heroColor, progress, setHeaderHeight } = useExploreHero();
+  const headerRef = useRef<HTMLElement>(null);
   const tintedOpacity = useTransform(progress, [0, 1], [1, 0]);
   const neutralOpacity = useTransform(progress, [0, 1], [0, 1]);
   const tintedBackground = heroColor
     ? `linear-gradient(180deg, color-mix(in srgb, ${heroColor} 55%, white), color-mix(in srgb, ${heroColor} 30%, white))`
     : undefined;
 
+  // The card stack's own sticky collapse zone pins directly below this
+  // header, so it needs the header's real rendered height rather than a
+  // guessed constant.
+  useLayoutEffect(() => {
+    const el = headerRef.current;
+    if (!el) return;
+    const measure = () => setHeaderHeight(el.getBoundingClientRect().height);
+    measure();
+    const observer = new ResizeObserver(measure);
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, [setHeaderHeight]);
+
   return (
     <header
+      ref={headerRef}
       className={`sticky top-0 z-20 flex-shrink-0 ${
         heroColor
           ? "relative overflow-hidden"

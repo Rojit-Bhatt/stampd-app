@@ -46,7 +46,7 @@ function cardSurface(brand: string): CSSProperties {
 export function OutletCardStack() {
   const { data: memberships = [] } = useMyTenants();
   const { globalAccount } = useCustomerAuth();
-  const { setHeroColor, progress } = useExploreHero();
+  const { setHeroColor, progress, headerHeight } = useExploreHero();
   const [activeIndex, setActiveIndex] = useState(0);
 
   const count = memberships.length;
@@ -58,8 +58,15 @@ export function OutletCardStack() {
     return () => setHeroColor(null);
   }, [activeColor, setHeroColor]);
 
-  const sectionRef = useRef<HTMLDivElement>(null);
-  const { scrollYProgress } = useScroll({ target: sectionRef, offset: ["start start", "end start"] });
+  // The spacer's height is a plain constant — it must never depend on scroll
+  // progress. It exists purely to reserve HERO_HEIGHT of scroll distance so
+  // useScroll below has a stable, non-circular measurement to read from.
+  // (Measuring against the collapsing element itself, as this used to do,
+  // meant the element's own shrinking height fed back into how much further
+  // scrolling would shrink it — a feedback loop that made the collapse
+  // accelerate and stutter instead of tracking the scroll linearly.)
+  const spacerRef = useRef<HTMLDivElement>(null);
+  const { scrollYProgress } = useScroll({ target: spacerRef, offset: ["start start", "end start"] });
 
   useMotionValueEvent(scrollYProgress, "change", (v) => progress.set(v));
 
@@ -77,47 +84,54 @@ export function OutletCardStack() {
   };
 
   return (
-    <motion.div
-      ref={sectionRef}
-      className="relative mb-8 flex justify-center overflow-hidden"
-      style={{ height: sectionHeight }}
-    >
+    <div ref={spacerRef} className="relative mb-8" style={{ height: HERO_HEIGHT }}>
+      {/* Sticky, not just absolutely positioned: pinned directly below the
+          header for the whole HERO_HEIGHT scroll distance the spacer above
+          reserves, so scrolling the page collapses the cards in place before
+          the Discover grid underneath starts moving at all. Once the spacer
+          is fully scrolled past, this releases and Discover's heading lands
+          right at the top, under the header, with no gap. */}
       <motion.div
-        aria-hidden
-        className="pointer-events-none absolute inset-x-0 -bottom-1 h-6 shadow-[0_12px_20px_-8px_rgba(20,32,28,0.3)]"
-        style={{ opacity: scrollYProgress }}
-      />
-      <motion.div
-        className="relative mt-[134px] w-full max-w-[400px]"
-        style={{ opacity: contentOpacity, y: contentY }}
+        className="sticky z-10 flex justify-center overflow-hidden"
+        style={{ top: headerHeight, height: sectionHeight }}
       >
-        {memberships.map((m, i) => {
-          const depth = (i - activeIdx + count) % count;
-          if (depth > MAX_PEEK_DEPTH) return null;
-          return (
-            <Fragment key={m.organizationId}>
-              {depth === 0 && (
-                <div className="absolute right-5 top-0 z-30 -translate-y-1/2">
-                  <CustomerAvatar
-                    accountId={globalAccount?.id}
-                    avatarVersion={globalAccount?.avatarVersion}
-                    name={globalAccount?.name}
-                    size={44}
-                    className="rounded-full border-2 border-white/90 shadow-[0_6px_16px_-6px_rgba(0,0,0,0.7)]"
-                  />
-                </div>
-              )}
-              <OutletCard
-                membership={m}
-                depth={depth}
-                onTap={() => setActiveIndex(i)}
-                onSwipe={handleSwipe}
-              />
-            </Fragment>
-          );
-        })}
+        <motion.div
+          aria-hidden
+          className="pointer-events-none absolute inset-x-0 -bottom-1 h-6 shadow-[0_12px_20px_-8px_rgba(20,32,28,0.3)]"
+          style={{ opacity: scrollYProgress }}
+        />
+        <motion.div
+          className="relative mt-[134px] w-full max-w-[400px]"
+          style={{ opacity: contentOpacity, y: contentY }}
+        >
+          {memberships.map((m, i) => {
+            const depth = (i - activeIdx + count) % count;
+            if (depth > MAX_PEEK_DEPTH) return null;
+            return (
+              <Fragment key={m.organizationId}>
+                {depth === 0 && (
+                  <div className="absolute right-5 top-0 z-30 -translate-y-1/2">
+                    <CustomerAvatar
+                      accountId={globalAccount?.id}
+                      avatarVersion={globalAccount?.avatarVersion}
+                      name={globalAccount?.name}
+                      size={44}
+                      className="rounded-full border-2 border-white/90 shadow-[0_6px_16px_-6px_rgba(0,0,0,0.7)]"
+                    />
+                  </div>
+                )}
+                <OutletCard
+                  membership={m}
+                  depth={depth}
+                  onTap={() => setActiveIndex(i)}
+                  onSwipe={handleSwipe}
+                />
+              </Fragment>
+            );
+          })}
+        </motion.div>
       </motion.div>
-    </motion.div>
+    </div>
   );
 }
 
