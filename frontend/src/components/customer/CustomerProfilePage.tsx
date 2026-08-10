@@ -38,7 +38,7 @@ export function CustomerProfilePage({ afterLogout }: { afterLogout?: () => void 
 
   return (
     <div className="mx-auto w-full max-w-3xl px-5 py-6">
-      <h1 className="font-display text-2xl font-bold text-[var(--ink)]">Profile</h1>
+      <h1 className="text-large-title text-[var(--ink)]">Profile</h1>
       <p className="mb-6 mt-0.5 text-sm text-[var(--muted)]">Your account details.</p>
       {/* persistent: someone who dismissed the banner on Explore and later
           came looking for it should still find it here. */}

@@ -1,8 +1,9 @@
 import { useEffect, useState } from "react";
-import { LogOut, User, Contact, Bell, ShieldCheck, Trash2 } from "lucide-react";
+import { LogOut, User, Contact, Bell, ShieldCheck, Trash2, Moon, Sun } from "lucide-react";
 import toast from "@/lib/toast";
 
 import { useCustomerAuth, type GlobalAccount, type Gender } from "../../context/CustomerAuthContext";
+import { useCustomerTheme } from "../../hooks/useCustomerTheme";
 import { apiRequest } from "../../lib/api";
 import { AvatarPicker } from "./AvatarPicker";
 import { VerifyCodeCard } from "../shared/auth/VerifyCodeCard";
@@ -48,6 +49,7 @@ const urlBase64ToUint8Array = (base64String: string) => {
 
 export function CustomerProfilePanel({ onLogout }: { onLogout: () => void }) {
   const { globalAccount, setGlobalAccountData } = useCustomerAuth();
+  const { theme, toggleTheme } = useCustomerTheme();
 
   const [name, setName] = useState(globalAccount?.name ?? "");
   const [savingName, setSavingName] = useState(false);
@@ -372,6 +374,35 @@ export function CustomerProfilePanel({ onLogout }: { onLogout: () => void }) {
                 onChange={(e) => savePushOptIn(e.target.checked)}
               />
               Send me updates as push notifications
+            </label>
+          </Card>
+        </div>
+      ),
+    },
+    {
+      id: "appearance",
+      label: "Appearance",
+      icon: theme === "dark" ? Moon : Sun,
+      content: (
+        <div className="flex max-w-[480px] flex-col gap-6">
+          <Card title="Appearance">
+            <label className="flex items-center justify-between gap-3 text-sm text-[var(--muted)]">
+              <span>Dark mode</span>
+              <button
+                type="button"
+                role="switch"
+                aria-checked={theme === "dark"}
+                onClick={toggleTheme}
+                className={`relative h-7 w-12 flex-shrink-0 rounded-full transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)] focus-visible:ring-offset-2 ${
+                  theme === "dark" ? "bg-[var(--primary)]" : "bg-[var(--surface-2)]"
+                }`}
+              >
+                <span
+                  className={`absolute top-1 h-5 w-5 rounded-full bg-white shadow-sm transition-transform ${
+                    theme === "dark" ? "translate-x-6" : "translate-x-1"
+                  }`}
+                />
+              </button>
             </label>
           </Card>
         </div>
