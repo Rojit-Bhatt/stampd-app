@@ -182,7 +182,7 @@ function OutletCard({
       <div className="mt-auto">
         <div className="mb-1 text-[11px] font-bold uppercase tracking-[0.14em] text-white/40">Points balance</div>
         <div className="flex items-baseline gap-1.5">
-          <span className="font-numeral text-[44px] leading-none text-[#5EE9A4]">
+          <span className="font-numeral text-[44px] leading-none text-[var(--primary)]">
             {formatPoints(membership.balance)}
           </span>
           <span className="text-sm text-white/60">pts</span>
