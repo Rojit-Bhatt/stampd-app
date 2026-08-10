@@ -11,6 +11,7 @@ import { CustomerAvatar } from "./CustomerAvatar";
 import { PhoneStepModal } from "./PhoneStepModal";
 import { useMyTenants } from "../../hooks/useMyTenants";
 import { useAccountRefresh } from "../../hooks/useAccountRefresh";
+import { useCustomerTheme } from "../../hooks/useCustomerTheme";
 import { StampdLogo } from "../shared/StampdLogo";
 import { ExploreHeroProvider, useExploreHero } from "../../context/ExploreHeroContext";
 
@@ -166,6 +167,7 @@ export function GlobalCustomerLayout() {
   const navigate = useNavigate();
   const location = useLocation();
   const [scanOpen, setScanOpen] = useState(false);
+  const { theme } = useCustomerTheme();
   // Also warms the query cache Explore's "My Places" row and ExploreMine
   // both read from, so switching tabs is instant.
   // `error`, not `isError` — same reason as AdminGuard: once this query has
@@ -231,7 +233,7 @@ export function GlobalCustomerLayout() {
 
   return (
     <ExploreHeroProvider>
-    <div className="flex min-h-screen flex-col bg-[var(--bg)]">
+    <div className={`customer-shell flex min-h-screen flex-col bg-[var(--bg)] ${theme === "dark" ? "dark" : ""}`}>
       <GlobalScannerModal open={scanOpen} onClose={() => setScanOpen(false)} />
 
       <GlobalHeader onScan={() => setScanOpen(true)} globalAccount={globalAccount} />
