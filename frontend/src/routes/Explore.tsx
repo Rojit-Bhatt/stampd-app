@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { Link } from "react-router-dom";
-import { Search, MapPin, Store } from "lucide-react";
+import { Search, MapPin, Store, X } from "lucide-react";
 
 import { useDiscover, type DiscoverBusiness } from "../hooks/useDiscover";
 import { tenantPath } from "../lib/tenantPath";
@@ -11,7 +11,6 @@ import { resolveImageUrl } from "../lib/images";
 import { Skeleton } from "../components/ui/skeleton";
 import { InstallAppPrompt } from "../components/customer/InstallAppPrompt";
 import { OutletCardStack } from "../components/customer/OutletCardStack";
-import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 
 const CATEGORY_LABELS: Record<BusinessCategory, string> = {
@@ -95,15 +94,29 @@ export default function Explore() {
 
       <h2 className="mb-3 text-title-2 text-[var(--ink)]">Discover</h2>
 
+      {/* Apple's "prominent" search style: a filled pill, no border, the
+          magnifying glass and (once there's text) a clear button both inset
+          inside it — not the shared Input's bordered rectangle, which stays
+          as-is for forms elsewhere in the app. */}
       <div className="relative mb-3">
         <Search className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-[var(--soft)]" />
-        <Input
+        <input
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           placeholder="Search businesses…"
-          className="pl-10"
           aria-label="Search businesses"
+          className="h-11 w-full rounded-full border-0 bg-[var(--surface-2)] pl-10 pr-10 text-[15px] text-[var(--ink)] placeholder:text-[var(--soft)] transition-colors focus-visible:bg-[var(--surface)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)]"
         />
+        {query && (
+          <button
+            type="button"
+            onClick={() => setQuery("")}
+            aria-label="Clear search"
+            className="absolute right-3 top-1/2 flex h-5 w-5 -translate-y-1/2 items-center justify-center rounded-full bg-[var(--soft)] text-[var(--surface-2)] transition-colors hover:bg-[var(--muted)]"
+          >
+            <X className="h-3 w-3" strokeWidth={2.5} />
+          </button>
+        )}
       </div>
 
       <div className="mb-5 flex items-center gap-2">
@@ -115,7 +128,7 @@ export default function Explore() {
                 key={c}
                 onClick={() => setCategory(c)}
                 aria-pressed={active}
-                className={`flex-shrink-0 whitespace-nowrap rounded-full px-4 py-2 text-sm font-bold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)] ${
+                className={`flex-shrink-0 whitespace-nowrap rounded-full px-3.5 py-2 text-[13px] font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)] ${
                   active
                     ? "bg-[var(--ink)] text-[var(--bg)]"
                     : "bg-[var(--surface-2)] text-[var(--muted)] hover:text-[var(--ink)]"
