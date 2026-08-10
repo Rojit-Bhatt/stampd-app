@@ -2,6 +2,8 @@ import { useEffect, useRef, useState } from "react";
 import { X, ScanLine, QrCode, CameraOff } from "lucide-react";
 import { Html5Qrcode } from "html5-qrcode";
 import { useNavigate } from "react-router-dom";
+import { AnimatePresence, motion } from "motion/react";
+import { useMotion } from "../../lib/motion";
 
 // Slug-less counterpart to ScannerModal.tsx — used from the global /explore
 // surface, where there is no active tenant to claim against. On a successful
@@ -165,39 +167,45 @@ export function GlobalScannerModal({ open, onClose }: { open: boolean; onClose: 
     setIsBlocked(false);
   };
 
-  if (!open) return null;
+  const m = useMotion();
 
   return (
-    <div
-      role="dialog"
-      aria-modal="true"
-      aria-label="Scan a business's counter QR code"
-      className="fixed inset-0 z-50 bg-[#0C110F]/98 flex items-center justify-center font-sans text-[#E9F0EC]"
-    >
+    <AnimatePresence>
+      {open && (
+        <motion.div
+          role="dialog"
+          aria-modal="true"
+          aria-label="Scan a business's counter QR code"
+          initial={m.pick({ opacity: 0, scale: 0.96 }, { opacity: 0 })}
+          animate={{ opacity: 1, scale: 1 }}
+          exit={m.pick({ opacity: 0, scale: 0.96 }, { opacity: 0 })}
+          transition={m.spring("settle")}
+          className="fixed inset-0 z-50 bg-[#000000]/90 backdrop-blur-xl flex items-center justify-center font-sans text-[#FFFFFF]"
+        >
       <button
         type="button"
         onClick={onClose}
         aria-label="Close"
-        className="absolute right-5 top-5 z-10 grid h-10 w-10 place-items-center border border-[#223029] bg-[#141B18] text-[#E9F0EC] hover:bg-[#E9F0EC] hover:text-black transition-colors rounded-[var(--radius-btn)]"
+        className="absolute right-5 top-5 z-10 grid h-10 w-10 place-items-center border border-[#3A3A3C] bg-[#1C1C1E] text-[#FFFFFF] hover:bg-[#FFFFFF] hover:text-black transition-colors rounded-[var(--radius-btn)]"
       >
         <X className="h-5 w-5" strokeWidth={2} />
       </button>
 
       {cameraError ? (
-        <div className="flex h-full flex-col items-center justify-center px-6 text-[#E9F0EC] w-full max-w-sm text-center">
-          <div className="relative mx-auto flex h-20 w-20 items-center justify-center border border-[#223029] bg-[#141B18] text-[#E9F0EC] rounded-[var(--radius-card)]">
+        <div className="flex h-full flex-col items-center justify-center px-6 text-[#FFFFFF] w-full max-w-sm text-center">
+          <div className="relative mx-auto flex h-20 w-20 items-center justify-center border border-[#3A3A3C] bg-[#1C1C1E] text-[#FFFFFF] rounded-[var(--radius-card)]">
             {isBlocked ? (
               <CameraOff className="h-10 w-10 text-amber-500/90 animate-pulse" strokeWidth={1.5} />
             ) : (
-              <ScanLine className="h-10 w-10 text-[#E9F0EC]" strokeWidth={1.5} />
+              <ScanLine className="h-10 w-10 text-[#FFFFFF]" strokeWidth={1.5} />
             )}
           </div>
 
-          <h2 className="mt-6 text-2xl font-normal text-[#E9F0EC] font-display">
+          <h2 className="mt-6 text-2xl font-normal text-[#FFFFFF] font-display">
             {isBlocked ? "Camera Access Blocked" : "Camera Access Needed"}
           </h2>
 
-          <p className="mt-3 text-sm text-[#8DA79A] leading-relaxed">
+          <p className="mt-3 text-sm text-[#98989D] leading-relaxed">
             {isBlocked
               ? "Camera is blocked for this site — check your browser's address bar or settings to allow it, then try again."
               : "Please allow camera access to scan a business's QR code."}
@@ -207,7 +215,7 @@ export function GlobalScannerModal({ open, onClose }: { open: boolean; onClose: 
             <button
               type="button"
               onClick={handleRetry}
-              className="flex w-full items-center justify-center gap-2 rounded-[var(--radius-btn)] bg-[#0FA968] py-4 text-sm font-bold text-white transition-colors hover:bg-[#0B7A4B] active:scale-[0.97]"
+              className="flex w-full items-center justify-center gap-2 rounded-[var(--radius-btn)] bg-[#30D158] py-4 text-sm font-bold text-white transition-colors hover:bg-[#248A3D] active:scale-[0.97]"
             >
               {isBlocked ? "Enable Camera" : "Try Again"}
             </button>
@@ -215,34 +223,34 @@ export function GlobalScannerModal({ open, onClose }: { open: boolean; onClose: 
             <button
               type="button"
               onClick={onClose}
-              className="w-full border border-[#223029] bg-[#141B18] py-3 text-xs font-bold uppercase tracking-[0.18em] text-[#E9F0EC] transition-colors hover:bg-[#E9F0EC] hover:text-black rounded-[var(--radius-card)]"
+              className="w-full border border-[#3A3A3C] bg-[#1C1C1E] py-3 text-xs font-bold uppercase tracking-[0.18em] text-[#FFFFFF] transition-colors hover:bg-[#FFFFFF] hover:text-black rounded-[var(--radius-card)]"
             >
               Cancel
             </button>
           </div>
         </div>
       ) : (
-        <div className="flex h-full flex-col items-center justify-center px-6 text-[#E9F0EC] w-full">
+        <div className="flex h-full flex-col items-center justify-center px-6 text-[#FFFFFF] w-full">
           <div className="mb-6 text-center">
-            <p className="text-[10px] uppercase tracking-[0.28em] text-[#8DA79A] font-bold">
+            <p className="text-[10px] uppercase tracking-[0.28em] text-[#98989D] font-bold">
               Scan any business
             </p>
-            <h2 className="mt-1 text-2xl font-normal text-[#E9F0EC] font-display">Scan Counter QR</h2>
+            <h2 className="mt-1 text-2xl font-normal text-[#FFFFFF] font-display">Scan Counter QR</h2>
           </div>
 
-          <div className="relative aspect-square w-full max-w-[300px] overflow-hidden border border-[#223029] bg-[#141B18] rounded-[var(--radius-card)]">
+          <div className="relative aspect-square w-full max-w-[300px] overflow-hidden border border-[#3A3A3C] bg-[#1C1C1E] rounded-[var(--radius-card)]">
             <div
               id="global-qr-reader-viewport"
               className="absolute inset-0 h-full w-full overflow-hidden [&>video]:h-full [&>video]:w-full [&>video]:object-cover"
             />
             <div className="pointer-events-none absolute inset-0 grid place-items-center opacity-25">
-              <QrCode className="h-12 w-12 text-[#E9F0EC]" strokeWidth={1.2} />
+              <QrCode className="h-12 w-12 text-[#FFFFFF]" strokeWidth={1.2} />
             </div>
           </div>
 
           <div className="mt-8 flex flex-col items-center gap-3">
-            <div className="flex items-center gap-2 text-sm text-[#8DA79A]">
-              <ScanLine className="h-4 w-4 text-[#E9F0EC]" />
+            <div className="flex items-center gap-2 text-sm text-[#98989D]">
+              <ScanLine className="h-4 w-4 text-[#FFFFFF]" />
               <span>Align QR inside the frame</span>
             </div>
           </div>
@@ -250,13 +258,16 @@ export function GlobalScannerModal({ open, onClose }: { open: boolean; onClose: 
           <button
             type="button"
             onClick={onClose}
-            className="mt-10 border border-[#223029] bg-[#141B18] px-6 py-2.5 text-xs font-bold uppercase tracking-[0.18em] text-[#E9F0EC] transition-colors hover:bg-[#E9F0EC] hover:text-black rounded-[var(--radius-card)]"
+            className="mt-10 border border-[#3A3A3C] bg-[#1C1C1E] px-6 py-2.5 text-xs font-bold uppercase tracking-[0.18em] text-[#FFFFFF] transition-colors hover:bg-[#FFFFFF] hover:text-black rounded-[var(--radius-card)]"
           >
             Cancel
           </button>
         </div>
       )}
-    </div>
+        </motion.div>
+      )}
+    </AnimatePresence>
   );
 }
 export default GlobalScannerModal;
+
