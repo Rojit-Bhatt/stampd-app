@@ -1,9 +1,10 @@
-import { useEffect, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { Outlet, Link, NavLink, useLocation, useNavigate } from "react-router-dom";
 import { QrCode, Compass, CalendarDays, Store, CircleUser } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
+import { motion, useTransform } from "motion/react";
 
-import { useCustomerAuth } from "../../context/CustomerAuthContext";
+import { useCustomerAuth, type GlobalAccount } from "../../context/CustomerAuthContext";
 import { PLATFORM_NAME } from "../../lib/platform";
 import { GlobalScannerModal } from "./GlobalScannerModal";
 import { CustomerAvatar } from "./CustomerAvatar";
@@ -11,6 +12,7 @@ import { PhoneStepModal } from "./PhoneStepModal";
 import { useMyTenants } from "../../hooks/useMyTenants";
 import { useAccountRefresh } from "../../hooks/useAccountRefresh";
 import { StampdLogo } from "../shared/StampdLogo";
+import { ExploreHeroProvider, useExploreHero } from "../../context/ExploreHeroContext";
 
 // The global (cross-tenant) customer shell for /explore + /explore/mine —
 // parallel to CustomerLayout but with no active TenantProvider or tenant JWT:
@@ -66,6 +68,96 @@ function Tab({
         </>
       )}
     </NavLink>
+  );
+}
+
+function GlobalHeader({ onScan, globalAccount }: { onScan: () => void; globalAccount: GlobalAccount }) {
+  const { heroColor, progress, setHeaderHeight } = useExploreHero();
+  const headerRef = useRef<HTMLElement>(null);
+  const tintedOpacity = useTransform(progress, [0, 1], [1, 0]);
+  const neutralOpacity = useTransform(progress, [0, 1], [0, 1]);
+  const tintedBackground = heroColor
+    ? `linear-gradient(180deg, color-mix(in srgb, ${heroColor} 55%, white), color-mix(in srgb, ${heroColor} 30%, white))`
+    : undefined;
+
+  // The card stack's own sticky collapse zone pins directly below this
+  // header, so it needs the header's real rendered height rather than a
+  // guessed constant.
+  useLayoutEffect(() => {
+    const el = headerRef.current;
+    if (!el) return;
+    const measure = () => setHeaderHeight(el.getBoundingClientRect().height);
+    measure();
+    const observer = new ResizeObserver(measure);
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, [setHeaderHeight]);
+
+  return (
+    <header
+      ref={headerRef}
+      className={`sticky top-0 z-20 flex-shrink-0 ${
+        heroColor
+          ? "relative overflow-hidden"
+          : "bg-[var(--surface)]/95 shadow-[0_1px_16px_-6px_rgba(20,32,28,0.14)] backdrop-blur"
+      }`}
+    >
+      {heroColor && (
+        <>
+          <motion.div
+            aria-hidden
+            className="absolute inset-0"
+            style={{ background: tintedBackground, opacity: tintedOpacity }}
+          />
+          <motion.div
+            aria-hidden
+            className="absolute inset-0 bg-[var(--surface)]/95 shadow-[0_1px_16px_-6px_rgba(20,32,28,0.14)] backdrop-blur"
+            style={{ opacity: neutralOpacity }}
+          />
+        </>
+      )}
+      <div className="relative z-10 mx-auto flex w-full max-w-5xl items-center gap-3 px-5 py-3">
+        <Link to="/explore" className="flex flex-shrink-0 items-center gap-2">
+          <StampdLogo size={22} />
+          <span className="font-display text-lg font-bold text-[var(--ink)]">{PLATFORM_NAME}</span>
+        </Link>
+
+        <nav className="ml-4 hidden items-center gap-1 lg:flex">
+          <Tab to="/explore" icon={Compass} label="Discover" variant="top" />
+          <Tab to="/explore/events" icon={CalendarDays} label="Events" variant="top" />
+          <Tab to="/explore/mine" icon={Store} label="My Places" variant="top" />
+          <Tab to="/explore/profile" icon={CircleUser} label="Profile" variant="top" />
+        </nav>
+
+        <div className="ml-auto flex flex-shrink-0 items-center gap-2">
+          <button
+            onClick={onScan}
+            aria-label="Scan a business's QR code"
+            className="flex items-center gap-2 rounded-[var(--radius-btn)] bg-[var(--primary)] px-3.5 py-2.5 text-sm font-bold text-white transition-colors hover:bg-[var(--primary-deep)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)] focus-visible:ring-offset-2"
+          >
+            <QrCode className="h-4 w-4" />
+            <span className="hidden sm:inline">Scan</span>
+          </button>
+          {/* Same affordance the outlet console's header has: the avatar IS
+              the way into Profile. Log out used to sit beside it as its own
+              header button — it's now inside Profile, where an action you
+              can't undo with another tap belongs, rather than one stray tap
+              from every screen. */}
+          <NavLink
+            to="/explore/profile"
+            aria-label="Profile"
+            className="flex items-center justify-center rounded-full transition-opacity hover:opacity-80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)] focus-visible:ring-offset-2"
+          >
+            <CustomerAvatar
+              accountId={globalAccount.id}
+              avatarVersion={globalAccount.avatarVersion}
+              name={globalAccount.name}
+              size={36}
+            />
+          </NavLink>
+        </div>
+      </div>
+    </header>
   );
 }
 
@@ -138,54 +230,11 @@ export function GlobalCustomerLayout() {
   void location;
 
   return (
+    <ExploreHeroProvider>
     <div className="flex min-h-screen flex-col bg-[var(--bg)]">
       <GlobalScannerModal open={scanOpen} onClose={() => setScanOpen(false)} />
 
-      <header className="sticky top-0 z-20 flex-shrink-0 bg-[var(--surface)]/95 shadow-[0_1px_16px_-6px_rgba(20,32,28,0.14)] backdrop-blur">
-        <div className="mx-auto flex w-full max-w-5xl items-center gap-3 px-5 py-3">
-          <Link to="/explore" className="flex flex-shrink-0 items-center gap-2">
-            <StampdLogo size={22} />
-            <span className="font-display text-lg font-bold text-[var(--ink)]">
-              {PLATFORM_NAME}
-            </span>
-          </Link>
-
-          <nav className="ml-4 hidden items-center gap-1 lg:flex">
-            <Tab to="/explore" icon={Compass} label="Discover" variant="top" />
-            <Tab to="/explore/events" icon={CalendarDays} label="Events" variant="top" />
-            <Tab to="/explore/mine" icon={Store} label="My Places" variant="top" />
-            <Tab to="/explore/profile" icon={CircleUser} label="Profile" variant="top" />
-          </nav>
-
-          <div className="ml-auto flex flex-shrink-0 items-center gap-2">
-            <button
-              onClick={() => setScanOpen(true)}
-              aria-label="Scan a business's QR code"
-              className="flex items-center gap-2 rounded-[var(--radius-btn)] bg-[var(--primary)] px-3.5 py-2.5 text-sm font-bold text-white transition-colors hover:bg-[var(--primary-deep)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)] focus-visible:ring-offset-2"
-            >
-              <QrCode className="h-4 w-4" />
-              <span className="hidden sm:inline">Scan</span>
-            </button>
-            {/* Same affordance the outlet console's header has: the avatar IS
-                the way into Profile. Log out used to sit beside it as its own
-                header button — it's now inside Profile, where an action you
-                can't undo with another tap belongs, rather than one stray tap
-                from every screen. */}
-            <NavLink
-              to="/explore/profile"
-              aria-label="Profile"
-              className="flex items-center justify-center rounded-full transition-opacity hover:opacity-80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)] focus-visible:ring-offset-2"
-            >
-              <CustomerAvatar
-                accountId={globalAccount.id}
-                avatarVersion={globalAccount.avatarVersion}
-                name={globalAccount.name}
-                size={36}
-              />
-            </NavLink>
-          </div>
-        </div>
-      </header>
+      <GlobalHeader onScan={() => setScanOpen(true)} globalAccount={globalAccount} />
 
       {/* pb-24 clears the fixed bottom nav on phones; lg:pb-0 because it's
           hidden entirely at that width. */}
@@ -206,6 +255,7 @@ export function GlobalCustomerLayout() {
         </div>
       </footer>
     </div>
+    </ExploreHeroProvider>
   );
 }
 
