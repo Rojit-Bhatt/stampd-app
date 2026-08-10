@@ -44,6 +44,7 @@ if (USING_MOCK_DB) {
 
 const express = require("express");
 const cors = require("cors");
+const helmet = require("helmet");
 const connectDB = require("./config/db");
 const { PLATFORM_NAME, PLATFORM_TIMEZONE } = require("./config/platform");
 const cron = require("node-cron");
@@ -93,7 +94,18 @@ app.use(
     credentials: true
   })
 );
-app.use(express.json());
+// contentSecurityPolicy off — this is a JSON+image API, not an HTML app, so
+// CSP directives have nothing to govern. crossOriginResourcePolicy set to
+// cross-origin because production is split-hosted (Render API, Cloudflare
+// Pages frontend) — helmet's same-origin default would block the frontend
+// from loading images served off this origin.
+app.use(
+  helmet({
+    contentSecurityPolicy: false,
+    crossOriginResourcePolicy: { policy: "cross-origin" }
+  })
+);
+app.use(express.json({ limit: "2mb" }));
 
 app.get("/", (_req, res) => {
   res.status(200).json({

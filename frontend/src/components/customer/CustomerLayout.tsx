@@ -14,6 +14,7 @@ import { RequiredInfoBanner } from "./RequiredInfoBanner";
 import { PhoneStepModal } from "./PhoneStepModal";
 import { tenantPath } from "../../lib/tenantPath";
 import { resolveImageUrl } from "../../lib/images";
+import { decodeJwtPayload } from "../../lib/api";
 
 // The authenticated customer app shell.
 //
@@ -43,7 +44,7 @@ function DesktopTab({ to, icon: Icon, label }: { to: string; icon: LucideIcon; l
 
 export function CustomerLayout() {
   const { companySlug, slug, tenant } = useTenant();
-  const { user, isLoading, globalAccount } = useCustomerAuth();
+  const { user, token, isLoading, globalAccount } = useCustomerAuth();
   const { data: account } = useAccount("customer");
   const navigate = useNavigate();
   const location = useLocation();
@@ -53,13 +54,24 @@ export function CustomerLayout() {
     Boolean(globalAccount) && !globalAccount?.phone,
   );
 
+  // TenantScope (and this layout with it) stays mounted across an
+  // outlet-to-outlet navigation — only the route params change. `token` is a
+  // single shared slot re-issued by ensureTenantSession, which only fires
+  // once `tenant` (an outlet-scoped query) has resolved for the new slug. In
+  // between, `token`/`user` still belong to the PREVIOUS outlet: without this
+  // check the Outlet below would render immediately and every data query
+  // inside it (points balance, catalog, ...) would fire against the old JWT,
+  // caching the old outlet's numbers under the new outlet's query key.
+  const tokenOrgId = token ? decodeJwtPayload(token)?.organizationId : null;
+  const sessionStale = Boolean(tenant) && tokenOrgId !== tenant?.id;
+
   useEffect(() => {
-    if (!isLoading && (!user || user.role !== "customer")) {
+    if (!isLoading && !sessionStale && (!user || user.role !== "customer")) {
       navigate(tenantPath(companySlug, slug, "login"));
     }
-  }, [user, isLoading, navigate, slug]);
+  }, [user, isLoading, sessionStale, navigate, slug]);
 
-  if (isLoading || !user || user.role !== "customer") {
+  if (isLoading || sessionStale || !user || user.role !== "customer") {
     return (
       <div className="flex min-h-screen items-center justify-center bg-[var(--bg)]">
         <div className="h-8 w-8 animate-spin rounded-full border-2 border-[var(--primary)] border-t-transparent" />

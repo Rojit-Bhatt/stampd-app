@@ -16,6 +16,7 @@ const { effectiveBalanceCenti, expiresAtFor } = require("./pointsService");
 const { toPoints } = require("../utils/pointsMath");
 const { sniffImageType } = require("../utils/imageBytes");
 const { generateGlobalSessionToken } = require("../utils/tokenUtils");
+const { isLocked, lockedMinutesLeft, registerFailedAttempt, resetLoginAttempts } = require("../utils/loginLockout");
 const { resolveProgram } = require("./programService");
 const { resolveGoogleLink } = require("../utils/googleLink");
 const { createNotification } = require("./notificationService");
@@ -284,10 +285,21 @@ const loginAccount = async ({ email, password }) => {
     throw createHttpError("That email or password didn't match — try again.", 401);
   }
 
+  if (isLocked(account)) {
+    throw createHttpError(
+      `Too many failed attempts. Try again in ${lockedMinutesLeft(account)} minute(s).`,
+      429,
+      "ACCOUNT_LOCKED"
+    );
+  }
+
   const isPasswordValid = await bcrypt.compare(password, account.password);
   if (!isPasswordValid) {
+    await registerFailedAttempt(account);
     throw createHttpError("That email or password didn't match — try again.", 401);
   }
+
+  await resetLoginAttempts(account);
 
   return formatGlobalSessionPayload(account);
 };

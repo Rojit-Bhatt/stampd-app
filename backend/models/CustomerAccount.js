@@ -11,6 +11,8 @@ const CustomerAccountSchema = new mongoose.Schema({
   password: { type: String, required: false },
   phone: { type: String, trim: true, default: "" },
   emailVerified: { type: Boolean, default: false },
+  failedLoginAttempts: { type: Number, default: 0 },
+  lockedUntil: { type: Date, default: null },
   // Bumped on every avatar upload/removal; 0 means no picture. The image
   // itself lives in CustomerAvatar — this is the cheap flag that travels with
   // the account, and the cache-buster that lets the served image be marked
