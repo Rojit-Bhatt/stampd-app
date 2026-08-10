@@ -15,7 +15,7 @@ export default function ExploreEvents() {
   return (
     <div className="mx-auto w-full max-w-3xl px-5 py-6">
       <header className="mb-5">
-        <h1 className="font-display text-2xl font-bold text-[var(--ink)]">Events</h1>
+        <h1 className="text-large-title text-[var(--ink)]">Events</h1>
         <p className="mt-0.5 text-sm text-[var(--muted)]">
           Upcoming events from every business on Stampd.
         </p>
