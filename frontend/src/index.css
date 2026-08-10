@@ -174,6 +174,76 @@
   --chart-scale-pattern-color: oklch(0.145 0 0);
 }
 
+/* Customer-facing shell only (GlobalCustomerLayout and, later, the
+   per-outlet CustomerLayout) — scoped so admin/business/platform screens,
+   which share this same stylesheet, are never affected by this redesign.
+   Overriding the custom properties here is enough: every existing
+   var(--token) reference and every @theme-generated utility (.font-display,
+   .font-numeral, etc.) resolves against the nearest ancestor's value, so
+   nothing outside .customer-shell changes. */
+.customer-shell {
+  --font-sans: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  --font-display: var(--font-sans);
+  --font-numeral: var(--font-sans);
+}
+
+.customer-shell.dark {
+  --bg: #000000;
+  --surface: #1C1C1E;
+  --surface-2: #2C2C2E;
+  --line: #3A3A3C;
+
+  --ink: #FFFFFF;
+  --muted: #98989D;
+  --soft: #6C6C70;
+
+  --primary: #30D158;
+  --primary-deep: #248A3D;
+  --primary-soft: #0F2818;
+
+  --brand: var(--primary);
+  --brand-deep: var(--primary-deep);
+  --brand-ink: var(--primary);
+  --brand-on: #000000;
+
+  --info: #0A84FF;
+  --info-soft: #0A1F33;
+  --ok: var(--primary);
+  --ok-soft: var(--primary-soft);
+  --warn: #FF9F0A;
+  --warn-soft: #332405;
+  --err: #FF453A;
+  --err-soft: #330E0B;
+
+  --background: var(--bg);
+  --foreground: var(--ink);
+  --muted-foreground: var(--muted);
+  --surface-container: var(--surface-2);
+  --surface-container-high: var(--surface-2);
+  --surface-dim: var(--line);
+  --ring: var(--primary);
+  --secondary: var(--surface-2);
+  --accent: var(--surface-2);
+  --border: var(--line);
+  --destructive: var(--err);
+}
+
+/* HIG-mapped type scale — hierarchy from weight+size+tracking+leading as a
+   set, never one fixed letter-spacing across sizes. Global (not scoped to
+   .customer-shell): these are brand-new class names unused elsewhere, so
+   adding them can't affect any existing screen; they only render on Inter
+   when used inside .customer-shell, where --font-sans is overridden. */
+.text-large-title { font-size: 2.125rem; font-weight: 700; letter-spacing: -0.02em; line-height: 1.05; }
+.text-title-1 { font-size: 1.75rem; font-weight: 700; letter-spacing: -0.018em; line-height: 1.1; }
+.text-title-2 { font-size: 1.375rem; font-weight: 700; letter-spacing: -0.015em; line-height: 1.15; }
+.text-title-3 { font-size: 1.25rem; font-weight: 600; letter-spacing: -0.012em; line-height: 1.2; }
+.text-headline { font-size: 1.0625rem; font-weight: 600; letter-spacing: -0.005em; line-height: 1.3; }
+.text-body { font-size: 1.0625rem; font-weight: 400; letter-spacing: 0; line-height: 1.4; }
+.text-callout { font-size: 1rem; font-weight: 400; letter-spacing: 0; line-height: 1.35; }
+.text-subhead { font-size: 0.9375rem; font-weight: 500; letter-spacing: 0; line-height: 1.3; }
+.text-footnote { font-size: 0.8125rem; font-weight: 400; letter-spacing: 0.005em; line-height: 1.3; }
+.text-caption { font-size: 0.6875rem; font-weight: 600; letter-spacing: 0.01em; line-height: 1.3; }
+
 /* A layout bug anywhere in the app that pushes one element past the
    viewport's edge doesn't just clip that element on mobile — it widens the
    whole page, and the browser responds by rendering everything zoomed out
