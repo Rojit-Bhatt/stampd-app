@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { Mail, Lock, Eye, EyeOff } from "lucide-react";
 import { useForm } from "react-hook-form";
@@ -9,6 +9,7 @@ import toast from "@/lib/toast";
 import { useCustomerAuth } from "../context/CustomerAuthContext";
 import { PhoneStepModal } from "../components/customer/PhoneStepModal";
 import { AuthSplitShell } from "../components/shared/auth/AuthSplitShell";
+import { Turnstile, TURNSTILE_ENABLED, type TurnstileHandle } from "../components/shared/Turnstile";
 
 const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID as string | undefined;
 
@@ -30,6 +31,8 @@ export default function GlobalCustomerLogin() {
   const [showPass, setShowPass] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showPhoneStep, setShowPhoneStep] = useState(false);
+  const [turnstileToken, setTurnstileToken] = useState("");
+  const turnstileRef = useRef<TurnstileHandle>(null);
 
   useEffect(() => {
     if (globalAccount) navigate("/explore");
@@ -44,10 +47,12 @@ export default function GlobalCustomerLogin() {
     setIsSubmitting(true);
     const toastId = toast.loading("Signing you in…");
     try {
-      await login(data.email, data.password);
+      await login(data.email, data.password, turnstileToken);
       toast.success("Good to see you again!", { id: toastId });
       navigate("/explore");
     } catch (err) {
+      turnstileRef.current?.reset();
+      setTurnstileToken("");
       toast.error((err as Error).message || "Couldn't sign you in — try again.", { id: toastId });
     } finally {
       setIsSubmitting(false);
@@ -109,9 +114,11 @@ export default function GlobalCustomerLogin() {
           </label>
           {errors.password && <p className="pl-1 text-xs font-semibold text-[var(--lp-terra)]">{errors.password.message}</p>}
 
+          <Turnstile ref={turnstileRef} onVerify={setTurnstileToken} />
+
           <button
             type="submit"
-            disabled={isSubmitting}
+            disabled={isSubmitting || (TURNSTILE_ENABLED && !turnstileToken)}
             className="mt-2 w-full rounded-[74px] bg-[var(--lp-cream)] py-4 text-[15px] font-bold text-[#14201C] transition-transform duration-200 hover:scale-105 disabled:opacity-50 motion-reduce:transition-none motion-reduce:hover:scale-100"
           >
             {isSubmitting ? "Please wait…" : "Sign in"}

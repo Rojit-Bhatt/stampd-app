@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
@@ -7,6 +7,7 @@ import toast from "@/lib/toast";
 import { usePlatformAuth } from "../../context/PlatformAuthContext";
 import { PLATFORM_NAME } from "../../lib/platform";
 import { AuthSplitShell } from "../../components/shared/auth/AuthSplitShell";
+import { Turnstile, TURNSTILE_ENABLED, type TurnstileHandle } from "../../components/shared/Turnstile";
 
 const schema = z.object({
   email: z.string().trim().email("Please enter a valid email address."),
@@ -21,6 +22,8 @@ export default function PlatformLogin() {
   const { user, login, isLoading } = usePlatformAuth();
   const navigate = useNavigate();
   const [busy, setBusy] = useState(false);
+  const [turnstileToken, setTurnstileToken] = useState("");
+  const turnstileRef = useRef<TurnstileHandle>(null);
 
   useEffect(() => {
     document.title = `Platform admin | ${PLATFORM_NAME}`;
@@ -39,10 +42,12 @@ export default function PlatformLogin() {
     setBusy(true);
     const id = toast.loading("Signing you in…");
     try {
-      await login(data.email, data.password);
+      await login(data.email, data.password, turnstileToken);
       toast.success("Good to see you again!", { id });
       navigate("/platform");
     } catch (err: any) {
+      turnstileRef.current?.reset();
+      setTurnstileToken("");
       toast.error(err.message || "Couldn't sign you in — try again.", { id });
     } finally {
       setBusy(false);
@@ -74,9 +79,10 @@ export default function PlatformLogin() {
             className="rounded-2xl border border-[var(--lp-line)] bg-white/[0.04] px-4 py-3.5 text-sm text-[var(--lp-ink)] placeholder:text-[var(--lp-muted)] focus:border-[var(--lp-green)] focus:outline-none"
           />
           {errors.password && <p className="pl-1 text-xs font-semibold text-[var(--lp-terra)]">{errors.password.message}</p>}
+          <Turnstile ref={turnstileRef} onVerify={setTurnstileToken} />
           <button
             type="submit"
-            disabled={busy || isLoading}
+            disabled={busy || isLoading || (TURNSTILE_ENABLED && !turnstileToken)}
             className="mt-2 w-full rounded-[74px] bg-[var(--lp-cream)] py-4 text-[15px] font-bold text-[#14201C] transition-transform duration-200 hover:scale-105 disabled:opacity-50 motion-reduce:transition-none motion-reduce:hover:scale-100"
           >
             {busy ? "Signing you in…" : "Sign in"}

@@ -22,6 +22,8 @@ const AdminAccountSchema = new mongoose.Schema({
   googleId: { type: String, default: null },
   phone: { type: String, trim: true, default: "" },
   emailVerified: { type: Boolean, default: false },
+  failedLoginAttempts: { type: Number, default: 0 },
+  lockedUntil: { type: Date, default: null },
 
   // company_owner -> manages the company, its outlets and its subscription;
   //                  organizationId is null (owns all of them, not one).

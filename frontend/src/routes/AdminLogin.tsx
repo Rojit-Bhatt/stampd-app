@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
@@ -9,6 +9,7 @@ import { tenantPath } from "../lib/tenantPath";
 import { PLATFORM_NAME } from "../lib/platform";
 import { AuthSplitShell } from "../components/shared/auth/AuthSplitShell";
 import { VerifyCodeCard } from "../components/shared/auth/VerifyCodeCard";
+import { Turnstile, TURNSTILE_ENABLED, type TurnstileHandle } from "../components/shared/Turnstile";
 
 const schema = z.object({
   email: z.string().trim().email("Please enter a valid email address."),
@@ -46,13 +47,15 @@ export default function AdminLogin() {
   // the fix. Holds the credentials so onVerified can complete the sign-in
   // the admin was already mid-way through, without retyping anything.
   const [pendingVerify, setPendingVerify] = useState<{ email: string; password: string } | null>(null);
+  const [turnstileToken, setTurnstileToken] = useState("");
+  const turnstileRef = useRef<TurnstileHandle>(null);
 
   const onSubmit = async (data: FormValues) => {
     const id = toast.loading("Signing you in…");
     try {
       const res = await apiRequest<LoginResponse>("/api/admin-auth/login", {
         method: "POST",
-        body: { email: data.email, password: data.password },
+        body: { email: data.email, password: data.password, turnstileToken },
       });
 
       // Someone can legitimately move between roles, so clear the other
@@ -83,6 +86,8 @@ export default function AdminLogin() {
         setPendingVerify({ email: data.email, password: data.password });
         return;
       }
+      turnstileRef.current?.reset();
+      setTurnstileToken("");
       toast.error(err.message || "Couldn't sign you in — try again.", { id });
     }
   };
@@ -151,9 +156,10 @@ export default function AdminLogin() {
                 className="rounded-2xl border border-[var(--lp-line)] bg-white/[0.04] px-4 py-3.5 text-sm text-[var(--lp-ink)] placeholder:text-[var(--lp-muted)] focus:border-[var(--lp-green)] focus:outline-none"
               />
               {errors.password && <p className="pl-1 text-xs font-semibold text-[var(--lp-terra)]">{errors.password.message}</p>}
+              <Turnstile ref={turnstileRef} onVerify={setTurnstileToken} />
               <button
                 type="submit"
-                disabled={isSubmitting}
+                disabled={isSubmitting || (TURNSTILE_ENABLED && !turnstileToken)}
                 className="mt-2 w-full rounded-[74px] bg-[var(--lp-cream)] py-4 text-[15px] font-bold text-[#14201C] transition-transform duration-200 hover:scale-105 disabled:opacity-50 motion-reduce:transition-none motion-reduce:hover:scale-100"
               >
                 {isSubmitting ? "Signing you in…" : "Sign in"}

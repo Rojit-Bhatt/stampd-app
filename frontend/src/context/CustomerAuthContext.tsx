@@ -51,7 +51,7 @@ interface CustomerAuthContextType {
   // session; callers must follow up with ensureTenantSession(slug, orgId)
   // to actually enter a specific cafe (exactly what TenantSessionSync
   // already does on every page mount).
-  login: (email: string, password: string) => Promise<void>;
+  login: (email: string, password: string, turnstileToken?: string) => Promise<void>;
   registerUser: (options: {
     name: string;
     email: string;
@@ -64,6 +64,7 @@ interface CustomerAuthContextType {
     // so without this a pending claim could be bound by anyone who guessed
     // its id — see pendingClaimService.linkPendingClaimToAccount.
     claimSecret?: string;
+    turnstileToken?: string;
     // Only sent by the tenant-scoped register form — the one registration
     // surface with an outlet in scope to check required fields against.
     companySlug?: string;
@@ -206,10 +207,10 @@ export function CustomerAuthProvider({ children }: { children: React.ReactNode }
     setIsLoading(false);
   };
 
-  const login = async (email: string, password: string) => {
+  const login = async (email: string, password: string, turnstileToken?: string) => {
     const res = await apiRequest<{ success: boolean; token: string; account: GlobalAccount }>(
       "/api/customer-auth/login",
-      { method: "POST", body: { email, password } },
+      { method: "POST", body: { email, password, turnstileToken } },
     );
     if (!res.success || !res.token || !res.account) {
       throw new Error("Invalid response payload from server.");

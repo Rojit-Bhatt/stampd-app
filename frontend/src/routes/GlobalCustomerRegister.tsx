@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { Mail, Lock, User, Phone } from "lucide-react";
 import { useForm } from "react-hook-form";
@@ -8,6 +8,7 @@ import toast from "@/lib/toast";
 import { useCustomerAuth } from "../context/CustomerAuthContext";
 import { PLATFORM_NAME } from "../lib/platform";
 import { AuthSplitShell } from "../components/shared/auth/AuthSplitShell";
+import { Turnstile, TURNSTILE_ENABLED, type TurnstileHandle } from "../components/shared/Turnstile";
 
 const registerSchema = z.object({
   name: z.string().trim().min(2, "Name must be at least 2 characters."),
@@ -17,6 +18,7 @@ const registerSchema = z.object({
     .string()
     .trim()
     .refine((v) => v.replace(/\D/g, "").replace(/^0+/, "").length >= 7, "Enter a valid phone number."),
+  agreeTerms: z.boolean().refine((v) => v === true, "You must agree to the terms to continue."),
 });
 type RegisterFormValues = z.infer<typeof registerSchema>;
 
@@ -32,10 +34,12 @@ export default function GlobalCustomerRegister() {
   const navigate = useNavigate();
   const { registerUser } = useCustomerAuth();
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [turnstileToken, setTurnstileToken] = useState("");
+  const turnstileRef = useRef<TurnstileHandle>(null);
 
   const { register, handleSubmit, formState: { errors } } = useForm<RegisterFormValues>({
     resolver: zodResolver(registerSchema),
-    defaultValues: { name: "", email: "", password: "", phone: "" },
+    defaultValues: { name: "", email: "", password: "", phone: "", agreeTerms: false },
   });
 
   const onSubmit = async (data: RegisterFormValues) => {
@@ -43,10 +47,14 @@ export default function GlobalCustomerRegister() {
     const toastId = toast.loading("Setting up your account…");
     try {
       const local = data.phone.replace(/\D/g, "").replace(/^0+/, "");
-      await registerUser({ name: data.name, email: data.email, password: data.password, phone: `+977${local}` });
+      await registerUser({
+        name: data.name, email: data.email, password: data.password, phone: `+977${local}`, turnstileToken,
+      });
       toast.success("Welcome! You can verify your email later before redeeming.", { id: toastId });
       navigate("/explore");
     } catch (err) {
+      turnstileRef.current?.reset();
+      setTurnstileToken("");
       toast.error((err as Error).message || "Couldn't create your account — try again.", { id: toastId });
     } finally {
       setIsSubmitting(false);
@@ -103,9 +111,31 @@ export default function GlobalCustomerRegister() {
         </Field>
         {errors.password && <Err msg={errors.password.message} />}
 
+        <label className="mt-1 flex items-start gap-2.5 text-[13px] text-[var(--lp-muted)]">
+          <input
+            type="checkbox"
+            {...register("agreeTerms")}
+            className="mt-0.5 h-4 w-4 shrink-0 rounded border-[var(--lp-line)] bg-white/[0.04] accent-[var(--lp-green)]"
+          />
+          <span>
+            I agree to the{" "}
+            <Link to="/terms" target="_blank" className="font-semibold text-[var(--lp-green)] hover:underline">
+              Terms of Service
+            </Link>{" "}
+            and{" "}
+            <Link to="/privacy" target="_blank" className="font-semibold text-[var(--lp-green)] hover:underline">
+              Privacy Policy
+            </Link>
+            .
+          </span>
+        </label>
+        {errors.agreeTerms && <Err msg={errors.agreeTerms.message} />}
+
+        <Turnstile ref={turnstileRef} onVerify={setTurnstileToken} />
+
         <button
           type="submit"
-          disabled={isSubmitting}
+          disabled={isSubmitting || (TURNSTILE_ENABLED && !turnstileToken)}
           className="mt-2 w-full rounded-[74px] bg-[var(--lp-cream)] py-4 text-[15px] font-bold text-[#14201C] transition-transform duration-200 hover:scale-105 disabled:opacity-50 motion-reduce:transition-none motion-reduce:hover:scale-100"
         >
           {isSubmitting ? "Please wait…" : "Create account"}

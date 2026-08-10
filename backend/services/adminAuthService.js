@@ -5,6 +5,7 @@ const Company = require("../models/Company");
 const Organization = require("../models/Organization");
 const User = require("../models/User");
 const AdminVerificationToken = require("../models/AdminVerificationToken");
+const { isLocked, lockedMinutesLeft, registerFailedAttempt, resetLoginAttempts } = require("../utils/loginLockout");
 const { formatAuthPayload } = require("./authService");
 const { generateCompanySessionToken } = require("../utils/tokenUtils");
 const { sendEmail } = require("./emailService");
@@ -34,10 +35,21 @@ const adminLogin = async ({ email, password }) => {
     throw createHttpError("You're not registered. Check your email and password.", 401);
   }
 
+  if (isLocked(account)) {
+    throw createHttpError(
+      `Too many failed attempts. Try again in ${lockedMinutesLeft(account)} minute(s).`,
+      429,
+      "ACCOUNT_LOCKED"
+    );
+  }
+
   const isPasswordValid = await bcrypt.compare(password, account.password);
   if (!isPasswordValid) {
+    await registerFailedAttempt(account);
     throw createHttpError("You're not registered. Check your email and password.", 401);
   }
+
+  await resetLoginAttempts(account);
 
   const company = await Company.findOne({ _id: account.companyId });
   if (!company) {
