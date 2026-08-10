@@ -64,7 +64,17 @@ function Tab({
     >
       {({ isActive }) => (
         <>
-          <Icon className="h-5 w-5" strokeWidth={isActive ? 2.4 : 1.9} />
+          {/* Real iOS tab bars swap outline for a filled glyph on the active
+              tab rather than relying on color alone — an accessibility
+              requirement per HIG, not just a style flourish. Lucide has no
+              SF-Symbols-style dual variants, so fill="currentColor" on the
+              same glyph approximates it; stroke drops to 1.5 once filled so
+              it doesn't read as bolded-and-filled at once. */}
+          <Icon
+            className="h-5 w-5"
+            fill={isActive ? "currentColor" : "none"}
+            strokeWidth={isActive ? 1.5 : 1.9}
+          />
           <span className="text-[10px] font-bold tracking-wide">{label}</span>
         </>
       )}
