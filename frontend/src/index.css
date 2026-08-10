@@ -185,6 +185,13 @@
   --font-sans: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
   --font-display: var(--font-sans);
   --font-numeral: var(--font-sans);
+  /* body's own `color: var(--ink)` (below) resolves outside this scope, so
+     without this, any text here that doesn't explicitly reference
+     var(--ink) inherits body's light-theme color even under .dark —
+     invisible on a dark surface. This makes the shell itself the
+     inheritance root for color, same as it already is for every other
+     token. */
+  color: var(--ink);
 }
 
 .customer-shell.dark {
