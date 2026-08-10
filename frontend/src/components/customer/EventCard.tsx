@@ -29,20 +29,20 @@ export function EventCard({ event }: EventCardProps) {
         </div>
       )}
       <div className="p-4">
-        <div className="flex items-center gap-1.5 text-[11px] font-bold" style={{ color: "var(--brand-ink)" }}>
+        <div className="flex items-center gap-1.5 text-caption" style={{ color: "var(--brand-ink)" }}>
           <Calendar className="h-3.5 w-3.5" />
           {formatEventDate(event.date)}
           {event.time ? ` · ${event.time}` : ""}
         </div>
-        <div className="mt-1 text-[15px] font-semibold leading-snug text-[var(--ink)]">{event.title}</div>
+        <div className="mt-1 text-subhead text-[var(--ink)]">{event.title}</div>
         {event.location && (
-          <div className="mt-1 flex items-center gap-1.5 text-[13px] text-[var(--muted)]">
+          <div className="mt-1 flex items-center gap-1.5 text-footnote text-[var(--muted)]">
             <MapPin className="h-3.5 w-3.5 flex-shrink-0" />
             <span>{event.location}</span>
           </div>
         )}
         {event.description && (
-          <div className="mt-1.5 whitespace-pre-line text-[13px] leading-relaxed text-[var(--muted)]">
+          <div className="mt-1.5 whitespace-pre-line text-footnote leading-relaxed text-[var(--muted)]">
             {event.description}
           </div>
         )}
