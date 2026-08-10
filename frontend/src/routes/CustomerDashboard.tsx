@@ -19,6 +19,7 @@ import { useTenant } from "../context/TenantContext";
 import { usePointsBalance, useRewardCatalog, usePublicCampaigns, formatPoints } from "../hooks/usePoints";
 import { useCustomerMenu } from "../hooks/useCustomerMenu";
 import { useAccount } from "../hooks/useAccount";
+import { useFirstVisitTip } from "../hooks/useFirstVisitTip";
 import { apiRequest } from "../lib/api";
 import { PointsBalanceCard } from "../components/customer/PointsBalanceCard";
 import { EventCard } from "../components/customer/EventCard";
@@ -77,7 +78,8 @@ export default function CustomerDashboard() {
   const unverified = account?.emailVerified === false;
   const [showVerify, setShowVerify] = useState(false);
   const queryClient = useQueryClient();
-  const { tenant } = useTenant();
+  const { tenant, slug } = useTenant();
+  const { show: showScanTip, dismiss: dismissScanTip } = useFirstVisitTip(`scan-hint:${slug}`);
   const { data: points, isLoading: cardLoading } = usePointsBalance();
   const { data: catalog = [] } = useRewardCatalog();
   const { data: campaigns = [] } = usePublicCampaigns();
@@ -298,7 +300,7 @@ export default function CustomerDashboard() {
                   <span className="text-sm font-semibold text-[var(--ink)]">Leave us a rating</span>
                 </div>
                 <p className="text-xs text-[var(--muted)] leading-relaxed">
-                  Love what we offer? We'd love if you could leave a review on Google! Your support helps other customers find us.
+                  Enjoying it? Leave us a review.
                 </p>
                 <a
                   href={contact.googleReviewUrl}
@@ -426,9 +428,15 @@ export default function CustomerDashboard() {
 
       {/* Deliberately doesn't say "below": the scan button sits in the bottom
           pill on a phone and in the header on desktop. */}
-      <p className="mt-5 text-center text-xs text-[var(--muted)]">
-        Tap Scan and point at the counter's QR to earn points.
-      </p>
+      {showScanTip && (
+        <button
+          type="button"
+          onClick={dismissScanTip}
+          className="mt-5 block w-full text-center text-xs text-[var(--muted)]"
+        >
+          Tap Scan and point at the counter's QR to earn points.
+        </button>
+      )}
     </div>
   );
 }
