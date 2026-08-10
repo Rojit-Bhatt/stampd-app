@@ -7,6 +7,7 @@ import { useCustomerAuth } from "../../context/CustomerAuthContext";
 import { useTenant } from "../../context/TenantContext";
 import { useAccount } from "../../hooks/useAccount";
 import { useAccountRefresh } from "../../hooks/useAccountRefresh";
+import { useCustomerTheme } from "../../hooks/useCustomerTheme";
 import { BottomNav } from "./BottomNav";
 import { ScannerModal } from "./ScannerModal";
 import { CustomerAvatar } from "./CustomerAvatar";
@@ -49,6 +50,7 @@ export function CustomerLayout() {
   const navigate = useNavigate();
   const location = useLocation();
   const [scanOpen, setScanOpen] = useState(false);
+  const { theme } = useCustomerTheme();
   // Only revalidates when the cache says "no phone" — see useAccountRefresh.
   const { isFetching: phoneCheckPending } = useAccountRefresh(
     Boolean(globalAccount) && !globalAccount?.phone,
@@ -111,7 +113,7 @@ export function CustomerLayout() {
   const path = (sub: string) => tenantPath(companySlug, slug, sub);
 
   return (
-    <div className="flex min-h-screen flex-col bg-[var(--bg)]">
+    <div className={`customer-shell flex min-h-screen flex-col bg-[var(--bg)] ${theme === "dark" ? "dark" : ""}`}>
       <ScannerModal
         open={scanOpen}
         onClose={() => setScanOpen(false)}
