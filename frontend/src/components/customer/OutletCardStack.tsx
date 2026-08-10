@@ -1,15 +1,13 @@
-import { Fragment, useState, useEffect, useRef, type CSSProperties } from "react";
+import { useState, useEffect, useRef, type CSSProperties } from "react";
 import { Link } from "react-router-dom";
 import { motion, useScroll, useTransform, useMotionValueEvent } from "motion/react";
 
 import { useMyTenants, type MyTenantMembership } from "../../hooks/useMyTenants";
-import { useCustomerAuth } from "../../context/CustomerAuthContext";
 import { useExploreHero } from "../../context/ExploreHeroContext";
 import { formatPoints } from "../../hooks/usePoints";
 import { resolveImageUrl } from "../../lib/images";
 import { tenantPath } from "../../lib/tenantPath";
 import { useMotion } from "../../lib/motion";
-import { CustomerAvatar } from "./CustomerAvatar";
 
 // Every card is this tall; the peek math below is measured against it.
 const CARD_HEIGHT = 200;
@@ -28,24 +26,46 @@ const PEEK_OPACITY = [1, 1, 0.92];
 const STACK_TOP_OFFSET = PEEK_TOP[2] + 18; // 134
 const HERO_HEIGHT = STACK_TOP_OFFSET + CARD_HEIGHT + 28; // 362
 
-// A moody glass-like gradient derived from the outlet's own brand colour —
+// The radius of the U-shaped notch cut into the top-center edge of the
+// front card — a physical "stub" cutout like a stacked wallet card, rather
+// than a floating avatar badge.
+const CUTOUT_RADIUS = 18;
+
+function cardShadow(brand: string): string {
+  return `0 24px 48px -24px color-mix(in srgb, ${brand} 45%, rgba(5,16,13,0.85)),
+          0 8px 20px -12px rgba(5,16,13,0.45),
+          inset 0 1px 0 0 rgba(255,255,255,0.16)`;
+}
+
+// A moody glass-like surface derived from the outlet's own brand colour —
 // capped so it stays dark and legible for any brand hex, from near-black to
-// pure white, while still reading as that outlet's identity.
-function cardSurface(brand: string): CSSProperties {
+// pure white, while still reading as that outlet's identity. When the
+// outlet has uploaded a banner photo, it shows through underneath a
+// translucent version of the same tint rather than being replaced by it.
+function cardSurface(brand: string, banner: string | null): CSSProperties {
+  if (!banner) {
+    return {
+      backgroundImage: `linear-gradient(148deg,
+        color-mix(in srgb, ${brand} 34%, #0A1411) 0%,
+        color-mix(in srgb, ${brand} 20%, #0A1411) 52%,
+        color-mix(in srgb, ${brand} 8%, #05100D) 100%)`,
+      boxShadow: cardShadow(brand),
+    };
+  }
   return {
     backgroundImage: `linear-gradient(148deg,
-      color-mix(in srgb, ${brand} 34%, #0A1411) 0%,
-      color-mix(in srgb, ${brand} 20%, #0A1411) 52%,
-      color-mix(in srgb, ${brand} 8%, #05100D) 100%)`,
-    boxShadow: `0 24px 48px -24px color-mix(in srgb, ${brand} 45%, rgba(5,16,13,0.85)),
-                0 8px 20px -12px rgba(5,16,13,0.45),
-                inset 0 1px 0 0 rgba(255,255,255,0.16)`,
+        color-mix(in srgb, color-mix(in srgb, ${brand} 45%, #0A1411) 75%, transparent) 0%,
+        color-mix(in srgb, color-mix(in srgb, ${brand} 25%, #0A1411) 55%, transparent) 55%,
+        color-mix(in srgb, color-mix(in srgb, ${brand} 10%, #05100D) 88%, transparent) 100%),
+      url(${banner})`,
+    backgroundSize: "cover, cover",
+    backgroundPosition: "center, center",
+    boxShadow: cardShadow(brand),
   };
 }
 
 export function OutletCardStack() {
   const { data: memberships = [] } = useMyTenants();
-  const { globalAccount } = useCustomerAuth();
   const { setHeroColor, progress, headerHeight } = useExploreHero();
   const [activeIndex, setActiveIndex] = useState(0);
 
@@ -108,25 +128,13 @@ export function OutletCardStack() {
             const depth = (i - activeIdx + count) % count;
             if (depth > MAX_PEEK_DEPTH) return null;
             return (
-              <Fragment key={m.organizationId}>
-                {depth === 0 && (
-                  <div className="absolute right-5 top-0 z-30 -translate-y-1/2">
-                    <CustomerAvatar
-                      accountId={globalAccount?.id}
-                      avatarVersion={globalAccount?.avatarVersion}
-                      name={globalAccount?.name}
-                      size={44}
-                      className="rounded-full border-2 border-white/90 shadow-[0_6px_16px_-6px_rgba(0,0,0,0.7)]"
-                    />
-                  </div>
-                )}
-                <OutletCard
-                  membership={m}
-                  depth={depth}
-                  onTap={() => setActiveIndex(i)}
-                  onSwipe={handleSwipe}
-                />
-              </Fragment>
+              <OutletCard
+                key={m.organizationId}
+                membership={m}
+                depth={depth}
+                onTap={() => setActiveIndex(i)}
+                onSwipe={handleSwipe}
+              />
             );
           })}
         </motion.div>
@@ -149,13 +157,14 @@ function OutletCard({
   const m = useMotion();
   const brand = membership.branding.primaryColor;
   const logo = resolveImageUrl(membership.branding.logoImageId, membership.branding.logoUrl);
+  const banner = resolveImageUrl(membership.branding.bannerImageId, membership.branding.bannerUrl) || null;
   const initial = membership.name.charAt(0).toUpperCase();
 
   const logoBoxClassName = "h-10 w-10 rounded-[12px] ring-1 ring-white/25 shadow-[0_4px_12px_-4px_rgba(0,0,0,0.6)]";
 
   const content = (
     <div className="relative z-10 flex flex-1 flex-col px-6 pt-5 pb-6">
-      <div className="flex items-center gap-3 pr-12">
+      <div className="flex items-center gap-3">
         {logo ? (
           <img src={logo} alt="" className={`${logoBoxClassName} bg-white object-cover`} />
         ) : (
@@ -201,13 +210,25 @@ function OutletCard({
     scale,
     opacity: PEEK_OPACITY[depth],
   };
-  const transition = m.spring("settle");
+  // Softer and slower than the app's default `settle` spring — this is a
+  // large element the eye tracks across the whole swipe, not a small one
+  // that just needs to arrive.
+  const transition = m.spring("cardGlide");
 
   if (depth === 0) {
+    // A physical notch bitten into the top-center edge, like a card tucked
+    // into a wallet slot — replaces a floating avatar badge that read as
+    // decoration rather than part of the card itself.
+    const cutout = `radial-gradient(circle ${CUTOUT_RADIUS}px at 50% 0px, transparent 99%, black 100%)`;
     return (
       <motion.div
         className={cardClassName}
-        style={{ zIndex: 10 - depth, ...cardSurface(brand) }}
+        style={{
+          zIndex: 10 - depth,
+          ...cardSurface(brand, banner),
+          maskImage: cutout,
+          WebkitMaskImage: cutout,
+        }}
         animate={animate}
         transition={transition}
         drag="y"
@@ -237,7 +258,7 @@ function OutletCard({
       onClick={onTap}
       aria-label={`Show ${membership.name}`}
       className={`${cardClassName} text-left`}
-      style={{ zIndex: 10 - depth, ...cardSurface(brand) }}
+      style={{ zIndex: 10 - depth, ...cardSurface(brand, banner) }}
       animate={animate}
       transition={transition}
     >
