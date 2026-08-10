@@ -120,7 +120,7 @@ function GlobalHeader({ onScan, globalAccount }: { onScan: () => void; globalAcc
       <div className="relative z-10 mx-auto flex w-full max-w-5xl items-center gap-3 px-5 py-3">
         <Link to="/explore" className="flex flex-shrink-0 items-center gap-2">
           <StampdLogo size={22} />
-          <span className="font-display text-lg font-bold text-[var(--ink)]">{PLATFORM_NAME}</span>
+          <span className="text-headline text-[var(--ink)]">{PLATFORM_NAME}</span>
         </Link>
 
         <nav className="ml-4 hidden items-center gap-1 lg:flex">
@@ -134,10 +134,10 @@ function GlobalHeader({ onScan, globalAccount }: { onScan: () => void; globalAcc
           <button
             onClick={onScan}
             aria-label="Scan a business's QR code"
-            className="flex items-center gap-2 rounded-[var(--radius-btn)] bg-[var(--primary)] px-3.5 py-2.5 text-sm font-bold text-white transition-colors hover:bg-[var(--primary-deep)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)] focus-visible:ring-offset-2"
+            className="hidden items-center gap-2 rounded-[var(--radius-btn)] bg-[var(--primary)] px-3.5 py-2.5 text-sm font-bold text-white transition-colors hover:bg-[var(--primary-deep)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)] focus-visible:ring-offset-2 lg:flex"
           >
             <QrCode className="h-4 w-4" />
-            <span className="hidden sm:inline">Scan</span>
+            <span>Scan</span>
           </button>
           {/* Same affordance the outlet console's header has: the avatar IS
               the way into Profile. Log out used to sit beside it as its own
@@ -249,9 +249,28 @@ export function GlobalCustomerLayout() {
           left the nav sitting after the content instead of glued to the
           screen. */}
       <footer className="fixed inset-x-0 bottom-0 z-30 flex-shrink-0 px-4 pt-2 pb-[max(1.25rem,env(safe-area-inset-bottom))] lg:hidden">
-        <div className="mx-auto flex max-w-md items-center gap-2 rounded-full border border-[var(--line)] bg-[var(--surface)] px-3 py-2 shadow-float">
+        <div className="relative mx-auto flex max-w-md items-center justify-between rounded-full border border-[var(--line)] bg-[var(--surface)]/85 px-4 py-2 shadow-float backdrop-blur-xl">
           <Tab to="/explore" icon={Compass} label="Discover" variant="bottom" />
           <Tab to="/explore/events" icon={CalendarDays} label="Events" variant="bottom" />
+
+          {/* Centre scan FAB — mirrors BottomNav.tsx's proven pattern for the
+              per-outlet dashboard, so the gesture is identical everywhere in
+              the app. Deliberate HIG bend: an action inside a
+              navigation-only tab bar, accepted because Scan is the single
+              most-used control and this is the single most thumb-reachable
+              spot on the screen. */}
+          <div className="absolute -top-7 left-1/2 -translate-x-1/2">
+            <button
+              type="button"
+              onClick={() => setScanOpen(true)}
+              aria-label="Scan a business's QR code"
+              className="flex h-[58px] w-[58px] items-center justify-center rounded-full bg-[var(--primary)] text-white shadow-float transition-transform duration-150 hover:scale-105 active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--bg)] motion-reduce:transition-none motion-reduce:hover:scale-100 motion-reduce:active:scale-100"
+            >
+              <QrCode className="h-6 w-6" strokeWidth={2} />
+            </button>
+          </div>
+          <div className="w-14" aria-hidden="true" />
+
           <Tab to="/explore/mine" icon={Store} label="My Places" variant="bottom" />
           <Tab to="/explore/profile" icon={CircleUser} label="Profile" variant="bottom" />
         </div>
