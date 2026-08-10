@@ -93,7 +93,7 @@ export default function Explore() {
 
       <OutletCardStack />
 
-      <h2 className="mb-3 font-display text-lg font-bold text-[var(--ink)]">Discover</h2>
+      <h2 className="mb-3 text-title-2 text-[var(--ink)]">Discover</h2>
 
       <div className="relative mb-3">
         <Search className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-[var(--soft)]" />
