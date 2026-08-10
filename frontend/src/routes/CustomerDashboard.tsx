@@ -61,7 +61,7 @@ function Section({
   return (
     <section className="rounded-[var(--radius-card)] border border-[var(--line)] bg-[var(--surface)] p-6 shadow-ambient">
       <div className="mb-3.5 flex items-center justify-between gap-3">
-        <h2 className="text-[10px] font-bold uppercase tracking-[0.16em] text-[var(--soft)]">
+        <h2 className="text-title-3 text-[var(--ink)]">
           {title}
         </h2>
         {action}
@@ -128,7 +128,7 @@ export default function CustomerDashboard() {
     <div className="mx-auto w-full max-w-5xl px-5 py-6">
       {/* The shared top bar lives in CustomerLayout; this is content beneath. */}
       <header className="mb-5">
-        <h1 className="font-display text-2xl font-bold leading-tight text-[var(--ink)]">
+        <h1 className="text-large-title text-[var(--ink)]">
           <DynamicText
             words={["नमस्ते", "Hello", "Namaste"]}
             settled={`Welcome back${firstName ? `, ${firstName}` : ""}`}
