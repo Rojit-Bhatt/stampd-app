@@ -3,8 +3,6 @@ import { Link } from "react-router-dom";
 import { Search, MapPin, Store } from "lucide-react";
 
 import { useDiscover, type DiscoverBusiness } from "../hooks/useDiscover";
-import { useMyTenants } from "../hooks/useMyTenants";
-import { formatPoints } from "../hooks/usePoints";
 import { tenantPath } from "../lib/tenantPath";
 import { BUSINESS_CATEGORIES, type BusinessCategory } from "../hooks/useAdminSettings";
 import { distanceKm } from "../lib/geo";
@@ -12,6 +10,7 @@ import { darken } from "../lib/color";
 import { resolveImageUrl } from "../lib/images";
 import { Skeleton } from "../components/ui/skeleton";
 import { InstallAppPrompt } from "../components/customer/InstallAppPrompt";
+import { OutletCardStack } from "../components/customer/OutletCardStack";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 
@@ -35,7 +34,6 @@ const PILL_CATEGORIES = BUSINESS_CATEGORIES.filter((c) => c !== "other");
 // location, otherwise genuine recent points movement. There are no ratings,
 // no "deals", and no badges the platform can't stand behind.
 export default function Explore() {
-  const { data: myTenants = [] } = useMyTenants();
   const { data: businesses = [], isLoading } = useDiscover();
   const [query, setQuery] = useState("");
   const [category, setCategory] = useState<BusinessCategory | "all">("all");
@@ -93,36 +91,7 @@ export default function Explore() {
           and the customer hasn't dismissed it. */}
       <InstallAppPrompt className="mb-6" />
 
-      {myTenants.length > 0 && (
-        <section className="mb-7">
-          <h2 className="mb-3 font-display text-lg font-bold text-[var(--ink)]">My businesses</h2>
-          <div className="hide-scrollbar -mx-5 flex gap-3 overflow-x-auto px-5 pb-1">
-            {myTenants.map((m) => (
-              <Link
-                key={m.organizationId}
-                to={tenantPath(m.companySlug, m.slug, "dashboard")}
-                className="stamp-interactive w-[172px] flex-shrink-0 rounded-[var(--radius-card)] border border-[var(--line)] bg-[var(--surface)] p-4 shadow-ambient"
-              >
-                {/* Logo tile keeps the outlet's true brand colour — this is
-                    identity, and it never sits next to a value figure. */}
-                <div
-                  className="mb-3 flex h-10 w-10 items-center justify-center rounded-[var(--radius-field)] font-display text-sm font-bold"
-                  style={{ background: m.branding.primaryColor, color: "#fff" }}
-                >
-                  {m.name.charAt(0).toUpperCase()}
-                </div>
-                <div className="truncate text-sm font-bold text-[var(--ink)]">{m.name}</div>
-                <div className="mt-1.5 flex items-baseline gap-1">
-                  <span className="font-numeral text-2xl leading-none text-[var(--primary)]">
-                    {formatPoints(m.balance)}
-                  </span>
-                  <span className="text-[11px] text-[var(--soft)]">pts</span>
-                </div>
-              </Link>
-            ))}
-          </div>
-        </section>
-      )}
+      <OutletCardStack />
 
       <h2 className="mb-3 font-display text-lg font-bold text-[var(--ink)]">Discover</h2>
 

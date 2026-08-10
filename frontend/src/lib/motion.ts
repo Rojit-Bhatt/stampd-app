@@ -21,6 +21,8 @@ export const SPRINGS = {
   coinPop: { type: "spring", stiffness: 280, damping: 14 },
   /** Redeem: the exchange. Voucher flips rotateY 90 -> 0. */
   voucherFlip: { type: "spring", stiffness: 220, damping: 18 },
+  /** Card-stack swipe/settle — deliberately softer and slower than `settle`, for a large element the eye tracks the whole way rather than a small one that just needs to arrive. */
+  cardGlide: { type: "spring", stiffness: 170, damping: 26 },
 } satisfies Record<string, Transition>;
 
 export const EASES = {
