@@ -49,35 +49,41 @@ export function PointsBalanceCard({
       initial={m.pick({ opacity: 0, y: 24 }, { opacity: 0 })}
       animate={{ opacity: 1, y: 0 }}
       transition={m.spring("settle")}
-      className="relative mb-4 overflow-hidden rounded-[var(--radius-card)] border border-[var(--line)] bg-[var(--surface)] p-6 shadow-ambient"
+      className="relative mb-4 overflow-hidden rounded-[var(--radius-card)] border border-white/12 p-6"
+      style={{
+        backgroundImage: `linear-gradient(148deg,
+          color-mix(in srgb, var(--brand) 34%, #0A1411) 0%,
+          color-mix(in srgb, var(--brand) 20%, #0A1411) 52%,
+          color-mix(in srgb, var(--brand) 8%, #05100D) 100%)`,
+        boxShadow: `0 24px 48px -24px color-mix(in srgb, var(--brand) 45%, rgba(5,16,13,0.85)),
+          0 8px 20px -12px rgba(5,16,13,0.45),
+          inset 0 1px 0 0 rgba(255,255,255,0.16)`,
+      }}
     >
-      {/* The one piece of tenant colour on this card. --brand-accent, not
-          --brand: it steps aside to the ink when the outlet's own brand is
-          green, so this bar can never be mistaken for the value figure. */}
-      <span
+      {/* Brand identity now lives in the whole card's gradient, not a thin
+          accent bar — same technique OutletCardStack uses. */}
+      <div
         aria-hidden="true"
-        className="absolute inset-x-0 top-0 h-1"
-        style={{ background: "var(--brand-accent)" }}
+        className="pointer-events-none absolute inset-0"
+        style={{
+          backgroundImage: `linear-gradient(125deg, rgba(255,255,255,0.20) 0%, rgba(255,255,255,0.06) 28%, rgba(255,255,255,0) 48%),
+            radial-gradient(120% 95% at 88% 106%, color-mix(in srgb, var(--brand) 55%, transparent) 0%, transparent 62%)`,
+        }}
       />
 
-      <div className="min-w-0">
+      <div className="relative z-10 min-w-0">
         {businessName && (
           <div className="flex items-center gap-2">
-            <div
-              className="min-w-0 truncate font-display text-base font-bold"
-              style={{ color: "var(--brand-ink)" }}
-            >
+            <div className="min-w-0 truncate text-headline text-[#F4F8F6]">
               {businessName}
             </div>
-            {tier && <Badge>{tier}</Badge>}
+            {tier && <Badge className="bg-white/15 text-[#F4F8F6]">{tier}</Badge>}
           </div>
         )}
-        <div className="mt-0.5 text-[10px] font-bold uppercase tracking-[0.16em] text-[var(--soft)]">
-          Your points
-        </div>
+        <div className="mt-0.5 text-caption text-white/40">Your points</div>
       </div>
 
-      <div className="mt-3">
+      <div className="relative z-10 mt-3">
         {isLoading ? (
           <Skeleton className="h-14 w-36" />
         ) : (
@@ -95,8 +101,8 @@ export function PointsBalanceCard({
 
       {showExpiry && (
         <div
-          className="mt-4 rounded-[var(--radius-btn)] px-3.5 py-2.5 text-[13px] font-semibold"
-          style={{ background: "var(--warn-soft)", color: "var(--warn)" }}
+          className="relative z-10 mt-4 rounded-[var(--radius-btn)] px-3.5 py-2.5 text-[13px] font-semibold"
+          style={{ background: "#332405", color: "#FF9F0A" }}
         >
           {daysLeft <= 0
             ? "These points have expired."
