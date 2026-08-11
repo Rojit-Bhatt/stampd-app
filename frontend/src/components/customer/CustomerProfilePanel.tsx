@@ -71,6 +71,8 @@ export function CustomerProfilePanel({ onLogout }: { onLogout: () => void }) {
 
   const [pushEnabled, setPushEnabled] = useState(false);
   const [savingPush, setSavingPush] = useState(false);
+  const [permissionState, setPermissionState] = useState<NotificationPermission | null>(null);
+  const [showPushPrePrompt, setShowPushPrePrompt] = useState(false);
 
   const [showConfirmDelete, setShowConfirmDelete] = useState(false);
   const [confirmEmail, setConfirmEmail] = useState("");
@@ -91,6 +93,13 @@ export function CustomerProfilePanel({ onLogout }: { onLogout: () => void }) {
       .then((reg) => reg.pushManager.getSubscription())
       .then((sub) => setPushEnabled(!!sub))
       .catch(() => setPushEnabled(false));
+  }, []);
+
+  // Read once on mount, not derived reactively — the browser doesn't push
+  // permission changes to the page; the next accurate read is whatever
+  // Notification.requestPermission() itself resolves to, captured below.
+  useEffect(() => {
+    if (typeof Notification !== "undefined") setPermissionState(Notification.permission);
   }, []);
 
   if (!globalAccount) return null;
@@ -218,6 +227,7 @@ export function CustomerProfilePanel({ onLogout }: { onLogout: () => void }) {
       if (next) {
         if (!VAPID_PUBLIC_KEY) throw new Error("Push isn't set up for this app yet.");
         const permission = await Notification.requestPermission();
+        setPermissionState(permission);
         if (permission !== "granted") throw new Error("Notification permission wasn't granted.");
         const registration = await navigator.serviceWorker.ready;
         const subscription = await registration.pushManager.subscribe({
@@ -371,15 +381,54 @@ export function CustomerProfilePanel({ onLogout }: { onLogout: () => void }) {
           </Card>
 
           <Card title="Push notifications">
-            <label className="flex items-center gap-2 text-sm text-[var(--muted)]">
-              <input
-                type="checkbox"
-                checked={pushEnabled}
-                disabled={savingPush}
-                onChange={(e) => savePushOptIn(e.target.checked)}
-              />
-              Send me updates as push notifications
-            </label>
+            {permissionState === "denied" ? (
+              <p className="text-[13px] text-[var(--muted)]">
+                Notifications are blocked in your browser. To turn them back on, open this site's notification
+                settings in your browser and allow them, then reload this page.
+              </p>
+            ) : pushEnabled ? (
+              <label className="flex items-center gap-2 text-sm text-[var(--muted)]">
+                <input
+                  type="checkbox"
+                  checked
+                  disabled={savingPush}
+                  onChange={(e) => savePushOptIn(e.target.checked)}
+                />
+                Send me updates as push notifications
+              </label>
+            ) : showPushPrePrompt ? (
+              <div className="flex flex-col gap-3">
+                <p className="text-[13px] text-[var(--muted)]">
+                  Get notified the moment your order's ready, or when there's a reward waiting for you.
+                </p>
+                <div className="flex gap-2">
+                  <Button
+                    onClick={async () => {
+                      setShowPushPrePrompt(false);
+                      await savePushOptIn(true);
+                    }}
+                    disabled={savingPush}
+                  >
+                    {savingPush ? "Enabling…" : "Enable"}
+                  </Button>
+                  <Button variant="outline" onClick={() => setShowPushPrePrompt(false)} disabled={savingPush}>
+                    Not now
+                  </Button>
+                </div>
+              </div>
+            ) : (
+              <label className="flex items-center gap-2 text-sm text-[var(--muted)]">
+                <input
+                  type="checkbox"
+                  checked={false}
+                  disabled={savingPush}
+                  onChange={(e) => {
+                    if (e.target.checked) setShowPushPrePrompt(true);
+                  }}
+                />
+                Send me updates as push notifications
+              </label>
+            )}
           </Card>
         </div>
       ),
