@@ -71,7 +71,11 @@ async function main() {
       token: tokenA,
       company: COMPANY,
       outlet: SLUG,
-      body: { title: `Later Event ${runSuffix}`, date: isoDate(new Date(now.getTime() + 3 * DAY_MS)) },
+      body: {
+        title: `Later Event ${runSuffix}`,
+        date: isoDate(new Date(now.getTime() + 3 * DAY_MS)),
+        rewards: [{ rank: "Winner", reward: "Free espresso for a month" }],
+      },
     });
     check("create later event at outlet A -> 201", eventA.status === 201);
 
@@ -113,6 +117,13 @@ async function main() {
       "feed branding includes a logoImageId key",
       (feed1.body.events || []).every((e) => Object.prototype.hasOwnProperty.call(e.branding, "logoImageId")),
       feed1.body.events?.map((e) => e.branding),
+    );
+    const laterInFeed = (feed1.body.events || []).find((e) => e.title === `Later Event ${runSuffix}`);
+    check(
+      "feed item carries the rewards list",
+      Boolean(laterInFeed) && Array.isArray(laterInFeed.rewards) && laterInFeed.rewards.length === 1
+        && laterInFeed.rewards[0].rank === "Winner",
+      laterInFeed?.rewards,
     );
 
     // --- a suspended outlet's event disappears from the feed ---

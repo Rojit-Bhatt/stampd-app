@@ -4,6 +4,7 @@ import { useQuery } from "@tanstack/react-query";
 import { tenantPath } from "../lib/tenantPath";
 import { apiRequest, setTenantRef } from "../lib/api";
 import { tenantPalette } from "../lib/color";
+import type { EventReward } from "../components/customer/EventCard";
 
 export interface TenantBranding {
   tagline: string;
@@ -40,6 +41,7 @@ export interface TenantEvent {
   description: string;
   imageUrl: string;
   imageId: string | null;
+  rewards: EventReward[];
 }
 
 export interface TenantProgram {
