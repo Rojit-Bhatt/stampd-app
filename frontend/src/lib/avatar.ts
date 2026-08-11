@@ -21,44 +21,41 @@ export function avatarUrl(accountId: string | null | undefined, version: number 
 }
 
 /**
- * Resizes and re-encodes a picked image to a small square WebP, in the
- * browser, before it is ever uploaded.
+ * Renders a user-positioned crop of a picked image to a small square WebP,
+ * in the browser, before it is ever uploaded.
  *
- * This is the whole storage and load-time story. A phone camera photo is
- * 3-8MB of 4000px JPEG; what the app ever displays is a 96px circle. Doing
- * this client-side means the 8MB never crosses the network, never needs a
- * server-side image pipeline (the backend has no `sharp`), and never sits in
- * the database — the row that lands is ~10-20KB. Cropping to a centred square
- * here rather than with CSS also means the bytes stored match what's shown,
- * instead of storing pixels only to hide them.
+ * Same storage story as before (see AVATAR_SIZE/AVATAR_QUALITY above): the
+ * server has no image pipeline, so what lands in the database is exactly
+ * these bytes. The difference from the old auto-centre-crop is only WHERE
+ * the square comes from — here it's whatever the user framed in
+ * AvatarCropDialog's circular preview, converted from that dialog's CSS-px
+ * frame coordinates back to the source bitmap's pixel coordinates.
+ *
+ * `frame.scale` is displayed-px per source-px (the dialog's cover-scale ×
+ * its zoom slider); `frame.offsetX/Y` is the displayed image's top-left
+ * corner relative to the frame's top-left corner. Both are values the
+ * dialog already tracks to draw the live preview, so this function is pure
+ * math with no DOM reads of its own.
  */
-export async function resizeToAvatar(file: File): Promise<Blob> {
-  const bitmap = await createImageBitmap(file);
-  try {
-    // Cover-crop: take the largest centred square, so a portrait photo keeps
-    // its subject instead of being squashed to fit.
-    const edge = Math.min(bitmap.width, bitmap.height);
-    const sx = (bitmap.width - edge) / 2;
-    const sy = (bitmap.height - edge) / 2;
-    // Never upscale — a 64px source should stay 64px rather than being blown
-    // up to 256 and stored at four times the size it has detail for.
-    const size = Math.min(AVATAR_SIZE, edge);
+export async function cropToAvatarBlob(
+  bitmap: ImageBitmap,
+  frame: { frameSize: number; scale: number; offsetX: number; offsetY: number },
+): Promise<Blob> {
+  const sourceScale = 1 / frame.scale;
+  const sx = -frame.offsetX * sourceScale;
+  const sy = -frame.offsetY * sourceScale;
+  const sSize = frame.frameSize * sourceScale;
 
-    const canvas = document.createElement("canvas");
-    canvas.width = size;
-    canvas.height = size;
-    const ctx = canvas.getContext("2d");
-    if (!ctx) throw new Error("Could not read that image.");
-    ctx.drawImage(bitmap, sx, sy, edge, edge, 0, 0, size, size);
+  const canvas = document.createElement("canvas");
+  canvas.width = AVATAR_SIZE;
+  canvas.height = AVATAR_SIZE;
+  const ctx = canvas.getContext("2d");
+  if (!ctx) throw new Error("Could not read that image.");
+  ctx.drawImage(bitmap, sx, sy, sSize, sSize, 0, 0, AVATAR_SIZE, AVATAR_SIZE);
 
-    const blob = await new Promise<Blob | null>((resolve) => {
-      canvas.toBlob(resolve, "image/webp", AVATAR_QUALITY);
-    });
-    if (!blob) throw new Error("Could not process that image.");
-    return blob;
-  } finally {
-    // Frees the decoded bitmap immediately rather than waiting for GC — this
-    // can be tens of megabytes for a modern phone photo.
-    bitmap.close();
-  }
+  const blob = await new Promise<Blob | null>((resolve) => {
+    canvas.toBlob(resolve, "image/webp", AVATAR_QUALITY);
+  });
+  if (!blob) throw new Error("Could not process that image.");
+  return blob;
 }
