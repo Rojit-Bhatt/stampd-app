@@ -709,10 +709,12 @@ const getOutletTransactions = async (organizationId, { limit = 100, startDate, e
     });
   }
   const capped = rows.slice(0, limit);
-
   const userIds = [...new Set(capped.map((r) => r.userId.toString()))];
-  const users = await Promise.all(userIds.map((id) => User.findOne({ _id: id, organizationId })));
-  const nameById = new Map(users.filter(Boolean).map((u) => [u._id.toString(), u.name]));
+  // One batched $in read instead of N findOne round trips (was an N+1):
+  const users = userIds.length > 0
+    ? await User.find({ _id: { $in: userIds }, organizationId })
+    : [];
+  const nameById = new Map(users.map((u) => [u._id.toString(), u.name]));
 
   return {
     success: true,
@@ -732,12 +734,36 @@ const getCustomerDetailRows = async (organizationId) => {
   const customers = await User.find({ role: "customer", organizationId })
     .populate("customerAccountId")
     .sort({ name: 1 });
-
+  // One batched read of balances and transactions per outlet (was N+1:
+  // one find + one find per customer). Tier resolution still needs each
+  // customer's own earn set, so that loop stays — its query is indexed
+  // (organizationId, userId, createdAt) and reads are small in practice.
+  const customerIds = customers.map((c) => c._id);
+  const balancesByUser = new Map(
+    customerIds.length > 0
+      ? (await PointsBalance.find({ userId: { $in: customerIds }, organizationId }))
+          .map((b) => [b.userId.toString(), b])
+      : []
+  );
+  const txnsByUser = new Map(
+    customerIds.length > 0
+      ? (await PointsTransaction.find({ userId: { $in: customerIds }, organizationId }))
+          .reduce((byUser, t) => {
+            const key = t.userId.toString();
+            const list = byUser.get(key) || [];
+            list.push(t);
+            byUser.set(key, list);
+            return byUser;
+          }, new Map())
+      : []
+  );
   const rows = await Promise.all(
     customers.map(async (customer) => {
-      const balance = await PointsBalance.findOne({ userId: customer._id, organizationId });
-      const allTxns = await PointsTransaction.find({ userId: customer._id, organizationId })
-        .sort({ createdAt: -1 });
+      const idKey = customer._id.toString();
+      const balance = balancesByUser.get(idKey) || null;
+      const allTxns = (txnsByUser.get(idKey) || []).sort(
+        (a, b) => new Date(b.createdAt) - new Date(a.createdAt)
+      );
 
       const earns = allTxns.filter((t) => t.type === "earn");
       const redeems = allTxns.filter((t) => t.type === "redeem");

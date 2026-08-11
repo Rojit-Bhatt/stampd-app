@@ -1,7 +1,6 @@
 const crypto = require("crypto");
 
 const db = {}; // modelName -> array of documents
-
 class ObjectId {
   constructor(id) {
     this._id = id || crypto.randomBytes(12).toString("hex");
@@ -65,9 +64,9 @@ function matchesQuery(doc, query) {
         // Mongo returns only non-5 rows, and no test could see the
         // difference. A loud dev-time failure beats a plausible wrong
         // answer; add the operator here if you genuinely need it.
-        if (op !== "$lte" && op !== "$gte") {
+        if (op !== "$lte" && op !== "$gte" && op !== "$in" && op !== "$regex") {
           throw new Error(
-            `[Mock Mongoose] Unsupported query operator "${op}". Only $lte/$gte/$or/equality are implemented — ` +
+            `[Mock Mongoose] Unsupported query operator "${op}". Only $lte/$gte/$in/$regex/$or/equality are implemented — ` +
             `see CLAUDE.md. Express this as a JS filter after fetching instead.`
           );
         }
@@ -89,11 +88,32 @@ function matchesQuery(doc, query) {
 
         if (op === "$lte" && left > right) matchesOps = false;
         if (op === "$gte" && left < right) matchesOps = false;
+        // $in: array-valued. Compared with ObjectId/Date/number awareness —
+        // the same semantics the real driver gives {field: {$in: arr}}.
+        if (op === "$in") {
+          if (!Array.isArray(opVal) || opVal.length === 0) {
+            matchesOps = false;
+          } else {
+            let hit = false;
+            for (const candidate of opVal) {
+              if (castToId(docVal) === castToId(candidate)) { hit = true; break; }
+            }
+            if (!hit) matchesOps = false;
+          }
+        }
       }
       if (!matchesOps) return false;
       continue;
     }
     
+    if (isOperatorObject && Object.keys(queryVal).length === 1 && Object.keys(queryVal)[0] === "$regex") {
+      // {field: {$regex: ...}} — anchor-anchored pattern match only when
+      // the pattern is a /^.../ style, which is how the seed hook looks up
+      // its own rows. Loose substring matches would silently over-select.
+      const pattern = queryVal.$regex;
+      if (!(pattern instanceof RegExp)) return false;
+      return pattern.test(String(docVal));
+    }
     if (castToId(docVal) !== castToId(queryVal)) {
       return false;
     }
@@ -222,6 +242,7 @@ class Query {
   }
 
   then(onFulfilled, onRejected) {
+    countFind();
     return this.execFn(this).then(onFulfilled, onRejected);
   }
 }
@@ -233,7 +254,12 @@ const mongoose = {
   
   connect: async () => {
     console.log("[Mock Mongoose] Connected to in-memory database successfully.");
-    return { connection: { host: "in-memory" } };
+    // A minimal fake connection object — real driver's `mongoose.connection`
+    // is what middleware (e.g. the dev/TEST round-trip counters in
+    // testHookRoutes) reaches through; expose one here so that access does
+    // not throw.
+    mongoose.connection = { host: "in-memory" };
+    return { connection: mongoose.connection };
   },
   
   startSession: async () => {
@@ -379,17 +405,21 @@ const mongoose = {
       
       static async create(docOrDocs, options) {
         const list = db[name] || [];
-        if (Array.isArray(docOrDocs)) {
-          const docs = docOrDocs.map(d => new Document(name, d));
-          for (const doc of docs) {
-            list.push(doc);
-          }
-          return docs;
-        } else {
-          const doc = new Document(name, docOrDocs);
-          list.push(doc);
-          return doc;
-        }
+        const docs = Array.isArray(docOrDocs) ? docOrDocs : [docOrDocs];
+        const inserted = docs.map((d) => new Document(name, d));
+        for (const doc of inserted) list.push(doc);
+        countWrite(docs.length);
+        return Array.isArray(docOrDocs) ? inserted : inserted[0];
+      }
+      // Bulk write path for the batch-writes benchmarks — same semantics
+      // as the real driver: array in, documents with real _ids out. Order
+      // is preserved because tests assert insert ordering occasionally.
+      static async insertMany(docs, _options) {
+        const list = db[name] || [];
+        const inserted = docs.map((d) => new Document(name, d));
+        for (const doc of inserted) list.push(doc);
+        countWrite(docs.length);
+        return inserted;
       }
       
       static findOneAndUpdate(query, update, options) {
@@ -491,5 +521,22 @@ const mongoose = {
     return ModelClass;
   }
 };
+
+// Round-trip counters for the batch-writes benchmark. The mock engine never
+// goes near the real driver, so express-rate-limit-style commandStarted
+// monitoring stays at zero in tests — the benchmark therefore reads these
+// counters through mongoose.connection.__mockOpStats (via testHookRoutes).
+let findOps = 0;
+let writeOps = 0;
+const countFind = () => { findOps++; };
+const countWrite = (n = 1) => { writeOps += n; };
+Object.defineProperty(mongoose, "__mockOpStats", {
+  get: () => ({ findOps, writeOps }),
+  configurable: true
+});
+Object.defineProperty(mongoose, "__mockResetOps", {
+  value: () => { findOps = 0; writeOps = 0; },
+  configurable: true
+});
 
 module.exports = mongoose;
