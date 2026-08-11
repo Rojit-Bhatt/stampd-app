@@ -152,7 +152,7 @@ export function EventFormModal({ open, onOpenChange, initial, onSaved }: EventFo
           <input
             value={draft.location}
             onChange={(e) => setDraft({ ...draft, location: e.target.value })}
-            placeholder="e.g. Magic Cups Cafe, Pimbahal, Lalitpur"
+            placeholder="e.g. Your Cafe Name, Neighborhood, City"
             className="rounded-[11px] border border-[var(--line)] bg-[var(--bg)] px-3.5 py-2.5 text-sm focus:border-[var(--primary)] focus:outline-none"
           />
           <textarea
