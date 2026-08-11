@@ -20,7 +20,13 @@ function rangeFor(days: number): DateRangeValue {
 // days in Nepal time for exactly this reason), which is more than a reports
 // filter needs. Trailing windows need no such decision and never surprise
 // someone checking on a Tuesday why "this week" only has two days in it.
+// An "All time" preset — both fields empty means no server-side date filter,
+// so the full ledger is returned. Any real date in either field scopes the
+// query instead.
+const ALL_TIME: DateRangeValue = { startDate: "", endDate: "" };
+
 const PRESETS: { key: string; label: string; range: () => DateRangeValue }[] = [
+  { key: "all", label: "All time", range: () => ({ ...ALL_TIME }) },
   { key: "today", label: "Today", range: () => rangeFor(1) },
   { key: "week", label: "Last 7 days", range: () => rangeFor(7) },
   { key: "month", label: "Last 30 days", range: () => rangeFor(30) },
@@ -79,7 +85,7 @@ export function DateRangeFilter({
           <input
             type="date"
             value={value.startDate}
-            max={value.endDate}
+            max={value.endDate || undefined}
             onChange={(e) => onChange({ ...value, startDate: e.target.value })}
             className="rounded-[var(--radius-btn)] border border-[var(--line)] bg-[var(--surface)] px-3.5 py-2.5 text-sm focus:border-[var(--primary)] focus:outline-none focus:ring-2 focus:ring-[var(--primary)]/25"
           />
@@ -91,7 +97,7 @@ export function DateRangeFilter({
           <input
             type="date"
             value={value.endDate}
-            min={value.startDate}
+            min={value.startDate || undefined}
             max={isoDate(new Date())}
             onChange={(e) => onChange({ ...value, endDate: e.target.value })}
             className="rounded-[var(--radius-btn)] border border-[var(--line)] bg-[var(--surface)] px-3.5 py-2.5 text-sm focus:border-[var(--primary)] focus:outline-none focus:ring-2 focus:ring-[var(--primary)]/25"
