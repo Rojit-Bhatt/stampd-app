@@ -45,7 +45,11 @@ export interface ComposedChartProps {
   onPhaseChange?: (phase: ChartPhase) => void;
 }
 
-const DEFAULT_MARGIN: Margin = { top: 40, right: 40, bottom: 40, left: 40 };
+// Left margin is wider than the other sides: with negative values the
+// tick labels (0, -20, -40, -60…) can be several characters wide, and a
+// tight 40px left margin lets the first bar visually collide with those
+// labels. Extra room keeps the axis index area separate from the bars.
+const DEFAULT_MARGIN: Margin = { top: 40, right: 40, bottom: 40, left: 56 };
 
 function getChildComponentName(child: ReactElement): string {
   const childType = child.type as { displayName?: string; name?: string };
