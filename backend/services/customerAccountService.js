@@ -19,6 +19,8 @@ const { generateGlobalSessionToken } = require("../utils/tokenUtils");
 const { isLocked, lockedMinutesLeft, registerFailedAttempt, resetLoginAttempts } = require("../utils/loginLockout");
 const { resolveProgram } = require("./programService");
 const { resolveGoogleLink } = require("../utils/googleLink");
+const { googleOAuthBreaker } = require("../utils/dependencyBreakers");
+const { DependencyUnavailableError } = require("../utils/circuitBreaker");
 const { createNotification } = require("./notificationService");
 const { sendEmail } = require("./emailService");
 
@@ -123,13 +125,7 @@ const formatAccountPayload = (account) => ({
 // loop per caller, and the copies had already drifted apart on whether they
 // re-saved rows that were already true.
 const syncVerifiedToMemberships = async (account) => {
-  const members = await User.find({ customerAccountId: account._id });
-  for (const member of members) {
-    if (!member.emailVerified) {
-      member.emailVerified = true;
-      await member.save();
-    }
-  }
+  await User.updateMany({ customerAccountId: account._id, emailVerified: false }, { $set: { emailVerified: true } });
 };
 
 // Finds-or-creates the tenant-scoped User "membership" row for this
@@ -316,12 +312,17 @@ const authenticateWithGoogle = async ({ idToken }) => {
   const oauthClient = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
   let payload;
   try {
-    const ticket = await oauthClient.verifyIdToken({
-      idToken,
-      audience: process.env.GOOGLE_CLIENT_ID
-    });
+    const ticket = await googleOAuthBreaker.exec(() =>
+      oauthClient.verifyIdToken({
+        idToken,
+        audience: process.env.GOOGLE_CLIENT_ID
+      })
+    );
     payload = ticket.getPayload();
-  } catch (_error) {
+  } catch (error) {
+    if (error instanceof DependencyUnavailableError) {
+      throw createHttpError("Google sign-in is temporarily unavailable. Please try again shortly.", 503);
+    }
     throw createHttpError("Invalid Google token.", 401);
   }
 
@@ -407,14 +408,8 @@ const updateAccountProfile = async ({ customerAccountId, name }) => {
 
   // name is denormalized onto every membership (that's what outlet-scoped
   // reporting reads), so it has to travel — same shape as completeProfile's
-  // phone fan-out below. Mock DB has no updateMany: find+save loop.
-  const members = await User.find({ customerAccountId: account._id });
-  for (const member of members) {
-    if (member.name !== account.name) {
-      member.name = account.name;
-      await member.save();
-    }
-  }
+  // phone fan-out below.
+  await User.updateMany({ customerAccountId: account._id }, { $set: { name: account.name } });
 
   return formatAccountPayload(account);
 };
@@ -517,13 +512,8 @@ const completeProfile = async ({ customerAccountId, phone }) => {
   account.phone = phone.trim();
   await account.save();
 
-  // Propagate to every existing membership row (mock DB has no updateMany —
-  // find+save loop, both supported).
-  const members = await User.find({ customerAccountId });
-  for (const member of members) {
-    member.phone = account.phone;
-    await member.save();
-  }
+  // Propagate to every existing membership row.
+  await User.updateMany({ customerAccountId }, { $set: { phone: account.phone } });
 
   return formatGlobalSessionPayload(account);
 };

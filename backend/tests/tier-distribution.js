@@ -59,10 +59,14 @@ async function main() {
     });
     const adminToken = adminLogin.body.token;
 
+    // Bronze requires 2 visits (not 1): a single earn always satisfies
+    // "1 visit", so minVisits:1 would make every real customer Bronze at
+    // minimum and "untiered" unconstructible for a customer who actually
+    // transacted (see resolveTier's OR-of-visits-or-spend logic).
     await api("/api/admin/settings", {
       method: "PATCH",
       token: adminToken,
-      body: { tierThresholds: { Bronze: { minVisits: 1, minSpend: 100 }, Silver: { minVisits: 2, minSpend: 700 } } },
+      body: { tierThresholds: { Bronze: { minVisits: 2, minSpend: 100 }, Silver: { minVisits: 2, minSpend: 700 } } },
     });
 
     // durbarmarg carries real seeded customers (asha, bikash) with their own
@@ -93,16 +97,18 @@ async function main() {
     const genB1 = await api("/api/admin/generate-qr", { method: "POST", token: adminToken, body: { billAmount: 500 } });
     await api("/api/points/claim", { method: "POST", token: tokenB, body: { token: genB1.body.data.token } });
 
-    // Customer C: no earns at all -> untiered.
+    // Customer C: one earn (1 visit, 50 spend) that clears neither Bronze
+    // bar -> untiered. Needs at least one earn to appear in the customer
+    // list at all — getCustomerDetailRows excludes never-earned memberships
+    // (see services/pointsService.js), so a genuinely zero-earn "customer"
+    // is never counted anywhere, untiered included.
     const emailC = `dist_c_${Date.now()}@test.co`;
     await api("/api/auth/register", { method: "POST", body: { name: "Dist C", email: emailC, password: "password123", phone: "9811111113" } });
     const mintC = await api("/__test__/mint-token", { method: "POST", body: { email: emailC, type: "email_verify" } });
     await fetch(`${baseUrl}/api/auth/verify-email?token=${mintC.body.token}`, { headers: { "X-Company-Slug": COMPANY, "X-Outlet-Slug": SLUG } });
     const tokenC = (await api("/api/auth/login", { method: "POST", body: { email: emailC, password: "password123" } })).body.token;
-    // C earns nothing but still needs at least one earn to appear in the
-    // customer list at all (getCustomerDetailRows returns every customer
-    // now, per the production-readiness fix — so C is visible with 0
-    // earns and correctly falls under "untiered").
+    const genC1 = await api("/api/admin/generate-qr", { method: "POST", token: adminToken, body: { billAmount: 50 } });
+    await api("/api/points/claim", { method: "POST", token: tokenC, body: { token: genC1.body.data.token } });
 
     const dist = await api("/api/admin/tier-distribution", { token: adminToken });
     check("tier-distribution -> 200", dist.status === 200);

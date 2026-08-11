@@ -44,11 +44,30 @@ const listAllPlans = async () => {
   return { success: true, plans: sorted.map(formatPlan) };
 };
 
+// Both public-plan reads below are identical for every caller (no auth, no
+// route params) and are read far more often (pricing page, checkout picker)
+// than plans change (an admin editing/archiving one, rarely). Cached
+// in-process with a TTL as a safety net, but the real invalidation path is
+// explicit — every write in this file clears both on success.
+const PUBLIC_PLANS_CACHE_TTL_MS = 5 * 60 * 1000;
+let activePlansCache = null; // { value, expiresAt }
+let publicPlansCache = null;
+
+const invalidatePublicPlanCaches = () => {
+  activePlansCache = null;
+  publicPlansCache = null;
+};
+
 // Public pricing-page view — active plans only.
 const listActivePlans = async () => {
+  if (activePlansCache && activePlansCache.expiresAt > Date.now()) {
+    return activePlansCache.value;
+  }
   const plans = await SubscriptionPlan.find({ isActive: true });
   const sorted = [...plans].sort((a, b) => (a.sortOrder || 0) - (b.sortOrder || 0));
-  return { success: true, plans: sorted.map(formatPlan) };
+  const value = { success: true, plans: sorted.map(formatPlan) };
+  activePlansCache = { value, expiresAt: Date.now() + PUBLIC_PLANS_CACHE_TTL_MS };
+  return value;
 };
 
 // Public, unauthenticated projection for the marketing pricing section.
@@ -57,8 +76,11 @@ const listActivePlans = async () => {
 // Builds the response field by field rather than filtering the document: a
 // whitelist cannot leak a field added to the schema later, a blacklist can.
 const listPublicPlans = async () => {
+  if (publicPlansCache && publicPlansCache.expiresAt > Date.now()) {
+    return publicPlansCache.value;
+  }
   const plans = await SubscriptionPlan.find({ isActive: true });
-  return [...plans]
+  const value = [...plans]
     .sort((a, b) => (a.sortOrder || 0) - (b.sortOrder || 0))
     .map((plan) => ({
       slug: plan.slug,
@@ -67,6 +89,8 @@ const listPublicPlans = async () => {
       features: plan.features || [],
       isMostPopular: Boolean(plan.isMostPopular)
     }));
+  publicPlansCache = { value, expiresAt: Date.now() + PUBLIC_PLANS_CACHE_TTL_MS };
+  return value;
 };
 
 const getPlanBySlug = async (slug) => {
@@ -102,6 +126,7 @@ const createPlan = async ({ name, slug, priceNpr, outletLimit, features, isMostP
     targetName: plan.name, details: `Rs ${plan.priceNpr}/yr, ${plan.outletLimit} outlet limit`
   });
 
+  invalidatePublicPlanCaches();
   return { success: true, plan: formatPlan(plan) };
 };
 
@@ -134,6 +159,7 @@ const updatePlan = async (slug, { name, priceNpr, outletLimit, features, isMostP
     targetName: updated.name, details: `Updated: ${Object.keys(updates).join(", ") || "no changes"}`
   });
 
+  invalidatePublicPlanCaches();
   return { success: true, plan: formatPlan(updated) };
 };
 
@@ -152,6 +178,7 @@ const archivePlan = async (slug, { actorId, actorName }) => {
     targetName: updated.name, details: "Archived (soft-deleted)"
   });
 
+  invalidatePublicPlanCaches();
   return { success: true, plan: formatPlan(updated) };
 };
 

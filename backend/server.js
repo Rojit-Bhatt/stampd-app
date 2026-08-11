@@ -45,6 +45,7 @@ if (USING_MOCK_DB) {
 const express = require("express");
 const cors = require("cors");
 const helmet = require("helmet");
+const compression = require("compression");
 const connectDB = require("./config/db");
 const { PLATFORM_NAME, PLATFORM_TIMEZONE } = require("./config/platform");
 const cron = require("node-cron");
@@ -105,6 +106,11 @@ app.use(
     crossOriginResourcePolicy: { policy: "cross-origin" }
   })
 );
+// threshold: 1kb default — skips compressing tiny bodies where gzip framing
+// overhead would outweigh the saving. Images (jpeg/png/webp) are already
+// compressed and are excluded automatically by the `compressible` mime check,
+// so this only touches JSON/text/html.
+app.use(compression());
 app.use(express.json({ limit: "2mb" }));
 
 app.get("/", (_req, res) => {

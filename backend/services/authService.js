@@ -6,6 +6,8 @@ const PointsBalance = require("../models/PointsBalance");
 const VerificationToken = require("../models/VerificationToken");
 const { generateAuthToken } = require("../utils/tokenUtils");
 const { sendEmail, buildAuthLink } = require("./emailService");
+const { googleOAuthBreaker } = require("../utils/dependencyBreakers");
+const { DependencyUnavailableError } = require("../utils/circuitBreaker");
 
 const SALT_ROUNDS = 10;
 const VERIFY_TTL_MS = 24 * 60 * 60 * 1000;
@@ -223,12 +225,17 @@ const authenticateWithGoogle = async ({ idToken, organizationId }) => {
   const oauthClient = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
   let payload;
   try {
-    const ticket = await oauthClient.verifyIdToken({
-      idToken,
-      audience: process.env.GOOGLE_CLIENT_ID
-    });
+    const ticket = await googleOAuthBreaker.exec(() =>
+      oauthClient.verifyIdToken({
+        idToken,
+        audience: process.env.GOOGLE_CLIENT_ID
+      })
+    );
     payload = ticket.getPayload();
-  } catch (_error) {
+  } catch (error) {
+    if (error instanceof DependencyUnavailableError) {
+      throw createHttpError("Google sign-in is temporarily unavailable. Please try again shortly.", 503);
+    }
     throw createHttpError("Invalid Google token.", 401);
   }
 

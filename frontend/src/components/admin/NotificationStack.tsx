@@ -61,8 +61,25 @@ export function NotificationStack() {
   const unreadCount = todays.filter((n) => !n.readAt).length;
 
   const markAllRead = async () => {
-    await apiRequest("/api/admin/notifications/read-all", { method: "POST" });
-    queryClient.invalidateQueries({ queryKey: ["admin-notifications"] });
+    const previous = queryClient.getQueryData<NotificationsResponse>(["admin-notifications"]);
+    const now = new Date().toISOString();
+    queryClient.setQueryData<NotificationsResponse>(["admin-notifications"], (current) =>
+      current
+        ? {
+            ...current,
+            notifications: current.notifications.map((n) => (n.readAt ? n : { ...n, readAt: now })),
+            unreadCount: 0,
+          }
+        : current,
+    );
+
+    try {
+      await apiRequest("/api/admin/notifications/read-all", { method: "POST" });
+      queryClient.invalidateQueries({ queryKey: ["admin-notifications"] });
+    } catch (error) {
+      queryClient.setQueryData(["admin-notifications"], previous);
+      throw error;
+    }
   };
 
   return (

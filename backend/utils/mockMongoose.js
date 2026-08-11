@@ -455,6 +455,15 @@ const mongoose = {
         }
         return { acknowledged: true, modifiedCount: 0 };
       }
+
+      static async updateMany(query, update, options) {
+        const list = db[name] || [];
+        const matches = list.filter(doc => matchesQuery(doc, query));
+        for (const doc of matches) {
+          updateDoc(doc, update);
+        }
+        return { acknowledged: true, matchedCount: matches.length, modifiedCount: matches.length };
+      }
       
       static async deleteOne(query) {
         const list = db[name] || [];
