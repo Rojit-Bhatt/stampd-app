@@ -7,6 +7,7 @@ import { apiRequest } from "../../lib/api";
 import { useNavigate } from "react-router-dom";
 import { useTenant } from "../../context/TenantContext";
 import { EarnCelebration } from "./EarnCelebration";
+import { PhoneStepModal } from "./PhoneStepModal";
 import { tenantPath } from "../../lib/tenantPath";
 
 interface EarnResult {
@@ -36,12 +37,14 @@ export function ScannerModal({
   const [earned, setEarned] = useState<EarnResult | null>(null);
   const [cameraError, setCameraError] = useState<string | null>(null);
   const [isBlocked, setIsBlocked] = useState(false);
+  const [pendingToken, setPendingToken] = useState<string | null>(null);
 
   useEffect(() => {
     if (!open) {
       setEarned(null);
       setCameraError(null);
       setIsBlocked(false);
+      setPendingToken(null);
       return;
     }
 
@@ -85,6 +88,38 @@ export function ScannerModal({
     };
   }, [open]);
 
+  const claimToken = async (rawToken: string) => {
+    const toastId = toast.loading("Adding your points…");
+    try {
+      const response = await apiRequest<{
+        success: boolean;
+        message: string;
+        data?: EarnResult;
+      }>("/api/points/claim", {
+        method: "POST",
+        body: { token: rawToken },
+      });
+
+      if (response.success && response.data) {
+        queryClient.invalidateQueries({ queryKey: ["pointsBalance"] });
+        queryClient.invalidateQueries({ queryKey: ["pointsHistory"] });
+        toast.dismiss(toastId);
+        setEarned(response.data);
+      } else {
+        throw new Error(response.message || "Couldn't add those points — try again.");
+      }
+    } catch (err) {
+      const code = (err as { code?: string }).code;
+      if (code === "PHONE_REQUIRED") {
+        toast.dismiss(toastId);
+        setPendingToken(rawToken);
+        return;
+      }
+      toast.error((err as Error).message || "Couldn't add those points — try again.", { id: toastId });
+      onClose();
+    }
+  };
+
   useEffect(() => {
     if (!open) return;
 
@@ -96,7 +131,7 @@ export function ScannerModal({
     let isMounted = true;
     let qrScanner: Html5Qrcode | null = null;
 
-    if (!earned && !cameraError) {
+    if (!earned && !cameraError && !pendingToken) {
       try {
         qrScanner = new Html5Qrcode("qr-reader-viewport");
         scannerRef.current = qrScanner;
@@ -147,29 +182,7 @@ export function ScannerModal({
                 return;
               }
 
-              const toastId = toast.loading("Adding your points…");
-              try {
-                const response = await apiRequest<{
-                  success: boolean;
-                  message: string;
-                  data?: EarnResult;
-                }>("/api/points/claim", {
-                  method: "POST",
-                  body: { token: rawToken },
-                });
-
-                if (response.success && response.data) {
-                  queryClient.invalidateQueries({ queryKey: ["pointsBalance"] });
-                  queryClient.invalidateQueries({ queryKey: ["pointsHistory"] });
-                  toast.dismiss(toastId);
-                  setEarned(response.data);
-                } else {
-                  throw new Error(response.message || "Couldn't add those points — try again.");
-                }
-              } catch (err) {
-                toast.error((err as Error).message || "Couldn't add those points — try again.", { id: toastId });
-                onClose();
-              }
+              await claimToken(rawToken);
             },
             () => {
               // Silent failure
@@ -214,7 +227,7 @@ export function ScannerModal({
         }
       }
     };
-  }, [open, onClose, queryClient, navigate, companySlug, slug, earned, cameraError]);
+  }, [open, onClose, queryClient, navigate, companySlug, slug, earned, cameraError, pendingToken]);
 
   const handleRetry = () => {
     setCameraError(null);
@@ -227,6 +240,18 @@ export function ScannerModal({
   };
 
   if (!open) return null;
+
+  if (pendingToken) {
+    return (
+      <PhoneStepModal
+        onDone={() => {
+          const token = pendingToken;
+          setPendingToken(null);
+          if (token) claimToken(token);
+        }}
+      />
+    );
+  }
 
   if (earned) {
     return (
