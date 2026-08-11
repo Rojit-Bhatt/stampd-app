@@ -13,6 +13,13 @@
 const PLACES_API_BASE_URL = () =>
   process.env.PLACES_API_BASE_URL || "https://places.googleapis.com";
 
+// A dead/slow Google fast-fails here (no hanging past timeoutMs), and
+// repeated failures open the circuit so every Places caller sees the
+// degraded state at once. Breaker trips and timeouts map onto the existing
+// 502 PLACES_UPSTREAM contract — the public tool can't tell the difference
+// and neither should its callers.
+const { placesApiBreaker, DependencyUnavailableError } = require("../utils/dependencyBreakers");
+
 const MIN_INPUT = 3;
 const MAX_INPUT = 120;
 const MAX_RESULTS = 5;
@@ -53,21 +60,32 @@ async function autocompleteBusinesses(rawInput) {
 
   let response;
   try {
-    response = await fetch(`${PLACES_API_BASE_URL()}/v1/places:autocomplete`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "X-Goog-Api-Key": apiKey,
-      },
-      // includedRegionCodes keeps a search for "java" from returning results
-      // on the other side of the planet — this product is sold in Nepal.
-      body: JSON.stringify({
-        input,
-        includedRegionCodes: ["np"],
-        languageCode: "en",
-      }),
-    });
+    response = await placesApiBreaker.exec(async () =>
+      fetch(`${PLACES_API_BASE_URL()}/v1/places:autocomplete`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "X-Goog-Api-Key": apiKey,
+        },
+        // includedRegionCodes keeps a search for "java" from returning results
+        // on the other side of the planet — this product is sold in Nepal.
+        body: JSON.stringify({
+          input,
+          includedRegionCodes: ["np"],
+          languageCode: "en",
+        }),
+      })
+    );
   } catch (err) {
+    // Breaker trip, concurrency limit and timeout are all surfaced as the
+    // same 502 upstream error the route already handles — only the wait is
+    // gone.
+    if (err instanceof DependencyUnavailableError) {
+      throw new PlacesError(
+        "Could not reach Google right now. Please try again.",
+        { status: 502, code: "PLACES_UPSTREAM" }
+      );
+    }
     throw new PlacesError(
       "Could not reach Google right now. Please try again.",
       { status: 502, code: "PLACES_UPSTREAM" }

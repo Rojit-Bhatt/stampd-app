@@ -33,21 +33,28 @@ const smtpConfigured = () => Boolean(process.env.SMTP_HOST);
 // service being "asleep" or not, so it can't be worked around with a
 // keep-alive ping. Port 443 is never blocked, so this is what makes real
 // email delivery possible on a $0 host at all.
+// Circuit-broken: a dead or slow Brevo fast-fails (never hangs the caller
+// past timeoutMs) and repeated failures open the circuit so every Brevo
+// caller sees the degraded state at once. Failures still throw plain
+// Errors so existing callers' "sending failed" semantics are unchanged.
+const { brevoEmailBreaker } = require("../utils/dependencyBreakers");
 const sendViaBrevoApi = async ({ to, subject, html }) => {
-  const res = await fetch("https://api.brevo.com/v3/smtp/email", {
-    method: "POST",
-    headers: {
-      "api-key": process.env.BREVO_API_KEY,
-      "Content-Type": "application/json",
-      Accept: "application/json"
-    },
-    body: JSON.stringify({
-      sender: { email: FROM_ADDRESS() },
-      to: [{ email: to }],
-      subject,
-      htmlContent: html
+  const res = await brevoEmailBreaker.exec(async () =>
+    fetch("https://api.brevo.com/v3/smtp/email", {
+      method: "POST",
+      headers: {
+        "api-key": process.env.BREVO_API_KEY,
+        "Content-Type": "application/json",
+        Accept: "application/json"
+      },
+      body: JSON.stringify({
+        sender: { email: FROM_ADDRESS() },
+        to: [{ email: to }],
+        subject,
+        htmlContent: html
+      })
     })
-  });
+  );
   if (!res.ok) {
     const body = await res.text().catch(() => "");
     throw new Error(`Brevo API responded ${res.status}: ${body.slice(0, 300)}`);

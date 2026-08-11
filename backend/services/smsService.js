@@ -39,7 +39,14 @@ const sendViaSparrowApi = async ({ to, text }) => {
     to,
     text
   });
-  const res = await fetch(`https://api.sparrowsms.com/v2/sms/?${params.toString()}`);
+  // Circuit-broken: a dead or slow Sparrow fast-fails (never hangs the
+  // admin past timeoutMs) and repeated failures open the circuit for all
+  // SMS callers at once. Failures still throw plain Errors so the cap check
+  // and "sending failed" semantics in sendSms are unchanged.
+  const { sparrowSmsBreaker } = require("../utils/dependencyBreakers");
+  const res = await sparrowSmsBreaker.exec(async () =>
+    fetch(`https://api.sparrowsms.com/v2/sms/?${params.toString()}`)
+  );
   const body = await res.json().catch(() => ({}));
   if (!res.ok || body.response_code !== 200) {
     throw new Error(`Sparrow SMS API responded ${res.status}: ${JSON.stringify(body).slice(0, 300)}`);

@@ -9,6 +9,7 @@ const PointsBalance = require("../models/PointsBalance");
 const { toPoints } = require("../utils/pointsMath");
 const { PLATFORM_TIMEZONE, VAPID_SUBJECT, VAPID_PUBLIC_KEY, VAPID_PRIVATE_KEY } = require("../config/platform");
 const webpush = require("web-push");
+const { pushNotificationBreaker } = require("../utils/dependencyBreakers");
 const PushSubscription = require("../models/PushSubscription");
 
 webpush.setVapidDetails(VAPID_SUBJECT, VAPID_PUBLIC_KEY, VAPID_PRIVATE_KEY);
@@ -45,7 +46,12 @@ const stripHtml = (html) => html.replace(/<[^>]+>/g, "");
 // exactly as before.
 const sendPushToSubscription = async (sub, payload) => {
   try {
-    await webpush.sendNotification({ endpoint: sub.endpoint, keys: sub.keys }, JSON.stringify(payload));
+    // Circuit-broken: a slow or dead push endpoint fast-fails instead of
+    // hanging, and repeated failures open the circuit for the whole
+    // dependency so the trigger loops stop wasting sends on it.
+    await pushNotificationBreaker.exec(async () =>
+      webpush.sendNotification({ endpoint: sub.endpoint, keys: sub.keys }, JSON.stringify(payload))
+    );
     return { ok: true };
   } catch (err) {
     if (err.statusCode === 410 || err.statusCode === 404) {
