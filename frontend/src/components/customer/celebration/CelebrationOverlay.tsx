@@ -30,7 +30,7 @@ export function CelebrationOverlay({ children }: { children: ReactNode }) {
         animate={{ opacity: 1, scale: 1 }}
         exit={m.pick({ opacity: 0, scale: 0.96 }, { opacity: 0 })}
         transition={m.spring("settle")}
-        className="w-full max-w-sm"
+        className="celebration-content w-full max-w-sm"
       >
         {children}
       </motion.div>
