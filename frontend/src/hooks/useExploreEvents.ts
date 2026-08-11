@@ -1,5 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { apiRequest } from "../lib/api";
+import type { EventReward } from "../components/customer/EventCard";
 
 export interface ExploreEvent {
   id: string;
@@ -10,6 +11,7 @@ export interface ExploreEvent {
   description: string;
   imageUrl: string;
   imageId: string | null;
+  rewards: EventReward[];
   organizationId: string;
   /** The OUTLET slug. Unique only within its company — never a path on its own. */
   slug: string;

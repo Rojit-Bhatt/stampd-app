@@ -53,9 +53,23 @@ async function main() {
     const created1 = await api("/api/admin/events", {
       method: "POST",
       token: adminToken,
-      body: { title: "Live Jazz Night", date: tomorrow, time: "7:00 PM", location: "Main hall", description: "Local jazz trio." },
+      body: {
+        title: "Live Jazz Night",
+        date: tomorrow,
+        time: "7:00 PM",
+        location: "Main hall",
+        description: "Local jazz trio.",
+        rewards: [
+          { rank: "1st Place", reward: "NPR 5,000 + Trophy" },
+          { rank: "2nd Place", reward: "NPR 2,000" },
+        ],
+      },
     });
     check("create tomorrow event -> 201", created1.status === 201);
+    check(
+      "create response includes the rewards list",
+      Array.isArray(created1.body.event.rewards) && created1.body.event.rewards.length === 2,
+    );
 
     const created2 = await api("/api/admin/events", {
       method: "POST",
@@ -63,6 +77,10 @@ async function main() {
       body: { title: "Past Trivia Night", date: yesterday, time: "6:00 PM" },
     });
     check("create yesterday event -> 201", created2.status === 201);
+    check(
+      "event created without rewards defaults to an empty array",
+      Array.isArray(created2.body.event.rewards) && created2.body.event.rewards.length === 0,
+    );
     const pastEventId = created2.body.event.id || created2.body.event._id;
 
     const created3 = await api("/api/admin/events", {
@@ -83,6 +101,13 @@ async function main() {
     check("upcoming events includes tomorrow's event", upcoming.some((e) => e.title === "Live Jazz Night"));
     check("upcoming events includes the +10-day event", upcoming.some((e) => e.title === "Anniversary Sale"));
     check("upcoming events sorted soonest first", new Date(upcoming[0].date) <= new Date(upcoming[1].date));
+
+    const jazzInFeed = upcoming.find((e) => e.title === "Live Jazz Night");
+    check(
+      "public tenant upcomingEvents carries the rewards list",
+      Boolean(jazzInFeed) && Array.isArray(jazzInFeed.rewards) && jazzInFeed.rewards.length === 2
+        && jazzInFeed.rewards[0].rank === "1st Place" && jazzInFeed.rewards[0].reward === "NPR 5,000 + Trophy",
+    );
 
     // Cap at 3: add a 4th upcoming event, confirm only 3 come back.
     const in2Days = isoDate(new Date(now.getTime() + 2 * DAY_MS));
