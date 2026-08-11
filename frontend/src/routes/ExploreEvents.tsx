@@ -1,4 +1,3 @@
-import { Link } from "react-router-dom";
 import { CalendarDays } from "lucide-react";
 
 import { useExploreEvents, type ExploreEvent } from "../hooks/useExploreEvents";
@@ -52,10 +51,7 @@ export default function ExploreEvents() {
 function EventListingCard({ event }: { event: ExploreEvent }) {
   const initial = event.businessName.charAt(0).toUpperCase();
   return (
-    <Link
-      to={tenantPath(event.companySlug, event.slug, "dashboard")}
-      className="stamp-interactive relative block"
-    >
+    <div className="relative">
       {/* Overlaid on the card's own image, top-left — which business, without
           wrapping EventCard in a second card. */}
       <div className="pointer-events-none absolute left-3 top-3 z-10 flex items-center gap-1.5 rounded-full bg-black/45 py-1 pl-1 pr-2.5 backdrop-blur-sm">
@@ -75,7 +71,10 @@ function EventListingCard({ event }: { event: ExploreEvent }) {
         )}
         <span className="truncate text-[11px] font-bold text-white">{event.businessName}</span>
       </div>
-      <EventCard event={event} />
-    </Link>
+      <EventCard
+        event={event}
+        businessLink={{ label: event.businessName, to: tenantPath(event.companySlug, event.slug, "dashboard") }}
+      />
+    </div>
   );
 }
