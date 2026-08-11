@@ -6,7 +6,19 @@ export interface DateRangeValue {
 }
 
 const DAY_MS = 24 * 60 * 60 * 1000;
-const isoDate = (d: Date) => d.toISOString().slice(0, 10);
+
+// Returns the calendar date (YYYY-MM-DD) in the admin's LOCAL timezone —
+// NOT UTC. toISOString() would give UTC, which is up to ~12 hours off from
+// what the admin actually sees on their wall clock. A cafe owner in Nepal
+// at 1:00 AM local (still the previous day UTC) must get "today" = local
+// today, not the UTC one. The server-side resolveDateRange then converts
+// these local dates to Nepal-time boundaries correctly.
+const isoDate = (d: Date) => {
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${y}-${m}-${day}`;
+};
 
 function rangeFor(days: number): DateRangeValue {
   const end = new Date();
