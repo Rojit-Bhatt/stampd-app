@@ -13,5 +13,14 @@
     // /coffesarowar/durbarmarg/claim?token=...) resolve to the SPA shell
     // instead of a 404 — same job public/_redirects does for classic Pages.
     "not_found_handling": "single-page-application"
-  }
+  },
+  // INVARIANT — single-pass compression at the edge: Cloudflare auto-
+  // compresses these static JS/CSS assets (gzip/br) before sending them.
+  // The Vite build must NOT emit pre-compressed artifacts (.gz/.br copies
+  // of JS/CSS) — keep outputs plain so the edge compresses exactly once.
+  // The API's dynamic JSON is gzip-compressed by the server itself (Express
+  // `compression`, backend/server.js) and Cloudflare passes it through.
+  // If a build tool ever starts emitting pre-compressed files, add them to
+  // ignore and keep only plain outputs, or responses would be double-
+  // compressed.
 }

@@ -106,11 +106,23 @@ app.use(
     crossOriginResourcePolicy: { policy: "cross-origin" }
   })
 );
-// threshold: 1kb default — skips compressing tiny bodies where gzip framing
-// overhead would outweigh the saving. Images (jpeg/png/webp) are already
-// compressed and are excluded automatically by the `compressible` mime check,
-// so this only touches JSON/text/html.
-app.use(compression());
+// Response compression in transit. gzip only — the Express 4 `compression`
+// package implements gzip/deflate (not brotli), and gzip is what essentially
+// every HTTP client advertises in Accept-Encoding. `threshold: 1kb` skips
+// tiny bodies where gzip framing overhead would outweigh the saving.
+// Images (jpeg/png/webp/gif) are already compressed and are excluded
+// automatically by the `compressible` mime check, so this only touches
+// JSON/text/html.
+//
+// Double-compression protection (see backend/tests/response-compression.js
+// for the automated checks):
+//  1. Nothing in this process gzip-encodes a body by hand — grep the
+//     codebase for zlib/createGzip/createBrotli and no such middleware
+//     exists in any request path.
+//  2. The frontend deploys to Cloudflare Workers Static Assets (assets-
+//     only). Cloudflare auto-compresses the *static* JS/CSS at the edge
+//     and passes dynamic JSON from this server through untouched.
+app.use(compression({ threshold: 1024 }));
 app.use(express.json({ limit: "2mb" }));
 
 app.get("/", (_req, res) => {
