@@ -6,6 +6,7 @@ const formatAccount = (user) => ({
   email: user.email,
   role: user.role,
   emailVerified: user.emailVerified,
+  hasPassword: Boolean(user.password),
   ...(user.role === "customer" ? { infoPromptDismissed: user.infoPromptDismissed } : {})
 });
 

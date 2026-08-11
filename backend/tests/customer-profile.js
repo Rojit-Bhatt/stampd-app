@@ -116,6 +116,28 @@ async function main() {
     });
     check("and the OLD password no longer does -> 401", withOld.status === 401, withOld.body);
 
+    console.log("\n== Setting a password on a Google-only account ==");
+    const cleared = await api("/__test__/clear-password", {
+      method: "POST", body: { email, kind: "customer" },
+    });
+    check("clear-password test hook -> 200", cleared.status === 200, cleared.body);
+
+    const meBeforeSet = await api("/api/customer-auth/me", { token: session });
+    check("hasPassword is false once password is cleared", meBeforeSet.body.account?.hasPassword === false, meBeforeSet.body);
+
+    const setWithoutCurrent = await api("/api/customer-auth/change-password", {
+      method: "POST", token: session, body: { newPassword: "freshpassword1" },
+    });
+    check("setting a first password with no currentPassword -> 200", setWithoutCurrent.status === 200, setWithoutCurrent.body);
+
+    const meAfterSet = await api("/api/customer-auth/me", { token: session });
+    check("hasPassword is true after setting one", meAfterSet.body.account?.hasPassword === true, meAfterSet.body);
+
+    const loginWithSetPassword = await api("/api/customer-auth/login", {
+      method: "POST", body: { email, password: "freshpassword1" },
+    });
+    check("the newly-set password signs in", loginWithSetPassword.status === 200, loginWithSetPassword.body);
+
     console.log("\n== Anonymous callers ==");
     const noAuthRename = await api("/api/customer-auth/profile", {
       method: "PATCH", body: { name: "Hacker" },

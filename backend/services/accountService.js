@@ -48,8 +48,8 @@ const dismissInfoPrompt = async (userId) => {
 };
 
 const changePassword = async (userId, { currentPassword, newPassword }) => {
-  if (!currentPassword || !newPassword) {
-    throw createHttpError("Current and new password are required.", 400);
+  if (!newPassword) {
+    throw createHttpError("New password is required.", 400);
   }
   if (newPassword.length < 8) {
     throw createHttpError("New password must be at least 8 characters.", 400);
@@ -58,14 +58,17 @@ const changePassword = async (userId, { currentPassword, newPassword }) => {
   const user = await User.findOne({ _id: userId });
   if (!user) throw createHttpError("Account not found.", 404);
 
-  if (!user.password) {
-    throw createHttpError("This account signs in with Google and has no password to change.", 400);
+  if (user.password) {
+    if (!currentPassword) {
+      throw createHttpError("Current password is required.", 400);
+    }
+    const isValid = await bcrypt.compare(currentPassword, user.password);
+    if (!isValid) {
+      throw createHttpError("Current password is incorrect.", 401);
+    }
   }
-
-  const isValid = await bcrypt.compare(currentPassword, user.password);
-  if (!isValid) {
-    throw createHttpError("Current password is incorrect.", 401);
-  }
+  // else: Google-only sign-in, nothing to compare against — the
+  // authenticated session is proof enough to set a first password.
 
   user.password = await bcrypt.hash(newPassword, SALT_ROUNDS);
   await user.save();

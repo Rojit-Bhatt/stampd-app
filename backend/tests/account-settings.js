@@ -80,6 +80,33 @@ async function main() {
     const adminPatch = await api("/api/account/profile", { method: "PATCH", token: adminToken, body: { name: "Renamed Barista" } });
     check("admin profile update -> 200", adminPatch.status === 200);
 
+    // --- Setting a password on a Google-only admin account ---
+    const cleared = await api("/__test__/clear-password", {
+      method: "POST", slug: undefined, body: { email: "durbarmarg@coffesarowar.com", kind: "staff" },
+    });
+    check("clear-password test hook -> 200", cleared.status === 200);
+
+    const meBeforeSet = await api("/api/account/me", { token: adminToken });
+    check("hasPassword is false once password is cleared", meBeforeSet.body.hasPassword === false);
+
+    const setWithoutCurrent = await api("/api/account/change-password", {
+      method: "POST", token: adminToken, body: { newPassword: "adminfreshpass1" },
+    });
+    check("setting a first password with no currentPassword -> 200", setWithoutCurrent.status === 200);
+
+    const meAfterSet = await api("/api/account/me", { token: adminToken });
+    check("hasPassword is true after setting one", meAfterSet.body.hasPassword === true);
+
+    // Restore the original (unset) password so later tests in this file (or
+    // a re-run against the same seeded admin) aren't affected — the seeded
+    // admin never had a User.password to begin with (see models/User.js:
+    // business_admin credentials live on AdminAccount, not here), so this
+    // is restoring to null, not to "password".
+    const restored = await api("/__test__/restore-password", {
+      method: "POST", slug: undefined, body: { email: "durbarmarg@coffesarowar.com", kind: "staff", passwordHash: cleared.body.previousPasswordHash },
+    });
+    check("restore-password test hook -> 200", restored.status === 200);
+
     // --- Platform: profile + password ---
     const platformLogin = await api("/api/platform/login", { method: "POST", slug: undefined, body: { email: "admin@stampd.co", password: "password" } });
     const platformToken = platformLogin.body.token;

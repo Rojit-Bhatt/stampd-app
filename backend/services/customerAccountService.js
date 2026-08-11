@@ -96,7 +96,8 @@ const formatAccountSummary = (account) => ({
   marketingConsent: account.marketingConsent,
   birthdayMonth: account.birthdayMonth ?? null,
   birthdayDay: account.birthdayDay ?? null,
-  gender: account.gender ?? null
+  gender: account.gender ?? null,
+  hasPassword: Boolean(account.password)
 });
 
 const formatGlobalSessionPayload = (account) => ({
@@ -474,8 +475,8 @@ const removePushSubscription = async ({ customerAccountId, endpoint }) => {
 };
 
 const changeAccountPassword = async ({ customerAccountId, currentPassword, newPassword }) => {
-  if (!currentPassword || !newPassword) {
-    throw createHttpError("Current and new password are required.", 400);
+  if (!newPassword) {
+    throw createHttpError("New password is required.", 400);
   }
   if (newPassword.length < 8) {
     throw createHttpError("New password must be at least 8 characters.", 400);
@@ -484,18 +485,17 @@ const changeAccountPassword = async ({ customerAccountId, currentPassword, newPa
   const account = await CustomerAccount.findOne({ _id: customerAccountId });
   if (!account) throw createHttpError("Account not found.", 404);
 
-  if (!account.password) {
-    // Either a Google-only signup, or an account whose unproven password was
-    // discarded when Google proved the address (see utils/googleLink.js).
-    // Password reset is the way in — it mails the address Google verified.
-    throw createHttpError(
-      "This account signs in with Google. Use \"forgot password\" if you'd like to set one.",
-      400
-    );
+  if (account.password) {
+    if (!currentPassword) {
+      throw createHttpError("Current password is required.", 400);
+    }
+    const isValid = await bcrypt.compare(currentPassword, account.password);
+    if (!isValid) throw createHttpError("Current password is incorrect.", 401);
   }
-
-  const isValid = await bcrypt.compare(currentPassword, account.password);
-  if (!isValid) throw createHttpError("Current password is incorrect.", 401);
+  // else: no password set yet (Google-only signup, or one discarded when
+  // Google proved the address — see utils/googleLink.js). The session
+  // itself, required by verifyGlobalSession on this route, is proof enough
+  // of identity to set one for the first time.
 
   account.password = await bcrypt.hash(newPassword, SALT_ROUNDS);
   await account.save();

@@ -499,4 +499,49 @@ router.post("/set-staff-pin", async (req, res, next) => {
   }
 });
 
+// DEV/TEST ONLY. Clears an account's password and stamps a googleId, so a
+// suite can exercise the "Google-only, no password set" path without a real
+// OAuth round-trip. kind: "customer" (CustomerAccount) or "staff" (the
+// tenant-scoped User row — the actual password store for role "customer";
+// business_admin/platform rows never carry one, see models/User.js). Returns
+// the previous hash so the caller can restore it afterwards.
+router.post("/clear-password", async (req, res, next) => {
+  try {
+    const { email, kind } = req.body;
+    const normalizedEmail = String(email || "").toLowerCase();
+    const Model = kind === "staff" ? User : CustomerAccount;
+
+    const account = await Model.findOne({ email: normalizedEmail });
+    if (!account) return res.status(404).json({ success: false });
+
+    const previousPasswordHash = account.password || null;
+    account.password = null;
+    account.googleId = account.googleId || "test-google-id";
+    await account.save();
+
+    res.json({ success: true, previousPasswordHash });
+  } catch (error) {
+    next(error);
+  }
+});
+
+// DEV/TEST ONLY. Restores a password hash cleared by /clear-password.
+router.post("/restore-password", async (req, res, next) => {
+  try {
+    const { email, kind, passwordHash } = req.body;
+    const normalizedEmail = String(email || "").toLowerCase();
+    const Model = kind === "staff" ? User : CustomerAccount;
+
+    const account = await Model.findOne({ email: normalizedEmail });
+    if (!account) return res.status(404).json({ success: false });
+
+    account.password = passwordHash;
+    await account.save();
+
+    res.json({ success: true });
+  } catch (error) {
+    next(error);
+  }
+});
+
 module.exports = router;
