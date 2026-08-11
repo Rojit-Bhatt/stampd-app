@@ -7,7 +7,7 @@ import { useCustomerTheme } from "../../hooks/useCustomerTheme";
 import { apiRequest } from "../../lib/api";
 import { AvatarPicker } from "./AvatarPicker";
 import { VerifyCodeCard } from "../shared/auth/VerifyCodeCard";
-import { ProfileShell, type ProfileSection } from "../shared/profile/ProfileShell";
+import { SettingsList, type SettingsSection } from "../shared/profile/SettingsList";
 import { Button } from "@/components/ui/button";
 
 /**
@@ -260,7 +260,7 @@ export function CustomerProfilePanel({ onLogout }: { onLogout: () => void }) {
     }
   };
 
-  const sections: ProfileSection[] = [
+  const sections: SettingsSection[] = [
     {
       id: "profile",
       label: "Profile",
@@ -536,7 +536,7 @@ export function CustomerProfilePanel({ onLogout }: { onLogout: () => void }) {
 
   return (
     <div className="flex flex-col gap-6">
-      <ProfileShell sections={sections} />
+      <SettingsList sections={sections} />
 
       {/* Lives here rather than in either navbar: logging out is the one thing
           on this page you can't undo with another tap, so it belongs at the
