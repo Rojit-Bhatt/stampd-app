@@ -7,6 +7,8 @@ export interface Account {
   email: string;
   role: "customer" | "business_admin" | "platform";
   emailVerified: boolean;
+  /** False for a Google-only signin that never set one. */
+  hasPassword: boolean;
 }
 
 type Role = "admin" | "customer" | "platform";
@@ -59,7 +61,7 @@ export function useUpdateProfile(role: Role) {
 
 export function useChangePassword(role: Role) {
   return useMutation({
-    mutationFn: async (body: { currentPassword: string; newPassword: string }) =>
+    mutationFn: async (body: { currentPassword?: string; newPassword: string }) =>
       apiRequest<{ success: boolean; message: string }>("/api/account/change-password", {
         method: "POST",
         role,

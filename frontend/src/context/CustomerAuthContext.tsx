@@ -35,6 +35,8 @@ export interface GlobalAccount {
   birthdayMonth?: number | null;
   birthdayDay?: number | null;
   gender?: Gender;
+  /** False for a Google-only signup that never set one. */
+  hasPassword: boolean;
 }
 
 interface CustomerAuthContextType {

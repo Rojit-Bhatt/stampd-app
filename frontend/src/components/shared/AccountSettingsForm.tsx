@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import toast from "@/lib/toast";
+import { passwordStrength, STRENGTH_LEVELS, strengthColor } from "@/lib/passwordStrength";
 import { LogOut, User, ShieldCheck } from "lucide-react";
 import { apiRequest } from "../../lib/api";
 import { useAccount, useUpdateProfile, useChangePassword } from "../../hooks/useAccount";
@@ -23,6 +24,7 @@ export function AccountSettingsForm({ role, onLogout }: AccountSettingsFormProps
   const [name, setName] = useState("");
   const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
   const [resending, setResending] = useState(false);
 
   useEffect(() => {
@@ -62,12 +64,16 @@ export function AccountSettingsForm({ role, onLogout }: AccountSettingsFormProps
   };
 
   const savePassword = async () => {
-    if (!currentPassword || !newPassword) return;
+    if (!newPassword || newPassword !== confirmPassword) return;
+    if (account.hasPassword && !currentPassword) return;
     try {
-      await changePassword.mutateAsync({ currentPassword, newPassword });
-      toast.success("Password updated!");
+      await changePassword.mutateAsync(
+        account.hasPassword ? { currentPassword, newPassword } : { newPassword },
+      );
+      toast.success(account.hasPassword ? "Password updated!" : "Password set!");
       setCurrentPassword("");
       setNewPassword("");
+      setConfirmPassword("");
     } catch (err) {
       toast.error((err as Error).message || "Couldn't update your password — try again.");
     }
@@ -149,28 +155,65 @@ export function AccountSettingsForm({ role, onLogout }: AccountSettingsFormProps
           )}
 
           <div className="rounded-[var(--radius-card)] border border-[var(--line)] bg-[var(--surface)] shadow-ambient p-5">
-            <div className="mb-3 text-sm font-bold">Change password</div>
-            <label className="mb-1.5 block text-sm font-bold">Current password</label>
-            <input
-              type="password"
-              value={currentPassword}
-              onChange={(e) => setCurrentPassword(e.target.value)}
-              className="mb-3 w-full rounded-[var(--radius-btn)] border border-[var(--line)] bg-[var(--bg)] px-4 py-3 text-sm focus:border-[var(--primary)] focus:outline-none"
-            />
+            <div className="mb-3 text-sm font-bold">{account.hasPassword ? "Change password" : "Set password"}</div>
+
+            {account.hasPassword && (
+              <>
+                <label className="mb-1.5 block text-sm font-bold">Current password</label>
+                <input
+                  type="password"
+                  value={currentPassword}
+                  onChange={(e) => setCurrentPassword(e.target.value)}
+                  className="mb-3 w-full rounded-[var(--radius-btn)] border border-[var(--line)] bg-[var(--bg)] px-4 py-3 text-sm focus:border-[var(--primary)] focus:outline-none"
+                />
+              </>
+            )}
+
             <label className="mb-1.5 block text-sm font-bold">New password</label>
             <input
               type="password"
               value={newPassword}
               onChange={(e) => setNewPassword(e.target.value)}
+              className="w-full rounded-[var(--radius-btn)] border border-[var(--line)] bg-[var(--bg)] px-4 py-3 text-sm focus:border-[var(--primary)] focus:outline-none"
+            />
+            {newPassword && (
+              <div className="mb-3 mt-1.5 flex gap-1">
+                {STRENGTH_LEVELS.map((level, i) => {
+                  const strength = passwordStrength(newPassword);
+                  const filled = STRENGTH_LEVELS.indexOf(strength) >= i;
+                  return (
+                    <div
+                      key={level}
+                      className={`h-1 flex-1 rounded-full ${filled ? strengthColor(strength) : "bg-[var(--surface-2)]"}`}
+                    />
+                  );
+                })}
+              </div>
+            )}
+
+            <label className="mb-1.5 block text-sm font-bold">Confirm new password</label>
+            <input
+              type="password"
+              value={confirmPassword}
+              onChange={(e) => setConfirmPassword(e.target.value)}
               className="mb-3 w-full rounded-[var(--radius-btn)] border border-[var(--line)] bg-[var(--bg)] px-4 py-3 text-sm focus:border-[var(--primary)] focus:outline-none"
             />
+            {confirmPassword && newPassword !== confirmPassword && (
+              <p className="mb-3 text-[13px] text-red-500">Passwords don't match.</p>
+            )}
+
             <button
               onClick={savePassword}
-              disabled={changePassword.isPending || !currentPassword || !newPassword}
+              disabled={
+                changePassword.isPending ||
+                !newPassword ||
+                newPassword !== confirmPassword ||
+                (account.hasPassword && !currentPassword)
+              }
               className="rounded-[var(--radius-btn)] px-5 py-2.5 text-sm font-bold text-white transition-opacity hover:opacity-90 disabled:opacity-50"
               style={{ background: "var(--primary)" }}
             >
-              {changePassword.isPending ? "Saving…" : "Update password"}
+              {changePassword.isPending ? "Saving…" : account.hasPassword ? "Update password" : "Set password"}
             </button>
           </div>
         </div>

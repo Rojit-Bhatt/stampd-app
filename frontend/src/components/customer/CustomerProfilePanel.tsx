@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { LogOut, User, Contact, Bell, ShieldCheck, Trash2, Moon, Sun } from "lucide-react";
 import toast from "@/lib/toast";
+import { passwordStrength, STRENGTH_LEVELS, strengthColor } from "@/lib/passwordStrength";
 
 import { useCustomerAuth, type GlobalAccount, type Gender } from "../../context/CustomerAuthContext";
 import { useCustomerTheme } from "../../hooks/useCustomerTheme";
@@ -55,6 +56,7 @@ export function CustomerProfilePanel({ onLogout }: { onLogout: () => void }) {
   const [savingName, setSavingName] = useState(false);
   const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
   const [savingPassword, setSavingPassword] = useState(false);
   const [showVerify, setShowVerify] = useState(false);
 
@@ -111,17 +113,20 @@ export function CustomerProfilePanel({ onLogout }: { onLogout: () => void }) {
   };
 
   const savePassword = async () => {
-    if (!currentPassword || !newPassword) return;
+    if (!newPassword || newPassword !== confirmPassword) return;
+    if (globalAccount.hasPassword && !currentPassword) return;
     setSavingPassword(true);
     try {
       await apiRequest("/api/customer-auth/change-password", {
         method: "POST",
         role: "customer-global",
-        body: { currentPassword, newPassword },
+        body: globalAccount.hasPassword ? { currentPassword, newPassword } : { newPassword },
       });
-      toast.success("Password updated!");
+      toast.success(globalAccount.hasPassword ? "Password updated!" : "Password set!");
       setCurrentPassword("");
       setNewPassword("");
+      setConfirmPassword("");
+      setGlobalAccountData({ ...globalAccount, hasPassword: true });
     } catch (err) {
       toast.error((err as Error).message || "Couldn't update your password — try again.");
     } finally {
@@ -446,18 +451,23 @@ export function CustomerProfilePanel({ onLogout }: { onLogout: () => void }) {
             )}
           </Card>
 
-          <Card title="Change password">
-            <label className="mb-1.5 block text-sm font-bold" htmlFor="current-password">
-              Current password
-            </label>
-            <input
-              id="current-password"
-              type="password"
-              autoComplete="current-password"
-              value={currentPassword}
-              onChange={(e) => setCurrentPassword(e.target.value)}
-              className={`mb-3 ${fieldClass}`}
-            />
+          <Card title={globalAccount.hasPassword ? "Change password" : "Set password"}>
+            {globalAccount.hasPassword && (
+              <>
+                <label className="mb-1.5 block text-sm font-bold" htmlFor="current-password">
+                  Current password
+                </label>
+                <input
+                  id="current-password"
+                  type="password"
+                  autoComplete="current-password"
+                  value={currentPassword}
+                  onChange={(e) => setCurrentPassword(e.target.value)}
+                  className={`mb-3 ${fieldClass}`}
+                />
+              </>
+            )}
+
             <label className="mb-1.5 block text-sm font-bold" htmlFor="new-password">
               New password
             </label>
@@ -467,10 +477,48 @@ export function CustomerProfilePanel({ onLogout }: { onLogout: () => void }) {
               autoComplete="new-password"
               value={newPassword}
               onChange={(e) => setNewPassword(e.target.value)}
+              className={fieldClass}
+            />
+            {newPassword && (
+              <div className="mb-3 mt-1.5 flex gap-1">
+                {STRENGTH_LEVELS.map((level, i) => {
+                  const strength = passwordStrength(newPassword);
+                  const filled = STRENGTH_LEVELS.indexOf(strength) >= i;
+                  return (
+                    <div
+                      key={level}
+                      className={`h-1 flex-1 rounded-full ${filled ? strengthColor(strength) : "bg-[var(--surface-2)]"}`}
+                    />
+                  );
+                })}
+              </div>
+            )}
+
+            <label className="mb-1.5 block text-sm font-bold" htmlFor="confirm-password">
+              Confirm new password
+            </label>
+            <input
+              id="confirm-password"
+              type="password"
+              autoComplete="new-password"
+              value={confirmPassword}
+              onChange={(e) => setConfirmPassword(e.target.value)}
               className={`mb-3 ${fieldClass}`}
             />
-            <Button onClick={savePassword} disabled={savingPassword || !currentPassword || !newPassword}>
-              {savingPassword ? "Saving…" : "Update password"}
+            {confirmPassword && newPassword !== confirmPassword && (
+              <p className="mb-3 text-[13px] text-red-500">Passwords don't match.</p>
+            )}
+
+            <Button
+              onClick={savePassword}
+              disabled={
+                savingPassword ||
+                !newPassword ||
+                newPassword !== confirmPassword ||
+                (globalAccount.hasPassword && !currentPassword)
+              }
+            >
+              {savingPassword ? "Saving…" : globalAccount.hasPassword ? "Update password" : "Set password"}
             </Button>
           </Card>
         </div>
