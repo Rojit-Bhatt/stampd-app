@@ -8,7 +8,7 @@ import { useCustomerAuth } from "../context/CustomerAuthContext";
 import { usePointsBalance, useRewardCatalog, formatPoints } from "../hooks/usePoints";
 import { apiRequest } from "../lib/api";
 import { tenantPath } from "../lib/tenantPath";
-import { RedeemCelebration } from "../components/customer/RedeemCelebration";
+import { useCelebration } from "../context/CelebrationContext";
 import { RewardCard } from "../components/customer/RewardCard";
 import { VerifyCodeCard } from "../components/shared/auth/VerifyCodeCard";
 import { Skeleton } from "../components/ui/skeleton";
@@ -51,8 +51,8 @@ export default function RedeemLanding() {
   const { data: catalog = [], isLoading: catalogLoading } = useRewardCatalog();
   const [redeeming, setRedeeming] = useState<string | null>(null);
   const [pending, setPending] = useState<PendingReward | null>(null);
-  const [result, setResult] = useState<RedeemResult["data"] | null>(null);
   const [needsVerification, setNeedsVerification] = useState(false);
+  const { showRedeem } = useCelebration();
 
   const balance = points?.balance ?? 0;
 
@@ -86,10 +86,19 @@ export default function RedeemLanding() {
         method: "POST",
         body: { token, itemId },
       });
-      setResult(res.data);
       setPending(null);
       qc.invalidateQueries({ queryKey: ["pointsBalance"] });
       qc.invalidateQueries({ queryKey: ["pointsHistory"] });
+      showRedeem({
+        points: res.data.pointsSpent,
+        rewardName: res.data.rewardName,
+        balance: res.data.balance,
+        // Derived, not read from the balance query: that query is invalidated
+        // by the redemption, so reading it here would race the refetch and
+        // sometimes tick down from the figure we're already showing.
+        balanceBefore: res.data.balance + res.data.pointsSpent,
+      });
+      navigate(tenantPath(companySlug, outletSlug, "dashboard"));
     } catch (err: any) {
       // The one refusal that has a fix the customer can act on right here.
       // A toast would be wrong for it: it disappears, and the thing it's
@@ -148,21 +157,7 @@ export default function RedeemLanding() {
     );
   }
 
-  if (result) {
-    return (
-      <RedeemCelebration
-        points={result.pointsSpent}
-        rewardName={result.rewardName}
-        balance={result.balance}
-        // Derived, not read from the balance query: that query is invalidated
-        // by the redemption, so reading it here would race the refetch and
-        // sometimes tick down from the figure we're already showing.
-        balanceBefore={result.balance + result.pointsSpent}
-        onDone={() => navigate(tenantPath(companySlug, outletSlug, "dashboard"))}
-        doneLabel="Back to my points"
-      />
-    );
-  }
+
 
   const loading = balanceLoading || catalogLoading;
 

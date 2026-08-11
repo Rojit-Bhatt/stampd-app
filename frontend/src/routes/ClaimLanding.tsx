@@ -1,11 +1,11 @@
-import React, { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useParams, useSearchParams, useNavigate } from "react-router-dom";
 import { Mail, Lock, User, Phone, Timer, AlertTriangle, Check, WifiOff } from "lucide-react";
 import toast from "@/lib/toast";
 import { apiRequest } from "../lib/api";
 import { useTenant } from "../context/TenantContext";
 import { useCustomerAuth } from "../context/CustomerAuthContext";
-import { EarnCelebration } from "../components/customer/EarnCelebration";
+import { useCelebration } from "../context/CelebrationContext";
 import { GoogleLogin } from "@react-oauth/google";
 import { PhoneStepModal } from "../components/customer/PhoneStepModal";
 import { ClaimStateScreen } from "../components/customer/ClaimStateScreen";
@@ -24,28 +24,11 @@ type Stage =
   | "success"
   | "error";
 
-// Why a claim failed, so each ending gets the sentence and next step it
-// actually needs. A 30-second single-use code scanned on mobile data at a
-// counter fails in ordinary ways, and "something went wrong" leaves the
-// customer unsure whether to re-scan, ask staff, or wait.
-//
-// These are classified from the server's message text because the backend
-// returns a bare 400 for most of them; only "already-added" carries a real
-// code (CLAIM_ALREADY_FULFILLED). Adding codes backend-side would make this
-// robust — until then, an unrecognised message falls through to "unknown",
-// which still renders a sane screen rather than guessing wrong.
 type ClaimFailure = "expired" | "already-used" | "already-added" | "session-expired" | "offline" | "unknown";
 
 function classifyFailure(err: Error & { code?: string; status?: number }): ClaimFailure {
   if (err.code === "CLAIM_ALREADY_FULFILLED") return "already-added";
-  // A fetch that never reached the server — the claim itself is untouched and
-  // still held, so this must not read as "your points are gone".
   if (!navigator.onLine || err.name === "TypeError") return "offline";
-  // Checked before the generic "expired" text match below: a stale cached
-  // tenant token (never revalidated before this call) fails verifyToken with
-  // jsonwebtoken's own "jwt expired" message, which would otherwise match the
-  // QR-code "expired" case and send the customer to re-scan a still-valid
-  // 15-minute claim instead of just signing back in.
   if (err.status === 401) return "session-expired";
   const msg = (err.message || "").toLowerCase();
   if (msg.includes("expired")) return "expired";
@@ -61,9 +44,6 @@ interface ClaimResult {
   campaignName?: string | null;
 }
 
-// StrictMode-safe module-scope cache — same pattern as VerifyEmail.tsx /
-// GlobalVerifyEmail.tsx: converting the token to a pending claim is a
-// one-shot server call keyed by the QR's raw token.
 const startRequests = new Map<
   string,
   Promise<{ success: boolean; data: { pendingClaimId: string; claimSecret: string } }>
@@ -85,14 +65,12 @@ export default function ClaimLanding() {
   const navigate = useNavigate();
   const { tenant } = useTenant();
   const { user, isLoading, ensureTenantSession, login, registerUser, loginWithGoogle } = useCustomerAuth();
+  const { showEarn } = useCelebration();
 
   const [stage, setStage] = useState<Stage>("resolving");
   const [errorMsg, setErrorMsg] = useState("");
   const [failure, setFailure] = useState<ClaimFailure>("unknown");
   const [pendingClaimId, setPendingClaimId] = useState<string | null>(null);
-  // Proof that WE are the tab that scanned the QR. The claim id alone is not
-  // proof — it's a guessable ObjectId — so every call that binds or reads the
-  // claim carries this. Kept in memory only; it never outlives the page.
   const [claimSecret, setClaimSecret] = useState<string | null>(null);
   const [result, setResult] = useState<ClaimResult | null>(null);
   const [mode, setMode] = useState<"login" | "register">("login");
@@ -100,7 +78,6 @@ export default function ClaimLanding() {
   const [showPhoneStep, setShowPhoneStep] = useState(false);
   const checkedOnce = useRef(false);
 
-  // Step 1: convert the scanned QR token into a longer-lived pending claim.
   const tokenParam = params.get("token");
   useEffect(() => {
     if (!tokenParam) {
@@ -122,20 +99,12 @@ export default function ClaimLanding() {
       });
   }, [tokenParam]);
 
-  // Step 2: once TenantSessionSync (mounted alongside this page) has settled,
-  // see if we're already tenant-authenticated — if so, fulfill immediately
-  // with zero forms; otherwise ask the customer to sign in or sign up.
   useEffect(() => {
     if (stage !== "checking" || isLoading || checkedOnce.current) return;
     checkedOnce.current = true;
     setStage(user ? "fulfilling" : "choose");
   }, [stage, isLoading, user]);
 
-  // Shared between the awaiting-verification poll and the already-fulfilled
-  // race below: both need "go fetch what actually happened and show it."
-  // Sets stage itself on a definitive outcome (fulfilled or expired) and
-  // reports whether it did, so callers only need to handle "still nothing
-  // to show yet" (transient fetch failure, or genuinely still pending).
   const checkStatus = async (claimId: string, expiredMessage?: string) => {
     try {
       const res = await apiRequest<{ success: boolean; data: { fulfilled: boolean; expired: boolean } & Partial<ClaimResult> }>(
@@ -149,7 +118,16 @@ export default function ClaimLanding() {
           multiplier: res.data.multiplier,
           campaignName: res.data.campaignName,
         });
+        showEarn({
+          points: res.data.pointsEarned ?? 0,
+          billAmount: res.data.billAmount ?? 0,
+          balance: res.data.balance ?? 0,
+          outletName: tenant?.name,
+          multiplier: res.data.multiplier,
+          campaignName: res.data.campaignName,
+        });
         setStage("success");
+        navigate(tenantPath(companySlug, slug, "dashboard"));
         return true;
       }
       if (res.data.expired && expiredMessage) {
@@ -158,7 +136,7 @@ export default function ClaimLanding() {
         return true;
       }
     } catch {
-      // transient — caller decides what "not shown" means for it
+      // transient
     }
     return false;
   };
@@ -175,16 +153,19 @@ export default function ClaimLanding() {
         { method: "POST", body: { claimSecret } },
       );
       setResult(res.data);
+      showEarn({
+        points: res.data.pointsEarned,
+        billAmount: res.data.billAmount,
+        balance: res.data.balance,
+        outletName: tenant?.name,
+        multiplier: res.data.multiplier,
+        campaignName: res.data.campaignName,
+      });
       setStage("success");
+      navigate(tenantPath(companySlug, slug, "dashboard"));
     } catch (e) {
       const err = e as Error & { code?: string };
       if (err.code === "CLAIM_ALREADY_FULFILLED") {
-        // Not a failure: the points were already awarded, most often by
-        // autoFulfillForAccount firing the instant verification landed,
-        // moments before this tab (backgrounded while you were in your
-        // email app) resumed and tried to fulfill the same claim itself.
-        // Show what actually happened instead of a scary error for a
-        // claim that, from the customer's side, succeeded.
         const shown = await checkStatus(claimId);
         if (!shown) {
           setFailure("already-added");
@@ -213,7 +194,6 @@ export default function ClaimLanding() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [stage, pendingClaimId]);
 
-  // Poll while waiting on email verification (possibly from another tab).
   useEffect(() => {
     if (stage !== "awaiting-verification" || !pendingClaimId) return;
     const interval = setInterval(() => {
@@ -288,10 +268,6 @@ export default function ClaimLanding() {
     const home = tenantPath(companySlug, slug);
     const backLabel = `Back to ${tenant?.name || "home"}`;
 
-    // Already added is a SUCCESS, not a failure: most often autoFulfill fired
-    // the instant verification landed, moments before this tab (backgrounded
-    // while the customer was in their email app) resumed. Styling it red for
-    // something that worked would be a lie.
     if (failure === "already-added") {
       return (
         <ClaimStateScreen
@@ -395,227 +371,216 @@ export default function ClaimLanding() {
       <ClaimStateScreen
         icon={<Mail className="h-6 w-6" />}
         tone="neutral"
-        title="Check your email"
-        body={
-          <>
-            Your points at {tenant?.name} are held for you. Tap the link we sent and they add
-            automatically — even on another device.
-          </>
-        }
-        footnote="Held for 15 minutes. You can close this page."
+        title="Verify your email"
+        body="We sent a verification link to your email. Open it to finish signing in — we'll add your points the moment you do."
+        primary={{
+          label: "I've verified — check now",
+          onClick: () => {
+            if (pendingClaimId) checkStatus(pendingClaimId);
+          },
+        }}
+        secondary={{ label: `Back to ${tenant?.name || "home"}`, to: tenantPath(companySlug, slug) }}
       />
     );
   }
 
-  if (stage === "success" && result) {
-    return (
-      <EarnCelebration
-        points={result.pointsEarned}
-        billAmount={result.billAmount}
-        balance={result.balance}
-        outletName={tenant?.name}
-        multiplier={result.multiplier}
-        campaignName={result.campaignName}
-        onDone={() => navigate(tenantPath(companySlug, slug, "dashboard"))}
-        doneLabel="Go to dashboard"
-      />
-    );
+  if (stage === "success") {
+    return null;
   }
 
-  // stage === "choose"
   return (
-    <div className="flex min-h-screen w-full items-center justify-center bg-[var(--bg)] px-4 py-10">
-      <div className="w-full max-w-sm">
-        {/* Tenant identity: the logo tile keeps the outlet's true brand colour.
-            The points figure below is green, because that's value. */}
-        <div
-          className="mb-4 flex h-14 w-14 items-center justify-center rounded-[var(--radius-card)] font-display text-[22px] font-bold"
-          style={{ background: "var(--brand)", color: "var(--brand-on)" }}
-        >
-          {(tenant?.name || "?").charAt(0).toUpperCase()}
+    <div className="flex min-h-screen flex-col justify-between bg-[var(--bg)] px-6 py-10 text-[var(--ink)]">
+      <div className="mx-auto w-full max-w-sm">
+        <div className="text-center">
+          <h1 className="font-display text-2xl font-bold">
+            {tenant?.name ? `You're at ${tenant.name}` : "Claim your points"}
+          </h1>
+          <p className="mt-1 text-sm text-[var(--muted)]">Sign in or create an account to collect points.</p>
         </div>
 
-        <h1 className="font-display text-[22px] font-bold leading-tight text-[var(--ink)]">
-          Collect your points at {tenant?.name}
-        </h1>
-        <p className="mb-6 mt-1.5 text-sm text-[var(--muted)]">
-          {mode === "login"
-            ? "Sign in to add them to your balance."
-            : "Create an account to add them to your balance."}
-        </p>
-
-        {mode === "login" ? (
-          <ClaimLoginForm busy={busy} onSubmit={onLogin} />
-        ) : (
-          <ClaimRegisterForm busy={busy} onSubmit={onRegister} />
-        )}
+        <div className="mt-8 flex rounded-[var(--radius-btn)] bg-[var(--surface-2)] p-1">
+          <button
+            onClick={() => setMode("login")}
+            className={`flex-1 rounded-[calc(var(--radius-btn)-2px)] py-2 text-sm font-bold transition-all ${
+              mode === "login" ? "bg-[var(--surface)] text-[var(--ink)] shadow-ambient" : "text-[var(--muted)]"
+            }`}
+          >
+            Sign in
+          </button>
+          <button
+            onClick={() => setMode("register")}
+            className={`flex-1 rounded-[calc(var(--radius-btn)-2px)] py-2 text-sm font-bold transition-all ${
+              mode === "register" ? "bg-[var(--surface)] text-[var(--ink)] shadow-ambient" : "text-[var(--muted)]"
+            }`}
+          >
+            Create account
+          </button>
+        </div>
 
         {GOOGLE_CLIENT_ID && (
-          <div className="mt-5">
-            <div className="mb-4 flex items-center gap-3 text-[11px] font-semibold uppercase tracking-wider text-[var(--soft)]">
-              <span className="h-px flex-1 bg-[var(--line)]" /> or <span className="h-px flex-1 bg-[var(--line)]" />
-            </div>
+          <div className="mt-6">
             <div className="flex justify-center">
               <GoogleLogin
-                onSuccess={(cred) => onGoogle(cred.credential)}
-                onError={() => toast.error("Google sign-in didn't work — try again.")}
+                onSuccess={(res) => onGoogle(res.credential)}
+                onError={() => toast.error("Google sign-in failed.")}
+                useOneTap={false}
+                shape="rectangular"
+                size="large"
+                width="100%"
               />
+            </div>
+            <div className="relative my-6 text-center">
+              <div className="absolute inset-0 flex items-center">
+                <div className="w-full border-t border-[var(--line)]" />
+              </div>
+              <span className="relative bg-[var(--bg)] px-3 text-xs uppercase tracking-wider text-[var(--muted)]">
+                Or with email
+              </span>
             </div>
           </div>
         )}
 
-        <p className="mt-6 text-center text-[13px] text-[var(--muted)]">
-          {mode === "login" ? "New here? " : "Already have an account? "}
-          <button
-            onClick={() => setMode(mode === "login" ? "register" : "login")}
-            className="font-bold text-[var(--primary-deep)] hover:underline"
+        {mode === "login" ? (
+          <form
+            onSubmit={(e) => {
+              e.preventDefault();
+              const form = e.currentTarget;
+              const email = (form.elements.namedItem("email") as HTMLInputElement).value;
+              const password = (form.elements.namedItem("password") as HTMLInputElement).value;
+              onLogin(email, password);
+            }}
+            className="mt-6 space-y-4"
           >
-            {mode === "login" ? "Create an account" : "Sign in"}
-          </button>
-        </p>
+            <div>
+              <label className="mb-1 block text-xs font-bold uppercase tracking-wider text-[var(--muted)]">Email</label>
+              <div className="relative">
+                <Mail className="absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-[var(--muted)]" />
+                <input
+                  name="email"
+                  type="email"
+                  required
+                  placeholder="you@example.com"
+                  className="w-full rounded-[var(--radius-btn)] border border-[var(--line)] bg-[var(--surface)] py-3 pl-10 pr-4 text-sm text-[var(--ink)] placeholder:text-[var(--muted)] focus:border-[var(--primary)] focus:outline-none"
+                />
+              </div>
+            </div>
+
+            <div>
+              <label className="mb-1 block text-xs font-bold uppercase tracking-wider text-[var(--muted)]">Password</label>
+              <div className="relative">
+                <Lock className="absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-[var(--muted)]" />
+                <input
+                  name="password"
+                  type="password"
+                  required
+                  placeholder="••••••••"
+                  className="w-full rounded-[var(--radius-btn)] border border-[var(--line)] bg-[var(--surface)] py-3 pl-10 pr-4 text-sm text-[var(--ink)] placeholder:text-[var(--muted)] focus:border-[var(--primary)] focus:outline-none"
+                />
+              </div>
+            </div>
+
+            <Button
+              type="submit"
+              disabled={busy}
+              className="w-full rounded-[var(--radius-btn)] bg-[var(--primary)] py-3 text-sm font-bold text-white transition-opacity hover:opacity-90 disabled:opacity-50"
+            >
+              {busy ? "Signing in…" : "Sign in & claim points"}
+            </Button>
+          </form>
+        ) : (
+          <form
+            onSubmit={(e) => {
+              e.preventDefault();
+              const form = e.currentTarget;
+              const name = (form.elements.namedItem("name") as HTMLInputElement).value;
+              const email = (form.elements.namedItem("email") as HTMLInputElement).value;
+              const password = (form.elements.namedItem("password") as HTMLInputElement).value;
+              const phone = (form.elements.namedItem("phone") as HTMLInputElement).value;
+              onRegister(name, email, password, phone);
+            }}
+            className="mt-6 space-y-4"
+          >
+            <div>
+              <label className="mb-1 block text-xs font-bold uppercase tracking-wider text-[var(--muted)]">Full Name</label>
+              <div className="relative">
+                <User className="absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-[var(--muted)]" />
+                <input
+                  name="name"
+                  type="text"
+                  required
+                  placeholder="Alex Smith"
+                  className="w-full rounded-[var(--radius-btn)] border border-[var(--line)] bg-[var(--surface)] py-3 pl-10 pr-4 text-sm text-[var(--ink)] placeholder:text-[var(--muted)] focus:border-[var(--primary)] focus:outline-none"
+                />
+              </div>
+            </div>
+
+            <div>
+              <label className="mb-1 block text-xs font-bold uppercase tracking-wider text-[var(--muted)]">Email</label>
+              <div className="relative">
+                <Mail className="absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-[var(--muted)]" />
+                <input
+                  name="email"
+                  type="email"
+                  required
+                  placeholder="you@example.com"
+                  className="w-full rounded-[var(--radius-btn)] border border-[var(--line)] bg-[var(--surface)] py-3 pl-10 pr-4 text-sm text-[var(--ink)] placeholder:text-[var(--muted)] focus:border-[var(--primary)] focus:outline-none"
+                />
+              </div>
+            </div>
+
+            <div>
+              <label className="mb-1 block text-xs font-bold uppercase tracking-wider text-[var(--muted)]">Password</label>
+              <div className="relative">
+                <Lock className="absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-[var(--muted)]" />
+                <input
+                  name="password"
+                  type="password"
+                  required
+                  placeholder="At least 6 characters"
+                  className="w-full rounded-[var(--radius-btn)] border border-[var(--line)] bg-[var(--surface)] py-3 pl-10 pr-4 text-sm text-[var(--ink)] placeholder:text-[var(--muted)] focus:border-[var(--primary)] focus:outline-none"
+                />
+              </div>
+            </div>
+
+            <div>
+              <label className="mb-1 block text-xs font-bold uppercase tracking-wider text-[var(--muted)]">Phone Number</label>
+              <div className="relative">
+                <Phone className="absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-[var(--muted)]" />
+                <input
+                  name="phone"
+                  type="tel"
+                  required
+                  placeholder="98XXXXXXXX"
+                  className="w-full rounded-[var(--radius-btn)] border border-[var(--line)] bg-[var(--surface)] py-3 pl-10 pr-4 text-sm text-[var(--ink)] placeholder:text-[var(--muted)] focus:border-[var(--primary)] focus:outline-none"
+                />
+              </div>
+            </div>
+
+            <Button
+              type="submit"
+              disabled={busy}
+              className="w-full rounded-[var(--radius-btn)] bg-[var(--primary)] py-3 text-sm font-bold text-white transition-opacity hover:opacity-90 disabled:opacity-50"
+            >
+              {busy ? "Creating account…" : "Create account & claim points"}
+            </Button>
+          </form>
+        )}
+      </div>
+
+      <div className="mt-8 text-center text-xs text-[var(--muted)]">
+        Powered by Stampd
       </div>
 
       {showPhoneStep && (
         <PhoneStepModal
           onDone={() => {
             setShowPhoneStep(false);
-            if (pendingClaimId) setStage("fulfilling");
+            if (pendingClaimId) {
+              setStage("fulfilling");
+            }
           }}
         />
       )}
-    </div>
-  );
-}
-
-function ClaimLoginForm({
-  busy,
-  onSubmit,
-}: {
-  busy: boolean;
-  onSubmit: (email: string, password: string) => void;
-}) {
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  return (
-    <form
-      onSubmit={(e) => {
-        e.preventDefault();
-        onSubmit(email, password);
-      }}
-      className="flex flex-col gap-3"
-    >
-      <ClaimField icon={<Mail className="h-4 w-4 text-[var(--soft)]" />}>
-        <input
-          type="email"
-          required
-          placeholder="you@email.com"
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-          className="w-full bg-transparent text-sm text-[var(--ink)] placeholder:text-[var(--soft)] focus:outline-none"
-        />
-      </ClaimField>
-      <ClaimField icon={<Lock className="h-4 w-4 text-[var(--soft)]" />}>
-        <input
-          type="password"
-          required
-          placeholder="••••••••"
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-          className="w-full bg-transparent text-sm text-[var(--ink)] placeholder:text-[var(--soft)] focus:outline-none"
-        />
-      </ClaimField>
-      <Button
-        type="submit"
-        disabled={busy}
-        size="lg"
-        className="mt-2 w-full"
-      >
-        {busy ? "Please wait…" : "Sign in & add points"}
-      </Button>
-    </form>
-  );
-}
-
-function ClaimRegisterForm({
-  busy,
-  onSubmit,
-}: {
-  busy: boolean;
-  onSubmit: (name: string, email: string, password: string, phone: string) => void;
-}) {
-  const [name, setName] = useState("");
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [phone, setPhone] = useState("");
-
-  return (
-    <form
-      onSubmit={(e) => {
-        e.preventDefault();
-        const local = phone.replace(/\D/g, "").replace(/^0+/, "");
-        onSubmit(name, email, password, `+977${local}`);
-      }}
-      className="flex flex-col gap-3"
-    >
-      <ClaimField icon={<User className="h-4 w-4 text-[var(--soft)]" />}>
-        <input
-          type="text"
-          required
-          placeholder="Your name"
-          value={name}
-          onChange={(e) => setName(e.target.value)}
-          className="w-full bg-transparent text-sm text-[var(--ink)] placeholder:text-[var(--soft)] focus:outline-none"
-        />
-      </ClaimField>
-      <ClaimField icon={<Mail className="h-4 w-4 text-[var(--soft)]" />}>
-        <input
-          type="email"
-          required
-          placeholder="you@email.com"
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-          className="w-full bg-transparent text-sm text-[var(--ink)] placeholder:text-[var(--soft)] focus:outline-none"
-        />
-      </ClaimField>
-      <ClaimField icon={<Phone className="h-4 w-4 text-[var(--soft)]" />}>
-        <span className="text-sm text-[var(--soft)]">+977</span>
-        <input
-          type="tel"
-          required
-          inputMode="numeric"
-          placeholder="98XXXXXXXX"
-          value={phone}
-          onChange={(e) => setPhone(e.target.value)}
-          className="w-full bg-transparent text-sm text-[var(--ink)] placeholder:text-[var(--soft)] focus:outline-none"
-        />
-      </ClaimField>
-      <ClaimField icon={<Lock className="h-4 w-4 text-[var(--soft)]" />}>
-        <input
-          type="password"
-          required
-          placeholder="••••••••"
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-          className="w-full bg-transparent text-sm text-[var(--ink)] placeholder:text-[var(--soft)] focus:outline-none"
-        />
-      </ClaimField>
-      <Button
-        type="submit"
-        disabled={busy}
-        size="lg"
-        className="mt-2 w-full"
-      >
-        {busy ? "Please wait…" : "Create account"}
-      </Button>
-    </form>
-  );
-}
-
-function ClaimField({ icon, children }: { icon: React.ReactNode; children: React.ReactNode }) {
-  return (
-    <div className="flex items-center gap-3 rounded-[var(--radius-btn)] border border-[var(--line)] bg-[var(--surface)] px-4 py-3.5 transition-colors focus-within:border-[var(--primary)]">
-      <span>{icon}</span>
-      {children}
     </div>
   );
 }
