@@ -40,10 +40,20 @@ export default function AdminEvents() {
 
   const deleteEvent = useMutation({
     mutationFn: (id: string) => apiRequest(`/api/admin/events/${id}`, { method: "DELETE", role: "admin" }),
-    onSuccess: () => {
-      invalidate();
-      toast.success("Event removed.");
+    onMutate: async (id) => {
+      await qc.cancelQueries({ queryKey: ["adminEvents"] });
+      const previous = qc.getQueriesData<AdminEventItem[]>({ queryKey: ["adminEvents"] });
+      qc.setQueriesData<AdminEventItem[]>({ queryKey: ["adminEvents"] }, (old) =>
+        old?.filter((item) => item.id !== id),
+      );
+      return { previous, id };
     },
+    onSuccess: () => toast.success("Event removed."),
+    onError: (_error, _vars, context) => {
+      context?.previous?.forEach(([key, data]) => qc.setQueryData(key, data));
+      toast.error("The event could not be deleted — restored.", { duration: 6000 });
+    },
+    onSettled: invalidate,
   });
 
   return (

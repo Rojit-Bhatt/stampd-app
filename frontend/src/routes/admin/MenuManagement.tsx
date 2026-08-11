@@ -127,12 +127,33 @@ export default function MenuManagement() {
         role: "admin",
         body: { ...body, price: body.price.trim() === "" ? undefined : Number(body.price) },
       }),
+    onMutate: async (body) => {
+      await qc.cancelQueries({ queryKey: ["adminMenu"] });
+      const previous = qc.getQueriesData<MenuItem[]>({ queryKey: ["adminMenu"] });
+      const seeded: MenuItem = {
+        ...(body as unknown as MenuItem),
+        id: `optimistic-${Date.now()}`,
+        price: body.price.trim() === "" ? null : Number(body.price),
+        pointsPrice: null,
+        isAvailable: true,
+        isFeatured: false,
+        sortOrder: 0,
+      };
+      qc.setQueriesData<MenuItem[]>({ queryKey: ["adminMenu"] }, (old) =>
+        Array.isArray(old) ? [...old, seeded] : old,
+      );
+      return { previous };
+    },
     onSuccess: () => {
       invalidate();
       setDraft({ name: "", description: "", price: "", category: "General" });
       toast.success("Item added!");
     },
-    onError: (e) => toast.error((e as Error).message || "Couldn't add that — try again."),
+    onError: (_e, _vars, ctx) => {
+      ctx?.previous?.forEach(([key, data]) => qc.setQueryData(key, data));
+      toast.error("The item could not be added — restored.", { duration: 6000 });
+    },
+    onSettled: invalidate,
   });
 
   const patchItem = useMutation({
@@ -155,10 +176,20 @@ export default function MenuManagement() {
 
   const deleteItem = useMutation({
     mutationFn: (id: string) => apiRequest(`/api/admin/menu/${id}`, { method: "DELETE", role: "admin" }),
-    onSuccess: () => {
-      invalidate();
-      toast.success("Item removed.");
+    onMutate: async (id) => {
+      await qc.cancelQueries({ queryKey: ["adminMenu"] });
+      const previous = qc.getQueriesData<MenuItem[]>({ queryKey: ["adminMenu"] });
+      qc.setQueriesData<MenuItem[]>({ queryKey: ["adminMenu"] }, (old) =>
+        old?.filter((item) => itemId(item) !== id),
+      );
+      return { previous };
     },
+    onSuccess: () => toast.success("Item removed."),
+    onError: (_error, _vars, context) => {
+      context?.previous?.forEach(([key, data]) => qc.setQueryData(key, data));
+      toast.error("The item could not be deleted — restored.", { duration: 6000 });
+    },
+    onSettled: invalidate,
   });
 
   const categories = useMemo(() => Array.from(new Set(items.map((i) => i.category || "General"))), [items]);
