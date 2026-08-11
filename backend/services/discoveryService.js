@@ -106,6 +106,7 @@ const getUpcomingEventsFeed = async (limit = EVENTS_FEED_LIMIT) => {
       description: event.description,
       imageUrl: event.imageUrl,
       imageId: event.imageId || null,
+      imagePositionY: event.imagePositionY ?? 50,
       rewards: event.rewards || [],
       organizationId: org._id.toString(),
       slug: org.slug,

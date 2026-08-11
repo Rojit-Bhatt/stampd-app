@@ -14,6 +14,9 @@ const EventSchema = new mongoose.Schema({
   // Points at an Image row when the event's photo was uploaded through
   // FileDrop. Wins over imageUrl on read — see lib/images.ts resolveImageUrl.
   imageId: { type: String, default: null },
+  // Vertical anchor (0-100) for the letterboxed poster image, so an admin
+  // can nudge which part of a tall/short photo sits in frame.
+  imagePositionY: { type: Number, default: 50, min: 0, max: 100 },
   // Optional structured prize list — e.g. [{ rank: "1st Place", reward: "NPR 5,000 + Trophy" }].
   // Empty array means "no rewards for this event" (a dance night has none).
   rewards: {
