@@ -14,6 +14,15 @@ const EventSchema = new mongoose.Schema({
   // Points at an Image row when the event's photo was uploaded through
   // FileDrop. Wins over imageUrl on read — see lib/images.ts resolveImageUrl.
   imageId: { type: String, default: null },
+  // Optional structured prize list — e.g. [{ rank: "1st Place", reward: "NPR 5,000 + Trophy" }].
+  // Empty array means "no rewards for this event" (a dance night has none).
+  rewards: {
+    type: [{
+      rank: { type: String, required: true, trim: true },
+      reward: { type: String, required: true, trim: true }
+    }],
+    default: []
+  },
   createdAt: { type: Date, default: Date.now }
 });
 
