@@ -20,6 +20,7 @@ export interface AdminEventItem {
   description: string;
   imageUrl: string;
   imageId: string | null;
+  imagePositionY: number;
   rewards: EventReward[];
 }
 
@@ -33,11 +34,13 @@ interface Draft {
   description: string;
   imageUrl: string;
   imageId: string | null;
+  imagePositionY: number;
   rewards: EventReward[];
 }
 
 const emptyDraft = (): Draft => ({
-  title: "", date: "", time: "", location: "", description: "", imageUrl: "", imageId: null, rewards: [],
+  title: "", date: "", time: "", location: "", description: "", imageUrl: "", imageId: null,
+  imagePositionY: 50, rewards: [],
 });
 
 const draftFrom = (e: AdminEventItem): Draft => ({
@@ -48,6 +51,7 @@ const draftFrom = (e: AdminEventItem): Draft => ({
   description: e.description,
   imageUrl: e.imageUrl,
   imageId: e.imageId,
+  imagePositionY: e.imagePositionY ?? 50,
   rewards: e.rewards || [],
 });
 
@@ -121,6 +125,7 @@ export function EventFormModal({ open, onOpenChange, initial, onSaved }: EventFo
     description: draft.description || "A short description customers will see.",
     imageUrl: resolveImageUrl(draft.imageId, draft.imageUrl),
     imageId: null,
+    imagePositionY: draft.imagePositionY,
     rewards: draft.rewards,
   };
 
@@ -133,7 +138,12 @@ export function EventFormModal({ open, onOpenChange, initial, onSaved }: EventFo
       busy={busy}
       onCancel={() => onOpenChange(false)}
       onSave={save}
-      preview={<EventCard event={previewEvent} />}
+      preview={
+        <EventCard
+          event={previewEvent}
+          onImagePositionChange={(imagePositionY) => setDraft((d) => ({ ...d, imagePositionY }))}
+        />
+      }
       form={
         <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2">
           <input

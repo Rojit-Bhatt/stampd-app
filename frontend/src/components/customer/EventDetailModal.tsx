@@ -51,12 +51,15 @@ export function EventDetailModal({ event, open, onClose, businessLink }: EventDe
             >
               <div className="relative">
                 {eventImageUrl ? (
-                  <img
-                    src={eventImageUrl}
-                    alt=""
-                    onClick={() => setImageViewerOpen(true)}
-                    className="h-56 w-full cursor-zoom-in object-cover"
-                  />
+                  <div className="h-56 w-full overflow-hidden" style={{ background: "var(--surface-2)" }}>
+                    <img
+                      src={eventImageUrl}
+                      alt=""
+                      onClick={() => setImageViewerOpen(true)}
+                      className="h-full w-full cursor-zoom-in object-contain"
+                      style={{ objectPosition: `center ${event.imagePositionY ?? 50}%` }}
+                    />
+                  </div>
                 ) : (
                   <div
                     className="flex h-56 w-full items-center justify-center"

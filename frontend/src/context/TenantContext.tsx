@@ -41,6 +41,7 @@ export interface TenantEvent {
   description: string;
   imageUrl: string;
   imageId: string | null;
+  imagePositionY: number;
   rewards: EventReward[];
 }
 

@@ -11,7 +11,7 @@ const listEvents = async (req, res, next) => {
 
 const createEventController = async (req, res, next) => {
   try {
-    const { title, date, time, location, description, imageUrl, imageId, rewards } = req.body;
+    const { title, date, time, location, description, imageUrl, imageId, imagePositionY, rewards } = req.body;
     const event = await createEvent(req.user.organizationId, {
       title,
       date,
@@ -20,6 +20,7 @@ const createEventController = async (req, res, next) => {
       description,
       imageUrl,
       imageId,
+      imagePositionY,
       rewards
     });
     res.status(201).json({ success: true, event });

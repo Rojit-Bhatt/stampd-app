@@ -27,7 +27,7 @@ const listForOrg = async (organizationId) => {
 
 const createEvent = async (
   organizationId,
-  { title, date, time, location, description, imageUrl, imageId, rewards }
+  { title, date, time, location, description, imageUrl, imageId, imagePositionY, rewards }
 ) => {
   if (!title) {
     throw createHttpError("Event title is required.", 400);
@@ -45,6 +45,7 @@ const createEvent = async (
     description: description !== undefined ? description : "",
     imageUrl: imageUrl !== undefined ? imageUrl : "",
     imageId: imageId || null,
+    imagePositionY: imagePositionY !== undefined ? imagePositionY : 50,
     rewards: rewards !== undefined ? rewards : []
   });
 
@@ -58,7 +59,7 @@ const createEvent = async (
 
 // Only these fields may be changed via the API — never organizationId or
 // _id, so an admin can't move an event into (or out of) another tenant.
-const MUTABLE_EVENT_FIELDS = ["title", "date", "time", "location", "description", "imageUrl", "imageId", "rewards"];
+const MUTABLE_EVENT_FIELDS = ["title", "date", "time", "location", "description", "imageUrl", "imageId", "imagePositionY", "rewards"];
 
 const updateEvent = async (organizationId, eventId, updates) => {
   const existing = await Event.findOne({ _id: eventId, organizationId });

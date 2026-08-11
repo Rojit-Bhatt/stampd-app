@@ -11,6 +11,7 @@ export interface ExploreEvent {
   description: string;
   imageUrl: string;
   imageId: string | null;
+  imagePositionY: number;
   rewards: EventReward[];
   organizationId: string;
   /** The OUTLET slug. Unique only within its company — never a path on its own. */
