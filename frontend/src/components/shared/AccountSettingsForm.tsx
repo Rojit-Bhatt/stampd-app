@@ -4,7 +4,7 @@ import { LogOut, User, ShieldCheck } from "lucide-react";
 import { apiRequest } from "../../lib/api";
 import { useAccount, useUpdateProfile, useChangePassword } from "../../hooks/useAccount";
 import { Skeleton } from "../ui/skeleton";
-import { ProfileShell, type ProfileSection } from "./profile/ProfileShell";
+import { SettingsList, type SettingsSection } from "./profile/SettingsList";
 
 interface AccountSettingsFormProps {
   role: "admin" | "customer" | "platform";
@@ -94,7 +94,7 @@ export function AccountSettingsForm({ role, onLogout }: AccountSettingsFormProps
     }
   };
 
-  const sections: ProfileSection[] = [
+  const sections: SettingsSection[] = [
     {
       id: "profile",
       label: "Profile",
@@ -180,7 +180,7 @@ export function AccountSettingsForm({ role, onLogout }: AccountSettingsFormProps
 
   return (
     <div className="flex flex-col gap-6">
-      <ProfileShell sections={sections} />
+      <SettingsList sections={sections} />
 
       {onLogout && (
         <button
