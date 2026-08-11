@@ -20,6 +20,12 @@
   // of JS/CSS) — keep outputs plain so the edge compresses exactly once.
   // The API's dynamic JSON is gzip-compressed by the server itself (Express
   // `compression`, backend/server.js) and Cloudflare passes it through.
+  // The API also caches its own repetitive dynamic reads (public menu,
+  // tenant info, public plans) in memory via backend/utils/responseCache.js
+  // — the CDN can't hold this JSON, but the server's Cache-Control:
+  // public, max-age=300 lets Cloudflare front it when one is added, and any
+  // content edit purges the server-side key so the edge never outruns the
+  // source of truth (see backend/tests/response-cache.js).
   // If a build tool ever starts emitting pre-compressed files, add them to
   // ignore and keep only plain outputs, or responses would be double-
   // compressed.

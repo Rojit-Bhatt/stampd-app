@@ -8,6 +8,11 @@ const {
   confirmImport,
   buildMenuTemplate
 } = require("../services/menuService");
+const { clearCache } = require("../utils/responseCache");
+
+// Every write that changes the public menu purges its cache so the next read
+// rebuilds fresh — the cache layer never serves stale content past a mutation.
+const purgeMenuCache = (orgId) => clearCache({ tenant: String(orgId), kind: "publicMenu" });
 
 const upload = multer({
   storage: multer.memoryStorage(),
@@ -56,6 +61,7 @@ const previewMenuImport = async (req, res, next) => {
 const confirmMenuImport = async (req, res, next) => {
   try {
     const result = await confirmImport(req.user.organizationId, req.body.rows);
+    purgeMenuCache(req.user.organizationId);
     res.status(200).json({ success: true, ...result });
   } catch (error) {
     next(error);
@@ -121,6 +127,7 @@ const createMenuItem = async (req, res, next) => {
       isAvailable,
       sortOrder
     });
+    purgeMenuCache(req.user.organizationId);
     res.status(201).json({ success: true, item });
   } catch (error) {
     next(error);
@@ -131,6 +138,7 @@ const updateMenuItem = async (req, res, next) => {
   try {
     const { id } = req.params;
     const item = await updateItem(req.user.organizationId, id, req.body);
+    purgeMenuCache(req.user.organizationId);
     res.status(200).json({ success: true, item });
   } catch (error) {
     next(error);
@@ -141,6 +149,7 @@ const deleteMenuItem = async (req, res, next) => {
   try {
     const { id } = req.params;
     const result = await deleteItem(req.user.organizationId, id);
+    purgeMenuCache(req.user.organizationId);
     res.status(200).json(result);
   } catch (error) {
     next(error);

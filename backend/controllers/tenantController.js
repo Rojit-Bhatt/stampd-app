@@ -7,6 +7,7 @@ const { resolveProgram, getOverriddenFields } = require("../services/programServ
 const Company = require("../models/Company");
 const { claimImage, deleteImage } = require("../services/imageService");
 const { outletRequiresPin } = require("../services/staffService");
+const { clearCache } = require("../utils/responseCache");
 
 const createHttpError = (message, statusCode) => {
   const error = new Error(message);
@@ -203,6 +204,11 @@ const updateMySettings = async (req, res, next) => {
     }
 
     await organization.save();
+
+    // Settings drive both public outputs — tenant info and (via menuEnabled)
+    // the public menu — so purge both keys on save.
+    clearCache({ tenant: String(organization._id), kind: "publicTenant" });
+    clearCache({ tenant: String(organization._id), kind: "publicMenu" });
 
     const company = await Company.findOne({ _id: organization.companyId });
 

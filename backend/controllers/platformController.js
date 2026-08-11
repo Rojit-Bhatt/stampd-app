@@ -19,6 +19,22 @@ const {
   getPublicStats: getPublicStatsService
 } = require("../services/platformAnalyticsService");
 const User = require("../models/User");
+const { clearCache } = require("../utils/responseCache");
+const Organization = require("../models/Organization");
+
+// Company- or outlet-level writes flow into public tenant/menu output —
+// purge the cached keys for every affected outlet.
+const purgeCompanyTenants = async (companyId) => {
+  try {
+    const orgs = await Organization.find({ companyId });
+    for (const org of orgs) {
+      clearCache({ tenant: String(org._id), kind: "publicTenant" });
+      clearCache({ tenant: String(org._id), kind: "publicMenu" });
+    }
+  } catch (_) {
+    // Best-effort purge — a miss only costs one slow read.
+  }
+};
 
 const platformLogin = async (req, res, next) => {
   try {
@@ -82,6 +98,7 @@ const patchCompany = async (req, res, next) => {
       actorId: req.user.id,
       actorName: actor ? actor.name : "Unknown"
     });
+    await purgeCompanyTenants(req.params.id);
     res.status(200).json(result);
   } catch (error) {
     next(error);
@@ -102,6 +119,8 @@ const patchOutlet = async (req, res, next) => {
       actorId: req.user.id,
       actorName: actor ? actor.name : "Unknown"
     });
+    // An outlet rename/category/status change affects its public tenant page.
+    await clearCache({ tenant: String(req.params.outletId), kind: "publicTenant" });
     res.status(200).json(result);
   } catch (error) {
     next(error);
