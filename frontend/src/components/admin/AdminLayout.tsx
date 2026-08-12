@@ -58,6 +58,7 @@ const NAV: (NavLeaf | NavGroup)[] = [
     Icon: FileSpreadsheet,
     children: [
       { to: "reports/summary", label: "Summary report" },
+      { to: "reports/redeem", label: "Redeem report" },
       { to: "reports/customers", label: "Customer report" },
       { to: "reports/impact", label: "Impact" },
     ],

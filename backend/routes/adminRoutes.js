@@ -25,6 +25,8 @@ const {
   downloadSummary,
   downloadCustomers,
   downloadTransactions,
+  getRedeemReport,
+  downloadRedeems,
 } = require("../controllers/reportController");
 const { listEvents, createEventController, updateEventController, deleteEventController } = require("../controllers/eventController");
 const campaignController = require("../controllers/campaignController");
@@ -84,6 +86,10 @@ router.get("/impact", verifyToken, isBusinessAdmin, canReports, getImpact);
 router.get("/reports/summary/download", verifyToken, isBusinessAdmin, canReports, downloadSummary);
 router.get("/reports/customers/download", verifyToken, isBusinessAdmin, canReports, downloadCustomers);
 router.get("/reports/transactions/download", verifyToken, isBusinessAdmin, canReports, downloadTransactions);
+// The redemption ledger — its own JSON read AND download, both behind the
+// same view_reports gate as the other reports.
+router.get("/reports/redeem", verifyToken, isBusinessAdmin, canReports, getRedeemReport);
+router.get("/reports/redeem/download", verifyToken, isBusinessAdmin, canReports, downloadRedeems);
 // Campaigns change what a bill is worth; Events are display-only listings.
 // Two different things, deliberately two different route groups.
 router.get("/campaigns", verifyToken, isBusinessAdmin, campaignController.list);
