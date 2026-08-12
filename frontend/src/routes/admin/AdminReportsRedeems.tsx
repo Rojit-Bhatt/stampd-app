@@ -1,9 +1,10 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { Award, Coins, Gift, Users } from "lucide-react";
+import { Award, ArrowDown, ArrowUp, ArrowUpDown, Coins, Gift, Users } from "lucide-react";
 import { apiRequest, apiUrl, tenantHeaders } from "../../lib/api";
 import { Skeleton } from "../../components/ui/skeleton";
 import { DateRangeFilter, defaultDateRange, type DateRangeValue } from "../../components/shared/DateRangeFilter";
+import { useMemo } from "react";
 import { ScrollableTable } from "../../components/shared/ScrollableTable";
 import { Button } from "@/components/ui/button";
 
@@ -18,9 +19,31 @@ interface RedeemStats {
   endDate: string;
 }
 
+type RedeemSortKey = "date" | "customer" | "item" | "points" | "value";
+type RedeemSortDir = "asc" | "desc" | null; // null = original (newest-first) order
+
 export default function AdminReportsRedeems() {
   const [range, setRange] = useState<DateRangeValue>(defaultDateRange(30));
+  const [sortKey, setSortKey] = useState<RedeemSortKey>("date");
+  const [sortDir, setSortDir] = useState<RedeemSortDir>("desc");
   const { startDate, endDate } = range;
+
+  /** Cycle per column: asc -> desc -> back to newest-first default. */
+  const cycleSort = (key: RedeemSortKey) => {
+    if (sortKey === key) {
+      if (sortDir === "asc") setSortDir("desc");
+      else if (sortDir === "desc") {
+        setSortKey("date");
+        setSortDir("desc");
+      } else setSortDir("asc");
+    } else {
+      setSortKey(key);
+      setSortDir("asc");
+    }
+  };
+
+  const sortLabel = (key: RedeemSortKey) =>
+    sortKey === key ? (sortDir === "asc" ? "ascending" : sortDir === "desc" ? "descending" : "original order") : "unsorted";
 
   const { data: stats, isLoading } = useQuery<RedeemStats>({
     queryKey: ["adminReportsRedeem", startDate, endDate],
@@ -45,6 +68,29 @@ export default function AdminReportsRedeems() {
     a.click();
     URL.revokeObjectURL(url);
   };
+
+  const SortIcon = ({ active }: { active: boolean }) => {
+    if (!active || !sortDir) return <ArrowUpDown className="h-3 w-3 opacity-50" aria-hidden />;
+    return sortDir === "asc" ? (
+      <ArrowUp className="h-3 w-3" aria-hidden />
+    ) : (
+      <ArrowDown className="h-3 w-3" aria-hidden />
+    );
+  };
+
+  const rows = useMemo(() => {
+    const list = stats?.rows ?? [];
+    if (!sortDir) return list;
+    return [...list].sort((a, b) => {
+      let cmp = 0;
+      if (sortKey === "date") cmp = a.date.localeCompare(b.date);
+      else if (sortKey === "customer") cmp = a.customer.localeCompare(b.customer);
+      else if (sortKey === "item") cmp = (a.item || "").localeCompare(b.item || "");
+      else if (sortKey === "points") cmp = a.points - b.points;
+      else cmp = (a.value ?? -1) - (b.value ?? -1);
+      return sortDir === "desc" ? -cmp : cmp;
+    });
+  }, [stats?.rows, sortKey, sortDir]);
 
   const cards = [
     { label: "Total redemptions", val: stats?.totalRedemptions ?? "—", Icon: Gift },
@@ -134,13 +180,13 @@ export default function AdminReportsRedeems() {
           ) : (
             <ScrollableTable minContentWidth="720px">
               <div className="mb-2 grid min-w-[720px] grid-cols-[1.9fr_1.6fr_1.8fr_1.2fr_1.2fr] gap-3 px-4 text-left text-[13px] font-medium uppercase tracking-wide text-[var(--muted)]">
-                <span>When</span>
-                <span>Customer</span>
-                <span>Item / Reward</span>
-                <span>Points</span>
-                <span>Value (Rs)</span>
+                <button type="button" onClick={() => cycleSort("date")} aria-label={`Sort by date, currently ${sortLabel("date")}`} className={`flex items-center gap-1 ${sortKey === "date" && sortDir ? "text-[var(--ink)]" : "hover:text-[var(--ink)]"}`}>When<SortIcon active={sortKey === "date"} /></button>
+                <button type="button" onClick={() => cycleSort("customer")} aria-label={`Sort by customer, currently ${sortLabel("customer")}`} className={`flex items-center gap-1 ${sortKey === "customer" && sortDir ? "text-[var(--ink)]" : "hover:text-[var(--ink)]"}`}>Customer<SortIcon active={sortKey === "customer"} /></button>
+                <button type="button" onClick={() => cycleSort("item")} aria-label={`Sort by item, currently ${sortLabel("item")}`} className={`flex items-center gap-1 ${sortKey === "item" && sortDir ? "text-[var(--ink)]" : "hover:text-[var(--ink)]"}`}>Item / Reward<SortIcon active={sortKey === "item"} /></button>
+                <button type="button" onClick={() => cycleSort("points")} aria-label={`Sort by points, currently ${sortLabel("points")}`} className={`flex items-center gap-1 ${sortKey === "points" && sortDir ? "text-[var(--ink)]" : "hover:text-[var(--ink)]"}`}>Points<SortIcon active={sortKey === "points"} /></button>
+                <button type="button" onClick={() => cycleSort("value")} aria-label={`Sort by value, currently ${sortLabel("value")}`} className={`flex items-center gap-1 ${sortKey === "value" && sortDir ? "text-[var(--ink)]" : "hover:text-[var(--ink)]"}`}>Value (Rs)<SortIcon active={sortKey === "value"} /></button>
               </div>
-              {stats.rows.map((r, i) => (
+              {rows.map((r, i) => (
                 <div
                   key={`${r.date}-${r.customer}-${i}`}
                   className="grid grid-cols-[1.9fr_1.6fr_1.8fr_1.2fr_1.2fr] items-center gap-3 border-t border-[var(--line)]/60 px-4 py-3 first:border-0"
