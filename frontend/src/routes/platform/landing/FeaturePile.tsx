@@ -16,11 +16,17 @@ const CARD_COUNT = BLOCKS.length;
 
 type Block = (typeof BLOCKS)[number];
 
-// 250vh of scroll per card entrance plus one screen for the opening state.
-// v1 used one screen per entrance — the slide was covered in a fraction of a
-// scroll flick and read as a pop. The longer window lets the eased slide-in
-// be visibly fluid at normal scroll speed.
-const TRACK_HEIGHT_VH = (CARD_COUNT + 1) * 250;
+// Scroll range per card entrance, in viewport-height units. Each card's
+// eased slide-in plays over this much scroll, so the decelerating move stays
+// visible at normal scroll speed (the v1 flick-read-as-a-pop came from a
+// range that was tiny compared to the page's scroll budget).
+const ENTRANCE_VH = 2.25;
+
+/** The track's height, computed in px so it is independent of CSS vh quirks.
+ *  Mirrors HeroStack's fixed-pixel track pattern. */
+function trackHeightPx() {
+  return Math.round((CARD_COUNT + 1) * ENTRANCE_VH * window.innerHeight);
+}
 
 /** Cubic ease-out: the video's slides visibly decelerate as they settle. */
 function easeOut(p: number) {
@@ -64,7 +70,7 @@ function PileCard({
   const settledRotate = index % 2 === 0 ? -1.4 : 1.4;
   const startVw = fromLeft ? -110 : 110;
 
-  // Live viewport width so the slide self-corrects on resize.
+  // Live viewport dimensions so the slide self-corrects on resize.
   const [vw, setVw] = useState(() => window.innerWidth);
   useEffect(() => {
     const onResize = () => setVw(window.innerWidth);
@@ -163,7 +169,7 @@ export function FeaturePile() {
     // Native CSS sticky pin — the track's height supplies the scroll range,
     // the stage covers the viewport, and the opaque page background keeps
     // nothing visible behind the stage (see index.css .landing-dark).
-    <div ref={trackRef} style={{ height: `${TRACK_HEIGHT_VH}vh` }} className="relative">
+    <div ref={trackRef} style={{ height: trackHeightPx() }} className="relative">
       <section
         className="lp-grid sticky top-0 h-screen overflow-clip"
         aria-label="What you get with Stampd"
