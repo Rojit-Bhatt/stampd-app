@@ -21,11 +21,19 @@ type Block = (typeof BLOCKS)[number];
 // visible at normal scroll speed (the v1 flick-read-as-a-pop came from a
 // range that was tiny compared to the page's scroll budget).
 const ENTRANCE_VH = 2.25;
+// After the LAST card settles, only this much scroll is held before the
+// section releases back to the page — just enough to admire the finished
+// deck without a long dead stretch. It must stay > 0 so the last entrance
+// window is never shorter than an entrance.
+const TRAIL_VH = 0.6;
+// NOTE: rawSide windows for card i are [(i-1)/N, i/N] within 0..1, so the
+// last card settles exactly at track end — the trail holds the finished
+// deck only briefly before the section releases back to page flow.
 
 /** The track's height, computed in px so it is independent of CSS vh quirks.
  *  Mirrors HeroStack's fixed-pixel track pattern. */
 function trackHeightPx() {
-  return Math.round((CARD_COUNT + 1) * ENTRANCE_VH * window.innerHeight);
+  return Math.round((CARD_COUNT * ENTRANCE_VH + TRAIL_VH) * window.innerHeight);
 }
 
 /** Cubic ease-out: the video's slides visibly decelerate as they settle. */
