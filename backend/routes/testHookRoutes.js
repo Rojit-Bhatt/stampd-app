@@ -404,7 +404,7 @@ router.post("/backdate-balance", async (req, res, next) => {
   }
 });
 
-router.post("/stub-webpush-behavior", async (req, res, next) => {
+router.post("/create-push-subscription", async (req, res, next) => {
   try {
     const { customerAccountId, endpoint, keys, grantConsent } = req.body;
     const PushSubscription = require("../models/PushSubscription");
