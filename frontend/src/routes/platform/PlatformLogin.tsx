@@ -76,6 +76,7 @@ export default function PlatformLogin() {
           <ErrorInput
             label="Email"
             id="platform-login-email"
+            mode="landing"
             error={serverError ?? errors.email?.message}
             touched={!!touchedFields.email || !!serverError}
             forced={submitted.current || !!serverError}
@@ -94,6 +95,7 @@ export default function PlatformLogin() {
           <ErrorInput
             label="Password"
             id="platform-login-password"
+            mode="landing"
             error={serverError ?? errors.password?.message}
             touched={!!touchedFields.password || !!serverError}
             forced={submitted.current || !!serverError}
