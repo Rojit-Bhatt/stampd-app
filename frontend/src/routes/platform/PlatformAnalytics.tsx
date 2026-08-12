@@ -32,6 +32,8 @@ interface PlatformAnalyticsData {
   outletsTotal: number;
   outletsActive: number;
   customersTotal: number;
+  // All sign-ups across the whole website, unverified included.
+  totalRegisteredCustomers: number;
   newCustomers: DashboardMetric;
   pointsIssued: DashboardMetric;
   revenue: DashboardMetric;
@@ -74,6 +76,12 @@ export default function PlatformAnalytics() {
         { label: "Companies", val: stats.companiesTotal },
         { label: "Outlets", val: `${stats.outletsActive}/${stats.outletsTotal}` },
         { label: "Customers", val: stats.customersTotal },
+        {
+          // Distinct registered website accounts — sign-ups included
+          // whether or not they joined any outlet, verified or not.
+          label: "Total registered customers",
+          val: stats.totalRegisteredCustomers
+        },
       ]
     : [];
 
