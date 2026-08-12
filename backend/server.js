@@ -1,4 +1,5 @@
-require("dotenv").config();
+const dotenv = require("dotenv");
+dotenv.config();
 
 // In production the secret MUST come from the environment. In development we
 // fall back to an insecure dev key (also handled in utils/tokenUtils.js) so the
@@ -8,9 +9,35 @@ if (!process.env.JWT_SECRET) {
     console.error("FATAL: JWT_SECRET must be set in production.");
     process.exit(1);
   }
-  process.env.JWT_SECRET = "dev_only_insecure_jwt_secret_change_me";
-  console.warn("[dev] JWT_SECRET not set — using an insecure development key.");
+  // Hardcoded dev keys are no longer in source. Fall back to the value in
+  // backend/.env.example (read with dotenv so local `.env` stays the source
+  // of truth when it exists) — a deliberately weak value that never lives in
+  // git history as an active secret.
+  const fs = require("fs");
+  const path = require("path");
+  const examplePath = path.resolve(__dirname, ".env.example");
+  try {
+    const exampleVars = dotenv.parse(fs.readFileSync(examplePath));
+    // Re-apply every non-empty default from the example file (MONGODB_URI,
+    // JWT_GLOBAL_SECRET etc.) so a bare `node server.js` run still works with
+    // only .env.example present. Empty values are intentionally left unset so
+    // each module's own dev-fallback logic can take over.
+    for (const [key, value] of Object.entries(exampleVars)) {
+      if (value && !process.env[key]) process.env[key] = value;
+    }
+    if (!process.env.JWT_SECRET) {
+      throw new Error("JWT_SECRET missing in .env.example");
+    }
+    if (!process.env.JWT_GLOBAL_SECRET) {
+      throw new Error("JWT_GLOBAL_SECRET missing in .env.example");
+    }
+    console.warn("[dev] Secrets not set — using the deliberately weak values from .env.example.");
+  } catch (err) {
+    console.error("FATAL: JWT_SECRET must be set (copy backend/.env.example to backend/.env).", err.message);
+    process.exit(1);
+  }
 }
+
 
 // True when running against the in-memory mock DB (no real MONGODB_URI given).
 // Set before the fallback URI is assigned below, so later code can tell dev/mock
@@ -201,11 +228,21 @@ app.use((req, _res, next) => {
   next(error);
 });
 
-app.use((error, _req, res, _next) => {
+// Security: never echo raw error messages to clients in production. Internal
+// details (mongoose schema/validation errors, network failures) only belong
+// in the server log; clients get a generic message with the same shape.
+app.use((error, req, res, _next) => {
   const statusCode = error.statusCode || 500;
+  // Mongoose network/validation/duplicate-key errors include driver internals;
+  // log them for forensics regardless of environment.
+  console.error(
+    `[error] ${req.method} ${req.originalUrl} (${statusCode}): ${error.message}`
+  );
   res.status(statusCode).json({
     success: false,
-    message: error.message || "Internal Server Error",
+    message: process.env.NODE_ENV === "production"
+      ? "Internal Server Error"
+      : (error.message || "Internal Server Error"),
     ...(error.code ? { code: error.code } : {})
   });
 });

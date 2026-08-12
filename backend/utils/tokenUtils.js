@@ -10,8 +10,13 @@ const getJwtSecret = () => {
     throw new Error("JWT_SECRET must be set in production.");
   }
 
-  // Dev-only convenience so `npm run dev` works with zero configuration.
-  return "dev_only_insecure_jwt_secret_change_me";
+  // Hardcoded dev keys are no longer in source. Run `cp backend/.env.example
+  // backend/.env` once so `npm run dev` works with zero configuration;
+  // the example file carries a deliberately weak dev value that never enters
+  // the git history as an active secret.
+  throw new Error(
+    "JWT_SECRET is not set — copy backend/.env.example to backend/.env and fill it in."
+  );
 };
 
 const generateAuthToken = (payload) => {
@@ -33,7 +38,9 @@ const getGlobalJwtSecret = () => {
     throw new Error("JWT_GLOBAL_SECRET must be set in production.");
   }
 
-  return "dev_only_insecure_global_jwt_secret_change_me";
+  throw new Error(
+    "JWT_GLOBAL_SECRET is not set — copy backend/.env.example to backend/.env and fill it in."
+  );
 };
 
 // A global session token proves "you are this CustomerAccount" across every

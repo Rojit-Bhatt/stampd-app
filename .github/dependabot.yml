@@ -1,0 +1,45 @@
+version: 2
+# Supply-chain hygiene (Phase 0 of the security audit plan):
+# - Weekly checks for vulnerable/outdated npm dependencies in both workspaces
+# - GitHub Groups batch PRs to keep the notification volume sane
+updates:
+  - package-ecosystem: "npm"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    open-pull-requests-limit: 10
+    groups:
+      npm-development:
+        dependency-type: "development"
+        update-types: ["minor", "patch"]
+      npm-production:
+        dependency-type: "production"
+        update-types: ["minor", "patch"]
+  - package-ecosystem: "npm"
+    directory: "/backend"
+    schedule:
+      interval: "weekly"
+    open-pull-requests-limit: 10
+    groups:
+      npm-development:
+        dependency-type: "development"
+        update-types: ["minor", "patch"]
+      npm-production:
+        dependency-type: "production"
+        update-types: ["minor", "patch"]
+  - package-ecosystem: "npm"
+    directory: "/frontend"
+    schedule:
+      interval: "weekly"
+    open-pull-requests-limit: 10
+    groups:
+      npm-development:
+        dependency-type: "development"
+        update-types: ["minor", "patch"]
+      npm-production:
+        dependency-type: "production"
+        update-types: ["minor", "patch"]
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
