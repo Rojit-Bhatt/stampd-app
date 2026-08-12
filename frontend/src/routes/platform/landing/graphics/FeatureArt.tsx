@@ -2,7 +2,7 @@
 // representations of each feature, not app screenshots. Every shape uses the
 // landing page's own dark-panel tokens (--lp-*), so they're themeable and
 // carry no external image weight. One export per FEATURES.blocks id
-// (data.ts), wired in ServicesCarousel.tsx.
+// (data.ts), wired in FeaturePile.tsx.
 //
 // Common frame: a 400x280 panel, --lp-panel background, a thin --lp-line
 // border baked in via the group stroke, --lp-green for the "live"/value
