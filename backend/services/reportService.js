@@ -308,6 +308,87 @@ const buildTransactionsWorkbook = async (organizationId, { startDate, endDate } 
   return workbook.xlsx.writeBuffer();
 };
 
+// One ledger pass over the range's redeem rows. Rows are rendered newest
+// first — the redeem page is a ledger, and the newest redemptions are the
+// ones an admin reaches for first. `topItem` picks the most-redeemed
+// rewardName; ties go to whichever name surfaces first, which is fine for a
+// tiebreaker.
+const getRedeemStats = async (organizationId, { startDate, endDate } = {}) => {
+  const { start, end } = resolveDateRange(startDate, endDate);
+  const range = { $gte: start, $lte: end };
+
+  const txns = await PointsTransaction.find({ organizationId, type: "redeem", createdAt: range });
+
+  const rows = txns
+    .map((t) => ({
+      date: new Date(t.createdAt).toISOString().slice(0, 16).replace("T", " "),
+      customer: t.performedByName || "Unknown",
+      item: t.rewardName || "",
+      points: toPoints(-t.pointsCenti),
+      value: t.rewardValueNpr ?? null
+    }))
+    .sort((a, b) => (b.date < a.date ? -1 : b.date > a.date ? 1 : 0));
+
+  const totalPointsRedeemed = toPoints(-sumCenti(txns));
+  const uniqueCustomers = new Set(txns.map((t) => t.userId.toString())).size;
+
+  const itemCounts = new Map();
+  for (const t of txns) {
+    const name = t.rewardName || "Unknown";
+    itemCounts.set(name, (itemCounts.get(name) || 0) + 1);
+  }
+  let topItem = null;
+  let topCount = 0;
+  for (const [name, count] of itemCounts) {
+    if (count > topCount) {
+      topCount = count;
+      topItem = name;
+    }
+  }
+
+  // Daily series: every day in the range gets a bucket (even empty ones —
+  // the chart must show the quiet days, not skip them).
+  const byDay = new Map();
+  const d = new Date(startOfLocalDay(start));
+  const lastDay = startOfLocalDay(end);
+  while (d.getTime() <= lastDay.getTime() + DAY_MS) {
+    byDay.set(dayKey(d), { date: dayKey(d), redemptions: 0, points: 0 });
+    d.setDate(d.getDate() + 1);
+  }
+  for (const t of txns) {
+    const bucket = byDay.get(dayKey(t.createdAt));
+    if (bucket) {
+      bucket.redemptions += 1;
+      bucket.points += -t.pointsCenti / 100;
+    }
+  }
+
+  return {
+    rows,
+    totalRedemptions: txns.length,
+    totalPointsRedeemed,
+    uniqueCustomers,
+    topItem,
+    daily: Array.from(byDay.values()).sort((a, b) => (a.date < b.date ? -1 : 1)),
+    startDate: start.toISOString().slice(0, 10),
+    endDate: end.toISOString().slice(0, 10)
+  };
+};
+
+// The redeem page's spreadsheet export — same headers as the on-screen
+// table, so the download is a faithful copy of what the admin just filtered.
+const buildRedeemsWorkbook = async (organizationId, { startDate, endDate } = {}) => {
+  const stats = await getRedeemStats(organizationId, { startDate, endDate });
+
+  const workbook = new ExcelJS.Workbook();
+  const sheet = workbook.addWorksheet("Redemptions");
+  sheet.addRow(["When", "Customer", "Item / Reward", "Points Redeemed", "Value (Rs)"]);
+  for (const r of stats.rows) {
+    sheet.addRow([r.date, r.customer, r.item, r.points, r.value ?? ""]);
+  }
+  return workbook.xlsx.writeBuffer();
+};
+
 module.exports = {
   getSummaryStats,
   getDashboardStats,
@@ -317,5 +398,7 @@ module.exports = {
   buildSummaryWorkbook,
   buildCustomersWorkbook,
   buildTransactionsWorkbook,
+  getRedeemStats,
+  buildRedeemsWorkbook,
   resolveDateRange
 };

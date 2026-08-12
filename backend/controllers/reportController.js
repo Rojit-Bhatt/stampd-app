@@ -5,6 +5,8 @@ const {
   buildSummaryWorkbook,
   buildCustomersWorkbook,
   buildTransactionsWorkbook,
+  getRedeemStats,
+  buildRedeemsWorkbook,
 } = require("../services/reportService");
 const { getLeaderboard } = require("../services/leaderboardService");
 const { getOutletImpact } = require("../services/impactService");
@@ -98,6 +100,33 @@ const downloadTransactions = async (req, res, next) => {
   }
 };
 
+// The outlet's full redemption history with the same date-range semantics
+// as every other report — filtering to "Today" then exporting downloads
+// today's redemptions, not the whole ledger.
+const getRedeemReport = async (req, res, next) => {
+  try {
+    const stats = await getRedeemStats(req.user.organizationId, {
+      startDate: req.query.startDate,
+      endDate: req.query.endDate
+    });
+    res.status(200).json({ success: true, ...stats });
+  } catch (error) {
+    next(error);
+  }
+};
+
+const downloadRedeems = async (req, res, next) => {
+  try {
+    const { startDate, endDate } = req.query;
+    const buffer = await buildRedeemsWorkbook(req.user.organizationId, { startDate, endDate });
+    res.setHeader("Content-Type", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
+    res.setHeader("Content-Disposition", "attachment; filename=\"redeem-report.xlsx\"");
+    res.send(buffer);
+  } catch (error) {
+    next(error);
+  }
+};
+
 module.exports = {
   getDashboard,
   getSummary,
@@ -107,4 +136,6 @@ module.exports = {
   downloadSummary,
   downloadCustomers,
   downloadTransactions,
+  getRedeemReport,
+  downloadRedeems,
 };
