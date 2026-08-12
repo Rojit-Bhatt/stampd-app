@@ -1,6 +1,23 @@
 const { spawn } = require("child_process");
 const http = require("http");
+const net = require("net");
 const path = require("path");
+
+// Find a free TCP port on localhost. Passing port: 0 (or omitting it) makes
+// the suite OS-assign a port instead of fighting a deterministic 5001–5099
+// slot — sequential runs (or a slow CI runner) can leave a previous suite's
+// socket in TIME-WAIT on its fixed port, which turns a green suite into a
+// flaky EADDRINUSE. A fresh random port dodges that entirely.
+async function freePort() {
+  return new Promise((resolve, reject) => {
+    const srv = net.createServer();
+    srv.listen(0, "127.0.0.1", () => {
+      const { port } = srv.address();
+      srv.close(() => resolve(port));
+    });
+    srv.on("error", reject);
+  });
+}
 
 // Boot the real server.js on its own port against the in-memory mock DB, and
 // wait until it answers the health endpoint. Returns { baseUrl, stop } so a
@@ -14,8 +31,9 @@ const path = require("path");
 // only runs when that var is configured, regardless of the developer's real
 // .env). `deleteEnv` explicitly unsets vars (beyond the always-forced
 // MONGODB_URI) so a test isn't accidentally affected by ambient shell env.
-async function bootServer({ port = 5010, timeoutMs = 15000, env: envOverrides = {}, deleteEnv = [] } = {}) {
+async function bootServer({ port = 0, timeoutMs = 15000, env: envOverrides = {}, deleteEnv = [] } = {}) {
   const serverPath = path.resolve(__dirname, "../../server.js");
+  if (!port) port = await freePort();
   const baseUrl = `http://localhost:${port}`;
 
   const env = { ...process.env, PORT: String(port) };

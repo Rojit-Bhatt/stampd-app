@@ -2,7 +2,7 @@ const http = require("http");
 const { bootServer } = require("./helpers/bootServer");
 
 async function main() {
-  const { baseUrl, stop } = await bootServer({ port: 5030 });
+  const { baseUrl, stop } = await bootServer({ port: 0 });
   try {
     const body = await new Promise((resolve, reject) => {
       http.get(`${baseUrl}/health`, (res) => {

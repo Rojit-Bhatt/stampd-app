@@ -35,7 +35,7 @@ async function readSheetAsObjects(buffer) {
 }
 
 async function main() {
-  const { baseUrl, stop } = await bootServer({ port: 5025 });
+  const { baseUrl, stop } = await bootServer({ port: 0 });
   let failures = 0;
   const check = (name, cond) => {
     if (cond) console.log(`PASS ${name}`);

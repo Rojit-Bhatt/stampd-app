@@ -25,7 +25,7 @@ const SLUG = "durbarmarg";
 
 async function main() {
   const { baseUrl, stop } = await bootServer({
-    port: 5030,
+    port: 0,
     // A dummy client id so authenticateWithGoogle proceeds past its own
     // "GOOGLE_CLIENT_ID is not defined" 500 and into the real verifyIdToken
     // call, which fails locally on a malformed token — deterministic

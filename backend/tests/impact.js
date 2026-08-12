@@ -12,7 +12,7 @@ const { bootServer } = require("./helpers/bootServer");
 const { makeCompanyWithOutlet } = require("./helpers/makeOutlet");
 
 async function main() {
-  const { baseUrl, stop } = await bootServer({ port: 5049 });
+  const { baseUrl, stop } = await bootServer({ port: 0 });
   let failures = 0;
   const check = (name, cond, extra) => {
     if (cond) console.log(`PASS ${name}`);
