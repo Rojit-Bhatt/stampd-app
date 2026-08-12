@@ -47,6 +47,9 @@ export default defineConfig({
   server: {
     host: '0.0.0.0',
     port: 3000,
+    // Temporary: allow the Manus sandbox preview host so the feature preview
+    // can be verified in a remote browser. Do not merge into main.
+    allowedHosts: ['3000-iah47s753n2bo19dcr09x-f9a8f871.us2.manus.computer'],
     proxy: {
       '/api': {
         target: 'http://localhost:5001',
