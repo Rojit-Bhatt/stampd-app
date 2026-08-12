@@ -5,7 +5,7 @@ import toast from "@/lib/toast";
 import { apiRequest } from "../lib/api";
 import { useTenant } from "../context/TenantContext";
 import { useCustomerAuth } from "../context/CustomerAuthContext";
-import { EarnCelebration } from "../components/customer/EarnCelebration";
+import { useCelebration } from "../context/CelebrationContext";
 import { GoogleLogin } from "@react-oauth/google";
 import { PhoneStepModal } from "../components/customer/PhoneStepModal";
 import { ClaimStateScreen } from "../components/customer/ClaimStateScreen";
@@ -85,6 +85,7 @@ export default function ClaimLanding() {
   const navigate = useNavigate();
   const { tenant } = useTenant();
   const { user, isLoading, ensureTenantSession, login, registerUser, loginWithGoogle } = useCustomerAuth();
+  const { showEarn } = useCelebration();
 
   const [stage, setStage] = useState<Stage>("resolving");
   const [errorMsg, setErrorMsg] = useState("");
@@ -149,7 +150,16 @@ export default function ClaimLanding() {
           multiplier: res.data.multiplier,
           campaignName: res.data.campaignName,
         });
+        showEarn({
+          points: res.data.pointsEarned ?? 0,
+          billAmount: res.data.billAmount ?? 0,
+          balance: res.data.balance ?? 0,
+          outletName: tenant?.name,
+          multiplier: res.data.multiplier,
+          campaignName: res.data.campaignName,
+        });
         setStage("success");
+        navigate(tenantPath(companySlug, slug, "dashboard"));
         return true;
       }
       if (res.data.expired && expiredMessage) {
@@ -175,7 +185,16 @@ export default function ClaimLanding() {
         { method: "POST", body: { claimSecret } },
       );
       setResult(res.data);
+      showEarn({
+        points: res.data.pointsEarned,
+        billAmount: res.data.billAmount,
+        balance: res.data.balance,
+        outletName: tenant?.name,
+        multiplier: res.data.multiplier,
+        campaignName: res.data.campaignName,
+      });
       setStage("success");
+      navigate(tenantPath(companySlug, slug, "dashboard"));
     } catch (e) {
       const err = e as Error & { code?: string };
       if (err.code === "CLAIM_ALREADY_FULFILLED") {
@@ -407,19 +426,11 @@ export default function ClaimLanding() {
     );
   }
 
-  if (stage === "success" && result) {
-    return (
-      <EarnCelebration
-        points={result.pointsEarned}
-        billAmount={result.billAmount}
-        balance={result.balance}
-        outletName={tenant?.name}
-        multiplier={result.multiplier}
-        campaignName={result.campaignName}
-        onDone={() => navigate(tenantPath(companySlug, slug, "dashboard"))}
-        doneLabel="Go to dashboard"
-      />
-    );
+  // Both writers of stage "success" (checkStatus, fulfill) already called
+  // showEarn() and navigate() — this is just the one-frame guard against
+  // rendering the "choose" screen while that navigation is committing.
+  if (stage === "success") {
+    return null;
   }
 
   // stage === "choose"
