@@ -1,6 +1,7 @@
 const MenuItem = require("../models/MenuItem");
 const ExcelJS = require("exceljs");
 const { toCenti, toPoints } = require("../utils/pointsMath");
+const { claimImage, deleteImage } = require("./imageService");
 
 const MAX_IMPORT_ROWS = 500;
 
@@ -101,6 +102,22 @@ const createHttpError = (message, statusCode) => {
   return error;
 };
 
+// Claims a freshly uploaded image onto the saved item and, on a replace,
+// deletes the previous row so an outlet's storage never fills with orphan
+// photos. Rewards/logos/events already did this — menu items were the gap:
+// without the claim, the image row stayed "abandoned", and the 24h sweep
+// removed it on the next upload from the same outlet, leaving the customer
+// console asking /api/images/<id> for a row that no longer exists (404).
+const applyImage = async ({ organizationId, ownerId, nextImageId, previousImageId }) => {
+  if (nextImageId === previousImageId) return;
+  if (nextImageId) {
+    await claimImage({ id: nextImageId, organizationId, ownerId });
+  }
+  if (previousImageId) {
+    await deleteImage({ id: previousImageId, organizationId });
+  }
+};
+
 // Centipoints never leave the backend: converts pointsPriceCenti -> pointsPrice
 // (real points) on the way out, the same rule pointsService's own catalog
 // formatting follows. Every path that hands a menu item to a controller goes
@@ -146,6 +163,13 @@ const createItem = async (
     sortOrder: sortOrder !== undefined ? sortOrder : 0
   });
 
+  await applyImage({
+    organizationId,
+    ownerId: item._id.toString(),
+    nextImageId: imageId || null,
+    previousImageId: null
+  });
+
   return formatItem(item);
 };
 
@@ -154,10 +178,27 @@ const createItem = async (
 const MUTABLE_MENU_FIELDS = ["name", "description", "price", "category", "isAvailable", "isFeatured", "sortOrder", "imageUrl", "imageId"];
 
 const updateItem = async (organizationId, itemId, updates) => {
+  // Read the current image first — a replace or clear must delete the old
+  // Image row, exactly like rewardService does for rewards.
+  const current = await MenuItem.findOne({ _id: itemId, organizationId });
+  if (!current) {
+    throw createHttpError("Menu item not found.", 404);
+  }
+
+  // The old image id must be captured here, before findOneAndUpdate touches
+  // the document: in the in-memory driver the $set mutates the same instance
+  // findOne returned, so reading `current` later would show the NEW value.
+  // For real MongoDB this is equally safe — findOneAndUpdate returns a fresh
+  // document but capturing early costs nothing.
+  const previousImageId = current.imageId || null;
+
   const safeUpdates = {};
   for (const field of MUTABLE_MENU_FIELDS) {
     if (updates[field] !== undefined) {
-      safeUpdates[field] = field === "price" ? parsePrice(updates[field]) : updates[field];
+      // The admin console sends an empty string when the image picker is
+      // cleared; an empty imageId means "no photo", same as null — and the
+      // reward path normalizes the same way.
+      safeUpdates[field] = field === "price" ? parsePrice(updates[field]) : (field === "imageId" ? (updates[field] || null) : updates[field]);
     }
   }
 
@@ -179,10 +220,21 @@ const updateItem = async (organizationId, itemId, updates) => {
     throw createHttpError("Menu item not found.", 404);
   }
 
+  await applyImage({
+    organizationId,
+    ownerId: updatedItem._id.toString(),
+    // Empty string means "remove the photo", same convention the admin
+    // console sends when the image picker is cleared.
+    nextImageId: safeUpdates.imageId === "" ? null : (safeUpdates.imageId || null),
+    previousImageId
+  });
+
   return formatItem(updatedItem);
 };
 
 const deleteItem = async (organizationId, itemId) => {
+  const item = await MenuItem.findOne({ _id: itemId, organizationId });
+
   const result = await MenuItem.deleteOne({ _id: itemId, organizationId });
 
   const deletedCount =
@@ -190,6 +242,12 @@ const deleteItem = async (organizationId, itemId) => {
 
   if (!deletedCount) {
     throw createHttpError("Menu item not found.", 404);
+  }
+
+  // The item's photo has no other owner — rewardService drops its reward
+  // image the same way, so a deleted menu item leaves no orphaned rows.
+  if (item && item.imageId) {
+    await deleteImage({ id: item.imageId, organizationId });
   }
 
   return { success: true };

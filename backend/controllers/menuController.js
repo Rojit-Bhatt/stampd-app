@@ -118,14 +118,22 @@ const listMenu = async (req, res, next) => {
 
 const createMenuItem = async (req, res, next) => {
   try {
-    const { name, description, price, category, isAvailable, sortOrder } = req.body;
+    // imageId (uploaded photo) and imageUrl are forwarded even though the
+    // legacy menu sheet never had them — the redeem-flow reward photo needs
+    // them on create, and without imageId here the uploaded photo is never
+    // claimed, so the 24h abandoned-image sweep removes it.
+    const { name, description, price, category, isAvailable, sortOrder, imageUrl, imageId } = req.body;
     const item = await createItem(req.user.organizationId, {
       name,
       description,
       price,
       category,
       isAvailable,
-      sortOrder
+      sortOrder,
+      imageUrl,
+      // Empty string means "no photo", the same normalization updateItem and
+      // the reward path apply; undefined leaves the default (null).
+      imageId: imageId !== undefined ? (imageId || null) : undefined
     });
     purgeMenuCache(req.user.organizationId);
     res.status(201).json({ success: true, item });
