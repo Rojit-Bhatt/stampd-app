@@ -48,6 +48,11 @@ const collectOutletFacts = async (organizationId, { since = null } = {}) => {
   }
 
   const earnsByAccount = new Map();
+  // Distinct calendar days (UTC) with any transaction, earn or redeem,
+  // per account. This drives the repeat-customer definition below:
+  // a customer has "come back" once they appear on a second day, however
+  // the activity on those days was split between earning and redeeming.
+  const activityDaysByAccount = new Map();
   let revenueTracked = 0;
   let revenueSince = 0;
   let redemptionCount = 0;
@@ -59,6 +64,8 @@ const collectOutletFacts = async (organizationId, { since = null } = {}) => {
     const at = new Date(txn.createdAt);
     if (!firstActivityAt || at < firstActivityAt) firstActivityAt = at;
 
+    const dayKey = `${at.getUTCFullYear()}-${at.getUTCMonth()}-${at.getUTCDate()}`;
+
     if (txn.type === "earn") {
       const userId = txn.userId.toString();
       const key = accountKeyByUserId.get(userId) || userId;
@@ -67,11 +74,22 @@ const collectOutletFacts = async (organizationId, { since = null } = {}) => {
       row.revenue += txn.billAmount || 0;
       earnsByAccount.set(key, row);
 
+      const days = activityDaysByAccount.get(key) || new Set();
+      days.add(dayKey);
+      activityDaysByAccount.set(key, days);
+
       revenueTracked += txn.billAmount || 0;
       if (!since || at >= since) revenueSince += txn.billAmount || 0;
     }
 
     if (txn.type === "redeem") {
+      const userId = txn.userId && txn.userId.toString();
+      if (userId) {
+        const key = accountKeyByUserId.get(userId) || userId;
+        const days = activityDaysByAccount.get(key) || new Set();
+        days.add(dayKey);
+        activityDaysByAccount.set(key, days);
+      }
       redemptionCount += 1;
       // Null means "not recorded" (a points-only reward, or a row predating
       // the field), never "free" — so it is skipped, and the caller reports
@@ -85,6 +103,7 @@ const collectOutletFacts = async (organizationId, { since = null } = {}) => {
 
   return {
     earnsByAccount,
+    activityDaysByAccount,
     revenueTracked,
     revenueSince,
     redemptionCount,
@@ -99,23 +118,29 @@ const collectOutletFacts = async (organizationId, { since = null } = {}) => {
 // an outlet's page, so counting every membership would let browsers who never
 // bought anything drag retention toward zero.
 //
-// A repeat customer has two or more earns. Two bills in one afternoon count
-// as two: each is a separate purchase the customer chose to make, and
-// de-duplicating by day would understate outlets whose regulars buy twice a
-// day.
+// A repeat customer is one who has shown activity on two or more distinct
+// calendar days, where activity is any transaction — an earn or a redeem.
+// This is what "comes back" means: a regular who earned once, then returned
+// a week later to redeem, has visited twice and earned that label, even
+// though only the first visit produced an earn. Two transactions in one
+// afternoon do NOT count as repeat — they are the same visit.
 //
 // repeatRevenue counts ALL of a repeat customer's revenue, first visit
 // included — the claim being made is "this share of your revenue comes from
 // people who come back", and their first visit is part of that relationship.
-const summarizeEarns = (earnsByAccount) => {
+// Customers with a redeem-only presence are not counted as customers and
+// contribute no revenue (there is none to contribute), but they do push
+// their earn-only account into repeat territory once a second day appears.
+const summarizeEarns = (earnsByAccount, activityDaysByAccount) => {
   let customers = 0;
   let repeatCustomers = 0;
   let repeatRevenue = 0;
 
-  for (const row of earnsByAccount.values()) {
+  for (const [key, row] of earnsByAccount.entries()) {
     if (row.count < 1) continue;
     customers += 1;
-    if (row.count >= 2) {
+    const days = activityDaysByAccount.get(key) || new Set();
+    if (days.size >= 2) {
       repeatCustomers += 1;
       repeatRevenue += row.revenue;
     }
@@ -147,7 +172,7 @@ const buildMilestones = ({ customers, redemptionCount, campaignCount, retentionP
 // whatever facts they were handed, so the two pages can never disagree about
 // what "retention" means.
 const presentImpact = ({ facts, campaignCount }) => {
-  const { customers, repeatCustomers, repeatRevenue } = summarizeEarns(facts.earnsByAccount);
+  const { customers, repeatCustomers, repeatRevenue } = summarizeEarns(facts.earnsByAccount, facts.activityDaysByAccount);
 
   // Null, not zero: an outlet with no customers has no retention rate, and
   // rendering 0% would read as a failure rather than an absence.
@@ -278,6 +303,7 @@ const getCompanyImpact = async (companyId) => {
 
   const merged = {
     earnsByAccount: new Map(),
+    activityDaysByAccount: new Map(),
     revenueTracked: 0,
     revenueSince: 0,
     redemptionCount: 0,
@@ -293,6 +319,11 @@ const getCompanyImpact = async (companyId) => {
       existing.count += row.count;
       existing.revenue += row.revenue;
       merged.earnsByAccount.set(key, existing);
+    }
+    for (const [key, days] of facts.activityDaysByAccount) {
+      const existing = merged.activityDaysByAccount.get(key) || new Set();
+      for (const day of days) existing.add(day);
+      merged.activityDaysByAccount.set(key, existing);
     }
     merged.revenueTracked += facts.revenueTracked;
     merged.revenueSince += facts.revenueSince;
