@@ -6,7 +6,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "../../lib/api";
 import { useNavigate } from "react-router-dom";
 import { useTenant } from "../../context/TenantContext";
-import { EarnCelebration } from "./EarnCelebration";
+import { useCelebration } from "../../context/CelebrationContext";
 import { PhoneStepModal } from "./PhoneStepModal";
 import { tenantPath } from "../../lib/tenantPath";
 
@@ -33,15 +33,14 @@ export function ScannerModal({
   const scannerRef = useRef<Html5Qrcode | null>(null);
   const queryClient = useQueryClient();
   const navigate = useNavigate();
+  const { showEarn } = useCelebration();
 
-  const [earned, setEarned] = useState<EarnResult | null>(null);
   const [cameraError, setCameraError] = useState<string | null>(null);
   const [isBlocked, setIsBlocked] = useState(false);
   const [pendingToken, setPendingToken] = useState<string | null>(null);
 
   useEffect(() => {
     if (!open) {
-      setEarned(null);
       setCameraError(null);
       setIsBlocked(false);
       setPendingToken(null);
@@ -104,7 +103,16 @@ export function ScannerModal({
         queryClient.invalidateQueries({ queryKey: ["pointsBalance"] });
         queryClient.invalidateQueries({ queryKey: ["pointsHistory"] });
         toast.dismiss(toastId);
-        setEarned(response.data);
+        showEarn({
+          points: response.data.pointsEarned,
+          billAmount: response.data.billAmount,
+          balance: response.data.balance,
+          outletName: tenantName,
+          multiplier: response.data.multiplier,
+          campaignName: response.data.campaignName,
+        });
+        onClose();
+        navigate(tenantPath(companySlug, slug, "dashboard"));
       } else {
         throw new Error(response.message || "Couldn't add those points — try again.");
       }
@@ -131,7 +139,7 @@ export function ScannerModal({
     let isMounted = true;
     let qrScanner: Html5Qrcode | null = null;
 
-    if (!earned && !cameraError && !pendingToken) {
+    if (!cameraError && !pendingToken) {
       try {
         qrScanner = new Html5Qrcode("qr-reader-viewport");
         scannerRef.current = qrScanner;
@@ -227,16 +235,11 @@ export function ScannerModal({
         }
       }
     };
-  }, [open, onClose, queryClient, navigate, companySlug, slug, earned, cameraError, pendingToken]);
+  }, [open, onClose, queryClient, navigate, companySlug, slug, cameraError, pendingToken]);
 
   const handleRetry = () => {
     setCameraError(null);
     setIsBlocked(false);
-  };
-
-  const handleGoToHistory = () => {
-    onClose();
-    navigate(tenantPath(companySlug, slug, "history"));
   };
 
   if (!open) return null;
@@ -249,23 +252,6 @@ export function ScannerModal({
           setPendingToken(null);
           if (token) claimToken(token);
         }}
-      />
-    );
-  }
-
-  if (earned) {
-    return (
-      <EarnCelebration
-        points={earned.pointsEarned}
-        billAmount={earned.billAmount}
-        balance={earned.balance}
-        outletName={tenantName}
-        multiplier={earned.multiplier}
-        campaignName={earned.campaignName}
-        onDone={onClose}
-        doneLabel="Done"
-        onSecondary={handleGoToHistory}
-        secondaryLabel="See my history"
       />
     );
   }
