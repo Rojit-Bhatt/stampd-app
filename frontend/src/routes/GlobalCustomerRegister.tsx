@@ -8,6 +8,7 @@ import toast from "@/lib/toast";
 import { useCustomerAuth } from "../context/CustomerAuthContext";
 import { PLATFORM_NAME } from "../lib/platform";
 import { AuthSplitShell } from "../components/shared/auth/AuthSplitShell";
+import { ErrorInput } from "../components/shared/ErrorInput";
 import { Turnstile, TURNSTILE_ENABLED, type TurnstileHandle } from "../components/shared/Turnstile";
 
 const registerSchema = z.object({
@@ -37,12 +38,17 @@ export default function GlobalCustomerRegister() {
   const [turnstileToken, setTurnstileToken] = useState("");
   const turnstileRef = useRef<TurnstileHandle>(null);
 
-  const { register, handleSubmit, formState: { errors } } = useForm<RegisterFormValues>({
+  const form = useForm<RegisterFormValues>({
     resolver: zodResolver(registerSchema),
     defaultValues: { name: "", email: "", password: "", phone: "", agreeTerms: false },
   });
+  const { register, handleSubmit, formState } = form;
+  // After a failed submit every invalid field surfaces at once; until then
+  // only touched fields do (blur-gated inline errors).
+  const submitted = useRef(false);
 
   const onSubmit = async (data: RegisterFormValues) => {
+    submitted.current = true;
     setIsSubmitting(true);
     const toastId = toast.loading("Setting up your account…");
     try {
@@ -69,47 +75,87 @@ export default function GlobalCustomerRegister() {
       </p>
 
       <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col gap-3">
-        <Field label="Full name" icon={<User className="h-4 w-4 text-[var(--lp-muted)]" />}>
+        <ErrorInput
+          label="Full name"
+          id="global-register-name"
+          error={formState.errors.name?.message}
+          touched={!!formState.touchedFields.name}
+          forced={submitted.current}
+          icon={<User className="h-4 w-4 text-[var(--lp-muted)]" />}
+          className="bg-white/[0.04]"
+        >
           <input
             type="text"
             placeholder="Your name"
+            autoComplete="name"
             {...register("name")}
+            aria-invalid={!!formState.errors.name}
+            aria-describedby={formState.errors.name ? "global-register-name-error" : undefined}
             className="w-full bg-transparent text-sm text-[var(--lp-ink)] placeholder:text-[var(--lp-muted)] focus:outline-none"
           />
-        </Field>
-        {errors.name && <Err msg={errors.name.message} />}
+        </ErrorInput>
 
-        <Field label="Email" icon={<Mail className="h-4 w-4 text-[var(--lp-muted)]" />}>
+        <ErrorInput
+          label="Email"
+          id="global-register-email"
+          error={formState.errors.email?.message}
+          touched={!!formState.touchedFields.email}
+          forced={submitted.current}
+          icon={<Mail className="h-4 w-4 text-[var(--lp-muted)]" />}
+          className="bg-white/[0.04]"
+        >
           <input
             type="email"
             placeholder="you@email.com"
+            autoComplete="email"
             {...register("email")}
+            aria-invalid={!!formState.errors.email}
+            aria-describedby={formState.errors.email ? "global-register-email-error" : undefined}
             className="w-full bg-transparent text-sm text-[var(--lp-ink)] placeholder:text-[var(--lp-muted)] focus:outline-none"
           />
-        </Field>
-        {errors.email && <Err msg={errors.email.message} />}
+        </ErrorInput>
 
-        <Field label="Phone" icon={<Phone className="h-4 w-4 text-[var(--lp-muted)]" />}>
+        <ErrorInput
+          label="Phone"
+          id="global-register-phone"
+          error={formState.errors.phone?.message}
+          touched={!!formState.touchedFields.phone}
+          forced={submitted.current}
+          icon={<Phone className="h-4 w-4 text-[var(--lp-muted)]" />}
+          className="bg-white/[0.04]"
+        >
           <span className="text-sm text-[var(--lp-muted)]">+977</span>
           <input
             type="tel"
             inputMode="numeric"
             placeholder="98XXXXXXXX"
+            autoComplete="tel-local"
             {...register("phone")}
+            aria-invalid={!!formState.errors.phone}
+            aria-describedby={formState.errors.phone ? "global-register-phone-error" : undefined}
             className="w-full bg-transparent text-sm text-[var(--lp-ink)] placeholder:text-[var(--lp-muted)] focus:outline-none"
           />
-        </Field>
-        {errors.phone && <Err msg={errors.phone.message} />}
+        </ErrorInput>
 
-        <Field label="Password" icon={<Lock className="h-4 w-4 text-[var(--lp-muted)]" />}>
+        <ErrorInput
+          label="Password"
+          id="global-register-password"
+          error={formState.errors.password?.message}
+          touched={!!formState.touchedFields.password}
+          forced={submitted.current}
+          icon={<Lock className="h-4 w-4 text-[var(--lp-muted)]" />}
+          className="bg-white/[0.04]"
+        >
           <input
             type="password"
             placeholder="••••••••"
+            autoComplete="new-password"
             {...register("password")}
+            aria-invalid={!!formState.errors.password}
+            aria-describedby={formState.errors.password ? "global-register-password-error" : undefined}
             className="w-full bg-transparent text-sm text-[var(--lp-ink)] placeholder:text-[var(--lp-muted)] focus:outline-none"
           />
-        </Field>
-        {errors.password && <Err msg={errors.password.message} />}
+        </ErrorInput>
 
         <label className="mt-1 flex items-start gap-2.5 text-[13px] text-[var(--lp-muted)]">
           <input
@@ -129,7 +175,16 @@ export default function GlobalCustomerRegister() {
             .
           </span>
         </label>
-        {errors.agreeTerms && <Err msg={errors.agreeTerms.message} />}
+        {formState.errors.agreeTerms && (
+          <p
+            id="global-register-agree-error"
+            role="alert"
+            className="pl-1 text-xs font-semibold text-[var(--lp-terra)]"
+            aria-live="assertive"
+          >
+            {formState.errors.agreeTerms.message}
+          </p>
+        )}
 
         <Turnstile ref={turnstileRef} onVerify={setTurnstileToken} />
 
@@ -156,18 +211,6 @@ function Shell({ children }: { children: React.ReactNode }) {
   return <AuthSplitShell>{children}</AuthSplitShell>;
 }
 
-function Field({ label, icon, children }: { label: string; icon: React.ReactNode; children: React.ReactNode }) {
-  return (
-    <label className="block">
-      <span className="mb-1.5 block text-[13px] font-semibold text-[var(--lp-ink)]">{label}</span>
-      <div className="flex items-center gap-3 rounded-2xl border border-[var(--lp-line)] bg-white/[0.04] px-4 py-3.5 transition-colors focus-within:border-[var(--lp-green)]">
-        <span>{icon}</span>
-        {children}
-      </div>
-    </label>
-  );
-}
+// Field was retired in favor of the shared <ErrorInput> (Task 10), which adds
+// touched/blur-gating, red borders, and aria-describedby wiring.
 
-function Err({ msg }: { msg?: string }) {
-  return <p className="pl-1 text-xs font-semibold text-[var(--lp-terra)]">{msg}</p>;
-}

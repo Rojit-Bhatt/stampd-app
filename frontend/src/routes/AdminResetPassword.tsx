@@ -15,21 +15,30 @@ export default function AdminResetPassword() {
   const [password, setPassword] = useState("");
   const [confirm, setConfirm] = useState("");
   const [busy, setBusy] = useState(false);
+  // Inline field errors — red label directly under the offending input with
+  // a red border — replacing the old toast-only validation.
+  const [passwordError, setPasswordError] = useState<string | null>(null);
+  const [confirmError, setConfirmError] = useState<string | null>(null);
+  // Shows after the first submit attempt; until then only touched fields
+  // surface their errors (blur-gated).
+  const [attempted, setAttempted] = useState(false);
 
   useEffect(() => {
     document.title = `Set a new password | ${PLATFORM_NAME}`;
   }, []);
 
+  const validate = () => {
+    const pErr = password.length < 6 ? "Password must be at least 6 characters." : null;
+    setPasswordError(pErr);
+    const cErr = !pErr && confirm && password !== confirm ? "Those two passwords don't match." : null;
+    setConfirmError(cErr);
+    return !pErr && !cErr;
+  };
+
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (password.length < 6) {
-      toast.error("Password must be at least 6 characters.");
-      return;
-    }
-    if (password !== confirm) {
-      toast.error("Those two passwords don't match.");
-      return;
-    }
+    setAttempted(true);
+    if (!validate()) return;
 
     setBusy(true);
     try {
@@ -77,24 +86,69 @@ export default function AdminResetPassword() {
 
         <div className="rounded-[var(--radius-card)] border border-[var(--line)] bg-[var(--surface)] p-6 shadow-ambient">
           <form onSubmit={submit} className="flex flex-col gap-3">
+            <label htmlFor="admin-reset-password" className="block text-[13px] font-semibold text-[var(--ink)]">
+              New password
+            </label>
             <input
+              id="admin-reset-password"
               type="password"
               required
               autoComplete="new-password"
               value={password}
-              onChange={(e) => setPassword(e.target.value)}
+              onChange={(e) => {
+                setPassword(e.target.value);
+                setPasswordError(null);
+                setConfirmError(null);
+              }}
+              onBlur={() => {
+                if (attempted || password.length > 0)
+                  setPasswordError(password.length < 6 ? "Password must be at least 6 characters." : null);
+              }}
               placeholder="New password"
-              className="rounded-[var(--radius-btn)] border border-[var(--line)] bg-[var(--bg)] px-4 py-3.5 text-sm focus:border-[var(--primary)] focus:outline-none"
+              aria-invalid={!!passwordError}
+              aria-describedby={passwordError ? "admin-reset-password-error" : undefined}
+              className={`rounded-[var(--radius-btn)] border bg-[var(--bg)] px-4 py-3.5 text-sm focus:outline-none ${
+                passwordError
+                  ? "border-[var(--err)]"
+                  : "border-[var(--line)] focus:border-[var(--primary)]"
+              }`}
             />
+            {passwordError && (
+              <p id="admin-reset-password-error" role="alert" className="pl-1 text-xs font-semibold text-[var(--err)]" aria-live="assertive">
+                {passwordError}
+              </p>
+            )}
+            <label htmlFor="admin-reset-confirm" className="block text-[13px] font-semibold text-[var(--ink)]">
+              Confirm new password
+            </label>
             <input
+              id="admin-reset-confirm"
               type="password"
               required
               autoComplete="new-password"
               value={confirm}
-              onChange={(e) => setConfirm(e.target.value)}
+              onChange={(e) => {
+                setConfirm(e.target.value);
+                setConfirmError(null);
+              }}
+              onBlur={() => {
+                if (attempted || confirm.length > 0)
+                  setConfirmError(password !== confirm ? "Those two passwords don't match." : null);
+              }}
               placeholder="Confirm new password"
-              className="rounded-[var(--radius-btn)] border border-[var(--line)] bg-[var(--bg)] px-4 py-3.5 text-sm focus:border-[var(--primary)] focus:outline-none"
+              aria-invalid={!!confirmError}
+              aria-describedby={confirmError ? "admin-reset-confirm-error" : undefined}
+              className={`rounded-[var(--radius-btn)] border bg-[var(--bg)] px-4 py-3.5 text-sm focus:outline-none ${
+                confirmError
+                  ? "border-[var(--err)]"
+                  : "border-[var(--line)] focus:border-[var(--primary)]"
+              }`}
             />
+            {confirmError && (
+              <p id="admin-reset-confirm-error" role="alert" className="pl-1 text-xs font-semibold text-[var(--err)]" aria-live="assertive">
+                {confirmError}
+              </p>
+            )}
             <button
               type="submit"
               disabled={busy}
