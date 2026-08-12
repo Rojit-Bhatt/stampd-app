@@ -1,4 +1,4 @@
-import { useCallback, useLayoutEffect, useState } from "react";
+import { useCallback, useLayoutEffect, useRef, useState } from "react";
 
 export type Theme = "light" | "dark";
 
@@ -46,21 +46,34 @@ export function useTheme() {
     () => readStoredTheme() ?? (systemPrefersDark() ? "dark" : "light"),
   );
 
+  // The drawer's body unmounts on close (the theme toggle lives inside the
+  // mobile drawer), and this effect's cleanup used to strip `.dark` on every
+  // unmount — flipping the page to light each time the hamburger closed.
+  // The persisted preference is the source of truth instead: a local,
+  // ephemeral unmount must never override what the user actually chose.
+  const themeRef = useRef(theme);
+  themeRef.current = theme;
+
   useLayoutEffect(() => {
     const root = document.documentElement;
     if (theme === "dark") root.classList.add("dark");
     else root.classList.remove("dark");
 
-    // Cleanup runs on every re-run of this effect (toggling) AND on unmount
-    // (navigating away). Removing the class unconditionally here — rather
-    // than only on unmount — is safe: on a toggle, the effect body that
-    // follows immediately re-adds it if the new theme is dark, and both
-    // happen synchronously before the browser paints (useLayoutEffect), so
-    // there's no flash. On a true unmount, nothing follows, so the class is
-    // left off — which is the whole point: dark mode must not leak into
-    // whatever route is mounted next.
+    // Cleanup runs on every re-run of this effect (toggling) AND on unmount.
+    // On a toggle, the body re-applies the class synchronously before paint,
+    // so there's no flash. On a real unmount (leaving the console), the
+    // class is removed only when dark mode isn't what the user has chosen —
+    // a stored "dark" preference, or no preference with the OS set to dark,
+    // keeps the class so the next mount paints dark immediately. Crucially,
+    // an ephemeral unmount (closing the mobile drawer, which unmounts the
+    // only ThemeToggle instance) can no longer flip the whole page to
+    // light: the class is restored to reflect the stored/OS preference.
     return () => {
-      root.classList.remove("dark");
+      const stored = readStoredTheme();
+      const wantsDark = stored === "dark" || (stored === null && systemPrefersDark());
+      if (themeRef.current === "light" || !wantsDark) {
+        root.classList.remove("dark");
+      }
     };
   }, [theme]);
 

@@ -10,11 +10,27 @@ export default function ForgotPassword() {
   const [sent, setSent] = useState(false);
   const [busy, setBusy] = useState(false);
 
+  // Validation error for an obviously bad address, shown inline in red.
+  const [fieldError, setFieldError] = useState<string | null>(null);
+  // On success — AND on failure. Never reveal whether an address exists;
+  // the previous catch-less version simply hung the form when the request
+  // failed, which reads as "nothing happened" to the visitor.
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!email.trim()) {
+      setFieldError("Please enter the email address you signed in with.");
+      return;
+    }
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      setFieldError("That doesn't look like an email address — check the spelling.");
+      return;
+    }
+    setFieldError(null);
     setBusy(true);
     try {
       await apiRequest("/api/auth/forgot-password", { method: "POST", body: { email } });
+      setSent(true);
+    } catch {
       setSent(true);
     } finally {
       setBusy(false);
@@ -31,14 +47,43 @@ export default function ForgotPassword() {
           </p>
         ) : (
           <form onSubmit={submit} className="mt-4 flex flex-col gap-3">
+            <label htmlFor="forgot-email" className="block text-[13px] font-semibold text-[var(--ink)]">
+              Email
+            </label>
             <input
+              id="forgot-email"
               type="email"
               required
               value={email}
-              onChange={(e) => setEmail(e.target.value)}
+              onChange={(e) => {
+                setEmail(e.target.value);
+                setFieldError(null);
+              }}
+              onBlur={() => {
+                if (!email.trim()) setFieldError("Please enter the email address you signed in with.");
+                else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email))
+                  setFieldError("That doesn't look like an email address — check the spelling.");
+                else setFieldError(null);
+              }}
               placeholder="you@email.com"
-              className="rounded-[var(--radius-btn)] border border-[var(--line)] bg-[var(--bg)] px-4 py-3.5 text-sm text-[var(--ink)] focus:border-[var(--primary)] focus:outline-none"
+              aria-invalid={!!fieldError}
+              aria-describedby={fieldError ? "forgot-email-error" : undefined}
+              className={`rounded-[var(--radius-btn)] border bg-[var(--bg)] px-4 py-3.5 text-sm text-[var(--ink)] focus:outline-none ${
+                fieldError
+                  ? "border-[var(--err)]"
+                  : "border-[var(--line)] focus:border-[var(--primary)]"
+              }`}
             />
+            {fieldError && (
+              <p
+                id="forgot-email-error"
+                role="alert"
+                className="pl-1 text-xs font-semibold text-[var(--err)]"
+                aria-live="assertive"
+              >
+                {fieldError}
+              </p>
+            )}
             <button
               disabled={busy}
               className="rounded-[var(--radius-btn)] py-4 text-[15px] font-bold text-white disabled:opacity-50"

@@ -5,6 +5,7 @@ import toast from "@/lib/toast";
 import { apiRequest } from "../../lib/api";
 import type { Company } from "./Companies";
 import { CATEGORY_LABELS } from "../../hooks/useAdminSettings";
+import { ScrollableTable, STICKY_FIRST_CELL } from "../../components/shared/ScrollableTable";
 import { Skeleton } from "../../components/ui/skeleton";
 import { ConfirmDialog } from "../../components/shared/ConfirmDialog";
 import { usePlatformAuth } from "../../context/PlatformAuthContext";
@@ -212,7 +213,7 @@ export default function CompanyDetail() {
         </div>
       )}
 
-      <div className="mt-5 shadow-ambient overflow-hidden rounded-[var(--radius-card)] bg-[var(--surface)]">
+      <ScrollableTable minContentWidth="600px">
         <div className="border-b border-[var(--line)] px-5 py-3.5">
           <h3 className="font-display text-lg font-bold text-[var(--ink)]">Outlets</h3>
           <p className="text-[13px] text-[var(--muted)]">This company registers its own — you can still step in.</p>
@@ -222,7 +223,7 @@ export default function CompanyDetail() {
         ) : (
           company.outlets.map((o) => (
             <div key={o.id} className="grid grid-cols-[2fr_1fr_1fr_auto] items-center gap-3 border-b border-[var(--line)] px-5 py-3.5 text-sm last:border-b-0">
-              <span className="min-w-0">
+              <span className={`min-w-0 ${STICKY_FIRST_CELL}`}>
                 <span className="block truncate font-bold">{o.name}</span>
                 <span className="block truncate font-mono text-xs text-[var(--soft)]">/{company.slug}/{o.slug}</span>
               </span>
@@ -249,7 +250,7 @@ export default function CompanyDetail() {
             </div>
           ))
         )}
-      </div>
+      </ScrollableTable>
 
       {form && isOwner && (
         <div className="mt-5 rounded-[var(--radius-card)] border border-[var(--line)] bg-[var(--surface)] shadow-ambient p-6">

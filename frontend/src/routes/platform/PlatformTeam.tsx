@@ -3,6 +3,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import toast from "@/lib/toast";
 import { apiRequest } from "../../lib/api";
 import { usePlatformAuth } from "../../context/PlatformAuthContext";
+import { ScrollableTable, STICKY_FIRST_CELL } from "../../components/shared/ScrollableTable";
 import { Skeleton } from "../../components/ui/skeleton";
 import { ConfirmDialog } from "../../components/shared/ConfirmDialog";
 
@@ -68,17 +69,17 @@ export default function PlatformTeam() {
       <h1 className="font-display text-[28px] font-bold tracking-[-0.015em] text-[var(--ink)]">Team</h1>
       <p className="mb-6 text-[var(--muted)]">Platform staff with access to this console.</p>
 
-      <div className="mb-6 shadow-ambient overflow-hidden rounded-[var(--radius-card)] bg-[var(--surface)]">
+      <ScrollableTable minContentWidth="600px">
         <div className="grid grid-cols-[2fr_1fr_1fr_auto] border-b border-[var(--line)] px-5 py-3 text-[11px] font-bold uppercase tracking-wider text-[var(--soft)]">
-          <span>Name / email</span>
+          <span className={STICKY_FIRST_CELL}>Name / email</span>
           <span>Role</span>
           <span>Added</span>
-          <span></span>
+          <span className="pr-5"></span>
         </div>
         {isLoading ? (
           Array.from({ length: 2 }).map((_, i) => (
             <div key={i} className="grid grid-cols-[2fr_1fr_1fr_auto] items-center gap-3 border-b border-[var(--line)] px-5 py-3.5 last:border-b-0">
-              <Skeleton className="h-3.5 w-32" />
+              <Skeleton className={`h-3.5 w-32 ${STICKY_FIRST_CELL}`} />
               <Skeleton className="h-5 w-14 rounded-full" />
               <Skeleton className="h-3.5 w-16" />
               <Skeleton className="h-8 w-16 rounded-full" />
@@ -87,7 +88,7 @@ export default function PlatformTeam() {
         ) : (
           admins.map((a) => (
             <div key={a.id} className="grid grid-cols-[2fr_1fr_1fr_auto] items-center gap-3 border-b border-[var(--line)] px-5 py-3.5 text-sm last:border-b-0">
-              <span>
+              <span className={STICKY_FIRST_CELL}>
                 <span className="block font-bold">{a.name}</span>
                 <span className="block text-xs text-[var(--soft)]">{a.email}</span>
               </span>
@@ -119,7 +120,7 @@ export default function PlatformTeam() {
             </div>
           ))
         )}
-      </div>
+      </ScrollableTable>
 
       <div className="shadow-ambient max-w-md rounded-[var(--radius-card)] bg-[var(--surface)] p-6">
         <h3 className="mb-4 font-display text-lg font-bold text-[var(--ink)]">Invite an admin</h3>

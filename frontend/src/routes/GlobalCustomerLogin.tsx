@@ -9,6 +9,7 @@ import toast from "@/lib/toast";
 import { useCustomerAuth } from "../context/CustomerAuthContext";
 import { PhoneStepModal } from "../components/customer/PhoneStepModal";
 import { AuthSplitShell } from "../components/shared/auth/AuthSplitShell";
+import { ErrorInput } from "../components/shared/ErrorInput";
 import { Turnstile, TURNSTILE_ENABLED, type TurnstileHandle } from "../components/shared/Turnstile";
 
 const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID as string | undefined;
@@ -38,14 +39,23 @@ export default function GlobalCustomerLogin() {
     if (globalAccount) navigate("/explore");
   }, [globalAccount, navigate]);
 
-  const { register, handleSubmit, formState: { errors } } = useForm<LoginFormValues>({
+  const form = useForm<LoginFormValues>({
     resolver: zodResolver(loginSchema),
     defaultValues: { email: "", password: "" },
   });
+  const { register, handleSubmit, formState } = form;
+  // Wrong-credential / server errors land under BOTH fields — the visitor
+  // can't know which one misfired, and pointing at both is honest.
+  const [serverError, setServerError] = useState<string | null>(null);
+  // After a failed submit every invalid field shows red at once; until then
+  // only touched fields do (blur-gated inline errors).
+  const submitted = useRef(false);
 
   const onSubmit = async (data: LoginFormValues) => {
     setIsSubmitting(true);
     const toastId = toast.loading("Signing you in…");
+    submitted.current = true;
+    setServerError(null);
     try {
       await login(data.email, data.password, turnstileToken);
       toast.success("Good to see you again!", { id: toastId });
@@ -53,7 +63,9 @@ export default function GlobalCustomerLogin() {
     } catch (err) {
       turnstileRef.current?.reset();
       setTurnstileToken("");
-      toast.error((err as Error).message || "Couldn't sign you in — try again.", { id: toastId });
+      const msg = (err as Error).message || "Couldn't sign you in — try again.";
+      setServerError(msg);
+      toast.error(msg, { id: toastId });
     } finally {
       setIsSubmitting(false);
     }
@@ -78,41 +90,53 @@ export default function GlobalCustomerLogin() {
         </p>
 
         <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col gap-3">
-          <label className="block">
-            <span className="mb-1.5 block text-[13px] font-semibold text-[var(--lp-ink)]">Email</span>
-            <div className="flex items-center gap-3 rounded-2xl border border-[var(--lp-line)] bg-white/[0.04] px-4 py-3.5 transition-colors focus-within:border-[var(--lp-green)]">
-              <Mail className="h-4 w-4 text-[var(--lp-muted)]" />
-              <input
-                type="email"
-                placeholder="you@email.com"
-                {...register("email")}
-                className="w-full bg-transparent text-sm text-[var(--lp-ink)] placeholder:text-[var(--lp-muted)] focus:outline-none"
-              />
-            </div>
-          </label>
-          {errors.email && <p className="pl-1 text-xs font-semibold text-[var(--lp-terra)]">{errors.email.message}</p>}
+          <ErrorInput
+            label="Email"
+            id="global-login-email"
+            error={serverError ?? formState.errors.email?.message}
+            touched={!!formState.touchedFields.email || !!serverError}
+            forced={submitted.current || !!serverError}
+            icon={<Mail className="h-4 w-4 text-[var(--lp-muted)]" />}
+            className="bg-white/[0.04]"
+          >
+            <input
+              type="email"
+              placeholder="you@email.com"
+              autoComplete="email"
+              {...register("email", { onChange: () => setServerError(null) })}
+              aria-invalid={!!(serverError || formState.errors.email)}
+              aria-describedby={serverError || formState.errors.email ? "global-login-email-error" : undefined}
+              className="w-full bg-transparent text-sm text-[var(--lp-ink)] placeholder:text-[var(--lp-muted)] focus:outline-none"
+            />
+          </ErrorInput>
 
-          <label className="block">
-            <span className="mb-1.5 block text-[13px] font-semibold text-[var(--lp-ink)]">Password</span>
-            <div className="flex items-center gap-3 rounded-2xl border border-[var(--lp-line)] bg-white/[0.04] px-4 py-3.5 transition-colors focus-within:border-[var(--lp-green)]">
-              <Lock className="h-4 w-4 text-[var(--lp-muted)]" />
-              <input
-                type={showPass ? "text" : "password"}
-                placeholder="••••••••"
-                {...register("password")}
-                className="w-full bg-transparent text-sm text-[var(--lp-ink)] placeholder:text-[var(--lp-muted)] focus:outline-none"
-              />
-              <button
-                type="button"
-                onClick={() => setShowPass((v) => !v)}
-                className="text-[var(--lp-muted)] hover:text-[var(--lp-ink)] focus:outline-none"
-                aria-label={showPass ? "Hide password" : "Show password"}
-              >
-                {showPass ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-              </button>
-            </div>
-          </label>
-          {errors.password && <p className="pl-1 text-xs font-semibold text-[var(--lp-terra)]">{errors.password.message}</p>}
+          <ErrorInput
+            label="Password"
+            id="global-login-password"
+            error={serverError ?? formState.errors.password?.message}
+            touched={!!formState.touchedFields.password || !!serverError}
+            forced={submitted.current || !!serverError}
+            icon={<Lock className="h-4 w-4 text-[var(--lp-muted)]" />}
+            className="bg-white/[0.04]"
+          >
+            <input
+              type={showPass ? "text" : "password"}
+              placeholder="••••••••"
+              autoComplete="current-password"
+              {...register("password", { onChange: () => setServerError(null) })}
+              aria-invalid={!!(serverError || formState.errors.password)}
+              aria-describedby={serverError || formState.errors.password ? "global-login-password-error" : undefined}
+              className="w-full bg-transparent text-sm text-[var(--lp-ink)] placeholder:text-[var(--lp-muted)] focus:outline-none"
+            />
+            <button
+              type="button"
+              onClick={() => setShowPass((v) => !v)}
+              className="text-[var(--lp-muted)] hover:text-[var(--lp-ink)] focus:outline-none"
+              aria-label={showPass ? "Hide password" : "Show password"}
+            >
+              {showPass ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+            </button>
+          </ErrorInput>
 
           <Turnstile ref={turnstileRef} onVerify={setTurnstileToken} />
 

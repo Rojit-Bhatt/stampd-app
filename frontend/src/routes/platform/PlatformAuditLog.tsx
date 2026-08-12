@@ -1,6 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { apiRequest } from "../../lib/api";
 import { Skeleton } from "../../components/ui/skeleton";
+import { ScrollableTable, STICKY_FIRST_CELL } from "../../components/shared/ScrollableTable";
 
 interface AuditEntry {
   id: string;
@@ -55,18 +56,18 @@ export default function PlatformAuditLog() {
       <h1 className="font-display text-[28px] font-bold tracking-[-0.015em] text-[var(--ink)]">Activity log</h1>
       <p className="mb-6 text-[var(--muted)]">Every business and team action, most recent first.</p>
 
-      <div className="shadow-ambient overflow-hidden rounded-[var(--radius-card)] bg-[var(--surface)]">
+      <ScrollableTable minContentWidth="560px">
         <div className="grid grid-cols-[140px_110px_1fr_1.5fr] border-b border-[var(--line)] px-5 py-3 text-[11px] font-bold uppercase tracking-wider text-[var(--soft)]">
-          <span>When</span>
+          <span className={STICKY_FIRST_CELL}>When</span>
           <span>Action</span>
           <span>Business</span>
-          <span>Details</span>
+          <span className="pr-5">Details</span>
         </div>
 
         {isLoading ? (
           Array.from({ length: 4 }).map((_, i) => (
             <div key={i} className="grid grid-cols-[140px_110px_1fr_1.5fr] items-center gap-3 border-b border-[var(--line)] px-5 py-3.5 last:border-b-0">
-              <Skeleton className="h-3.5 w-24" />
+              <Skeleton className={`h-3.5 w-24 ${STICKY_FIRST_CELL}`} />
               <Skeleton className="h-5 w-16 rounded-full" />
               <Skeleton className="h-3.5 w-28" />
               <Skeleton className="h-3.5 w-40" />
@@ -79,7 +80,7 @@ export default function PlatformAuditLog() {
         ) : (
           entries.map((e) => (
             <div key={e.id} className="grid grid-cols-[140px_110px_1fr_1.5fr] items-center gap-3 border-b border-[var(--line)] px-5 py-3.5 text-sm last:border-b-0">
-              <span className="text-[var(--muted)]">{formatWhen(e.createdAt)}</span>
+              <span className={STICKY_FIRST_CELL}>{formatWhen(e.createdAt)}</span>
               <span>
                 <span
                   className="rounded-full px-2.5 py-1 text-[11px] font-bold"
@@ -89,13 +90,13 @@ export default function PlatformAuditLog() {
                 </span>
               </span>
               <span className="font-semibold">{e.targetName}</span>
-              <span className="text-[var(--muted)]">
+              <span className="text-[var(--muted)] pr-5">
                 {e.details || "—"} <span className="text-[var(--soft)]">· {e.actorName}</span>
               </span>
             </div>
           ))
         )}
-      </div>
+      </ScrollableTable>
     </div>
   );
 }

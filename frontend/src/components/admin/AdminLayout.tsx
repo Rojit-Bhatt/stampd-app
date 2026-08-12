@@ -22,6 +22,7 @@ import {
 
 import { useAdminAuth } from "../../context/AdminAuthContext";
 import { useAdminSettings } from "../../hooks/useAdminSettings";
+import { resolveImageUrl } from "../../lib/images";
 import { useAccount } from "../../hooks/useAccount";
 import { AccountMenu } from "../shared/AccountMenu";
 import { OrgSwitcher } from "./OrgSwitcher";
@@ -128,6 +129,10 @@ export function AdminLayout() {
   const name = settings?.name || "Business";
   const initial = name.charAt(0).toUpperCase();
   const brand = settings?.branding?.primaryColor || "#0FA968";
+  const logoSrc = resolveImageUrl(
+    settings?.branding?.logoImageId ?? null,
+    settings?.branding?.logoUrl,
+  );
 
   const [openGroups, setOpenGroups] = useState<Set<string>>(() =>
     groupsWithActiveChild(location.pathname),
@@ -168,16 +173,34 @@ export function AdminLayout() {
     navigate(tenantPath(companySlug, slug, "admin/login"));
   };
 
+  // The console identity tile. When the outlet has configured a branding
+  // logo (Manage → Branding), it replaces the initial letter — the same
+  // white-label treatment customers already get in their app. A failed
+  // image falls back to the letter so the rail is never empty.
+  const [logoFailed, setLogoFailed] = useState(false);
+  const headerTile = (
+    <div
+      className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-[var(--radius-field)] font-display text-sm font-bold"
+      style={{ background: brand, color: "#fff" }}
+    >
+      {!logoFailed && logoSrc ? (
+        <img
+          src={logoSrc}
+          alt=""
+          className="h-full w-full rounded-[var(--radius-field)] object-cover"
+          onError={() => setLogoFailed(true)}
+        />
+      ) : (
+        initial
+      )}
+    </div>
+  );
+
   const railBody = (
     <>
       <div className="mb-6 flex items-center gap-2.5 px-2">
         {/* The one place the outlet's own colour appears in this console. */}
-        <div
-          className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-[var(--radius-field)] font-display text-sm font-bold"
-          style={{ background: brand, color: "#fff" }}
-        >
-          {initial}
-        </div>
+        {headerTile}
         <div className="min-w-0">
           <div className="truncate font-display text-[15px] font-bold leading-tight">{name}</div>
           <div className="text-[11px] text-[var(--soft)]">Outlet console</div>

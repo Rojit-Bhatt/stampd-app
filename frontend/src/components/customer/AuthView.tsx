@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { Mail, Lock, User, Phone, Eye, EyeOff } from "lucide-react";
 import { useForm } from "react-hook-form";
@@ -11,6 +11,7 @@ import { PhoneStepModal } from "./PhoneStepModal";
 import toast from "@/lib/toast";
 import { tenantPath } from "../../lib/tenantPath";
 import { Button } from "@/components/ui/button";
+import { ErrorInput } from "../shared/ErrorInput";
 
 type Mode = "login" | "register";
 
@@ -54,6 +55,19 @@ export function AuthView({ mode }: { mode: Mode }) {
   const [showPass, setShowPass] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showPhoneStep, setShowPhoneStep] = useState(false);
+  // After a failed submit, ALL invalid fields surface their errors at once —
+  // until then only fields the visitor already touched show red (blur-gated).
+  const loginSubmitted = useRef(false);
+  const registerSubmitted = useRef(false);
+
+  // Wraps each form's submit handler: marks the form as "submitted" so every
+  // invalid field shows its inline error, then runs the real handler.
+  const onSubmitAttempt =
+    (ref: typeof loginSubmitted, fn: (data: any) => void | Promise<void>) =>
+    (data: any) => {
+      ref.current = true;
+      return fn(data);
+    };
 
   const isLogin = mode === "login";
   const initial = (tenant?.name || "?").charAt(0).toUpperCase();
@@ -131,29 +145,45 @@ export function AuthView({ mode }: { mode: Mode }) {
       </p>
 
       {isLogin ? (
-        <form onSubmit={loginForm.handleSubmit(onLoginSubmit)} className="flex flex-col gap-3">
-          <Field label="Email" icon={<Mail className="h-4 w-4 text-[var(--soft)]" />}>
+        <form onSubmit={loginForm.handleSubmit(onSubmitAttempt(loginSubmitted, onLoginSubmit))} className="flex flex-col gap-3">
+          <ErrorInput
+            label="Email"
+            id="login-email"
+            error={loginForm.formState.errors.email?.message}
+            touched={!!loginForm.formState.touchedFields.email}
+            forced={loginSubmitted.current}
+            icon={<Mail className="h-4 w-4 text-[var(--soft)]" />}
+          >
             <input
               type="email"
               placeholder="you@email.com"
+              autoComplete="email"
               {...loginForm.register("email")}
+              aria-invalid={!!loginForm.formState.errors.email}
+              aria-describedby={loginForm.formState.errors.email ? "login-email-error" : undefined}
               className="w-full bg-transparent text-sm text-[var(--ink)] placeholder:text-[var(--soft)] focus:outline-none"
             />
-          </Field>
-          {loginForm.formState.errors.email && <Err msg={loginForm.formState.errors.email.message} />}
+          </ErrorInput>
 
-          <Field label="Password" icon={<Lock className="h-4 w-4 text-[var(--soft)]" />}>
+          <ErrorInput
+            label="Password"
+            id="login-password"
+            error={loginForm.formState.errors.password?.message}
+            touched={!!loginForm.formState.touchedFields.password}
+            forced={loginSubmitted.current}
+            icon={<Lock className="h-4 w-4 text-[var(--soft)]" />}
+          >
             <input
               type={showPass ? "text" : "password"}
               placeholder="••••••••"
+              autoComplete="current-password"
               {...loginForm.register("password")}
+              aria-invalid={!!loginForm.formState.errors.password}
+              aria-describedby={loginForm.formState.errors.password ? "login-password-error" : undefined}
               className="w-full bg-transparent text-sm text-[var(--ink)] placeholder:text-[var(--soft)] focus:outline-none"
             />
             <EyeToggle show={showPass} onClick={() => setShowPass((v) => !v)} />
-          </Field>
-          {loginForm.formState.errors.password && (
-            <Err msg={loginForm.formState.errors.password.message} />
-          )}
+          </ErrorInput>
 
           <div className="text-right">
             <Link
@@ -169,101 +199,150 @@ export function AuthView({ mode }: { mode: Mode }) {
       ) : (
         <form
           key={tenant ? "ready" : "loading"}
-          onSubmit={registerForm.handleSubmit(onRegisterSubmit)}
+          onSubmit={registerForm.handleSubmit(onSubmitAttempt(registerSubmitted, onRegisterSubmit))}
           className="flex flex-col gap-3"
         >
-          <Field label="Full name" icon={<User className="h-4 w-4 text-[var(--soft)]" />}>
+          <ErrorInput
+            label="Full name"
+            id="register-name"
+            error={registerForm.formState.errors.name?.message}
+            touched={!!registerForm.formState.touchedFields.name}
+            forced={registerSubmitted.current}
+            icon={<User className="h-4 w-4 text-[var(--soft)]" />}
+          >
             <input
               type="text"
               placeholder="Your name"
+              autoComplete="name"
               {...registerForm.register("name")}
+              aria-invalid={!!registerForm.formState.errors.name}
+              aria-describedby={registerForm.formState.errors.name ? "register-name-error" : undefined}
               className="w-full bg-transparent text-sm text-[var(--ink)] placeholder:text-[var(--soft)] focus:outline-none"
             />
-          </Field>
-          {registerForm.formState.errors.name && <Err msg={registerForm.formState.errors.name.message} />}
+          </ErrorInput>
 
-          <Field label="Email" icon={<Mail className="h-4 w-4 text-[var(--soft)]" />}>
+          <ErrorInput
+            label="Email"
+            id="register-email"
+            error={registerForm.formState.errors.email?.message}
+            touched={!!registerForm.formState.touchedFields.email}
+            forced={registerSubmitted.current}
+            icon={<Mail className="h-4 w-4 text-[var(--soft)]" />}
+          >
             <input
               type="email"
               placeholder="you@email.com"
+              autoComplete="email"
               {...registerForm.register("email")}
+              aria-invalid={!!registerForm.formState.errors.email}
+              aria-describedby={registerForm.formState.errors.email ? "register-email-error" : undefined}
               className="w-full bg-transparent text-sm text-[var(--ink)] placeholder:text-[var(--soft)] focus:outline-none"
             />
-          </Field>
-          {registerForm.formState.errors.email && (
-            <Err msg={registerForm.formState.errors.email.message} />
-          )}
+          </ErrorInput>
 
-          <Field label="Phone" icon={<Phone className="h-4 w-4 text-[var(--soft)]" />}>
+          <ErrorInput
+            label="Phone"
+            id="register-phone"
+            error={registerForm.formState.errors.phone?.message}
+            touched={!!registerForm.formState.touchedFields.phone}
+            forced={registerSubmitted.current}
+            icon={<Phone className="h-4 w-4 text-[var(--soft)]" />}
+          >
             <span className="text-sm text-[var(--soft)]">+977</span>
             <input
               type="tel"
               inputMode="numeric"
               placeholder="98XXXXXXXX"
+              autoComplete="tel-local"
               {...registerForm.register("phone")}
+              aria-invalid={!!registerForm.formState.errors.phone}
+              aria-describedby={registerForm.formState.errors.phone ? "register-phone-error" : undefined}
               className="w-full bg-transparent text-sm text-[var(--ink)] placeholder:text-[var(--soft)] focus:outline-none"
             />
-          </Field>
-          {registerForm.formState.errors.phone && (
-            <Err msg={registerForm.formState.errors.phone.message} />
-          )}
+          </ErrorInput>
 
           {tenant?.customerInfo.requireDateOfBirth && (
             <>
               <div className="flex gap-2">
-                <Field label="Birth month" icon={<span className="text-xs text-[var(--soft)]">MM</span>}>
+                <ErrorInput
+                  label="Birth month"
+                  id="register-birth-month"
+                  error={registerForm.formState.errors.birthdayMonth ? "This business needs your date of birth to sign up." : undefined}
+                  touched={!!registerForm.formState.touchedFields.birthdayMonth}
+                  forced={registerSubmitted.current}
+                  icon={<span className="text-xs text-[var(--soft)]">MM</span>}
+                >
                   <input
                     type="number" min={1} max={12} placeholder="Month"
                     {...registerForm.register("birthdayMonth", { valueAsNumber: true })}
+                    aria-invalid={!!registerForm.formState.errors.birthdayMonth}
+                    aria-describedby={registerForm.formState.errors.birthdayMonth ? "register-birth-month-error" : undefined}
                     className="w-full bg-transparent text-sm text-[var(--ink)] placeholder:text-[var(--soft)] focus:outline-none"
                   />
-                </Field>
-                <Field label="Birth day" icon={<span className="text-xs text-[var(--soft)]">DD</span>}>
+                </ErrorInput>
+                <ErrorInput
+                  label="Birth day"
+                  id="register-birth-day"
+                  error={registerForm.formState.errors.birthdayDay ? "This business needs your date of birth to sign up." : undefined}
+                  touched={!!registerForm.formState.touchedFields.birthdayDay}
+                  forced={registerSubmitted.current}
+                  icon={<span className="text-xs text-[var(--soft)]">DD</span>}
+                >
                   <input
                     type="number" min={1} max={31} placeholder="Day"
                     {...registerForm.register("birthdayDay", { valueAsNumber: true })}
+                    aria-invalid={!!registerForm.formState.errors.birthdayDay}
+                    aria-describedby={registerForm.formState.errors.birthdayDay ? "register-birth-day-error" : undefined}
                     className="w-full bg-transparent text-sm text-[var(--ink)] placeholder:text-[var(--soft)] focus:outline-none"
                   />
-                </Field>
+                </ErrorInput>
               </div>
-              {(registerForm.formState.errors.birthdayMonth || registerForm.formState.errors.birthdayDay) && (
-                <Err msg="This business needs your date of birth to sign up." />
-              )}
             </>
           )}
 
           {tenant?.customerInfo.requireGender && (
-            <>
-              <label className="block">
-                <span className="mb-1.5 block text-[13px] font-semibold text-[var(--ink)]">Gender</span>
-                <select
-                  {...registerForm.register("gender")}
-                  defaultValue=""
-                  className="w-full rounded-[var(--radius-field)] border border-[var(--line)] bg-[var(--bg)] px-3.5 py-2.5 text-sm text-[var(--ink)] focus:border-[var(--primary)] focus:outline-none"
-                >
-                  <option value="" disabled>Select one</option>
-                  <option value="male">Male</option>
-                  <option value="female">Female</option>
-                  <option value="other">Other</option>
-                  <option value="prefer_not_to_say">Prefer not to say</option>
-                </select>
-              </label>
-              {registerForm.formState.errors.gender && <Err msg="Gender is required here." />}
-            </>
+            <ErrorInput
+              label="Gender"
+              id="register-gender"
+              error={registerForm.formState.errors.gender ? "Gender is required here." : undefined}
+              touched={!!registerForm.formState.touchedFields.gender}
+              forced={registerSubmitted.current}
+            >
+              <select
+                {...registerForm.register("gender")}
+                defaultValue=""
+                aria-invalid={!!registerForm.formState.errors.gender}
+                aria-describedby={registerForm.formState.errors.gender ? "register-gender-error" : undefined}
+                className="w-full rounded-[var(--radius-btn)] bg-transparent text-sm text-[var(--ink)] focus:outline-none"
+              >
+                <option value="" disabled className="bg-[var(--bg)]">Select one</option>
+                <option value="male" className="bg-[var(--bg)]">Male</option>
+                <option value="female" className="bg-[var(--bg)]">Female</option>
+                <option value="other" className="bg-[var(--bg)]">Other</option>
+                <option value="prefer_not_to_say" className="bg-[var(--bg)]">Prefer not to say</option>
+              </select>
+            </ErrorInput>
           )}
 
-          <Field label="Password" icon={<Lock className="h-4 w-4 text-[var(--soft)]" />}>
+          <ErrorInput
+            label="Password"
+            id="register-password"
+            error={registerForm.formState.errors.password?.message}
+            touched={!!registerForm.formState.touchedFields.password}
+            forced={registerSubmitted.current}
+            icon={<Lock className="h-4 w-4 text-[var(--soft)]" />}
+          >
             <input
               type={showPass ? "text" : "password"}
               placeholder="••••••••"
+              autoComplete="new-password"
               {...registerForm.register("password")}
+              aria-invalid={!!registerForm.formState.errors.password}
+              aria-describedby={registerForm.formState.errors.password ? "register-password-error" : undefined}
               className="w-full bg-transparent text-sm text-[var(--ink)] placeholder:text-[var(--soft)] focus:outline-none"
             />
             <EyeToggle show={showPass} onClick={() => setShowPass((v) => !v)} />
-          </Field>
-          {registerForm.formState.errors.password && (
-            <Err msg={registerForm.formState.errors.password.message} />
-          )}
+          </ErrorInput>
 
           <label className="flex items-center gap-2 text-sm text-[var(--muted)]">
             <input
@@ -329,29 +408,8 @@ function Shell({ initial, children }: { initial: string; children: React.ReactNo
   );
 }
 
-function Field({
-  label,
-  icon,
-  children,
-}: {
-  label: string;
-  icon: React.ReactNode;
-  children: React.ReactNode;
-}) {
-  return (
-    <label className="block">
-      <span className="mb-1.5 block text-[13px] font-semibold text-[var(--ink)]">{label}</span>
-      <div className="flex items-center gap-3 rounded-[var(--radius-btn)] border border-[var(--line)] bg-[var(--surface)] px-4 py-3.5 transition-colors focus-within:border-[var(--primary)]">
-        <span>{icon}</span>
-        {children}
-      </div>
-    </label>
-  );
-}
-
-function Err({ msg }: { msg?: string }) {
-  return <p className="pl-1 text-xs font-semibold text-[var(--err)]">{msg}</p>;
-}
+// Field/Err were retired in favor of the shared <ErrorInput> (Task 10),
+// which adds touched/blur-gating, red borders, and aria-describedby wiring.
 
 function EyeToggle({ show, onClick }: { show: boolean; onClick: () => void }) {
   return (
