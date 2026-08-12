@@ -33,6 +33,10 @@ export default function RegisterCompany() {
   const [busy, setBusy] = useState(false);
   const [done, setDone] = useState<CreatedCompany | null>(null);
   const [copied, setCopied] = useState(false);
+  // Per-field inline errors (red label + red border) replacing the single
+  // generic toast. Shows after the first attempt; clears on typing.
+  const [fieldErrors, setFieldErrors] = useState<Partial<Record<keyof typeof form, string>>>({});
+  const [attempted, setAttempted] = useState(false);
 
   const set = (k: keyof typeof form, v: string) =>
     setForm((f) => ({ ...f, [k]: v }));
@@ -40,11 +44,24 @@ export default function RegisterCompany() {
   const onName = (v: string) =>
     setForm((f) => ({ ...f, name: v, slug: slugEdited ? f.slug : slugify(v) }));
 
+  const required: (keyof typeof form)[] = ["name", "slug", "ownerName", "ownerEmail", "ownerPassword"];
+  const fieldLabels: Record<string, string> = {
+    name: "Company name",
+    slug: "URL handle",
+    ownerName: "Owner name",
+    ownerEmail: "Owner email",
+    ownerPassword: "Temporary password",
+  };
   const submit = async () => {
-    if (!form.name || !form.slug || !form.ownerName || !form.ownerEmail || !form.ownerPassword) {
-      toast.error("A few fields still need filling in.");
-      return;
+    setAttempted(true);
+    const errors: Partial<Record<keyof typeof form, string>> = {};
+    for (const k of required) {
+      if (!form[k]) errors[k] = `${fieldLabels[k]} is required.`;
     }
+    if (form.ownerEmail && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.ownerEmail))
+      errors.ownerEmail = "That doesn't look like an email address — check the spelling.";
+    setFieldErrors(errors);
+    if (Object.keys(errors).length) return;
     setBusy(true);
     try {
       const { earnPercent, pointsExpiryDays, ...rest } = form;
@@ -77,6 +94,8 @@ export default function RegisterCompany() {
       name: "", slug: "", ownerName: "", ownerEmail: "", phone: "", ownerPassword: "",
       earnPercent: "", pointsExpiryDays: "",
     });
+    setFieldErrors({});
+    setAttempted(false);
     setSlugEdited(false);
     setDone(null);
   };
@@ -156,26 +175,58 @@ export default function RegisterCompany() {
 
       <div className="flex flex-col gap-5">
         <Card title="Company">
-          <Label>Company name</Label>
+          <Label htmlFor="company-name">Company name</Label>
           <input
+            id="company-name"
             value={form.name}
-            onChange={(e) => onName(e.target.value)}
+            onChange={(e) => {
+              onName(e.target.value);
+              setFieldErrors((f) => ({ ...f, name: undefined }));
+            }}
+            onBlur={() => {
+              if (attempted || form.name.length > 0)
+                setFieldErrors((f) => ({ ...f, name: form.name ? undefined : "Company name is required." }));
+            }}
             placeholder="e.g. Maple & Bloom"
-            className="mb-4 w-full rounded-[var(--radius-btn)] border border-[var(--line)] bg-[var(--bg)] px-4 py-3 text-sm focus:border-[var(--primary)] focus:outline-none"
+            aria-invalid={!!fieldErrors.name}
+            aria-describedby={fieldErrors.name ? "company-name-error" : undefined}
+            className={`mb-4 w-full rounded-[var(--radius-btn)] border bg-[var(--bg)] px-4 py-3 text-sm focus:outline-none ${
+              fieldErrors.name
+                ? "border-[var(--err)]"
+                : "border-[var(--line)] focus:border-[var(--primary)]"
+            }`}
           />
-          <Label>URL handle</Label>
-          <div className="flex items-center rounded-[var(--radius-btn)] border border-[var(--line)] bg-[var(--bg)] px-4">
+          {fieldErrors.name && (
+            <p id="company-name-error" role="alert" className="-mt-2 mb-4 pl-1 text-xs font-semibold text-[var(--err)]" aria-live="assertive">
+              {fieldErrors.name}
+            </p>
+          )}
+          <Label htmlFor="company-slug">URL handle</Label>
+          <div className={`flex items-center rounded-[var(--radius-btn)] border bg-[var(--bg)] px-4 ${fieldErrors.slug ? "border-[var(--err)]" : "border-[var(--line)]"}`}>
             <span className="font-mono text-sm text-[var(--soft)]">{PLATFORM_NAME.toLowerCase()}.app/</span>
             <input
+              id="company-slug"
               value={form.slug}
               onChange={(e) => {
                 setSlugEdited(true);
                 set("slug", slugify(e.target.value));
+                setFieldErrors((f) => ({ ...f, slug: undefined }));
+              }}
+              onBlur={() => {
+                if (attempted || form.slug.length > 0)
+                  setFieldErrors((f) => ({ ...f, slug: form.slug ? undefined : "URL handle is required." }));
               }}
               placeholder="maplebloom"
+              aria-invalid={!!fieldErrors.slug}
+              aria-describedby={fieldErrors.slug ? "company-slug-error" : undefined}
               className="flex-1 bg-transparent px-1 py-3 font-mono text-sm focus:outline-none"
             />
           </div>
+          {fieldErrors.slug && (
+            <p id="company-slug-error" role="alert" className="-mt-2 mb-2 pl-1 text-xs font-semibold text-[var(--err)]" aria-live="assertive">
+              {fieldErrors.slug}
+            </p>
+          )}
         </Card>
 
         <Card title="Loyalty program">
@@ -217,16 +268,60 @@ export default function RegisterCompany() {
           <div className="flex flex-col gap-3">
             <input
               value={form.ownerName}
-              onChange={(e) => set("ownerName", e.target.value)}
+              onChange={(e) => {
+                set("ownerName", e.target.value);
+                setFieldErrors((f) => ({ ...f, ownerName: undefined }));
+              }}
+              onBlur={() => {
+                if (attempted || form.ownerName.length > 0)
+                  setFieldErrors((f) => ({ ...f, ownerName: form.ownerName ? undefined : "Owner name is required." }));
+              }}
               placeholder="Owner name"
-              className="rounded-[var(--radius-btn)] border border-[var(--line)] bg-[var(--bg)] px-4 py-3 text-sm focus:border-[var(--primary)] focus:outline-none"
+              aria-invalid={!!fieldErrors.ownerName}
+              aria-describedby={fieldErrors.ownerName ? "owner-name-error" : undefined}
+              className={`rounded-[var(--radius-btn)] border bg-[var(--bg)] px-4 py-3 text-sm focus:outline-none ${
+                fieldErrors.ownerName
+                  ? "border-[var(--err)]"
+                  : "border-[var(--line)] focus:border-[var(--primary)]"
+              }`}
             />
+            {fieldErrors.ownerName && (
+              <p id="owner-name-error" role="alert" className="-mt-1.5 pl-1 text-xs font-semibold text-[var(--err)]" aria-live="assertive">
+                {fieldErrors.ownerName}
+              </p>
+            )}
             <input
               value={form.ownerEmail}
-              onChange={(e) => set("ownerEmail", e.target.value)}
+              onChange={(e) => {
+                set("ownerEmail", e.target.value);
+                setFieldErrors((f) => ({ ...f, ownerEmail: undefined }));
+              }}
+              onBlur={() => {
+                if (attempted || form.ownerEmail.length > 0)
+                  setFieldErrors((f) => ({
+                    ...f,
+                    ownerEmail: !form.ownerEmail
+                      ? "Owner email is required."
+                      : /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.ownerEmail)
+                        ? undefined
+                        : "That doesn't look like an email address — check the spelling.",
+                  }));
+              }}
               placeholder="Owner email"
-              className="rounded-[var(--radius-btn)] border border-[var(--line)] bg-[var(--bg)] px-4 py-3 text-sm focus:border-[var(--primary)] focus:outline-none"
+              type="email"
+              aria-invalid={!!fieldErrors.ownerEmail}
+              aria-describedby={fieldErrors.ownerEmail ? "owner-email-error" : undefined}
+              className={`rounded-[var(--radius-btn)] border bg-[var(--bg)] px-4 py-3 text-sm focus:outline-none ${
+                fieldErrors.ownerEmail
+                  ? "border-[var(--err)]"
+                  : "border-[var(--line)] focus:border-[var(--primary)]"
+              }`}
             />
+            {fieldErrors.ownerEmail && (
+              <p id="owner-email-error" role="alert" className="-mt-1.5 pl-1 text-xs font-semibold text-[var(--err)]" aria-live="assertive">
+                {fieldErrors.ownerEmail}
+              </p>
+            )}
             <input
               value={form.phone}
               onChange={(e) => set("phone", e.target.value)}
@@ -236,10 +331,31 @@ export default function RegisterCompany() {
             <input
               type="password"
               value={form.ownerPassword}
-              onChange={(e) => set("ownerPassword", e.target.value)}
+              onChange={(e) => {
+                set("ownerPassword", e.target.value);
+                setFieldErrors((f) => ({ ...f, ownerPassword: undefined }));
+              }}
+              onBlur={() => {
+                if (attempted || form.ownerPassword.length > 0)
+                  setFieldErrors((f) => ({
+                    ...f,
+                    ownerPassword: form.ownerPassword ? undefined : "A temporary password is required.",
+                  }));
+              }}
               placeholder="Temporary password"
-              className="rounded-[var(--radius-btn)] border border-[var(--line)] bg-[var(--bg)] px-4 py-3 text-sm focus:border-[var(--primary)] focus:outline-none"
+              aria-invalid={!!fieldErrors.ownerPassword}
+              aria-describedby={fieldErrors.ownerPassword ? "owner-password-error" : undefined}
+              className={`rounded-[var(--radius-btn)] border bg-[var(--bg)] px-4 py-3 text-sm focus:outline-none ${
+                fieldErrors.ownerPassword
+                  ? "border-[var(--err)]"
+                  : "border-[var(--line)] focus:border-[var(--primary)]"
+              }`}
             />
+            {fieldErrors.ownerPassword && (
+              <p id="owner-password-error" role="alert" className="-mt-1.5 pl-1 text-xs font-semibold text-[var(--err)]" aria-live="assertive">
+                {fieldErrors.ownerPassword}
+              </p>
+            )}
           </div>
         </Card>
 
@@ -264,6 +380,10 @@ function Card({ title, children }: { title: string; children: React.ReactNode })
     </div>
   );
 }
-function Label({ children }: { children: React.ReactNode }) {
-  return <label className="mb-1.5 block text-[13px] font-semibold">{children}</label>;
+function Label({ htmlFor, children }: { htmlFor?: string; children: React.ReactNode }) {
+  return (
+    <label htmlFor={htmlFor} className="mb-1.5 block text-[13px] font-semibold">
+      {children}
+    </label>
+  );
 }
