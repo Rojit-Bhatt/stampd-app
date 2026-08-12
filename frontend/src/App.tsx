@@ -7,6 +7,7 @@ import { AdminAuthProvider } from './context/AdminAuthContext';
 import { PlatformAuthProvider } from './context/PlatformAuthContext';
 import { CompanyAuthProvider } from './context/CompanyAuthContext';
 import { TenantProvider } from './context/TenantContext';
+import { CelebrationProvider } from './context/CelebrationContext';
 import { Toaster } from "@/lib/toast";
 import ErrorBoundary from './components/ErrorBoundary';
 import { AdminGuard } from './components/admin/AdminGuard';
@@ -91,7 +92,9 @@ function TenantScope() {
   return (
     <TenantProvider>
       <TenantSessionSync />
-      <Outlet />
+      <CelebrationProvider>
+        <Outlet />
+      </CelebrationProvider>
     </TenantProvider>
   );
 }

@@ -19,8 +19,12 @@ export const SPRINGS = {
   settle: { type: "spring", stiffness: 260, damping: 26 },
   /** Earn: the coin lands. Overshoots to 1.16 before settling. */
   coinPop: { type: "spring", stiffness: 280, damping: 14 },
+  /** Earn burst: punchier overshoot than coinPop, since particles are flying at the same time. */
+  coinBurst: { type: "spring", stiffness: 320, damping: 12 },
   /** Redeem: the exchange. Voucher flips rotateY 90 -> 0. */
   voucherFlip: { type: "spring", stiffness: 220, damping: 18 },
+  /** Redeem: ticket pops up and settles — no rotation, unlike the old flip. */
+  ticketPop: { type: "spring", stiffness: 300, damping: 20 },
   /** Card-stack swipe/settle — deliberately softer and slower than `settle`, for a large element the eye tracks the whole way rather than a small one that just needs to arrive. */
   cardGlide: { type: "spring", stiffness: 170, damping: 26 },
 } satisfies Record<string, Transition>;
