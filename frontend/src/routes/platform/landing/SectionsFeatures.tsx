@@ -1,6 +1,6 @@
 import { FEATURES } from "./data";
 import { Eyebrow } from "./primitives";
-import { ServicesCarousel } from "./ServicesCarousel";
+import { FeaturePile } from "./FeaturePile";
 import { WordReveal } from "./motion/WordReveal";
 
 export function FeaturesSection() {
@@ -15,9 +15,12 @@ export function FeaturesSection() {
           text={FEATURES.statement}
           className="mt-5 max-w-4xl font-display text-3xl leading-[1.15] tracking-[-0.02em] text-[var(--lp-ink)] sm:text-4xl md:text-5xl"
         />
-
-        <ServicesCarousel />
       </div>
+
+      {/* The pile takes over from here: cards are full-viewport sized, so
+          they can't live inside the max-w-6xl content column — the section
+          head keeps the column, the pile is full-bleed below it. */}
+      <FeaturePile />
     </section>
   );
 }
