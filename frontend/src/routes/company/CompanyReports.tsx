@@ -4,6 +4,7 @@ import { apiRequest } from "../../lib/api";
 import { formatNpr } from "../../lib/subscription";
 import { Skeleton } from "../../components/ui/skeleton";
 import { DateRangeFilter, defaultDateRange, type DateRangeValue } from "../../components/shared/DateRangeFilter";
+import { ScrollableTable, STICKY_FIRST_CELL } from "../../components/shared/ScrollableTable";
 
 interface OutletRow {
   outletId: string;
@@ -76,20 +77,19 @@ export default function CompanyReports() {
         ))}
       </div>
 
-      <div className="shadow-ambient overflow-x-auto rounded-[var(--radius-card)] bg-[var(--surface)]">
-        <div className="min-w-[650px]">
-          <div className="grid grid-cols-[2fr_1fr_1fr_1fr_1fr] border-b border-[var(--line)] px-5 py-3 text-[11px] font-bold uppercase tracking-wider text-[var(--soft)]">
-            <span>Outlet</span>
-            <span>Customers</span>
-            <span>Points</span>
-            <span>Redeemed</span>
-            <span>Revenue</span>
-          </div>
+      <ScrollableTable minContentWidth="650px">
+        <div className="grid grid-cols-[2fr_1fr_1fr_1fr_1fr] border-b border-[var(--line)] px-5 py-3 text-[11px] font-bold uppercase tracking-wider text-[var(--soft)]">
+          <span className={STICKY_FIRST_CELL}>Outlet</span>
+          <span>Customers</span>
+          <span>Points</span>
+          <span>Redeemed</span>
+          <span className="pr-5">Revenue</span>
+        </div>
 
-          {isLoading ? (
-            Array.from({ length: 3 }).map((_, i) => (
-              <div key={i} className="grid grid-cols-[2fr_1fr_1fr_1fr_1fr] items-center gap-3 border-b border-[var(--line)] px-5 py-3.5 last:border-b-0">
-                <Skeleton className="h-3.5 w-32" />
+        {isLoading ? (
+          Array.from({ length: 3 }).map((_, i) => (
+            <div key={i} className="grid grid-cols-[2fr_1fr_1fr_1fr_1fr] items-center gap-3 border-b border-[var(--line)] px-5 py-3.5 last:border-b-0">
+              <Skeleton className={`h-3.5 w-32 ${STICKY_FIRST_CELL}`} />
                 <Skeleton className="h-3.5 w-8" />
                 <Skeleton className="h-3.5 w-8" />
                 <Skeleton className="h-3.5 w-8" />
@@ -101,7 +101,7 @@ export default function CompanyReports() {
           ) : (
             (data?.outlets || []).map((o) => (
               <div key={o.outletId} className="grid grid-cols-[2fr_1fr_1fr_1fr_1fr] items-center gap-3 border-b border-[var(--line)] px-5 py-3.5 text-sm last:border-b-0">
-                <span className="min-w-0">
+                <span className={`min-w-0 ${STICKY_FIRST_CELL}`}>
                   <span className="block truncate font-bold">{o.name}</span>
                   <span className="block truncate font-mono text-xs text-[var(--soft)]">
                     /{o.slug}
@@ -111,12 +111,11 @@ export default function CompanyReports() {
                 <span className="font-semibold">{o.customersCount}</span>
                 <span className="font-semibold">{o.pointsIssued}</span>
                 <span className="font-semibold">{o.redemptionCount}</span>
-                <span className="font-semibold">{formatNpr(o.revenue)}</span>
+                <span className="font-semibold pr-5">{formatNpr(o.revenue)}</span>
               </div>
             ))
           )}
-        </div>
-      </div>
+      </ScrollableTable>
 
       {data?.range && (
         <p className="mt-4 text-xs text-[var(--soft)]">

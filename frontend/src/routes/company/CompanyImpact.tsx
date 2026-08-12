@@ -2,6 +2,7 @@ import { useQuery } from "@tanstack/react-query";
 import { apiRequest } from "../../lib/api";
 import { formatNpr } from "../../lib/subscription";
 import { Skeleton } from "../../components/ui/skeleton";
+import { ScrollableTable } from "../../components/shared/ScrollableTable";
 import type { Impact } from "../admin/AdminImpact";
 
 interface OutletImpactRow extends Impact {
@@ -135,32 +136,32 @@ export default function CompanyImpact() {
         <p className="mb-4 text-xs font-semibold uppercase tracking-wider text-[var(--soft)]">
           By outlet
         </p>
-        <div className="overflow-x-auto">
+        <ScrollableTable minContentWidth="560px" className="rounded-[16px] p-0" stickyFirst={false}>
           <table className="w-full min-w-[560px] text-left text-sm">
             <thead className="text-[var(--soft)]">
               <tr>
-                <th className="pb-2 font-medium">Outlet</th>
+                <th className="sticky left-0 z-[1] bg-[var(--surface)] pb-2 pr-3 font-medium">Outlet</th>
                 <th className="pb-2 text-right font-medium">Customers</th>
                 <th className="pb-2 text-right font-medium">Came back</th>
-                <th className="pb-2 text-right font-medium">Revenue</th>
+                <th className="pb-2 pr-3 text-right font-medium">Revenue</th>
               </tr>
             </thead>
             <tbody>
               {data.perOutlet.map((o) => (
                 <tr key={o.outletId} className="border-t border-[var(--line)]">
-                  <td className="py-3 text-[var(--ink)]">{o.name}</td>
+                  <td className="sticky left-0 z-[1] bg-[var(--surface)] py-3 pr-3 text-[var(--ink)]">{o.name}</td>
                   <td className="py-3 text-right font-numeral text-[var(--ink)]">{o.customers}</td>
                   <td className="py-3 text-right font-numeral text-[var(--ink)]">
                     {o.retentionPercent === null ? "—" : `${o.retentionPercent}%`}
                   </td>
-                  <td className="py-3 text-right font-numeral text-[var(--ink)]">
+                  <td className="py-3 pr-3 text-right font-numeral text-[var(--ink)]">
                     {formatNpr(o.revenueTracked)}
                   </td>
                 </tr>
               ))}
             </tbody>
           </table>
-        </div>
+        </ScrollableTable>
       </div>
     </div>
   );

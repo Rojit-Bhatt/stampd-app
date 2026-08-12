@@ -6,6 +6,7 @@ import toast from "@/lib/toast";
 import { apiRequest, apiUrl, tenantHeaders } from "../../lib/api";
 import { useTenant } from "../../context/TenantContext";
 import { tenantPath } from "../../lib/tenantPath";
+import { ScrollableTable, STICKY_FIRST_CELL } from "../../components/shared/ScrollableTable";
 import { formatPoints, type PointsTransaction } from "../../hooks/usePoints";
 import { formatNpr } from "../../lib/subscription";
 import { Skeleton } from "../../components/ui/skeleton";
@@ -144,19 +145,19 @@ export default function AdminTransactions() {
         </div>
       </div>
 
-      <div className="shadow-ambient overflow-hidden rounded-[var(--radius-card)] bg-[var(--surface)]">
+      <ScrollableTable minContentWidth="700px">
         <div className="grid grid-cols-[1.6fr_1fr_1.4fr_1fr_1fr] border-b border-[var(--line)] px-5 py-3 text-[11px] font-bold uppercase tracking-wider text-[var(--soft)]">
-          <span>Customer</span>
+          <span className={STICKY_FIRST_CELL}>Customer</span>
           <span>Type</span>
           <span>Detail</span>
           <span className="text-right">Points</span>
-          <span className="text-right">Balance</span>
+          <span className="text-right pr-5">Balance</span>
         </div>
 
         {isLoading ? (
           Array.from({ length: 6 }).map((_, i) => (
             <div key={i} className="grid grid-cols-[1.6fr_1fr_1.4fr_1fr_1fr] items-center gap-3 border-b border-[var(--line)] px-5 py-3.5 last:border-b-0">
-              <Skeleton className="h-3.5 w-32" />
+              <Skeleton className={`h-3.5 w-32 ${STICKY_FIRST_CELL}`} />
               <Skeleton className="h-3.5 w-14" />
               <Skeleton className="h-3.5 w-24" />
               <Skeleton className="ml-auto h-3.5 w-10" />
@@ -175,7 +176,7 @@ export default function AdminTransactions() {
                 key={r.id}
                 className="grid grid-cols-[1.6fr_1fr_1.4fr_1fr_1fr] items-center gap-3 border-b border-[var(--line)] px-5 py-3.5 text-sm last:border-b-0"
               >
-                <span className="min-w-0">
+                <span className={`min-w-0 ${STICKY_FIRST_CELL}`}>
                   <Link
                     to={tenantPath(companySlug, outletSlug, `admin/customers/${r.customerId}`)}
                     className="block truncate font-bold hover:underline"
@@ -205,14 +206,14 @@ export default function AdminTransactions() {
                   {r.points > 0 ? "+" : ""}
                   {formatPoints(r.points)}
                 </span>
-                <span className="text-right font-semibold text-[var(--muted)]">
+                <span className="text-right font-semibold text-[var(--muted)] pr-5">
                   {formatPoints(r.balanceAfter)}
                 </span>
               </div>
             );
           })
         )}
-      </div>
+      </ScrollableTable>
     </div>
   );
 }

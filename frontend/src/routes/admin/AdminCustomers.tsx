@@ -7,6 +7,7 @@ import { useAdminSettings } from "../../hooks/useAdminSettings";
 import { useAdminAuth } from "../../context/AdminAuthContext";
 import { useTenant } from "../../context/TenantContext";
 import { tenantPath } from "../../lib/tenantPath";
+import { ScrollableTable, STICKY_FIRST_CELL } from "../../components/shared/ScrollableTable";
 import { Skeleton } from "../../components/ui/skeleton";
 import { Badge } from "../../components/ui/badge";
 import { SegmentedControl, SegmentedControlItem } from "@/components/ui/segmented-control";
@@ -115,20 +116,20 @@ export default function AdminCustomers() {
         </div>
       </div>
 
-      <div className="shadow-ambient overflow-hidden rounded-[var(--radius-card)] bg-[var(--surface)]">
+      <ScrollableTable minContentWidth="760px">
         <div className="grid grid-cols-[2fr_1fr_1fr_1fr_1fr_1fr] gap-4 border-b border-[var(--line)] px-5 py-3 text-[11px] font-bold uppercase tracking-wider text-[var(--soft)]">
-          <span>Customer</span>
+          <span className={STICKY_FIRST_CELL}>Customer</span>
           <span>No.</span>
           <span>Tier</span>
           <span>Points</span>
           <span>Redeemed</span>
-          <span>Last visit</span>
+          <span className="pr-5">Last visit</span>
         </div>
 
         {isLoading ? (
           Array.from({ length: 5 }).map((_, i) => (
             <div key={i} className="grid grid-cols-[2fr_1fr_1fr_1fr_1fr_1fr] gap-4 items-center border-b border-[var(--line)] px-5 py-3.5 last:border-b-0">
-              <span className="flex items-center gap-3">
+              <span className={`flex items-center gap-3 ${STICKY_FIRST_CELL}`}>
                 <Skeleton className="h-9 w-9 flex-shrink-0 rounded-full" />
                 <span className="flex-1">
                   <Skeleton className="mb-1.5 h-3.5 w-24" />
@@ -153,7 +154,7 @@ export default function AdminCustomers() {
               to={tenantPath(companySlug, outletSlug, `admin/customers/${c.id}`)}
               className="grid w-full grid-cols-[2fr_1fr_1fr_1fr_1fr_1fr] gap-4 items-center border-b border-[var(--line)] px-5 py-3.5 text-left last:border-b-0 hover:bg-[var(--surface-2)]"
             >
-              <span className="flex items-center gap-3 min-w-0">
+              <span className={`flex items-center gap-3 min-w-0 ${STICKY_FIRST_CELL}`}>
                 <span className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-full border border-[var(--line)] bg-[var(--bg)] text-xs font-bold text-[var(--muted)]">
                   {c.name.split(" ").map((w) => w[0]).slice(0, 2).join("").toUpperCase()}
                 </span>
@@ -168,11 +169,11 @@ export default function AdminCustomers() {
                 {c.pointsBalance}
               </span>
               <span className="text-sm font-semibold">{c.redemptionCount}</span>
-              <span className="text-[13px] text-[var(--muted)]">{lastVisit(c.lastActivityAt)}</span>
+              <span className="text-[13px] text-[var(--muted)] pr-5">{lastVisit(c.lastActivityAt)}</span>
             </Link>
           ))
         )}
-      </div>
+      </ScrollableTable>
 
       <div className="mt-8">
         <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
