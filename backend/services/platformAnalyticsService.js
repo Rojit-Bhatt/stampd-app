@@ -78,6 +78,7 @@ const getPlatformAnalytics = async () => {
     outletsTotal,
     outletsActiveOrgs,
     customersTotal,
+    unverifiedCustomersTotal,
     newCustomersCurrent,
     newCustomersPrevious,
     txnsCurrent,
@@ -91,6 +92,11 @@ const getPlatformAnalytics = async () => {
     // than one outlet (exactly what the isolation-test customer "bikash"
     // is seeded to exercise).
     CustomerAccount.countDocuments({}),
+    // Every registered website account — sign-ups included, whether or not
+    // they have joined any outlet, and whether or not their email is
+    // verified yet. That is what "total registered customers" means to the
+    // platform admin; membership counts live elsewhere.
+    CustomerAccount.countDocuments({ emailVerified: false }),
     User.countDocuments({ role: "customer", createdAt: currentRange }),
     User.countDocuments({ role: "customer", createdAt: previousRange }),
     PointsTransaction.find({ createdAt: currentRange }),
@@ -132,6 +138,10 @@ const getPlatformAnalytics = async () => {
     outletsTotal,
     outletsActive: outletsActiveOrgs.length,
     customersTotal,
+    // All sign-ups, unverified included (unverifiedCustomersTotal is the
+    // complement detail; the platform admin asked for the full sign-up
+    // count regardless of membership or verification).
+    totalRegisteredCustomers: customersTotal + unverifiedCustomersTotal,
     newCustomers: { value: newCustomersCurrent, trend: weekOverWeekTrend(newCustomersCurrent, newCustomersPrevious) },
     pointsIssued: { value: toPoints(pointsCurrent), trend: weekOverWeekTrend(pointsCurrent, pointsPrevious) },
     revenue: { value: Math.round(revenueCurrent * 100) / 100, trend: weekOverWeekTrend(revenueCurrent, revenuePrevious) },
