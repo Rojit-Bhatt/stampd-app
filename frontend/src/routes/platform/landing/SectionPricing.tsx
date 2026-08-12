@@ -5,12 +5,45 @@ import { CtaPill, SectionHead } from "./primitives";
 /** Whole rupees, as the platform stores them. */
 const formatNpr = (n: number) => (n === 0 ? "Rs 0" : `Rs ${n.toLocaleString()}`);
 
+/**
+ * Strip every non-digit character from a phone number so it can be used in a
+ * wa.me link. The platform contact phone may be stored with "+", spaces, or
+ * dashes — the WhatsApp URL scheme accepts digits only.
+ */
+const toWaNumber = (phone: string) => phone.replace(/[^\d]/g, "");
+
+/**
+ * One pre-filled WhatsApp message template per tier. Each carries the exact
+ * plan a visitor clicked from (name + price) so the sales conversation can
+ * pick up immediately — no guessing which plan they came from.
+ */
+const planMessage = (name: string, priceNpr: number): string =>
+  `Hi Stampd! I'm interested in the ${name} plan (${formatNpr(priceNpr)}/year). Can you tell me more about getting started?`;
+
+/**
+ * Build the CTA URL for a tier. WhatsApp deep link with a pre-filled message
+ * when the platform has a contact number configured; otherwise fall back to
+ * the in-page pricing anchor so the visitor still lands on the plan they
+ * clicked.
+ */
+const planContactHref = (phone: string, name: string, priceNpr: number): string =>
+  phone
+    ? `https://wa.me/${toWaNumber(phone)}?text=${encodeURIComponent(planMessage(name, priceNpr))}`
+    : "#pricing";
+
 export function PricingSection({ contactHref }: { contactHref: string }) {
   const { data: plans, isLoading } = usePublicPlans();
 
   // An unconfigured platform shows no pricing section rather than an empty
   // shell promising tiers that do not exist.
   if (!isLoading && (!plans || plans.length === 0)) return null;
+
+  // The shared contactHref carries the platform's WhatsApp number (digits
+  // only). Individual tiers build their own wa.me link with a pre-filled
+  // template — same number, tier-specific message.
+  const phone = contactHref.startsWith("https://wa.me/")
+    ? decodeURIComponent(contactHref).replace("https://wa.me/", "").split("?")[0]
+    : "";
 
   return (
     <section id="pricing" className="lp-grid px-6 py-28 md:px-10">
@@ -48,7 +81,7 @@ export function PricingSection({ contactHref }: { contactHref: string }) {
                     ))}
                   </ul>
                   <CtaPill
-                    href={contactHref}
+                    href={planContactHref(phone, plan.name, plan.priceNpr)}
                     tone={plan.isMostPopular ? "cream" : "outline"}
                     className="mt-8 w-full"
                   >
