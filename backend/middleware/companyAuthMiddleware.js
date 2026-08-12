@@ -1,4 +1,4 @@
-const { verifyCompanySessionToken } = require("../utils/tokenUtils");
+const { verifyCompanySessionToken, tokenPv } = require("../utils/tokenUtils");
 const AdminAccount = require("../models/AdminAccount");
 
 // Duplicated from authMiddleware.js's extractToken rather than imported —
@@ -50,6 +50,15 @@ const verifyCompanySession = async (req, _res, next) => {
     const account = await AdminAccount.findOne({ _id: decoded.adminAccountId });
 
     if (!account || account.kind !== "company_owner") {
+      const error = new Error("Access denied. Session is no longer valid.");
+      error.statusCode = 401;
+      throw error;
+    }
+
+    // Credential-version guard, same as the customer global session: any
+    // token minted before the account's most recent password change/reset
+    // (tokenPv() treats legacy no-pv tokens as version 0) is dead on arrival.
+    if (tokenPv(account) > tokenPv(decoded)) {
       const error = new Error("Access denied. Session is no longer valid.");
       error.statusCode = 401;
       throw error;

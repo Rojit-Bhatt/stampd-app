@@ -23,6 +23,17 @@ const { verifyTurnstile } = require("../middleware/turnstileMiddleware");
 const router = express.Router();
 
 router.post("/login", authLimiter, verifyTurnstile, platformLogin);
+// Second MFA step for platform admins — same challenge-token contract as the
+// customer flow (see customerAccountRoutes /login/mfa).
+router.post("/login/mfa", authLimiter, require("../controllers/platformMfaController").completeMfaLogin);
+
+// Platform-admin MFA lifecycle — gated by the same ENABLE_MFA flag; every
+// endpoint 404s when the flag is off. Admin rows carry their own mfa fields.
+const platformMfa = require("../controllers/platformMfaController");
+router.get("/me/mfa/status", verifyToken, isPlatformAdmin, platformMfa.assertMfaAvailable, platformMfa.status);
+router.post("/me/mfa/setup", verifyToken, isPlatformAdmin, platformMfa.assertMfaAvailable, platformMfa.setup);
+router.post("/me/mfa/enable", verifyToken, isPlatformAdmin, platformMfa.assertMfaAvailable, platformMfa.enable);
+router.post("/me/mfa/disable", authLimiter, verifyToken, isPlatformAdmin, platformMfa.assertMfaAvailable, platformMfa.disable);
 
 // The platform registers companies; each company then registers its own
 // outlets. The platform keeps read access to every outlet and can still

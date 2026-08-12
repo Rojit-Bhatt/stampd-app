@@ -4,6 +4,7 @@ const AdminAccount = require("../models/AdminAccount");
 const { TRIAL_DAYS, EXPIRY_REMINDER_DAYS, GRACE_PERIOD_DAYS, BILLING_INTERVAL_DAYS } = require("../config/subscription");
 const { sendEmail } = require("./emailService");
 const { getContact } = require("./platformConfigService");
+const { logAction: logTenantAudit } = require("./tenantAuditService");
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 const TRIAL_OUTLET_LIMIT = 1;
@@ -48,7 +49,7 @@ const getSubscription = async (companyId) => {
 // free. Scale as you grow." without needing a separate Rs 0 plan.
 const startTrialSubscription = async (companyId) => {
   const now = new Date();
-  return Subscription.create({
+  const subscription = await Subscription.create({
     companyId,
     planId: null,
     planSlug: "trial",
@@ -58,6 +59,11 @@ const startTrialSubscription = async (companyId) => {
     currentPeriodEnd: new Date(now.getTime() + TRIAL_DAYS * DAY_MS),
     isComped: false
   });
+  // subscription_change ledger row for the free trial: the first and only
+  // subscription mutation that happens with no plan payment behind it, so
+  // it wants the same evidence trail as a paid activation.
+  logSubscriptionChange(companyId, "trial", null, "trial_start", now);
+  return subscription;
 };
 
 // Counts the outlets a company's plan is actually paying for. Archived
@@ -142,10 +148,35 @@ const applyPurchase = async ({ companyId, plan }) => {
     updatedAt: now
   };
 
+  let saved;
   if (subscription) {
-    return Subscription.findOneAndUpdate({ _id: subscription._id }, { $set: updates }, { new: true });
+    saved = await Subscription.findOneAndUpdate({ _id: subscription._id }, { $set: updates }, { new: true });
+  } else {
+    saved = await Subscription.create({ companyId, ...updates });
   }
-  return Subscription.create({ companyId, ...updates });
+  // subscription_change ledger row: a paid activation (or renewal) is the
+  // mutation that touches what the business can actually do (outlets,
+  // plans), so its provenance belongs in the tenant's own audit ledger
+  // alongside the points movement. Best-effort — the purchase already
+  // succeeded; a failed audit row must not roll it back.
+  logSubscriptionChange(companyId, plan.slug, plan.name, subscription ? "renewal" : "activation", new Date());
+  return saved;
+};
+
+// subscription_change ledger helper. Actor is null here because the mutation
+// can be triggered by several surfaces (a key redeem, the platform admin's
+// adjust, a comp) — the meta's `source` names which one.
+const logSubscriptionChange = (companyId, planSlug, planName, source, when) => {
+  logTenantAudit({
+    companyId,
+    organizationId: null,
+    actorId: null,
+    actorName: "",
+    actorRole: "",
+    targetId: companyId,
+    action: "subscription_change",
+    meta: { planSlug, planName, source, appliedAt: when }
+  }).catch((err) => console.error("[TenantAuditLog] subscription_change row failed:", err.message || err));
 };
 
 // How many whole days until currentPeriodEnd (negative once past it — used

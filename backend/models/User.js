@@ -61,6 +61,11 @@ const UserSchema = new mongoose.Schema({
   // Hashing doesn't make four digits strong; it makes a database read
   // insufficient to impersonate someone at the counter, which is the threat.
   staffPinHash: { type: String, default: null },
+  // Platform users (role===platform) own their password here rather than in
+  // a global account collection, so the version that kills old JWTs on a
+  // credential change lives here too (business_admin/platform JWTs are the
+  // standard tenant JWT, verified by authMiddleware.verifyToken).
+  passwordVersion: { type: Number, default: 0 },
   createdAt: { type: Date, default: Date.now }
 });
 

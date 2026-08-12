@@ -15,7 +15,17 @@ const { ensureUserPointsBalance, formatAuthPayload } = require("./authService");
 const { effectiveBalanceCenti, expiresAtFor } = require("./pointsService");
 const { toPoints } = require("../utils/pointsMath");
 const { sniffImageType } = require("../utils/imageBytes");
-const { generateGlobalSessionToken } = require("../utils/tokenUtils");
+const { generateMfaChallengeToken, generateGlobalSessionToken, verifyAuthToken } = require("../utils/tokenUtils");
+// Lazy load: mfaService only ever matters when ENABLE_MFA=true, and the
+// try/catch keeps the module loadable in environments without the otpauth
+// dependency (feature flag off → never needed at runtime).
+const { validateCode: validateMfaCode, mfaEnabled: mfaPlatformEnabled } = (() => {
+  try {
+    return require("./mfaService");
+  } catch (error) {
+    return { validateCode: () => false, mfaEnabled: false };
+  }
+})();
 const { isLocked, lockedMinutesLeft, registerFailedAttempt, resetLoginAttempts } = require("../utils/loginLockout");
 const { resolveProgram } = require("./programService");
 const { resolveGoogleLink } = require("../utils/googleLink");
@@ -23,6 +33,7 @@ const { googleOAuthBreaker } = require("../utils/dependencyBreakers");
 const { DependencyUnavailableError } = require("../utils/circuitBreaker");
 const { createNotification } = require("./notificationService");
 const { sendEmail } = require("./emailService");
+const { logAction: logTenantAudit } = require("./tenantAuditService");
 
 const SALT_ROUNDS = 10;
 const VERIFY_TTL_MS = 24 * 60 * 60 * 1000;
@@ -102,7 +113,13 @@ const formatAccountSummary = (account) => ({
 
 const formatGlobalSessionPayload = (account) => ({
   success: true,
-  token: generateGlobalSessionToken({ customerAccountId: account._id.toString() }),
+  // The pv claim binds the session to the row's current credential version
+  // — legacy tokens decode to pv=0, matching every account's default, so
+  // existing sessions survive until the next password change/reset.
+  token: generateGlobalSessionToken({
+    customerAccountId: account._id.toString(),
+    pv: typeof account.passwordVersion === "number" ? account.passwordVersion : 0
+  }),
   account: formatAccountSummary(account)
 });
 
@@ -298,6 +315,51 @@ const loginAccount = async ({ email, password }) => {
 
   await resetLoginAttempts(account);
 
+  // MFA second step: the password is proven, but an armed account hands back
+  // a short-lived mfa challenge token (10 minutes) instead of a session.
+  // The challenge token proves password ownership only — verified
+  // exclusively by completeMfaLogin below; it can never satisfy
+  // verifyGlobalSession or verifyToken because its payload shape
+  // ({ type: "mfa_challenge" }) lacks userId/role/customerAccountId.
+  if (mfaPlatformEnabled() && account.mfaEnabled) {
+    const challengeToken = generateMfaChallengeToken(
+      { type: "mfa_challenge", customerAccountId: account._id.toString() },
+      account.passwordVersion || 0
+    );
+    return { success: true, needsMfa: true, challengeToken };
+  }
+
+  return formatGlobalSessionPayload(account);
+};
+
+// Second MFA step: the caller presents the mfa_challenge token from login
+// (proves the password was right, 10-minute TTL) plus a current TOTP code.
+// On match the real global session is issued — identical to a normal login
+// from here, so nothing downstream needs to know MFA happened.
+const completeMfaLogin = async ({ challengeToken, code }) => {
+  if (!mfaPlatformEnabled()) throw createHttpError("MFA is not enabled on this platform.", 503);
+  if (!challengeToken || !code || !/^\d{6}$/.test(code)) {
+    throw createHttpError("The challenge token and a 6-digit code are required.", 400);
+  }
+
+  let decoded;
+  try {
+    decoded = verifyAuthToken(challengeToken);
+  } catch (error) {
+    throw createHttpError("The challenge token is invalid or expired. Log in again.", 400);
+  }
+  if (decoded.type !== "mfa_challenge" || !decoded.customerAccountId || decoded.pv > 0) {
+    throw createHttpError("This is not an MFA challenge token.", 400);
+  }
+
+  const account = await CustomerAccount.findOne({ _id: decoded.customerAccountId });
+  if (!account || !account.mfaEnabled || !account.mfaSecretEncrypted) {
+    throw createHttpError("This account no longer requires MFA. Log in again.", 400);
+  }
+  if (!validateMfaCode(account.mfaSecretEncrypted, code)) {
+    throw createHttpError("That code doesn't match. Check the time on your device and try again.", 400);
+  }
+
   return formatGlobalSessionPayload(account);
 };
 
@@ -412,6 +474,36 @@ const updateAccountProfile = async ({ customerAccountId, name }) => {
   // phone fan-out below.
   await User.updateMany({ customerAccountId: account._id }, { $set: { name: account.name } });
 
+  // customer_edit ledger rows: one per tenant membership touched. A global
+  // account can sit in many outlets, and each outlet's ledger wants its own
+  // record of who changed this customer's data. Best-effort reads — a
+  // missing membership/org must not fail a name save; audit write failures
+  // are swallowed inside logTenantAudit (see tenantAuditService).
+  try {
+    const memberships = await User.find({ customerAccountId: account._id });
+    const seen = new Set();
+    for (const member of memberships) {
+      if (!member.organizationId) continue;
+      const key = member.organizationId.toString();
+      if (seen.has(key)) continue;
+      seen.add(key);
+      const org = await Organization.findOne({ _id: key });
+      if (!org || !org.companyId) continue;
+      logTenantAudit({
+        companyId: org.companyId,
+        organizationId: org._id,
+        actorId: account._id,
+        actorName: account.name || "",
+        actorRole: "customer",
+        targetId: account._id,
+        action: "customer_edit",
+        meta: { fields: ["name"], changedBy: "customer" }
+      });
+    }
+  } catch (err) {
+    console.error("[TenantAuditLog] customer_edit row failed:", err.message || err);
+  }
+
   return formatAccountPayload(account);
 };
 
@@ -497,8 +589,18 @@ const changeAccountPassword = async ({ customerAccountId, currentPassword, newPa
   // itself, required by verifyGlobalSession on this route, is proof enough
   // of identity to set one for the first time.
 
-  account.password = await bcrypt.hash(newPassword, SALT_ROUNDS);
+    account.password = await bcrypt.hash(newPassword, SALT_ROUNDS);
+  // Bump the credential version so every previously-issued session and
+  // tenant JWT (which embed the old pv) is rejected from the next request.
+  account.passwordVersion = (account.passwordVersion || 0) + 1;
   await account.save();
+
+  // Alert: owner should know immediately if someone changed the password.
+  sendEmail({
+    to: account.email,
+    subject: "Your password was changed",
+    html: `<p>Your password was just changed.</p><p>If that wasn't you, contact support right away — your sessions are already dead, but an attacker who got this far should be blocked before they try anything else.</p>`
+  }).catch((err) => console.error(`Failed to email password-change alert to ${account.email}:`, err.message));
 
   return { success: true, message: "Password updated." };
 };
@@ -643,9 +745,19 @@ const resetPassword = async ({ token, password }) => {
   if (!account) throw createHttpError("Account not found.", 404);
 
   account.password = await bcrypt.hash(password, SALT_ROUNDS);
+  // Same credential-version kill as changeAccountPassword above: every
+  // issued session/global-token embedding the old pv dies on next use.
+  account.passwordVersion = (account.passwordVersion || 0) + 1;
   await account.save();
   record.usedAt = new Date();
   await record.save();
+
+  // Alert: same owner-notification contract as changeAccountPassword.
+  sendEmail({
+    to: account.email,
+    subject: "Your password was changed",
+    html: `<p>Your password was just changed.</p><p>If that wasn't you, contact support right away — your sessions are already dead, but an attacker who got this far should be blocked before they try anything else.</p>`
+  }).catch((err) => console.error(`Failed to email password-change alert to ${account.email}:`, err.message));
 
   return { success: true, message: "Password updated. You can now log in." };
 };
@@ -839,6 +951,7 @@ const deleteCustomerAccount = async ({ customerAccountId, email }) => {
 module.exports = {
   registerAccount,
   loginAccount,
+  completeMfaLogin,
   authenticateWithGoogle,
   getMe,
   completeProfile,

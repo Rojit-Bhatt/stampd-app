@@ -12,7 +12,21 @@
     // Client-side-routed deep links (e.g. a scanned QR pointing at
     // /coffesarowar/durbarmarg/claim?token=...) resolve to the SPA shell
     // instead of a 404 — same job public/_redirects does for classic Pages.
-    "not_found_handling": "single-page-application"
+    "not_found_handling": "single-page-application",
+    // Same security header set as public/_headers (keep in sync). CSP is
+    // report-only by design — see public/_headers for the rollout plan.
+    "headers": [
+      {
+        "pattern": ".*",
+        "headers": {
+          "X-Content-Type-Options": "nosniff",
+          "X-Frame-Options": "SAMEORIGIN",
+          "Referrer-Policy": "strict-origin-when-cross-origin",
+          "Permissions-Policy": "camera=(), microphone=(), geolocation=(self)",
+          "Content-Security-Policy-Report-Only": "default-src 'self'; script-src 'self' https://challenges.cloudflare.com https://accounts.google.com https://*.googleapis.com 'unsafe-inline' https://*.google-analytics.com; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; font-src 'self' data:; connect-src 'self' https://challenges.cloudflare.com https://accounts.google.com https://www.google-analytics.com https://*.googleapis.com https://api.stampd.example.com; worker-src 'self'; base-uri 'self'; form-action 'self' https://accounts.google.com; frame-ancestors 'none'; report-uri /api/csp-report"
+        }
+      }
+    ]
   },
   // INVARIANT — single-pass compression at the edge: Cloudflare auto-
   // compresses these static JS/CSS assets (gzip/br) before sending them.

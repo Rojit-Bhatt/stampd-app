@@ -5,7 +5,14 @@ const AdminAccount = require("../models/AdminAccount");
 const User = require("../models/User");
 const PointsTransaction = require("../models/PointsTransaction");
 const { toPoints } = require("../utils/pointsMath");
-const { generateAuthToken } = require("../utils/tokenUtils");
+const { generateAuthToken, generateMfaChallengeToken } = require("../utils/tokenUtils");
+const { mfaEnabled: mfaPlatformMfaEnabled, validateCode: validatePlatformMfaCode } = (() => {
+  try {
+    return require("./mfaService");
+  } catch (error) {
+    return { mfaEnabled: () => false, validateCode: () => false };
+  }
+})();
 const { BUSINESS_CATEGORIES } = require("../config/platform");
 const { logAction } = require("./platformAuditService");
 const { sanitizeProgramInput } = require("./programService");
@@ -19,6 +26,54 @@ const createHttpError = (message, statusCode) => {
   const error = new Error(message);
   error.statusCode = statusCode;
   return error;
+};
+
+// Second MFA step for platform admins — challenge token proves the password
+// was right, the code proves the authenticator; then the real session JWT.
+const completePlatformMfaLogin = async ({ challengeToken, code }) => {
+  if (!mfaPlatformMfaEnabled()) throw createHttpError("MFA is not enabled on this platform.", 503);
+  if (!challengeToken || !code || !/^\d{6}$/.test(code)) {
+    throw createHttpError("The challenge token and a 6-digit code are required.", 400);
+  }
+
+  let decoded;
+  try {
+    decoded = require("../utils/tokenUtils").verifyAuthToken(challengeToken);
+  } catch (error) {
+    throw createHttpError("The challenge token is invalid or expired. Log in again.", 400);
+  }
+  if (decoded.type !== "mfa_challenge" || !decoded.userId || decoded.role || decoded.pv > 0) {
+    throw createHttpError("This is not an MFA challenge token.", 400);
+  }
+
+  const user = await User.findOne({ _id: decoded.userId, role: "platform" });
+  if (!user || !user.mfaEnabled || !user.mfaSecretEncrypted) {
+    throw createHttpError("This account no longer requires MFA. Log in again.", 400);
+  }
+  if (!validatePlatformMfaCode(user.mfaSecretEncrypted, code)) {
+    throw createHttpError("That code doesn't match. Check the time on your device and try again.", 400);
+  }
+
+  const pv = typeof user.passwordVersion === "number" ? user.passwordVersion : 0;
+  const token = generateAuthToken(
+    {
+      userId: user._id.toString(),
+      role: "platform",
+      organizationId: null
+    },
+    pv
+  );
+
+  return {
+    success: true,
+    token,
+    user: {
+      id: user._id.toString(),
+      name: user.name,
+      role: user.role,
+      platformRole: user.platformRole || "owner"
+    }
+  };
 };
 
 const buildOutletStats = async (outlet) => {
@@ -96,11 +151,30 @@ const loginPlatformAdmin = async ({ email, password }) => {
     throw createHttpError("That email or password didn't match — try again.", 401);
   }
 
-  const token = generateAuthToken({
-    userId: user._id.toString(),
-    role: "platform",
-    organizationId: null
-  });
+  // pv binds this JWT to the platform row's current credential version —
+  // a password change on the platform admin account kills every issued token.
+  const pv = typeof user.passwordVersion === "number" ? user.passwordVersion : 0;
+
+  // MFA second step — same challenge-token contract as the customer flow.
+  if (mfaPlatformMfaEnabled() && user.mfaEnabled && user.mfaSecretEncrypted) {
+    return {
+      success: true,
+      needsMfa: true,
+      challengeToken: generateMfaChallengeToken(
+        { type: "mfa_challenge", userId: user._id.toString() },
+        pv
+      )
+    };
+  }
+
+  const token = generateAuthToken(
+    {
+      userId: user._id.toString(),
+      role: "platform",
+      organizationId: null
+    },
+    pv
+  );
 
   return {
     success: true,
@@ -292,6 +366,7 @@ const updateOutlet = async (outletId, { name, category, status, actorId, actorNa
 module.exports = {
   createHttpError,
   loginPlatformAdmin,
+  completePlatformMfaLogin,
   listCompanies,
   registerCompany,
   getCompanyById,

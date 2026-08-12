@@ -163,6 +163,40 @@ app.get("/health", (_req, res) => {
   res.status(200).json({ status: "ok" });
 });
 
+// CSP violation collector — the frontend's Content-Security-Policy-Report-Only
+// (Cloudflare headers + public/_headers) reports here via report-uri. Report-only
+// means nothing is blocked while violations are gathered; once the policy proves
+// safe in the wild, flip it to an enforcing Content-Security-Policy. A 60/min
+// limiter keeps a misfiring page (or an attacker spamming the endpoint) from
+// filling logs: each origin is rate-limited independently.
+// Body shape per the spec: { "csp-report": { "document-uri", "violated-directive", "original-policy", ... } }.
+const { cspReportLimiter } = require("./middleware/rateLimitMiddleware");
+const cspReports = [];
+const MAX_CSP_REPORTS = 200;
+app.post("/api/csp-report", cspReportLimiter, (req, res) => {
+  const report = req.body?.["csp-report"] || req.body;
+  if (report && typeof report === "object") {
+    cspReports.unshift({
+      at: new Date().toISOString(),
+      ip: req.ip,
+      userAgent: req.headers?.["user-agent"],
+      documentUri: report["document-uri"],
+      violatedDirective: report["violated-directive"],
+      blockedUri: report["blocked-uri"],
+      originalPolicy: report["original-policy"],
+      effectiveDirective: report["effective-directive"],
+      sample: report["sample"]
+    });
+    if (cspReports.length > MAX_CSP_REPORTS) cspReports.length = MAX_CSP_REPORTS;
+    console.log(
+      `[CSP report-only] ${report["violated-directive"]} on ${report["document-uri"]} (blocked: ${report["blocked-uri"] || "n/a"})`
+    );
+  }
+  // 204 no matter what — the spec wants the collector to never argue with a
+  // reporter, or user agents may stop sending reports.
+  res.status(204).end();
+});
+
 // Platform super-admin (onboards + manages businesses/tenants).
 app.use("/api/platform", platformRoutes);
 // Subscription plan CRUD (platform-admin-configurable) + public pricing read.

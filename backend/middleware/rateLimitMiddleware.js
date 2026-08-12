@@ -110,4 +110,17 @@ const pinLimiter = rateLimit({
   handler: jsonHandler("Too many attempts. Please wait a minute and try again."),
 });
 
-module.exports = { authLimiter, registrationLimiter, uploadLimiter, placesLimiter, pinLimiter };
+// CSP violation reports are fire-and-forget: a misbehaving page can loop them
+// (and report-uri spam is a known nuisance/DDoS vector), so cap this endpoint
+// at 60/min per client. Its own bucket, never authLimiter's: the CSP endpoint
+// is public and unauthenticated — it must not borrow state from anything
+// privileged, and nothing privileged should share its state either.
+const cspReportLimiter = rateLimit({
+  windowMs: MINUTE,
+  limit: 60,
+  standardHeaders: true,
+  legacyHeaders: false,
+  handler: jsonHandler("Too many CSP reports. Slow down."),
+});
+
+module.exports = { authLimiter, registrationLimiter, uploadLimiter, placesLimiter, pinLimiter, cspReportLimiter };

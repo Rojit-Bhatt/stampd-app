@@ -8,6 +8,7 @@ const {
   loadOrganizationOrThrow
 } = require("./pointsService");
 const { ensureMembership } = require("./customerAccountService");
+const { logAction: logTenantAudit } = require("./tenantAuditService");
 
 const PENDING_CLAIM_TTL_MS = 15 * 60 * 1000;
 
@@ -204,7 +205,7 @@ const fulfillPendingClaim = async ({ pendingClaimId, organizationId, customerAcc
 
   const org = await loadOrganizationOrThrow(organizationId);
   const session = await mongoose.startSession();
-  try {
+    try {
     let responsePayload;
     await session.withTransaction(async () => {
       responsePayload = await awardPointsInTransaction({
@@ -218,7 +219,6 @@ const fulfillPendingClaim = async ({ pendingClaimId, organizationId, customerAcc
         performedByUserId: claim.performedByUserId || null,
         performedByName: claim.performedByName || ""
       });
-
       // Same atomic single-use guard pattern as DynamicQRToken.isUsed.
       const consumed = await PendingClaim.updateOne(
         { _id: claim._id, fulfilled: false },
@@ -228,6 +228,23 @@ const fulfillPendingClaim = async ({ pendingClaimId, organizationId, customerAcc
       if (!consumed || consumed.modifiedCount === 0) {
         throw createHttpError("This claim has already been used.", 400, "CLAIM_ALREADY_FULFILLED");
       }
+    });
+    // claim_fulfill ledger row, outside the transaction: the points write
+    // already happened atomically, and the audit row is best-effort
+    // evidence (see tenantAuditService — audit failures are swallowed and
+    // never fail the action they record). claim_fulfill is distinct from
+    // points_earn: this is the QR-as-link branch, where the claim's proof
+    // of payment is the burned scan token, and the tenant wants to see
+    // "who fulfilled what" in their ledger.
+    logTenantAudit({
+      companyId: org.companyId,
+      organizationId,
+      actorId: claim.performedByUserId || null,
+      actorName: claim.performedByName || "",
+      actorRole: "staff",
+      targetId: claim._id,
+      action: "claim_fulfill",
+      meta: { pointsEarned: responsePayload.data.pointsEarned, billAmount: claim.billAmount, claimId: claim._id.toString() }
     });
     return responsePayload;
   } finally {

@@ -18,6 +18,11 @@ const router = express.Router();
 // token- or provider-gated already and left unthrottled.
 router.post("/register", registrationLimiter, verifyTurnstile, register);
 router.post("/login", authLimiter, verifyTurnstile, login);
+// Second MFA step — only meaningful after a login response with needsMfa:
+// not gated by verifyGlobalSession because the caller holds no session yet,
+// and it is the controller (completeMfaLogin) that validates the challenge
+// token instead. Rate-limited like login: it is the next hop in the flow.
+router.post("/login/mfa", authLimiter, require("../controllers/mfaController").completeMfaLogin);
 router.post("/google", googleAuth);
 router.get("/verify-email", verifyEmail);
 router.post("/verify-otp", authLimiter, verifyOtp);
@@ -53,6 +58,16 @@ router.get("/avatar/:accountId", getAvatar);
 // Needs a resolved tenant (which org to provision into) + a valid global
 // session (which account) — the exchange for a tenant JWT.
 router.post("/enter-tenant", resolveTenant, verifyGlobalSession, enterTenant);
+
+// MFA lifecycle — every endpoint is a no-op (404) unless ENABLE_MFA=true,
+// so the flag alone controls the whole surface. setup/enable need no session
+// (the fresh URI is the proof-of-ownership contract); disable + status need
+// the global session, and disable additionally wants password + a code.
+const mfa = require("../controllers/mfaController");
+router.post("/mfa/setup", verifyGlobalSession, mfa.assertMfaAvailable, mfa.setup);
+router.post("/mfa/enable", verifyGlobalSession, mfa.assertMfaAvailable, mfa.enable);
+router.post("/mfa/disable", authLimiter, verifyGlobalSession, mfa.assertMfaAvailable, mfa.disable);
+router.get("/mfa/status", verifyGlobalSession, mfa.assertMfaAvailable, mfa.status);
 
 // Cross-tenant customer surface (/explore) — global session only, no tenant.
 router.get("/discover", verifyGlobalSession, discover);
