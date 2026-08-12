@@ -12,7 +12,23 @@ Preserve authentication, authorisation, rate limiting, tenant resolution, and in
 
 Please report suspected vulnerabilities privately to the repository maintainers. Include the affected route or component, a concise description of the impact, reproduction steps that do not disclose real customer data, and any suggested mitigation. Do not open a public issue for an unpatched vulnerability or attach secrets, personal information, or production records.
 
-The maintainers will assess the report, confirm the affected versions or deployments, coordinate a fix, and publish any necessary guidance after a remediation is available.
+The maintainers will assess the report, confirm the affected versions or deployments, coordinate a fix, and publish any necessary guidance after a remediation is available. Email **no-reply@stampd.co** (subject: "Security report") or report via the repository maintainers. We aim to acknowledge within 5 business days.
+
+## Scope
+
+This policy covers the backend API, the web/PWA frontend, and the deploy
+tooling in this repository (Docker image, CI workflows, Render blueprint).
+
+## Out of scope
+
+- Issues in third-party dependencies — report those upstream; we track them
+  via Dependabot and `npm audit` in CI.
+- Social engineering, physical security, or issues on services we do not operate.
+
+## Bug bounty
+
+We are a small team and do not run a paid bug bounty program. Responsible
+disclosure is met with our sincere thanks and public credit on request.
 
 ## Data exposure response
 

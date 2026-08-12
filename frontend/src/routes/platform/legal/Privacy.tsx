@@ -145,8 +145,14 @@ const SECTIONS: { heading: string; body: React.ReactNode }[] = [
       <p>
         Under the Individual Privacy Act, you have the right to know what data
         we hold about you, to correct it if it's wrong, to ask that it be
-        deleted, and to complain if you believe it's been misused. Reach out
-        using the contact details below for any of these.
+        deleted, and to complain if you believe it's been misused.
+        Signed-in customers can download everything the platform stores about
+        their account — profile, every loyalty membership, points history,
+        balances, and marketing consents — through the self-service data
+        export we provide, and can request full account deletion the same way.
+        In-app self-service screens for these are on the roadmap and will land
+        in a follow-up release; until then, reach out using the contact
+        details below and we will fulfil any request directly.
       </p>
     ),
   },
