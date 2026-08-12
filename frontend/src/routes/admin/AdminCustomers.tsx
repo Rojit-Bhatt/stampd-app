@@ -2,6 +2,7 @@ import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "react-router-dom";
 import { Search, Download, Trophy } from "lucide-react";
+import { ArrowUpDown, ArrowUp, ArrowDown } from "lucide-react";
 import { apiRequest, apiUrl, tenantHeaders } from "../../lib/api";
 import { useAdminSettings } from "../../hooks/useAdminSettings";
 import { useAdminAuth } from "../../context/AdminAuthContext";
@@ -41,6 +42,25 @@ export default function AdminCustomers() {
   const orgId = user?.organizationId ?? null;
   const [query, setQuery] = useState("");
   const [leaderboardWindow, setLeaderboardWindow] = useState<LeaderboardWindow>("all");
+  type SortKey = "name" | "pointsBalance" | "redemptionCount" | "lastActivityAt";
+  type SortDir = "asc" | "desc" | null; // null = original server order
+  const [sortKey, setSortKey] = useState<SortKey>("lastActivityAt");
+  const [sortDir, setSortDir] = useState<SortDir>("desc");
+
+  /** Cycle: current-key asc -> current-key desc -> reset (original order). */
+  const cycleSort = (key: SortKey) => {
+    if (sortKey === key) {
+      if (sortDir === "asc") setSortDir("desc");
+      else if (sortDir === "desc") {
+        // Reset to default ordering: most recent first
+        setSortKey("lastActivityAt");
+        setSortDir("desc");
+      } else setSortDir("asc");
+    } else {
+      setSortKey(key);
+      setSortDir("asc");
+    }
+  };
 
   const { data: leaderboard = [], isLoading: leaderboardLoading } = useQuery<LeaderboardRow[]>({
     queryKey: ["adminLeaderboard", orgId, leaderboardWindow],
@@ -66,11 +86,21 @@ export default function AdminCustomers() {
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
-    if (!q) return customers;
-    return customers.filter(
-      (c) => c.name.toLowerCase().includes(q) || c.email.toLowerCase().includes(q),
-    );
-  }, [customers, query]);
+    const list = q
+      ? customers.filter(
+          (c) => c.name.toLowerCase().includes(q) || c.email.toLowerCase().includes(q),
+        )
+      : customers;
+    if (!sortDir) return list;
+    return [...list].sort((a, b) => {
+      let cmp = 0;
+      if (sortKey === "name") cmp = a.name.localeCompare(b.name);
+      else if (sortKey === "pointsBalance") cmp = a.pointsBalance - b.pointsBalance;
+      else if (sortKey === "redemptionCount") cmp = a.redemptionCount - b.redemptionCount;
+      else cmp = (a.lastActivityAt || "").localeCompare(b.lastActivityAt || "");
+      return sortDir === "desc" ? -cmp : cmp;
+    });
+  }, [customers, query, sortKey, sortDir]);
 
   const downloadExcel = async () => {
     const token = localStorage.getItem("admin_auth_token");
@@ -120,9 +150,57 @@ export default function AdminCustomers() {
           <span>Customer</span>
           <span>No.</span>
           <span>Tier</span>
-          <span>Points</span>
-          <span>Redeemed</span>
-          <span>Last visit</span>
+          <button
+            type="button"
+            onClick={() => cycleSort("pointsBalance")}
+            className={`stamp-interactive flex items-center gap-1 text-left ${sortKey === "pointsBalance" && sortDir ? "text-[var(--ink)]" : "hover:text-[var(--ink)]"}`}
+            aria-label={`Sort by points, currently ${sortKey === "pointsBalance" ? (sortDir === "asc" ? "ascending" : sortDir === "desc" ? "descending" : "original order") : "unsorted"}`}
+          >
+            Points
+            {sortKey === "pointsBalance" ? (
+              sortDir === "asc" ? (
+                <ArrowUp className="h-3 w-3" aria-hidden />
+              ) : sortDir === "desc" ? (
+                <ArrowDown className="h-3 w-3" aria-hidden />
+              ) : (
+                <ArrowUpDown className="h-3 w-3 opacity-50" aria-hidden />
+              )
+            ) : null}
+          </button>
+          <button
+            type="button"
+            onClick={() => cycleSort("redemptionCount")}
+            className={`stamp-interactive flex items-center gap-1 text-left ${sortKey === "redemptionCount" && sortDir ? "text-[var(--ink)]" : "hover:text-[var(--ink)]"}`}
+            aria-label={`Sort by redemptions, currently ${sortKey === "redemptionCount" ? (sortDir === "asc" ? "ascending" : sortDir === "desc" ? "descending" : "original order") : "unsorted"}`}
+          >
+            Redeemed
+            {sortKey === "redemptionCount" ? (
+              sortDir === "asc" ? (
+                <ArrowUp className="h-3 w-3" aria-hidden />
+              ) : sortDir === "desc" ? (
+                <ArrowDown className="h-3 w-3" aria-hidden />
+              ) : (
+                <ArrowUpDown className="h-3 w-3 opacity-50" aria-hidden />
+              )
+            ) : null}
+          </button>
+          <button
+            type="button"
+            onClick={() => cycleSort("lastActivityAt")}
+            className={`stamp-interactive flex items-center gap-1 text-left ${sortKey === "lastActivityAt" && sortDir ? "text-[var(--ink)]" : "hover:text-[var(--ink)]"}`}
+            aria-label={`Sort by last visit, currently ${sortKey === "lastActivityAt" ? (sortDir === "asc" ? "ascending" : sortDir === "desc" ? "descending" : "original order") : "unsorted"}`}
+          >
+            Last visit
+            {sortKey === "lastActivityAt" ? (
+              sortDir === "asc" ? (
+                <ArrowUp className="h-3 w-3" aria-hidden />
+              ) : sortDir === "desc" ? (
+                <ArrowDown className="h-3 w-3" aria-hidden />
+              ) : (
+                <ArrowUpDown className="h-3 w-3 opacity-50" aria-hidden />
+              )
+            ) : null}
+          </button>
         </div>
 
         {isLoading ? (
