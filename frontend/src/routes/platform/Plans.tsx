@@ -5,6 +5,7 @@ import toast from "@/lib/toast";
 import { apiRequest } from "../../lib/api";
 import { Skeleton } from "../../components/ui/skeleton";
 import { formatNpr } from "../../lib/subscription";
+import { ScrollableTable, STICKY_FIRST_CELL } from "../../components/shared/ScrollableTable";
 
 interface Plan {
   id: string;
@@ -202,17 +203,17 @@ export default function Plans() {
         </div>
       )}
 
-      <div className="mt-8 shadow-ambient overflow-hidden rounded-[var(--radius-card)] bg-[var(--surface)]">
+      <ScrollableTable minContentWidth="700px">
         <div className="grid grid-cols-[2fr_1fr_1fr_1fr_1fr] border-b border-[var(--line)] px-5 py-3 text-[11px] font-bold uppercase tracking-wider text-[var(--soft)]">
-          <span>Plan name</span>
+          <span className={STICKY_FIRST_CELL}>Plan name</span>
           <span>Status</span>
           <span>Price</span>
           <span>Outlet limit</span>
-          <span>Actions</span>
+          <span className="pr-5">Actions</span>
         </div>
         {[...activePlans, ...archivedPlans].map((p) => (
           <div key={p.id} className="grid grid-cols-[2fr_1fr_1fr_1fr_1fr] items-center gap-2 border-b border-[var(--line)] px-5 py-3.5 text-sm last:border-b-0">
-            <span className={`font-bold ${!p.isActive ? "italic text-[var(--soft)]" : ""}`}>{p.name}</span>
+            <span className={`font-bold ${STICKY_FIRST_CELL} ${!p.isActive ? "italic text-[var(--soft)]" : ""}`}>{p.name}</span>
             <span className="flex items-center gap-1.5">
               <span className="h-1.5 w-1.5 rounded-full" style={{ background: p.isActive ? "var(--ok)" : "var(--soft)" }} />
               {p.isActive ? "Active" : "Archived"}
@@ -231,7 +232,7 @@ export default function Plans() {
             </span>
           </div>
         ))}
-      </div>
+      </ScrollableTable>
     </div>
   );
 }

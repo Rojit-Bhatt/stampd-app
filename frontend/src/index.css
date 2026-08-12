@@ -488,3 +488,14 @@ html.landing-dark {
     transform-origin: center;
   }
 }
+
+/* Horizontally scrollable tables — pin the first column of every row
+   automatically when the row container carries `scrollable-table-sticky-first`
+   (applied by the shared <ScrollableTable /> when `stickyFirst` is true). */
+.scrollable-table-sticky-first > * > :first-child {
+  position: sticky;
+  left: 0;
+  z-index: 1;
+  background: var(--surface);
+  border-right: 1px solid var(--line);
+}

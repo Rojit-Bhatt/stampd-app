@@ -16,6 +16,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { SegmentedControl, SegmentedControlItem } from "@/components/ui/segmented-control";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { ConfirmDialog } from "../shared/ConfirmDialog";
+import { ScrollableTable, STICKY_FIRST_CELL } from "../shared/ScrollableTable";
 
 // --- Invite dialog ------------------------------------------------------
 
@@ -214,8 +215,10 @@ function StaffRow({ member }: { member: StaffMember }) {
   };
 
   return (
-    <div className="grid grid-cols-[2fr_1.2fr_0.8fr_1.4fr] items-center gap-4 border-b border-[var(--line)] px-5 py-3.5 last:border-b-0">
-      <span className="min-w-0">
+    <div className="grid items-center gap-4 border-b border-[var(--line)] px-5 py-3.5 last:border-b-0"
+      style={{ gridTemplateColumns: "2fr 1.2fr 0.8fr 1.4fr" }}
+    >
+      <span className={`min-w-0 ${STICKY_FIRST_CELL}`}>
         <span className="flex items-center gap-2">
           <span className="truncate text-sm font-semibold text-[var(--ink)]">{member.name}</span>
           {member.isSelf && <Badge variant="neutral">You</Badge>}
@@ -286,7 +289,7 @@ export function SubAdminSettingsTab() {
   const needsOwnPinFirst = Boolean(me && !me.hasPin);
 
   return (
-    <div className="rounded-[var(--radius-card)] border border-[var(--line)] bg-[var(--surface)] shadow-ambient overflow-hidden">
+    <ScrollableTable minContentWidth="620px">
       <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[var(--line)] p-5">
         <p className="max-w-md text-sm text-[var(--muted)]">
           Once anyone here has a PIN, everyone needs one to use the earn and redeem screens.
@@ -310,6 +313,6 @@ export function SubAdminSettingsTab() {
       )}
 
       <InviteDialog open={inviteOpen} onOpenChange={setInviteOpen} />
-    </div>
+    </ScrollableTable>
   );
 }
