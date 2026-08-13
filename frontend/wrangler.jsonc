@@ -2,11 +2,23 @@
   // Cloudflare Workers Static Assets config — the current recommended way to
   // deploy a plain SPA on Cloudflare (Pages' Git-connect wizard has been
   // folded into the Workers dashboard for new projects; the deploy mechanism
-  // is the same "wrangler deploy" either way). Assets-only: no "main" worker
-  // script, since there's no server-side logic here — the real API lives on
-  // Render, called via VITE_API_BASE_URL at build time.
+  // is the same "wrangler deploy" either way). The "main" worker forwards
+  // every /api/* call to the real Render backend and hands everything else
+  // to the static assets; the build embeds VITE_API_BASE_URL so browser
+  // fetches are absolute (the worker proxy is a safety net, not the path).
   "name": "stampd",
   "compatibility_date": "2025-06-05",
+  // The SPA + /api proxy worker. Without `main`, wrangler deploys an
+  // assets-only worker and ALL /api calls from the browser return the SPA
+  // HTML (the bug behind the "0 active outlets" screen). Keep this pointer
+  // whenever deploying — the proxy is load-bearing.
+  "main": "worker/worker.js",
+  // Build must embed the real API origin: the worker proxies /api as a
+  // safety net, but VITE_API_BASE_URL makes fetches absolute (cross-origin)
+  // so Cloudflare's static-asset edge never intercepts them with HTML.
+  "build": {
+    "command": "VITE_API_BASE_URL=https://api.stampdd.club pnpm run build"
+  },
   "assets": {
     "directory": "./dist",
     // Client-side-routed deep links (e.g. a scanned QR pointing at
@@ -23,7 +35,7 @@
           "X-Frame-Options": "SAMEORIGIN",
           "Referrer-Policy": "strict-origin-when-cross-origin",
           "Permissions-Policy": "camera=(), microphone=(), geolocation=(self)",
-          "Content-Security-Policy-Report-Only": "default-src 'self'; script-src 'self' https://challenges.cloudflare.com https://accounts.google.com https://*.googleapis.com 'unsafe-inline' https://*.google-analytics.com; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; font-src 'self' data:; connect-src 'self' https://challenges.cloudflare.com https://accounts.google.com https://www.google-analytics.com https://*.googleapis.com https://api.stampd.example.com; worker-src 'self'; base-uri 'self'; form-action 'self' https://accounts.google.com; frame-ancestors 'none'; report-uri /api/csp-report"
+          "Content-Security-Policy-Report-Only": "default-src 'self'; script-src 'self' https://challenges.cloudflare.com https://accounts.google.com https://*.googleapis.com 'unsafe-inline' https://*.google-analytics.com; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; font-src 'self' data:; connect-src 'self' https://challenges.cloudflare.com https://accounts.google.com https://www.google-analytics.com https://*.googleapis.com https://api.stampdd.club; worker-src 'self'; base-uri 'self'; form-action 'self' https://accounts.google.com; frame-ancestors 'none'; report-uri /api/csp-report"
         }
       }
     ]
