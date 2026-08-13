@@ -29,3 +29,6 @@ The preview and the downloaded PNG come from the same canvas, so one code path f
 - All three outputs decode to the review URL with pyzbar at full size (1080/680/560px) **and**
   at a simulated 350px phone-scan size.
 - `npm run build` succeeds and `npm run lint` (tsc --noEmit) is clean.
+
+## Follow-up fix: logo proportions
+Measured the reference image: tile diameter ≈ 84% of QR width; each coin diameter ≈ 55% of the tile; coins overlap (front coin shifted down-right ≈ 0.36 × coin radius). Back coin is an outlined ring only; front coin is filled dark with the cream four-point star. With the larger tile, error correction was raised from M to H (level H tolerates ~30% damage; the 42%-width tile exceeds M's ~15% budget). All outputs verified decoding at full size and 350px simulated scan size with pyzbar.
