@@ -592,9 +592,13 @@ const redeemPoints = async ({ token, itemId, kind, userId, role, organizationId 
             rewardKind: item.kind,
             rewardRef: item.doc._id,
             rewardName: item.name,
-            // Only a menu item has a rupee price; a RewardItem is points-only
-            // by design, so this stays null rather than recording it as free.
-            rewardValueNpr: item.kind === "menu" ? (item.doc.price ?? null) : null,
+            // A menu item carries its sale price; a RewardItem is
+            // points-only but may carry an indicative value the owner set
+            // (RewardItem.valueNpr) so the redeem report's "Value (Rs)"
+            // column has something to show beyond "—".
+            rewardValueNpr: item.kind === "menu"
+              ? (item.doc.price ?? null)
+              : (item.doc.valueNpr ?? null),
             token,
             performedByUserId: consumedToken.performedByUserId || null,
             performedByName: consumedToken.performedByName || "",

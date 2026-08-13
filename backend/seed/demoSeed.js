@@ -52,7 +52,15 @@ const CUSTOMERS = [
     email: "asha@example.com",
     phone: "+9779800000001",
     memberships: [
-      { company: "coffesarowar", outlet: "durbarmarg", visits: 7 },
+      {
+        company: "coffesarowar",
+        outlet: "durbarmarg",
+        visits: 7,
+        redeems: [
+          { name: "House Coffee", kind: "menu", priceCenti: 18000, valueNpr: 180, createdAt: "3d" },
+          { name: "Tote Bag", kind: "reward", priceCenti: 50000, valueNpr: 650, createdAt: "9d" }
+        ]
+      },
       { company: "coffesarowar", outlet: "patan", visits: 2 }
     ]
   },
@@ -238,12 +246,14 @@ const seedDemoData = async () => {
           });
 
           // A standalone reward — something the outlet doesn't sell, so it
-          // only exists for points.
+          // only exists for points. The indicative value is what makes the
+          // redeem report's "Value (Rs)" column show a number instead of "—".
           await RewardItem.create({
             organizationId: outlet._id,
             name: "Tote Bag",
             description: "Canvas, our logo on it.",
             pointsPriceCenti: toCenti(500),
+            valueNpr: 650,
             sortOrder: 1
           });
 
@@ -335,6 +345,38 @@ const seedDemoData = async () => {
               token: `seed-${outlet._id}-${membership._id}-${i}`,
               createdAt
             });
+          }
+
+          // A couple of backdated redemptions so the redeem report shows
+          // populated rows (real customer names + rupee values) on a cold
+          // boot instead of an empty ledger. Deducted from the in-progress
+          // balance (the balance doc doesn't exist yet — it's created below),
+          // so the ledger and the balance still agree exactly.
+          let redeemIdx = 0;
+          for (const r of m.redeems || []) {
+            if (r.priceCenti > balanceCenti) continue;
+            // "Nd" is a relative offset (N days back) so the dates always
+            // sit inside whatever range the report defaults to.
+            const daysBack = Number(String(r.createdAt).replace("d", ""));
+            const redeemDate = new Date(now.getTime() - daysBack * DAY_MS);
+            balanceCenti -= r.priceCenti;
+            lastActivityAt = redeemDate;
+
+            await PointsTransaction.create({
+              organizationId: outlet._id,
+              userId: membership._id,
+              type: "redeem",
+              pointsCenti: -r.priceCenti,
+              balanceAfterCenti: balanceCenti,
+              rewardKind: r.kind,
+              rewardRef: r.ref,
+              rewardName: r.name,
+              rewardValueNpr: r.valueNpr,
+              token: `seed-redeem-${outlet._id}-${membership._id}-${redeemIdx}`,
+              performedByName: "",
+              createdAt: redeemDate
+            });
+            redeemIdx += 1;
           }
 
           await PointsBalance.create({

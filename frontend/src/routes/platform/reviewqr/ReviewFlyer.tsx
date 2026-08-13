@@ -175,9 +175,6 @@ export function ReviewFlyer({ place }: { place: SelectedPlace }) {
       ctx.font = "400 30px Inter, sans-serif";
       ctx.fillText("It takes ten seconds. Thank you.", W / 2, panelY + QR_PANEL + 152);
 
-      ctx.fillStyle = "rgba(243, 236, 226, 0.42)";
-      ctx.font = "500 24px 'IBM Plex Mono', monospace";
-      ctx.fillText("Made free with Stampd · stampd.co", W / 2, H - 110);
 
       canvas.toBlob((blob) => {
         if (!blob || cancelled) return;

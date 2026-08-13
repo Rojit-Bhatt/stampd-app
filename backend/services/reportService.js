@@ -319,16 +319,26 @@ const getRedeemStats = async (organizationId, { startDate, endDate } = {}) => {
 
   const txns = await PointsTransaction.find({ organizationId, type: "redeem", createdAt: range });
 
+  // The history table must name the customer whose points actually moved.
+  // `performedByName` is staff attribution (set only when a PIN-identified
+  // staff member generated the redeem QR) and is blank for app-initiated
+  // redeems — hence the old "Unknown" rows. Batch-resolve names from the
+  // owning User docs; fall back to staff attribution, then "Unknown".
+  const userIds = [...new Set(txns.map((t) => t.userId.toString()))];
+  const users = userIds.length > 0
+    ? await User.find({ _id: { $in: userIds }, organizationId })
+    : [];
+  const nameById = new Map(users.map((u) => [u._id.toString(), u.name]));
+
   const rows = txns
     .map((t) => ({
       date: new Date(t.createdAt).toISOString().slice(0, 16).replace("T", " "),
-      customer: t.performedByName || "Unknown",
+      customer: nameById.get(t.userId.toString()) || t.performedByName || "Unknown",
       item: t.rewardName || "",
       points: toPoints(-t.pointsCenti),
       value: t.rewardValueNpr ?? null
     }))
     .sort((a, b) => (b.date < a.date ? -1 : b.date > a.date ? 1 : 0));
-
   const totalPointsRedeemed = toPoints(-sumCenti(txns));
   const uniqueCustomers = new Set(txns.map((t) => t.userId.toString())).size;
 
@@ -346,21 +356,15 @@ const getRedeemStats = async (organizationId, { startDate, endDate } = {}) => {
     }
   }
 
-  // Daily series: every day in the range gets a bucket (even empty ones —
-  // the chart must show the quiet days, not skip them).
+  // Daily series: only days that actually had redemptions appear — a ledger
+  // of quiet zeroes wastes the admin's scroll. Newest day at the top.
   const byDay = new Map();
-  const d = new Date(startOfLocalDay(start));
-  const lastDay = startOfLocalDay(end);
-  while (d.getTime() <= lastDay.getTime() + DAY_MS) {
-    byDay.set(dayKey(d), { date: dayKey(d), redemptions: 0, points: 0 });
-    d.setDate(d.getDate() + 1);
-  }
   for (const t of txns) {
-    const bucket = byDay.get(dayKey(t.createdAt));
-    if (bucket) {
-      bucket.redemptions += 1;
-      bucket.points += -t.pointsCenti / 100;
-    }
+    const key = dayKey(t.createdAt);
+    const bucket = byDay.get(key) || { date: key, redemptions: 0, points: 0 };
+    bucket.redemptions += 1;
+    bucket.points += -t.pointsCenti / 100;
+    byDay.set(key, bucket);
   }
 
   return {
