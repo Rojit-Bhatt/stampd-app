@@ -1,4 +1,12 @@
-const createHttpError = require("http-errors");
+// Small inline HTTP error class — avoids the undeclared `http-errors` package, which
+// is not listed in package.json dependencies. In CI (pnpm strict hoisting) it is
+// not resolvable, causing MODULE_NOT_FOUND at server boot for every suite.
+const createHttpError = (status, message) => {
+  const err = new Error(message);
+  err.status = status;
+  err.statusCode = status;
+  return err;
+};
 
 const Company = require("../models/Company");
 const SmsSendLog = require("../models/SmsSendLog");
