@@ -4,6 +4,9 @@ settings:
   autoInstallPeers: true
   excludeLinksFromLockfile: false
 
+overrides:
+  zod: ^3.25.0
+
 importers:
 
   .:
@@ -73,14 +76,14 @@ importers:
         specifier: ^3.6.7
         version: 3.6.7
       zod:
-        specifier: ^4.4.3
-        version: 4.4.3
+        specifier: ^3.25.0
+        version: 3.25.76
 
   frontend:
     dependencies:
       '@hookform/resolvers':
-        specifier: ^3.9.1
-        version: 3.10.0(react-hook-form@7.85.0(react@19.2.8))
+        specifier: ~3.9.1
+        version: 3.9.1(react-hook-form@7.85.0(react@19.2.8))
       '@radix-ui/react-alert-dialog':
         specifier: ^1.1.19
         version: 1.1.23(@types/react-dom@19.2.4(@types/react@19.2.18))(@types/react@19.2.18)(react-dom@19.2.8(react@19.2.8))(react@19.2.8)
@@ -181,7 +184,7 @@ importers:
         specifier: ^7.4.1
         version: 7.4.1
       zod:
-        specifier: ^3.24.1
+        specifier: ^3.25.0
         version: 3.25.76
     devDependencies:
       '@tailwindcss/postcss':
@@ -935,8 +938,8 @@ packages:
   '@floating-ui/utils@0.2.12':
     resolution: {integrity: sha512-HpCo8tmWzLVad5s2d19EhAz5zqrrQ6s69qd6moPMQvkOuSwDT1YgRfWSVuc4ennqrgv3OHppiOGMQ7oC13yIww==}
 
-  '@hookform/resolvers@3.10.0':
-    resolution: {integrity: sha512-79Dv+3mDF7i+2ajj7SkypSKHhl1cbln1OGavqrsF7p6mbUv11xpqpacPsGDCTRvCSjEEIez2ef1NveSVL3b0Ag==}
+  '@hookform/resolvers@3.9.1':
+    resolution: {integrity: sha512-ud2HqmGBM0P0IABqoskKWI6PEf6ZDDBZkFqe2Vnl+mTHCEHzr3ISjjZyCwTjC/qpL25JC9aIDkloQejvMeq0ug==}
     peerDependencies:
       react-hook-form: ^7.0.0
 
@@ -4161,9 +4164,6 @@ packages:
   zod@3.25.76:
     resolution: {integrity: sha512-gzUt/qt81nXsFGKIFcC3YnfEAx5NkunCfnDlvuBSSFS02bcXu4Lmea0AFIUwbLWxWPx3d9p8S5QoaujKcNQxcQ==}
 
-  zod@4.4.3:
-    resolution: {integrity: sha512-ytENFjIJFl2UwYglde2jchW2Hwm4GJFLDiSXWdTrJQBIN9Fcyp7n4DhxJEiWNAJMV1/BqWfW/kkg71UDcHJyTQ==}
-
 snapshots:
 
   '@alloc/quick-lru@5.2.0': {}
@@ -4966,7 +4966,7 @@ snapshots:
 
   '@floating-ui/utils@0.2.12': {}
 
-  '@hookform/resolvers@3.10.0(react-hook-form@7.85.0(react@19.2.8))':
+  '@hookform/resolvers@3.9.1(react-hook-form@7.85.0(react@19.2.8))':
     dependencies:
       react-hook-form: 7.85.0(react@19.2.8)
 
@@ -8359,5 +8359,3 @@ snapshots:
       readable-stream: 3.6.2
 
   zod@3.25.76: {}
-
-  zod@4.4.3: {}

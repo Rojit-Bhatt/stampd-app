@@ -54,7 +54,7 @@ export default function CompanyReports() {
     // A snapshot of who exists, not a flow — never affected by the range,
     // so it doesn't belong next to figures that move when the range does.
     { label: "Outlets", val: totals ? String(totals.outletCount) : "—" },
-    { label: "Customers", val: totals ? String(totals.customersCount) : "—" },
+    { label: "Customers", val: totals ? String(totals.customersCount) : "—", hint: "Registered customer accounts — anyone who signed up, whether or not they have earned points yet." },
     { label: "Points issued", val: totals ? String(totals.pointsIssued) : "—" },
     { label: "Revenue", val: totals ? formatNpr(totals.revenue) : "—" },
   ];
@@ -70,8 +70,8 @@ export default function CompanyReports() {
 
       <div className="mb-6 grid grid-cols-2 gap-4 md:grid-cols-4">
         {tiles.map((t) => (
-          <div key={t.label} className="rounded-[var(--radius-card)] border border-[var(--line)] bg-[var(--surface)] shadow-ambient p-5">
-            <div className="mb-1.5 text-[13px] text-[var(--muted)]">{t.label}</div>
+          <div key={t.label} className="rounded-[var(--radius-card)] border border-[var(--line)] bg-[var(--surface)] shadow-ambient p-5" title={t.hint}>
+            <div className="mb-1.5 text-[13px] text-[var(--muted)]">{t.label}{t.hint ? " (?)" : ""}</div>
             {isLoading ? <Skeleton className="h-[26px] w-16" /> : <div className="font-display text-[26px] font-bold">{t.val}</div>}
           </div>
         ))}
@@ -80,7 +80,7 @@ export default function CompanyReports() {
       <ScrollableTable minContentWidth="650px">
         <div className="grid grid-cols-[2fr_1fr_1fr_1fr_1fr] border-b border-[var(--line)] px-5 py-3 text-[11px] font-bold uppercase tracking-wider text-[var(--soft)]">
           <span className={STICKY_FIRST_CELL}>Outlet</span>
-          <span>Customers</span>
+          <span title="Registered customer accounts at the outlet — anyone who signed up, whether or not they have earned points yet.">Customers</span>
           <span>Points</span>
           <span>Redeemed</span>
           <span className="pr-5">Revenue</span>
@@ -108,7 +108,7 @@ export default function CompanyReports() {
                     {o.status !== "active" ? ` · ${o.status}` : ""}
                   </span>
                 </span>
-                <span className="font-semibold">{o.customersCount}</span>
+                <span className="font-semibold" title="Registered customer accounts at this outlet — includes those with no points yet.">{o.customersCount}</span>
                 <span className="font-semibold">{o.pointsIssued}</span>
                 <span className="font-semibold">{o.redemptionCount}</span>
                 <span className="font-semibold pr-5">{formatNpr(o.revenue)}</span>

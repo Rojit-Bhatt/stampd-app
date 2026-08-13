@@ -30,8 +30,16 @@ export default function ReviewQrGenerator() {
     };
   }, []);
 
+  // Every "Talk to us" CTA opens a WhatsApp chat with a pre-filled first
+  // message — this page is the free review-QR tool, so the text says what the
+  // visitor is here for. api.whatsapp.com/send keeps the pre-filled text on
+  // Android and iOS where plain wa.me links sometimes drop it.
   const phone = contact?.phone ? toWaNumber(contact.phone) : "";
-  const contactHref = phone ? `https://wa.me/${phone}` : "/#pricing";
+  const contactHref = phone
+    ? `https://api.whatsapp.com/send?phone=${phone}&text=${encodeURIComponent(
+        "Hi! I found the free Google review QR generator on stampdd.club and have a question."
+      )}`
+    : "/#pricing";
 
   return (
     <main className="min-h-screen font-sans antialiased">

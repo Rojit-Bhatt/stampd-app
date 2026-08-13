@@ -36,6 +36,12 @@ jobs:
       - name: Fail fast if the lockfile is out of date
         run: pnpm install --frozen-lockfile
 
+      # Typecheck on the SAME package manager Cloudflare Pages uses. This
+      # caught the zod 3-vs-4 collision that npm's flat layout hid from the
+      # npm-based quality.yml job (see docs/review-2026-08-findings.md).
+      - name: Typecheck frontend (pnpm)
+        run: cd frontend && pnpm exec tsc --noEmit
+
       - name: Build frontend (what Cloudflare Pages ships)
         run: pnpm run --filter frontend build
 

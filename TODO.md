@@ -1,5 +1,13 @@
 # TODO
 
+## Review-driven items (Aug 2026)
+- RESOLVED 2026-08: Frontend typecheck broken on fresh pnpm install — `@hookform/resolvers` 3.10.0 (zod 4 peer) was pulled into the shared pnpm store next to the backend's zod 4, so the frontend's zod 3 resolver types collided. Fixed by pinning `@hookform/resolvers` to `~3.9.1` in frontend/package.json plus a root `pnpm.overrides` forcing zod ^3.25.0 workspace-wide (the backend was audited and uses only zod 3-compatible APIs). Both npm and pnpm now typecheck clean; lockfiles for both managers regenerated.
+- RESOLVED 2026-08: Company rollup silently undercounted same-day customers under explicit date ranges (timezone-boundary bug) — fixed upstream by the timezone commit of 2026-08-13; `tests/company-reports-range.js` passes in both UTC and Asia/Kathmandu.
+- RESOLVED 2026-08: WhatsApp prefill (bug-fix B3) completed — every "Talk to us" entry point now uses `api.whatsapp.com/send` with a context-appropriate pre-filled message (landing nav/CTAs, footer, review-QR page, subscription panel, chat float).
+- RESOLVED 2026-08: "Customers" count ambiguity — dashboard and reports carry hover tooltips distinguishing registered customer accounts from the points-earned customer list.
+- KNOWN: `exceljs` carries a moderate-severity `uuid` vulnerability (GHSA-w5hq-g745-h8pq) as a nested transitive dependency; npm overrides cannot reach it (package-path overrides are unsupported), so the fix is an upstream exceljs release bumping uuid. Low exposure: the affected code path requires a caller-supplied `buf` on v3/v5/v6 UUIDs, which Stampd does not use (exceljs calls `v4()` with no arguments). Re-check when Dependabot proposes an exceljs bump.
+- OPEN (needs a design decision first): Security-roadmap T1 — per-tenant SMS spend quota. Rate limiting exists; the spend cap does not. Decide the server-side model (per-organization monthly SMS budget and enforcement point) before building.
+
 01. Compress API responses in transit
 Check whether API responses are compressed in transit. Enable gzip or brotli compression on the server or edge for JSON and text responses above a small size threshold, and confirm the client negotiates it via Accept-Encoding. Avoid double-compressing already-compressed payloads. Verify response transfer sizes drop significantly and responses still parse correctly on the client.
 

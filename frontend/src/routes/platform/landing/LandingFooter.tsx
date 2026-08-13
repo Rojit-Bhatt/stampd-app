@@ -58,6 +58,12 @@ export function LandingFooter() {
 
   const waNumber = contact?.phone ? toWaNumber(contact.phone) : "";
 
+  // Pre-filled first message for the footer "Chat on WhatsApp" CTA — landed
+  // in the input box, not sent automatically; the visitor can edit before
+  // sending. api.whatsapp.com/send keeps the pre-filled text on Android and
+  // iOS where plain wa.me links sometimes drop it (see SectionPricing).
+  const waMessage = "Hi! I'd like to learn more about Stampd loyalty points for my business.";
+
   return (
     <FooterReveal>
       <div className="px-4 pb-4 md:px-6 md:pb-6">
@@ -86,7 +92,7 @@ export function LandingFooter() {
 
               {waNumber ? (
                 <a
-                  href={`https://wa.me/${waNumber}`}
+                  href={`https://api.whatsapp.com/send?phone=${waNumber}&text=${encodeURIComponent(waMessage)}`}
                   target="_blank"
                   rel="noreferrer noopener"
                   className="mt-7 inline-flex items-center gap-3 rounded-[74px] border border-white/15 bg-white/[0.06] py-3 pl-4 pr-5 text-sm font-medium text-[var(--lp-ink)] transition-transform duration-200 hover:scale-[1.03] motion-reduce:transition-none motion-reduce:hover:scale-100"
