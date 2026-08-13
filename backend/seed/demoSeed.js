@@ -117,12 +117,18 @@ const seedDemoData = async () => {
     // pricing tier buttons open a real WhatsApp chat with pre-filled plan
     // messages instead of the #pricing anchor fallback. (Nepal country code
     // +977 — clearly marked as demo, never used for real outreach.)
+    // Upsert-safe: the singleton doc may not exist yet (getContact() creates
+    // it lazily on first request), so seed both the doc and its phone field.
     const PlatformConfig = require("../models/PlatformConfig");
     const demoConfig = await PlatformConfig.findOne({ singleton: true });
-    if (demoConfig && (!demoConfig.contact || !demoConfig.contact.phone)) {
+    if (!demoConfig || !demoConfig.contact || !demoConfig.contact.phone) {
       await PlatformConfig.updateOne(
         { singleton: true },
-        { $set: { contact: { phone: "+9779801234567", email: "hello@stampd.co" } } }
+        {
+          $set: { contact: { phone: "+9779801234567", email: "hello@stampd.co" } },
+          $setOnInsert: { singleton: true }
+        },
+        { upsert: true }
       );
       console.log("[seed] Platform contact: hello@stampd.co / +977 980-1234567 (demo)");
     }
