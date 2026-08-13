@@ -3,7 +3,8 @@ const {
   register, login, googleAuth,
   verifyEmail, verifyOtp, resendVerification, forgotPassword, resetPassword,
   getMe, completeProfile, updateProfile, updatePreferences, savePushSubscription, removePushSubscription, changePassword, enterTenant, getMyTenants,
-  uploadAvatarFile, uploadAvatar, deleteAvatar, getAvatar
+  uploadAvatarFile, uploadAvatar, deleteAvatar, getAvatar,
+  exportData, deleteAccount
 } = require("../controllers/customerAccountController");
 const { resolveTenant } = require("../middleware/tenantMiddleware");
 const { verifyGlobalSession } = require("../middleware/customerAuthMiddleware");
@@ -36,6 +37,15 @@ router.post("/complete-profile", verifyGlobalSession, completeProfile);
 // in that tab) can drift stale, e.g. phone added from a different device or
 // tab. Gates that trust globalAccount.phone revalidate against this first.
 router.get("/me", verifyGlobalSession, getMe);
+
+// (G17) Account deletion — own account only, email confirmation required by
+// the service (prevents a stolen session from wiping the account silently).
+router.post("/delete", authLimiter, verifyGlobalSession, deleteAccount);
+
+// (G17) Self-service data export — own account only. Rate-limited: it is a
+// bulk read, and repeated calls cost DB work proportional to membership
+// history rather than the cheap lookups above.
+router.get("/data", authLimiter, verifyGlobalSession, exportData);
 
 // Name and password live on the CustomerAccount. The tenant-scoped
 // /api/account equivalents write the outlet membership row instead, where a

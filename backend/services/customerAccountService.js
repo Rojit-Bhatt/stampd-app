@@ -905,7 +905,92 @@ const getAvatar = async (customerAccountId) => {
     updatedAt: row.updatedAt
   };
 };
-
+// (G17) Customer data export — the “right to data portability” half of the
+// privacy posture. Returns everything the platform stores for the caller:
+// global profile, per-tenant membership data, point transaction history,
+// balances, and marketing consents. Secrets (password hash, MFA secret,
+// push-subscription keys) are deliberately omitted — exporting them would
+// hand out credentials, not data. The shape mirrors the delete scope so a
+// “take my data with me” and a “delete my data” flow cover the same ground.
+const exportAccountData = async ({ customerAccountId }) => {
+  const account = await CustomerAccount.findOne({ _id: customerAccountId });
+  if (!account) throw createHttpError("Account not found.", 404);
+  const members = await User.find({ customerAccountId: account._id });
+  const memberIds = members.map((m) => m._id);
+  const transactions = await Promise.all(
+    memberIds.map((id) => PointsTransaction.find({ userId: id }))
+  );
+  const balances = await Promise.all(
+    memberIds.map((id) => PointsBalance.find({ userId: id }))
+  );
+  const avatars = await CustomerAvatar.find({ customerAccountId: account._id });
+  // Plain find() — .lean() isn't supported by the in-memory test store and
+  // adds nothing here: we map to plain objects below anyway.
+  let pushSubscriptions = [];
+  try {
+    pushSubscriptions = await PushSubscription.find({ customerAccountId: account._id });
+  } catch (_) { /* push store unavailable — export everything else */ }
+  // Per-tenant context so the export reads meaningfully — company name +
+  // tenant name for each membership. Best-effort: a deleted tenant must not
+  // fail the export.
+  const memberships = [];
+  for (let i = 0; i < members.length; i++) {
+    const member = members[i];
+    let tenantName = null;
+    let companyName = null;
+    try {
+      if (member.organizationId) {
+        const org = await Organization.findOne({ _id: member.organizationId });
+        tenantName = org ? org.name : null;
+        if (org && org.companyId) {
+          const company = await Company.findOne({ _id: org.companyId });
+          companyName = company ? company.name : null;
+        }
+      }
+    } catch (_) { /* tenant metadata gone — export the data, note the gap */ }
+    memberships.push({
+      tenant: { name: tenantName, company: companyName },
+      name: member.name,
+      phone: member.phone || "",
+      emailVerified: member.emailVerified,
+      pointsBalanceCenti: member.pointsBalanceCenti ?? 0,
+      tierId: member.tierId ?? null,
+      pointsHistory: (transactions[i] || []).map((tx) => ({
+        kind: tx.kind,
+        pointsCenti: tx.pointsCenti,
+        reason: tx.reason || null,
+        referenceId: tx.referenceId ?? null,
+        createdAt: tx.createdAt
+      })),
+      balances: (balances[i] || []).map((b) => ({
+        kind: b.kind,
+        balanceCenti: b.balanceCenti,
+        expiresAt: b.expiresAt ?? null
+      }))
+    });
+  }
+  return {
+    success: true,
+    data: {
+      requestedAt: new Date().toISOString(),
+      profile: {
+        name: account.name,
+        email: account.email,
+        phone: account.phone || "",
+        emailVerified: account.emailVerified,
+        googleLinked: Boolean(account.googleId),
+        marketingConsent: account.marketingConsent,
+        birthdayMonth: account.birthdayMonth ?? null,
+        birthdayDay: account.birthdayDay ?? null,
+        gender: account.gender ?? null,
+        createdAt: account.createdAt
+      },
+      memberships,
+      avatars: avatars.map((a) => ({ version: a.version, hasImage: Boolean(a.image) })),
+      pushSubscriptions: pushSubscriptions.length
+    }
+  };
+};
 const deleteCustomerAccount = async ({ customerAccountId, email }) => {
   if (!email || !email.trim()) {
     throw createHttpError("Email confirmation is required.", 400);
@@ -972,6 +1057,7 @@ module.exports = {
   setAvatar,
   removeAvatar,
   getAvatar,
+  exportAccountData,
   deleteCustomerAccount,
   MAX_AVATAR_BYTES
 };

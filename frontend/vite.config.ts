@@ -39,6 +39,12 @@ export default defineConfig({
       },
     }),
   ],
+  // (G19) Bundle budget — the PWA should stay download-fast on Nepal mobile
+  // data. Warn above the threshold; CI can gate on it. Revisit when a
+  // genuinely large feature justifies raising the number.
+  build: {
+    chunkSizeWarningLimit: 400, // kB per chunk
+  },
   resolve: {
     alias: {
       '@': path.resolve(__dirname, './src'),
