@@ -822,49 +822,6 @@ const getAvatar = async (customerAccountId) => {
     updatedAt: row.updatedAt
   };
 };
-
-const deleteCustomerAccount = async ({ customerAccountId, email }) => {
-  if (!email || !email.trim()) {
-    throw createHttpError("Email confirmation is required.", 400);
-  }
-
-  const account = await CustomerAccount.findOne({ _id: customerAccountId });
-  if (!account) throw createHttpError("Account not found.", 404);
-
-  if (account.email.toLowerCase() !== email.trim().toLowerCase()) {
-    throw createHttpError("Confirmation email does not match your account email.", 400);
-  }
-
-  // 1. Find all memberships (User rows) associated with this customer account
-  const members = await User.find({ customerAccountId: account._id });
-  const memberIds = members.map(m => m._id);
-
-  // 2. Delete all PointsTransactions for these memberships. Per-id, not
-  // `$in` — the mock DB's query matcher only supports top-level equality/
-  // $or/$lte/$gte and throws on anything else.
-  await Promise.all(memberIds.map((id) => PointsTransaction.deleteMany({ userId: id })));
-
-  // 3. Delete all PointsBalances for these memberships (same $in constraint).
-  await Promise.all(memberIds.map((id) => PointsBalance.deleteMany({ userId: id })));
-
-  // 4. Delete all PendingClaims for this customer account
-  await PendingClaim.deleteMany({ customerAccountId: account._id });
-
-  // 5. Delete CustomerAvatar
-  await CustomerAvatar.deleteMany({ customerAccountId: account._id });
-
-  // 6. Delete AccountVerificationTokens
-  await AccountVerificationToken.deleteMany({ customerAccountId: account._id });
-
-  // 7. Delete User memberships
-  await User.deleteMany({ customerAccountId: account._id });
-
-  // 8. Delete the CustomerAccount itself
-  await CustomerAccount.deleteOne({ _id: account._id });
-
-  return { success: true };
-};
-
 module.exports = {
   registerAccount,
   loginAccount,
@@ -888,6 +845,5 @@ module.exports = {
   setAvatar,
   removeAvatar,
   getAvatar,
-  deleteCustomerAccount,
   MAX_AVATAR_BYTES
 };

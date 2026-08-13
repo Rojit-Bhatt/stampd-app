@@ -6,7 +6,7 @@ export interface ProfileSection {
   id: string;
   label: string;
   icon: LucideIcon;
-  /** Red-tinted link — this app's one case is "Delete account". */
+  /** Red-tinted style used for a destructive "danger" section. */
   danger?: boolean;
   content: ReactNode;
 }
