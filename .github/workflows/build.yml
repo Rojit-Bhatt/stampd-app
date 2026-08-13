@@ -19,13 +19,16 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 22
-
+      # pnpm/action-setup MUST come before setup-node: setup-node injects a
+      # bundled (newer) pnpm into PATH that ignores pnpm-workspace.yaml and
+      # treats our npm-style workspace declaration as a single project.
       - uses: pnpm/action-setup@v4
         with:
           version: 9
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
 
       # Fail fast: Cloudflare Pages runs exactly this command in /frontend.
       # If pnpm-lock.yaml is older than package.json, this step fails here,
