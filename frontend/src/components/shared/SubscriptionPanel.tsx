@@ -142,7 +142,11 @@ export function SubscriptionPanel({ queryKey, fetchPath, redeemPath, role, extra
       : effectiveStatus === "grace" || (daysLeft !== null && !isPerpetual && daysLeft <= 5)
         ? `Hi! My Stampd subscription (${planLabel}) is renewing soon${daysLeft !== null ? ` — ${daysLeft} day${daysLeft === 1 ? "" : "s"} left` : ""}, and I'd like to arrange the renewal.`
         : `Hi! I have a question about my Stampd subscription (${planLabel}).`;
-  const waHref = waNumber ? `https://wa.me/${waNumber}?text=${encodeURIComponent(waMessage)}` : null;
+  // api.whatsapp.com/send keeps the pre-filled text on Android and iOS where
+  // plain wa.me links sometimes drop it (see SectionPricing comments).
+  const waHref = waNumber
+    ? `https://api.whatsapp.com/send?phone=${waNumber}&text=${encodeURIComponent(waMessage)}`
+    : null;
 
   return (
     <div>

@@ -26,7 +26,9 @@ export function WhatsAppFloat() {
 
   return (
     <a
-      href={`https://api.whatsapp.com/send?phone=${number}`}
+      href={`https://api.whatsapp.com/send?phone=${number}&text=${encodeURIComponent(
+        "Hi! I have a question about Stampd."
+      )}`}
       target="_blank"
       rel="noreferrer noopener"
       onMouseEnter={() => setOpen(true)}

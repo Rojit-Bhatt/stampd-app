@@ -19,6 +19,12 @@ import { WhatsAppFloat, toWaNumber } from "./landing/WhatsAppFloat";
 //
 // Concept: docs/superpowers/specs/2026-07-30-platform-landing-stampd-concept-design.md
 
+// Pre-filled first message for every landing WhatsApp CTA. Landed in the
+// input box, not sent automatically — the visitor can edit before sending,
+// but whoever answers on WhatsApp immediately knows the enquiry is about
+// setting up Stampd rather than a generic "hi".
+const CONTACT_MESSAGE = "Hi! I'd like to learn more about Stampd loyalty points for my business.";
+
 export default function PlatformLanding() {
   const { data: contact } = usePlatformContact();
   const location = useLocation();
@@ -56,8 +62,13 @@ export default function PlatformLanding() {
   // owner — so every CTA on this page resolves to a real conversation.
   // Falls back to the pricing anchor until contact details are configured,
   // which is still a live destination rather than a dead link.
+  // Every landing CTA opens a WhatsApp chat with a pre-filled first message.
+  // api.whatsapp.com/send keeps the pre-filled text on both Android and iOS
+  // where plain wa.me links sometimes drop it (see SectionPricing comments).
   const phone = contact?.phone ? toWaNumber(contact.phone) : "";
-  const contactHref = phone ? `https://wa.me/${phone}` : "#pricing";
+  const contactHref = phone
+    ? `https://api.whatsapp.com/send?phone=${phone}&text=${encodeURIComponent(CONTACT_MESSAGE)}`
+    : "#pricing";
 
   return (
     // Two deliberate omissions on this element:

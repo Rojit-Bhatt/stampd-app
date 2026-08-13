@@ -1,7 +1,12 @@
 /**
- * session-versioning.js — Task 4: session versioning for instant revocation
+ * session-versioning.js — Task 4: instant session revocation on credential change
  *
- * A token is minted with the account's sessionVersion. A password change
+ * Note on naming: the mechanism is credential-version versioning rather than
+ * session versioning — each minted token carries the account's current
+ * credential version (`pv`), so any secret change (password, recovery answers)
+ * that bumps the version instantly invalidates all previously-issued tokens
+ * without a token list or refresh dance. A token is minted with the account's
+ * credential version. A password change
  * bumps the version on the account row, so every previously-issued token is
  * rejected 401 ("Session expired") on the very next request — no token list,
  * no refresh dance. Fresh login works because the next mint carries the
@@ -111,7 +116,7 @@ async function main() {
     check("verifyGlobalSessionToken is crypto-only and decodes a stale token", 
       direct.customerAccountId === "deadbeefdeadbeefdeadbeef");
 
-    // --- backward compatibility: pre-version tokens (no sessionVersion claim) ---
+    // --- backward compatibility: pre-version tokens (no pv claim) ---
     const legacy = jwt.sign(
       { type: "global_customer", customerAccountId: "deadbeefdeadbeefdeadbeef" },
       process.env.JWT_GLOBAL_SECRET || "dev_only_insecure_global_jwt_secret_change_me",

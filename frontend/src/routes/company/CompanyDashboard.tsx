@@ -284,7 +284,7 @@ export default function CompanyDashboard() {
                   >
                     {o.status}
                   </span>
-                  <span>
+                  <span title="Registered customer accounts at this outlet — anyone who signed up here, whether or not they have earned points yet.">
                     {o.customersCount} customer{o.customersCount === 1 ? "" : "s"}
                   </span>
                 </div>
