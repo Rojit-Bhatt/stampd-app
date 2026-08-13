@@ -7,7 +7,7 @@ const formatNpr = (n: number) => (n === 0 ? "Rs 0" : `Rs ${n.toLocaleString()}`)
 
 /**
  * Strip every non-digit character from a phone number so it can be used in a
- * wa.me link. The platform contact phone may be stored with "+", spaces, or
+ * WhatsApp link. The platform contact phone may be stored with "+", spaces, or
  * dashes — the WhatsApp URL scheme accepts digits only.
  */
 const toWaNumber = (phone: string) => phone.replace(/[^\d]/g, "");
@@ -28,7 +28,7 @@ const planMessage = (name: string, priceNpr: number): string =>
  */
 const planContactHref = (phone: string, name: string, priceNpr: number): string =>
   phone
-    ? `https://wa.me/${toWaNumber(phone)}?text=${encodeURIComponent(planMessage(name, priceNpr))}`
+    ? `https://api.whatsapp.com/send?phone=${toWaNumber(phone)}&text=${encodeURIComponent(planMessage(name, priceNpr))}`
     : "#pricing";
 
 export function PricingSection({ contactHref }: { contactHref: string }) {
@@ -38,11 +38,13 @@ export function PricingSection({ contactHref }: { contactHref: string }) {
   // shell promising tiers that do not exist.
   if (!isLoading && (!plans || plans.length === 0)) return null;
 
-  // The shared contactHref carries the platform's WhatsApp number (digits
-  // only). Individual tiers build their own wa.me link with a pre-filled
-  // template — same number, tier-specific message.
-  const phone = contactHref.startsWith("https://wa.me/")
-    ? decodeURIComponent(contactHref).replace("https://wa.me/", "").split("?")[0]
+  // The shared contactHref carries the platform's WhatsApp number. Accept
+  // both legacy wa.me links and the newer api.whatsapp.com/send URLs, then
+  // build per-tier api.whatsapp.com/send links with pre-filled messages —
+  // the api.whatsapp.com host reliably keeps the pre-filled text on both
+  // Android and iOS where plain wa.me links sometimes lose it.
+  const phone = /https:\/\/(wa\.me|api\.whatsapp\.com\/send)/.test(contactHref)
+    ? decodeURIComponent(contactHref).replace(/^https:\/\/(wa\.me|api\.whatsapp\.com\/send)/, "").replace(/^\/?(\?phone=)?/, "").split("&")[0]
     : "";
 
   return (
