@@ -1,0 +1,50 @@
+# CI: mirror the Cloudflare Pages deployment steps (pnpm install
+# --frozen-lockfile) so a stale pnpm-lock.yaml or a broken build fails the
+# branch BEFORE it reaches production. Also runs the full backend test suite.
+#
+# NOTE: quality.yml (npm-based) covers typecheck + lint + focused backend
+# checks; this workflow is the production path (pnpm) for the Pages build.
+name: Production build check (pnpm)
+
+on:
+  push:
+    branches: [main, security-roadmap]
+  pull_request:
+    branches: [main]
+
+jobs:
+  production-check:
+    name: pnpm lockfile + build + backend suite
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      # pnpm/action-setup MUST come before setup-node: setup-node injects a
+      # bundled (newer) pnpm into PATH that ignores pnpm-workspace.yaml and
+      # treats our npm-style workspace declaration as a single project.
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      # Fail fast: Cloudflare Pages runs exactly this command in /frontend.
+      # If pnpm-lock.yaml is older than package.json, this step fails here,
+      # not in production.
+      - name: Fail fast if the lockfile is out of date
+        run: pnpm install --frozen-lockfile
+
+      - name: Build frontend (what Cloudflare Pages ships)
+        run: pnpm run --filter frontend build
+
+      - name: Run full backend test suite
+        run: |
+          cd backend
+          failed=0
+          for f in tests/*.js; do
+            name=$(basename "$f" .js)
+            node "$f" > /tmp/ci_$name.log 2>&1 || { echo "FAIL: $name"; failed=1; }
+          done
+          exit $failed

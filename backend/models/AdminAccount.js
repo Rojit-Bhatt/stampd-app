@@ -24,6 +24,11 @@ const AdminAccountSchema = new mongoose.Schema({
   emailVerified: { type: Boolean, default: false },
   failedLoginAttempts: { type: Number, default: 0 },
   lockedUntil: { type: Date, default: null },
+  // Revocation counter signed into every global/company session token this
+  // account mints. Bumped on password reset so previously-issued tokens are
+  // rejected by verifyCompanySessionToken's version check: instant logout
+  // after a credential change, no token list.
+  sessionVersion: { type: Number, default: 0 },
 
   // company_owner -> manages the company, its outlets and its subscription;
   //                  organizationId is null (owns all of them, not one).

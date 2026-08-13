@@ -1,6 +1,28 @@
+const createHttpError = require("http-errors");
+
 const Company = require("../models/Company");
 const SmsSendLog = require("../models/SmsSendLog");
 const { PLATFORM_TIMEZONE, SMS_COST_PAISA_PER_MESSAGE } = require("../config/platform");
+
+// One tenant may send at most this many SMS per UTC day. Broadcast abuse is
+// a real money-loss vector (Sparrow charges per message and SmsSendLog
+// records SMS_COST_PAISA_PER_MESSAGE per send), so the cap applies to every
+// send path — broadcasts and everything else that calls sendSms — not just
+// the broadcast endpoint. UTC days so the counter can't be gamed by
+// timezone hopping; each company's counter is scoped to (company, org).
+const DAILY_SMS_QUOTA = Number(process.env.DAILY_SMS_QUOTA || 1000);
+const checkDailySmsQuota = async ({ companyId, organizationId }) => {
+  const start = new Date();
+  start.setUTCHours(0, 0, 0, 0);
+  const count = await SmsSendLog.countDocuments({
+    companyId,
+    organizationId,
+    sentAt: { $gte: start }
+  });
+  if (count >= DAILY_SMS_QUOTA) {
+    throw createHttpError(429, "Daily SMS limit reached. Try again tomorrow.");
+  }
+};
 
 // Start of the current calendar month, judged in PLATFORM_TIMEZONE — a
 // Nepal-only platform, same convention campaignService.localDayOfWeek
@@ -70,6 +92,9 @@ const sendSms = async ({ companyId, organizationId, to, text }) => {
   if (spentPaisa + SMS_COST_PAISA_PER_MESSAGE > company.smsMonthlyCapPaisa) {
     return { sent: false, reason: "cap_reached" };
   }
+
+  // Daily volume quota — money control on top of the monthly paisa cap.
+  await checkDailySmsQuota({ companyId, organizationId });
 
   const normalized = normalizePhone(to);
   if (apiConfigured()) {

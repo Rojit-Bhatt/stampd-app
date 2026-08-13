@@ -15,6 +15,8 @@ router.get("/verify-email", verifyEmail);
 router.post("/verify-otp", authLimiter, verifyOtp);
 router.post("/resend-verification", registrationLimiter, verifyTurnstile, resendVerification);
 router.post("/forgot-password", registrationLimiter, verifyTurnstile, forgotPassword);
-router.post("/reset-password", resetPassword);
+// Provably unthrottled in the 2026-08 security audit — now rate-limited
+// (registrationLimiter: 10/hour) to stop reset-token guessing and flooding.
+router.post("/reset-password", registrationLimiter, resetPassword);
 
 module.exports = router;

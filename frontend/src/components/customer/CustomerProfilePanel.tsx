@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { LogOut, User, Contact, Bell, ShieldCheck, Trash2, Moon, Sun } from "lucide-react";
+import { LogOut, User, Contact, Bell, ShieldCheck, Moon, Sun } from "lucide-react";
 import toast from "@/lib/toast";
 import { passwordStrength, STRENGTH_LEVELS, strengthColor } from "@/lib/passwordStrength";
 
@@ -74,9 +74,6 @@ export function CustomerProfilePanel({ onLogout }: { onLogout: () => void }) {
   const [permissionState, setPermissionState] = useState<NotificationPermission | null>(null);
   const [showPushPrePrompt, setShowPushPrePrompt] = useState(false);
 
-  const [showConfirmDelete, setShowConfirmDelete] = useState(false);
-  const [confirmEmail, setConfirmEmail] = useState("");
-  const [deleting, setDeleting] = useState(false);
 
   // Only when the identity itself changes — not on every render, which would
   // fight the customer for control of the input while they're typing.
@@ -143,23 +140,6 @@ export function CustomerProfilePanel({ onLogout }: { onLogout: () => void }) {
     }
   };
 
-  const handleDeleteAccount = async () => {
-    if (confirmEmail !== globalAccount.email) return;
-    setDeleting(true);
-    try {
-      await apiRequest("/api/customer-auth/profile", {
-        method: "DELETE",
-        role: "customer-global",
-        body: { email: confirmEmail },
-      });
-      toast.success("Your account has been permanently deleted.");
-      onLogout();
-    } catch (err) {
-      toast.error((err as Error).message || "Couldn't delete account — try again.");
-    } finally {
-      setDeleting(false);
-    }
-  };
 
   const saveEmailOptIn = async (next: boolean) => {
     setEmailOptIn(next);
@@ -569,62 +549,6 @@ export function CustomerProfilePanel({ onLogout }: { onLogout: () => void }) {
             >
               {savingPassword ? "Saving…" : globalAccount.hasPassword ? "Update password" : "Set password"}
             </Button>
-          </Card>
-        </div>
-      ),
-    },
-    {
-      id: "danger",
-      label: "Danger zone",
-      icon: Trash2,
-      danger: true,
-      content: (
-        <div className="flex max-w-[480px] flex-col gap-6">
-          <Card title="Delete account">
-            <div className="mb-3 text-[13px] text-[var(--muted)] leading-relaxed">
-              Once you delete your account, there is no going back. All of your points, memberships, and profile details will be permanently removed across all cafes.
-            </div>
-
-            {!showConfirmDelete ? (
-              <Button
-                variant="destructive"
-                onClick={() => setShowConfirmDelete(true)}
-              >
-                Delete account
-              </Button>
-            ) : (
-              <div className="flex flex-col gap-3 rounded-[var(--radius-card)] border border-red-200 bg-red-50/50 p-4 dark:border-red-900/50 dark:bg-red-950/20">
-                <p className="text-[13px] text-red-600 dark:text-red-400 font-medium">
-                  Please type <strong className="select-all break-all">{globalAccount.email}</strong> to confirm deletion.
-                </p>
-                <input
-                  type="text"
-                  placeholder={globalAccount.email}
-                  value={confirmEmail}
-                  onChange={(e) => setConfirmEmail(e.target.value)}
-                  className="w-full rounded-[var(--radius-btn)] border border-red-200 bg-[var(--bg)] px-4 py-3 text-sm focus:border-red-500 focus:outline-none dark:border-red-900 text-[var(--ink)]"
-                />
-                <div className="flex gap-2">
-                  <Button
-                    variant="destructive"
-                    disabled={confirmEmail !== globalAccount.email || deleting}
-                    onClick={handleDeleteAccount}
-                    className="flex-1"
-                  >
-                    {deleting ? "Deleting…" : "Confirm Delete"}
-                  </Button>
-                  <Button
-                    variant="outline"
-                    onClick={() => {
-                      setShowConfirmDelete(false);
-                      setConfirmEmail("");
-                    }}
-                  >
-                    Cancel
-                  </Button>
-                </div>
-              </div>
-            )}
           </Card>
         </div>
       ),

@@ -75,7 +75,8 @@ const adminLogin = async ({ email, password }) => {
       kind: "company_owner",
       token: generateCompanySessionToken({
         adminAccountId: account._id.toString(),
-        companyId: company._id.toString()
+        companyId: company._id.toString(),
+        sessionVersion: account.sessionVersion ?? 0
       }),
       account: { id: account._id.toString(), name: account.name, email: account.email },
       company: { slug: company.slug, name: company.name }
@@ -250,6 +251,10 @@ const resetAdminPassword = async ({ token, password }) => {
 
   account.password = await bcrypt.hash(password, SALT_ROUNDS);
   await account.save();
+  // Revoke every previously-issued session token for this account — the
+  // sessionVersion check in verifyCompanySessionToken makes stale tokens
+  // die on the next request instead of riding out their remaining lifetime.
+  await AdminAccount.updateOne({ _id: account._id }, { $inc: { sessionVersion: 1 } });
   record.usedAt = new Date();
   await record.save();
 

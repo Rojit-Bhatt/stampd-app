@@ -14,11 +14,18 @@ const path = require("path");
 // only runs when that var is configured, regardless of the developer's real
 // .env). `deleteEnv` explicitly unsets vars (beyond the always-forced
 // MONGODB_URI) so a test isn't accidentally affected by ambient shell env.
-async function bootServer({ port = 5010, timeoutMs = 15000, env: envOverrides = {}, deleteEnv = [] } = {}) {
+// `requireBeforeServer` (path, resolved against this helpers dir) lets one
+// suite — csp-report-only.js — run the server in NODE_ENV=production:
+// server.js refuses the in-memory mock DB in production (a deliberate
+// guard against misconfigured deploys), so the child receives a non-empty
+// MONGODB_URI and this bootstrap swaps mongoose for the mock module
+// before server.js requires it. The guard stays intact for every other
+// suite and for real deployments (no caller passes the option otherwise).
+async function bootServer({ port = 5010, timeoutMs = 15000, env: envOverrides = {}, deleteEnv = [], requireBeforeServer = null } = {}) {
   const serverPath = path.resolve(__dirname, "../../server.js");
   const baseUrl = `http://localhost:${port}`;
 
-  const env = { ...process.env, PORT: String(port) };
+  const env = { ...process.env, PORT: String(port), ...(requireBeforeServer ? { MOCK_MONGOOSE: "1" } : {}) };
   // Default to the fast, deterministic console-log email stub unless a test
   // explicitly opts into real SMTP via `env: { SMTP_HOST: ... }` — otherwise
   // a real SMTP_HOST configured in backend/.env for normal dev use would
@@ -32,10 +39,13 @@ async function bootServer({ port = 5010, timeoutMs = 15000, env: envOverrides = 
   // that's already *defined* in process.env; a deleted (undefined) var gets
   // silently refilled from backend/.env on disk (e.g. a real MONGODB_URI set
   // there for normal dev use), which would point tests at a real database.
-  env.MONGODB_URI = "";
+  env.MONGODB_URI = requireBeforeServer ? (envOverrides.MONGODB_URI || "mongodb://in-memory-fallback") : "";
   for (const key of deleteEnv) delete env[key];
 
-  const child = spawn("node", [serverPath], {
+  const args = requireBeforeServer
+    ? ["-r", path.resolve(__dirname, requireBeforeServer), serverPath]
+    : [serverPath];
+  const child = spawn("node", args, {
     env,
     cwd: path.resolve(__dirname, "../.."),
   });

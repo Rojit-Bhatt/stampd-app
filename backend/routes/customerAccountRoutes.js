@@ -15,15 +15,17 @@ const router = express.Router();
 
 // Global — no tenant context at all. Rate-limited on the abuse-prone
 // endpoints (see rateLimitMiddleware); google/verify-email/reset-password are
-// token- or provider-gated already and left unthrottled.
+// token- or provider-gated, but provably unthrottled in the 2026-08
+// security audit — both now carry hard caps (google: authLimiter on
+// brute-force; reset-password: registrationLimiter on token guessing).
 router.post("/register", registrationLimiter, verifyTurnstile, register);
 router.post("/login", authLimiter, verifyTurnstile, login);
-router.post("/google", googleAuth);
+router.post("/google", authLimiter, googleAuth);
 router.get("/verify-email", verifyEmail);
 router.post("/verify-otp", authLimiter, verifyOtp);
 router.post("/resend-verification", registrationLimiter, verifyTurnstile, resendVerification);
 router.post("/forgot-password", registrationLimiter, verifyTurnstile, forgotPassword);
-router.post("/reset-password", resetPassword);
+router.post("/reset-password", registrationLimiter, resetPassword);
 router.post("/complete-profile", verifyGlobalSession, completeProfile);
 
 // Fresh account snapshot from the server — the client's cached globalAccount

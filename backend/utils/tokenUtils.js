@@ -14,14 +14,32 @@ const getJwtSecret = () => {
   return "dev_only_insecure_jwt_secret_change_me";
 };
 
-const generateAuthToken = (payload) => {
-  return jwt.sign(payload, getJwtSecret(), {
+// Minting carries the account's sessionVersion into the signed payload so a
+// verifier with the live row can tell a stale token (password changed after
+// it was minted) from a fresh one. `sessionVersion` defaults to 0 so callers
+// that never pass it — tests, migration-free paths — keep producing tokens
+// that match a row at version 0.
+const generateAuthToken = (payload, { sessionVersion = 0 } = {}) => {
+  return jwt.sign({ ...payload, sessionVersion }, getJwtSecret(), {
     expiresIn: process.env.JWT_EXPIRES_IN || "7d"
   });
 };
 
-const verifyAuthToken = (token) => {
-  return jwt.verify(token, getJwtSecret());
+// Throws "Session expired" (statusCode 401) when the token is cryptographically
+// valid but the account has since revoked it — password change, forced logout,
+// staff deactivation. `row` is the live mongoose document re-fetched by the
+// middleware on every request; null skips the revocation check (the mock-DB
+// test paths that never re-fetch, and callers that only need crypto validity).
+// Missing sessionVersion on either side is treated as 0, so tokens minted
+// before this change stay valid until they naturally expire.
+const verifyAuthToken = (token, row) => {
+  const decoded = jwt.verify(token, getJwtSecret());
+  if (row && (decoded.sessionVersion ?? 0) !== (row.sessionVersion ?? 0)) {
+    const err = new Error("Session expired");
+    err.statusCode = 401;
+    throw err;
+  }
+  return decoded;
 };
 
 const getGlobalJwtSecret = () => {
@@ -43,14 +61,23 @@ const getGlobalJwtSecret = () => {
 // `if (!decoded.userId || !decoded.role)` check even before considering it's
 // signed with a different secret entirely — it can never grant tenant access
 // on its own, only exchange for a tenant JWT via the enter-tenant endpoint.
-const generateGlobalSessionToken = ({ customerAccountId }) => {
-  return jwt.sign({ type: "global_customer", customerAccountId }, getGlobalJwtSecret(), {
-    expiresIn: process.env.GLOBAL_SESSION_EXPIRES_IN || "60d"
+const generateGlobalSessionToken = ({ customerAccountId, sessionVersion = 0 }) => {
+  return jwt.sign({ type: "global_customer", customerAccountId, sessionVersion }, getGlobalJwtSecret(), {
+    // Was 60d — halved because a global token is the master key to every
+    // tenant a customer belongs to; sessionVersion gives instant revocation
+    // but a shorter life is cheap defence in depth while it's fresh.
+    expiresIn: process.env.GLOBAL_SESSION_EXPIRES_IN || "30d"
   });
 };
 
-const verifyGlobalSessionToken = (token) => {
-  return jwt.verify(token, getGlobalJwtSecret());
+const verifyGlobalSessionToken = (token, row) => {
+  const decoded = jwt.verify(token, getGlobalJwtSecret());
+  if (row && (decoded.sessionVersion ?? 0) !== (row.sessionVersion ?? 0)) {
+    const err = new Error("Session expired");
+    err.statusCode = 401;
+    throw err;
+  }
+  return decoded;
 };
 
 // Same global-session shape/secret as generateGlobalSessionToken above, but
@@ -60,14 +87,21 @@ const verifyGlobalSessionToken = (token) => {
 // customer global token, this can never satisfy authMiddleware.verifyToken's
 // userId/role check, so it can never grant tenant access directly — only
 // exchange for a tenant JWT via /api/company/enter-outlet.
-const generateCompanySessionToken = ({ adminAccountId, companyId }) => {
-  return jwt.sign({ type: "company_owner", adminAccountId, companyId }, getGlobalJwtSecret(), {
-    expiresIn: process.env.GLOBAL_SESSION_EXPIRES_IN || "60d"
+const generateCompanySessionToken = ({ adminAccountId, companyId, sessionVersion = 0 }) => {
+  return jwt.sign({ type: "company_owner", adminAccountId, companyId, sessionVersion }, getGlobalJwtSecret(), {
+    // Same 60d→30d halving as generateGlobalSessionToken — see its comment.
+    expiresIn: process.env.GLOBAL_SESSION_EXPIRES_IN || "30d"
   });
 };
 
-const verifyCompanySessionToken = (token) => {
-  return jwt.verify(token, getGlobalJwtSecret());
+const verifyCompanySessionToken = (token, row) => {
+  const decoded = jwt.verify(token, getGlobalJwtSecret());
+  if (row && (decoded.sessionVersion ?? 0) !== (row.sessionVersion ?? 0)) {
+    const err = new Error("Session expired");
+    err.statusCode = 401;
+    throw err;
+  }
+  return decoded;
 };
 
 module.exports = {

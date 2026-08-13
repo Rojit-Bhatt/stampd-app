@@ -136,6 +136,28 @@ app.get("/health", (_req, res) => {
   res.status(200).json({ status: "ok" });
 });
 
+// CSP violation reports from the SPA document (see the Content-Security-
+// Policy-Report-Only header below). Structured console log only — no DB
+// table (YAGNI); the observation window's job is to surface real
+// violations, not to accumulate them. Accepts the standard CSP report
+// content type alongside JSON so browsers can POST it.
+// Browsers send CSP reports with kebab-case keys inside "csp-report";
+// a JSON client may send camelCase — accept both.
+app.post("/api/csp-report", express.json({ type: ["application/json", "application/csp-report"] }), (req, res) => {
+  const r = req.body?.["csp-report"] || {};
+  const kebab = (camel) => (r[camel] !== undefined ? r[camel] : r[camel.replace(/([A-Z])/g, "-$1").toLowerCase()]);
+  console.log(JSON.stringify({
+    type: "csp-violation",
+    blockedUri: kebab("blockedUri"),
+    documentUri: kebab("documentUri"),
+    violatedDirective: kebab("violatedDirective"),
+    effectiveDirective: kebab("effectiveDirective"),
+    originalPolicy: kebab("originalPolicy"),
+    timestamp: new Date().toISOString()
+  }));
+  res.sendStatus(204);
+});
+
 // Platform super-admin (onboards + manages businesses/tenants).
 app.use("/api/platform", platformRoutes);
 // Subscription plan CRUD (platform-admin-configurable) + public pricing read.
@@ -186,6 +208,12 @@ if (USING_MOCK_DB) {
 if (process.env.NODE_ENV === "production") {
   const path = require("path");
   const distPath = path.resolve(__dirname, "../frontend/dist");
+  // Strict hash-based CSP, report-only: the header lives on the SPA
+  // document only (index.html served by the catch-all below). JSON API
+  // responses carry no CSP — a browser never parses them as documents, so
+  // the policy would be inert there anyway; the token-bearing APIs are
+  // protected by their own layers (auth, rate limits, turnstile).
+  app.use(require("./middleware/cspMiddleware").cspMiddleware(distPath));
   app.use(express.static(distPath));
   app.get("*", (req, res, next) => {
     if (req.path.startsWith("/api") || req.path.startsWith("/__test__")) {

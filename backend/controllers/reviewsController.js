@@ -14,7 +14,7 @@ const getGoogleReviews = async (req, res, next) => {
     return res.status(200).json({
       success: false,
       source: "no_api_key",
-      message: "GOOGLE_PLACES_API_KEY is missing. Please configure it in your environment/Settings.",
+      message: "Google reviews are currently unavailable.",
       reviews: []
     });
   }

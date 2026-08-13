@@ -36,7 +36,11 @@ const { uploadImageFile, uploadImage, deleteImage } = require("../controllers/im
 const staffController = require("../controllers/staffController");
 const { getNotifications, postMarkRead, postMarkAllRead } = require("../controllers/notificationController");
 const { verifyToken, isBusinessAdmin, requireStaffPermission } = require("../middleware/authMiddleware");
-const { pinLimiter } = require("../middleware/rateLimitMiddleware");
+const {
+  pinLimiter,
+  exportLimiter,
+  broadcastLimiter,
+} = require("../middleware/rateLimitMiddleware");
 
 const router = express.Router();
 
@@ -74,7 +78,7 @@ router.get("/menu", verifyToken, isBusinessAdmin, listMenu);
 router.post("/menu", verifyToken, isBusinessAdmin, canCatalog, createMenuItem);
 router.post("/menu/import/preview", verifyToken, isBusinessAdmin, canCatalog, uploadMenuFile, previewMenuImport);
 router.post("/menu/import/confirm", verifyToken, isBusinessAdmin, canCatalog, confirmMenuImport);
-router.get("/menu/template", verifyToken, isBusinessAdmin, downloadMenuTemplate);
+router.get("/menu/template", verifyToken, isBusinessAdmin, exportLimiter, downloadMenuTemplate);
 router.patch("/menu/:id", verifyToken, isBusinessAdmin, canCatalog, updateMenuItem);
 router.delete("/menu/:id", verifyToken, isBusinessAdmin, canCatalog, deleteMenuItem);
 router.get("/dashboard-stats", verifyToken, isBusinessAdmin, canReports, getDashboard);
@@ -83,13 +87,13 @@ router.get("/leaderboard", verifyToken, isBusinessAdmin, canReports, getLeaderbo
 router.get("/reports/summary", verifyToken, isBusinessAdmin, canReports, getSummary);
 // The value view. A report, so it sits behind the same view_reports gate.
 router.get("/impact", verifyToken, isBusinessAdmin, canReports, getImpact);
-router.get("/reports/summary/download", verifyToken, isBusinessAdmin, canReports, downloadSummary);
-router.get("/reports/customers/download", verifyToken, isBusinessAdmin, canReports, downloadCustomers);
-router.get("/reports/transactions/download", verifyToken, isBusinessAdmin, canReports, downloadTransactions);
+router.get("/reports/summary/download", verifyToken, isBusinessAdmin, canReports, exportLimiter, downloadSummary);
+router.get("/reports/customers/download", verifyToken, isBusinessAdmin, canReports, exportLimiter, downloadCustomers);
+router.get("/reports/transactions/download", verifyToken, isBusinessAdmin, canReports, exportLimiter, downloadTransactions);
 // The redemption ledger — its own JSON read AND download, both behind the
 // same view_reports gate as the other reports.
 router.get("/reports/redeem", verifyToken, isBusinessAdmin, canReports, getRedeemReport);
-router.get("/reports/redeem/download", verifyToken, isBusinessAdmin, canReports, downloadRedeems);
+router.get("/reports/redeem/download", verifyToken, isBusinessAdmin, canReports, exportLimiter, downloadRedeems);
 // Campaigns change what a bill is worth; Events are display-only listings.
 // Two different things, deliberately two different route groups.
 router.get("/campaigns", verifyToken, isBusinessAdmin, campaignController.list);
@@ -117,7 +121,7 @@ router.delete("/events/:id", verifyToken, isBusinessAdmin, canMarketing, deleteE
 // Unlike the catalog, a broadcast is NOT customer-visible — it holds message
 // bodies and audience filters. Read is gated with the writes.
 router.get("/broadcasts", verifyToken, isBusinessAdmin, canMarketing, broadcastController.list);
-router.post("/broadcasts", verifyToken, isBusinessAdmin, canMarketing, broadcastController.create);
+router.post("/broadcasts", verifyToken, isBusinessAdmin, canMarketing, broadcastLimiter, broadcastController.create);
 router.get("/broadcasts/:id", verifyToken, isBusinessAdmin, canMarketing, broadcastController.detail);
 router.patch("/broadcasts/:id", verifyToken, isBusinessAdmin, canMarketing, broadcastController.update);
 router.delete("/broadcasts/:id", verifyToken, isBusinessAdmin, canMarketing, broadcastController.remove);

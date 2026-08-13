@@ -51,6 +51,16 @@ const verifyToken = async (req, _res, next) => {
       throw error;
     }
 
+    // Session-version check: even though tenant JWTs are minted from the
+    // membership (User) row, a business_admin's credential lives on its
+    // AdminAccount — and a password reset there bumps AdminAccount's
+    // sessionVersion, which the adminAuthService login re-signs into the
+    // next JWT. Re-verifying the token against the freshly-fetched row makes
+    // a JWT minted with an older version fail here: "Session expired" 401.
+    // User rows have no sessionVersion of their own (they hold no password)
+    // so both sides default to 0 and pre-existing tokens keep working.
+    verifyAuthToken(token, user);
+
     if (decoded.organizationId) {
       const organization = await Organization.findOne({ _id: decoded.organizationId });
 

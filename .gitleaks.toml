@@ -1,0 +1,8 @@
+title = "Stampd gitleaks configuration"
+
+[allowlist]
+  description = "Intentional development markers — production-guarded, never secrets"
+  paths = [
+    '''backend/server\.js''',          # dev JWT fallback constant (production refuses to start with it)
+    '''\.env\.example'''                # placeholder values only
+  ]
