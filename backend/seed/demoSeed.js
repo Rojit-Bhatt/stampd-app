@@ -113,6 +113,20 @@ const seedDemoData = async () => {
     await ensureDefaultPlansSeeded();
     const platformAdmin = await ensurePlatformAdmin("admin@stampd.co", "password");
 
+    // Demo WhatsApp number so the landing page's "Talk to us" CTAs and the
+    // pricing tier buttons open a real WhatsApp chat with pre-filled plan
+    // messages instead of the #pricing anchor fallback. (Nepal country code
+    // +977 — clearly marked as demo, never used for real outreach.)
+    const PlatformConfig = require("../models/PlatformConfig");
+    const demoConfig = await PlatformConfig.findOne({ singleton: true });
+    if (demoConfig && (!demoConfig.contact || !demoConfig.contact.phone)) {
+      await PlatformConfig.updateOne(
+        { singleton: true },
+        { $set: { contact: { phone: "+9779801234567", email: "hello@stampd.co" } } }
+      );
+      console.log("[seed] Platform contact: hello@stampd.co / +977 980-1234567 (demo)");
+    }
+
     const passwordHash = await bcrypt.hash("password", 10);
     const now = new Date();
     // Keyed "companySlug/outletSlug" — outlet slugs repeat across companies
