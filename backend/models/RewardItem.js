@@ -22,6 +22,11 @@ const RewardItemSchema = new mongoose.Schema({
   // a RewardItem with no points price has no reason to exist.
   pointsPriceCenti: { type: Number, required: true, min: 0 },
 
+  // Optional indicative rupee value. Points-only rewards have no inherent
+  // price, but owners often want the redeem report's "Value (Rs)" column to
+  // carry the reward's approximate worth. Null/absent keeps the column "—".
+  valueNpr: { type: Number, default: null },
+
   // Off = keep the row (and its history) but stop offering it. A redeemed
   // RewardItem is referenced by ledger rows forever, so deleting one would
   // orphan a receipt — PointsTransaction.rewardName is denormalized for

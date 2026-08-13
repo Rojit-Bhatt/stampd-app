@@ -30,6 +30,7 @@ const format = (r) => ({
   imageUrl: r.imageUrl || "",
   imageId: r.imageId || null,
   pointsPrice: toPoints(r.pointsPriceCenti),
+  valueNpr: typeof r.valueNpr === "number" ? r.valueNpr : null,
   isActive: r.isActive,
   sortOrder: r.sortOrder
 });
@@ -43,12 +44,24 @@ const parseInput = (body) => {
     throw createHttpError("Set what this costs in points.", 400);
   }
 
+  // The indicative rupee value is optional: an empty string or non-number
+  // means "no known value" (reports show "—"), and negative numbers make no
+  // sense as a worth, so they are rejected.
+  let valueNpr = null;
+  if (body.valueNpr !== undefined && body.valueNpr !== null && String(body.valueNpr).trim() !== "") {
+    valueNpr = Number(body.valueNpr);
+    if (!Number.isFinite(valueNpr) || valueNpr < 0) {
+      throw createHttpError("The value must be a positive number of rupees.", 400);
+    }
+  }
+
   return {
     name,
     description: String(body.description || "").trim(),
     imageUrl: String(body.imageUrl || "").trim(),
     imageId: body.imageId || null,
     pointsPriceCenti: toCenti(pointsPrice),
+    valueNpr,
     isActive: body.isActive === undefined ? true : Boolean(body.isActive),
     sortOrder: Number.isFinite(Number(body.sortOrder)) ? Number(body.sortOrder) : 0
   };
