@@ -172,13 +172,24 @@ async function main() {
 
     await api("/api/admin/settings", { method: "PATCH", token: adminToken, body: { messagingTriggers: { birthday: { enabled: true } } } });
 
-    const today = new Date();
+    // "Today" for birthday matching must be the PLATFORM timezone's today
+    // (Asia/Kathmandu) — the server derives month/day via
+    // todayInPlatformTimezone(), not the runner's own clock. Between 18:15
+    // and 24:00 UTC, the runner's UTC day is one ahead of Kathmandu's day,
+    // which is the daily window in which this suite used to flake: the seed
+    // set a UTC-day birthday that the Kathmandu-based trigger never matched.
+    const todayParts = new Intl.DateTimeFormat("en-US", {
+      timeZone: "Asia/Kathmandu", year: "numeric", month: "2-digit", day: "2-digit",
+      hourCycle: "h23"
+    }).formatToParts(new Date()).reduce((acc, p) => { acc[p.type] = Number(p.value); return acc; }, {});
+    const todayMonth = todayParts.month;
+    const todayDay = todayParts.day;
     const birthdayCustomer = await provisionTenantCustomer(api, "Birthday", "13");
     await api("/api/customer-auth/preferences", {
       method: "PATCH",
       token: birthdayCustomer.globalToken,
       slug: null,
-      body: { emailOptIn: true, birthdayMonth: today.getMonth() + 1, birthdayDay: today.getDate() },
+      body: { emailOptIn: true, birthdayMonth: todayMonth, birthdayDay: todayDay },
     });
 
     await api("/__test__/run-daily-triggers", { method: "POST", body: {} });
@@ -220,7 +231,7 @@ async function main() {
       method: "PATCH",
       token: siblingCustomer.globalToken,
       slug: null,
-      body: { emailOptIn: true, birthdayMonth: today.getMonth() + 1, birthdayDay: today.getDate() },
+      body: { emailOptIn: true, birthdayMonth: todayMonth, birthdayDay: todayDay },
     });
 
     await api("/__test__/run-daily-triggers", { method: "POST", body: {} });

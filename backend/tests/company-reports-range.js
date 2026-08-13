@@ -88,9 +88,24 @@ async function main() {
 
     // A long historical window, cut off at "yesterday" — wide enough to
     // catch every backdated seed visit, but strictly before today.
-    const historyStart = isoDate(new Date(Date.now() - 90 * DAY_MS));
-    const yesterday = isoDate(new Date(Date.now() - DAY_MS));
-    const today = isoDate(new Date());
+    //
+    // The server resolves "YYYY-MM-DD" params in PLATFORM_TIMEZONE
+    // (Asia/Kathmandu), so the test must build its date strings from the
+    // Kathmandu calendar — not the runner's own clock. The runner is UTC:
+    // between 18:15 and 24:00 UTC, "today" in UTC is the day AFTER
+    // "today" in Kathmandu, which is exactly the 5h45m daily window in
+    // which this suite used to flake (earn created at UTC now, window
+    // closed at Kathmandu midnight minus offset).
+    const kathmanduIso = (d) => {
+      const parts = new Intl.DateTimeFormat("en-US", {
+        timeZone: "Asia/Kathmandu", year: "numeric", month: "2-digit", day: "2-digit",
+        hourCycle: "h23"
+      }).formatToParts(d).reduce((acc, p) => { acc[p.type] = p.value; return acc; }, {});
+      return `${parts.year}-${parts.month}-${parts.day}`;
+    };
+    const today = kathmanduIso(new Date());
+    const yesterday = kathmanduIso(new Date(Date.now() - DAY_MS));
+    const historyStart = kathmanduIso(new Date(Date.now() - 90 * DAY_MS));
 
     console.log("\n== Baseline, before today's earn ==");
     const before = await api(
