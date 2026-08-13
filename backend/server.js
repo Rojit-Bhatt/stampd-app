@@ -69,6 +69,7 @@ if (USING_MOCK_DB) {
   };
 }
 
+const fs = require("fs");
 const express = require("express");
 const cors = require("cors");
 const helmet = require("helmet");
@@ -166,17 +167,25 @@ app.get("/health", (_req, res) => {
 if (process.env.NODE_ENV === "production") {
   const path = require("path");
   const distPath = path.resolve(__dirname, "../frontend/dist");
-  // Report-only CSP on the SPA document (middleware hashes inline scripts
-  // at boot; no-op when the dist doesn't exist, e.g. dev). See middleware docs.
-  const { cspMiddleware } = require("./middleware/cspMiddleware");
-  app.use(cspMiddleware(distPath));
-  app.use(express.static(distPath));
-  app.get("*", (req, res, next) => {
-    if (req.path.startsWith("/api") || req.path.startsWith("/__test__")) {
-      return next();
-    }
-    res.sendFile(path.join(distPath, "index.html"));
-  });
+  // Only serve the frontend here when the build actually exists. Some
+  // environments (e.g. CI jobs that only run the backend suite) set
+  // NODE_ENV=production without building frontend/dist — without this
+  // guard express.static would answer nothing and the catch-all would
+  // 404 every path, breaking both "npm test" and health probes.
+  const distBuilt = fs.existsSync(path.join(distPath, "index.html"));
+  if (distBuilt) {
+    // Report-only CSP on the SPA document (middleware hashes inline scripts
+    // at boot; no-op when the dist doesn't exist). See middleware docs.
+    const { cspMiddleware } = require("./middleware/cspMiddleware");
+    app.use(cspMiddleware(distPath));
+    app.use(express.static(distPath));
+    app.get("*", (req, res, next) => {
+      if (req.path.startsWith("/api") || req.path.startsWith("/__test__")) {
+        return next();
+      }
+      res.sendFile(path.join(distPath, "index.html"));
+    });
+  }
 }
 
 // CSP violation collector — the frontend's Content-Security-Policy-Report-Only
@@ -216,9 +225,18 @@ app.post("/api/csp-report", cspReportLimiter, (req, res) => {
       userAgent: req.headers?.["user-agent"] || null
     }));
   }
-  // 204 no matter what — the spec wants the collector to never argue with a
+    // 204 no matter what — the spec wants the collector to never argue with a
   // reporter, or user agents may stop sending reports.
   res.status(204).end();
+});
+
+// Dev-time JSON placeholder for "/" — in production the production static
+// block above wins this path and serves the SPA document instead.
+app.get("/", (_req, res) => {
+  res.status(200).json({
+    success: true,
+    message: `${PLATFORM_NAME} loyalty platform API is running.`
+  });
 });
 
 // Platform super-admin (onboards + manages businesses/tenants).
