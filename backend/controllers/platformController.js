@@ -12,6 +12,10 @@ const {
 } = require("../services/platformConfigService");
 const { listRecent } = require("../services/platformAuditService");
 const { listPublicPlans } = require("../services/subscriptionPlanService");
+const { getPlatformCustomers: listPlatformCustomers } = require("../services/platformCustomersService");
+const {
+  buildPlatformCustomersWorkbook
+} = require("../services/platformAnalyticsService");
 const {
   getPlatformAnalytics,
   getPlatformCompanyReportRows,
@@ -210,6 +214,30 @@ const patchPlatformContact = async (req, res, next) => {
   }
 };
 
+// Every CustomerAccount ever created — verified and unverified, with and
+// without an outlet membership. Identity and state only; nothing a tenant
+// could not already see for its own customers.
+const getPlatformCustomers = async (req, res, next) => {
+  try {
+    const result = await listPlatformCustomers({ search: req.query.search });
+    res.status(200).json({ success: true, ...result });
+  } catch (error) {
+    next(error);
+  }
+};
+
+const downloadCustomersReport = async (req, res, next) => {
+  try {
+    const { rows } = await listPlatformCustomers({ search: req.query.search });
+    const buffer = await buildPlatformCustomersWorkbook({ rows });
+    res.setHeader("Content-Type", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
+    res.setHeader("Content-Disposition", "attachment; filename=\"customers-report.xlsx\"");
+    res.send(buffer);
+  } catch (error) {
+    next(error);
+  }
+};
+
 module.exports = {
   platformLogin,
   getCompanies,
@@ -224,5 +252,7 @@ module.exports = {
   getPublicPlans,
   getPublicPlatformContact,
   getPlatformContactAdmin,
-  patchPlatformContact
+  patchPlatformContact,
+  getPlatformCustomers,
+  downloadCustomersReport
 };

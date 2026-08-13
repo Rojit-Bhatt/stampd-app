@@ -53,6 +53,7 @@ const PlatformSettings = lazy(() => import('./routes/platform/PlatformSettings')
 const PlatformContact = lazy(() => import('./routes/platform/PlatformContact'));
 const PlatformAuditLog = lazy(() => import('./routes/platform/PlatformAuditLog'));
 const PlatformAnalytics = lazy(() => import('./routes/platform/PlatformAnalytics'));
+const PlatformCustomers = lazy(() => import('./routes/platform/PlatformCustomers'));
 const PlatformTeam = lazy(() => import('./routes/platform/PlatformTeam'));
 const Plans = lazy(() => import('./routes/platform/Plans'));
 const SubscriptionKeys = lazy(() => import('./routes/platform/SubscriptionKeys'));
@@ -156,6 +157,7 @@ export default function App() {
             <Route path="contact" element={<PlatformContact />} />
             <Route path="audit-log" element={<PlatformAuditLog />} />
             <Route path="analytics" element={<PlatformAnalytics />} />
+            <Route path="customers" element={<PlatformCustomers />} />
             <Route path="team" element={<PlatformTeam />} />
             <Route path="plans" element={<Plans />} />
             <Route path="subscription-keys" element={<SubscriptionKeys />} />

@@ -13,7 +13,9 @@ const {
   getPublicPlans,
   getPublicPlatformContact,
   getPlatformContactAdmin,
-  patchPlatformContact
+  patchPlatformContact,
+  getPlatformCustomers,
+  downloadCustomersReport
 } = require("../controllers/platformController");
 const { getAdmins, postAdmin, deleteAdmin } = require("../controllers/platformTeamController");
 const { verifyToken, isPlatformAdmin, isPlatformOwner } = require("../middleware/authMiddleware");
@@ -36,6 +38,13 @@ router.patch("/outlets/:outletId", verifyToken, isPlatformOwner, patchOutlet);
 router.get("/audit-log", verifyToken, isPlatformAdmin, getAuditLog);
 router.get("/analytics", verifyToken, isPlatformAdmin, getAnalytics);
 router.get("/analytics/companies-report/download", verifyToken, isPlatformAdmin, downloadCompaniesReport);
+
+// Every registered customer — identity, membership location, points state
+// and verification. Report download first so the literal path "customers"
+// never shadows the report path (they do not clash, but list the specific
+// report route first for the same reason as the companies-report pair).
+router.get("/customers/report/download", verifyToken, isPlatformAdmin, downloadCustomersReport);
+router.get("/customers", verifyToken, isPlatformAdmin, getPlatformCustomers);
 router.get("/admins", verifyToken, isPlatformOwner, getAdmins);
 router.post("/admins", verifyToken, isPlatformOwner, postAdmin);
 router.delete("/admins/:id", verifyToken, isPlatformOwner, deleteAdmin);
