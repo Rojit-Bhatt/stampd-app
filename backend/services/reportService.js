@@ -242,6 +242,24 @@ const getTierDistributionStats = async (organizationId) => {
   return counts;
 };
 
+// CSV / XLSX formula injection guard (CWE-1236): a cell whose first
+// character is = + - @ can be executed as a formula by spreadsheet apps
+// (e.g. "=CMD|..." in LibreOffice/Excel). Escape happens once here, at the
+// boundary where stored user content enters the export workbook — all
+// name/email/address/reward fields come from DB rows that any staff
+// member could have authored. Prepending a single quote forces plain-text
+// rendering and preserves the visible value when exported back out.
+// Formula injection needs a real expression after the prefix character. A bare
+// '+' followed by a digit (e.g. a phone like "+9779813334444") is data, not a
+// formula — Excel only evaluates it as one when a digit chain yields an
+// expression, which is extremely rare; require a letter/paren/space after the
+// prefix to avoid mangling phone numbers and currency strings.
+const ESCAPE_FORMULA_PREFIX_RE = /^[=\-@]|^[+](?=[A-Za-z()\s])/;
+const escapeFormula = (v) => {
+  if (typeof v !== "string") return v;
+  return ESCAPE_FORMULA_PREFIX_RE.test(v.trim()) ? "'" + v : v;
+};
+
 const buildSummaryWorkbook = async (stats) => {
   const workbook = new ExcelJS.Workbook();
   const sheet = workbook.addWorksheet("Summary");
@@ -268,17 +286,17 @@ const buildCustomersWorkbook = async (organizationId) => {
   ]);
   for (const r of rows) {
     sheet.addRow([
-      r.name,
-      r.email,
-      r.phone,
-      r.address,
+      escapeFormula(r.name),
+      escapeFormula(r.email),
+      escapeFormula(r.phone),
+      escapeFormula(r.address),
       r.customerNo,
       r.pointsBalance,
       r.lifetimePoints,
       r.redemptionCount,
       r.totalSpent,
       r.lastActivityAt ? new Date(r.lastActivityAt).toISOString().slice(0, 10) : "",
-      r.tier || "—"
+      escapeFormula(r.tier || "—")
     ]);
   }
   return workbook.xlsx.writeBuffer();
@@ -297,12 +315,12 @@ const buildTransactionsWorkbook = async (organizationId, { startDate, endDate } 
   for (const r of rows) {
     sheet.addRow([
       new Date(r.createdAt).toISOString().slice(0, 16).replace("T", " "),
-      r.customerName,
+      escapeFormula(r.customerName),
       r.type,
       r.points,
       r.balanceAfter,
       r.billAmount ?? "",
-      r.rewardName || ""
+      escapeFormula(r.rewardName || "")
     ]);
   }
   return workbook.xlsx.writeBuffer();
@@ -333,8 +351,8 @@ const getRedeemStats = async (organizationId, { startDate, endDate } = {}) => {
   const rows = txns
     .map((t) => ({
       date: new Date(t.createdAt).toISOString().slice(0, 16).replace("T", " "),
-      customer: nameById.get(t.userId.toString()) || t.performedByName || "Unknown",
-      item: t.rewardName || "",
+      customer: escapeFormula(nameById.get(t.userId.toString()) || t.performedByName || "Unknown"),
+      item: escapeFormula(t.rewardName || ""),
       points: toPoints(-t.pointsCenti),
       value: t.rewardValueNpr ?? null
     }))

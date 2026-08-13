@@ -659,6 +659,14 @@ const enterTenant = async ({ customerAccountId, organizationId }) => {
   const account = await CustomerAccount.findOne({ _id: customerAccountId });
   if (!account) throw createHttpError("Account not found.", 404);
 
+  // Provably missing in the 2026-08 security audit: any organizationId
+  // (including junk/unknown ones) issued a tenant JWT and eagerly created a
+  // membership row. Fail fast on unknown or inactive organizations instead.
+  const org = await Organization.findOne({ _id: organizationId });
+  if (!org || org.status !== "active") {
+    throw createHttpError("This business is not available.", 404);
+  }
+
   const membershipUser = await ensureMembership({ customerAccountId, organizationId, account });
   return formatAuthPayload(membershipUser);
 };
