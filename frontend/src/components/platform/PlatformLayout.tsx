@@ -60,6 +60,12 @@ const SECTIONS: Section[] = [
     tabs: [{ to: "/platform/analytics", end: true, label: "Overview" }],
   },
   {
+    id: "customers",
+    label: "Customers",
+    match: ["/platform/customers"],
+    tabs: [{ to: "/platform/customers", end: true, label: "All customers" }],
+  },
+  {
     id: "billing",
     label: "Billing",
     match: ["/platform/plans", "/platform/subscription-keys"],
