@@ -55,6 +55,12 @@ const verifyCompanySession = async (req, _res, next) => {
       throw error;
     }
 
+    // Session-version check, mirroring customerAuthMiddleware: a password
+    // reset bumps the AdminAccount's sessionVersion and the freshly-minted
+    // token signs the new version in — so a stale company-owner token dies
+    // here with "Session expired" 401 instead of outliving the reset.
+    verifyCompanySessionToken(token, account);
+
     req.adminAccount = { id: decoded.adminAccountId, kind: account.kind };
     req.companyId = account.companyId.toString();
 

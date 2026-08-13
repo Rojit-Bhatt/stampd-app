@@ -52,6 +52,12 @@ const verifyGlobalSession = async (req, _res, next) => {
       throw error;
     }
 
+    // Session-version check: a password change bumps the account's
+    // sessionVersion, so a previously-issued global token — still within its
+    // 30d lifetime — is rejected here with "Session expired" 401 on the very
+    // next request. No token list, no refresh dance, instant logout.
+    verifyGlobalSessionToken(token, account);
+
     req.customerAccount = { id: decoded.customerAccountId };
 
     next();

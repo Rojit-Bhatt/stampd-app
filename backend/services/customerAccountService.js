@@ -102,7 +102,10 @@ const formatAccountSummary = (account) => ({
 
 const formatGlobalSessionPayload = (account) => ({
   success: true,
-  token: generateGlobalSessionToken({ customerAccountId: account._id.toString() }),
+  token: generateGlobalSessionToken({
+    customerAccountId: account._id.toString(),
+    sessionVersion: account.sessionVersion ?? 0
+  }),
   account: formatAccountSummary(account)
 });
 
@@ -484,8 +487,8 @@ const changeAccountPassword = async ({ customerAccountId, currentPassword, newPa
 
   const account = await CustomerAccount.findOne({ _id: customerAccountId });
   if (!account) throw createHttpError("Account not found.", 404);
-
-  if (account.password) {
+  const hadPasswordBefore = Boolean(account.password);
+  if (hadPasswordBefore) {
     if (!currentPassword) {
       throw createHttpError("Current password is required.", 400);
     }
@@ -499,7 +502,25 @@ const changeAccountPassword = async ({ customerAccountId, currentPassword, newPa
 
   account.password = await bcrypt.hash(newPassword, SALT_ROUNDS);
   await account.save();
-
+  // Revoke every previously-issued global session token only when a
+  // PASSWORD WAS CHANGED — i.e. the account already had one. Setting a
+  // first password on a Google-only account is a consented, same-session
+  // action (the global session itself is the identity proof, per the
+  // comment above), and invalidating the session mid-flow would break
+  // first-password setup. A real credential change, though, must kill
+  // stale tokens: the sessionVersion check in verifyGlobalSessionToken
+  // makes them die on the next request instead of outliving the change.
+  if (hadPasswordBefore) {
+    // Revoke every previously-issued global session token only when a
+    // password was CHANGED (the account already had one). Setting a FIRST
+    // password on a Google-only account is a consented, same-session
+    // action — the global session itself is the identity proof, per the
+    // comment above — and invalidating it mid-flow would break first-
+    // password setup. A real credential change, though, must kill stale
+    // tokens: the sessionVersion check in verifyGlobalSessionToken makes
+    // them die on the next request instead of outliving the change.
+    await CustomerAccount.updateOne({ _id: account._id }, { $inc: { sessionVersion: 1 } });
+  }
   return { success: true, message: "Password updated." };
 };
 

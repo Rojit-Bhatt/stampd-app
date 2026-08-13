@@ -18,6 +18,11 @@ const CustomerAccountSchema = new mongoose.Schema({
   // the account, and the cache-buster that lets the served image be marked
   // immutable (see the avatar endpoint in customerAccountController).
   avatarVersion: { type: Number, default: 0 },
+  // Revocation counter signed into every global session token this account
+  // mints. Bumped on password change so previously-issued tokens — still
+  // within their lifetime — are rejected by verifyGlobalSessionToken's
+  // version check: instant logout after a credential change, no token list.
+  sessionVersion: { type: Number, default: 0 },
   marketingConsent: {
     email: {
       granted: { type: Boolean, default: false },

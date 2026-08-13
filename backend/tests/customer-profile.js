@@ -50,7 +50,7 @@ async function main() {
     const login = await api("/api/customer-auth/login", {
       method: "POST", body: { email, password: "password" },
     });
-    const session = login.body?.token;
+    let session = login.body?.token;
     check("customer signs in globally", Boolean(session), login.body);
 
     // Join an outlet, so there's a membership row for the rename to fan out
@@ -111,6 +111,10 @@ async function main() {
       method: "POST", body: { email, password: "brandnewpass123" },
     });
     check("the NEW password signs in", withNew.status === 200, withNew.body);
+    // A real password change now revokes the token minted before it
+    // (session versioning) — carry the freshly-minted one forward so the
+    // rest of the suite keeps working as before.
+    session = withNew.body.token;
     const withOld = await api("/api/customer-auth/login", {
       method: "POST", body: { email, password: "password" },
     });
