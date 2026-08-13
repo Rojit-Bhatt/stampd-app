@@ -479,9 +479,28 @@ const mongoose = {
       static async updateOne(query, update, options) {
         const list = db[name] || [];
         const found = list.find(doc => matchesQuery(doc, query));
+        const upsert = options && options.upsert;
         if (found) {
           updateDoc(found, update);
           return { acknowledged: true, modifiedCount: 1 };
+        }
+        if (upsert) {
+          // Real Mongoose builds the new doc from the query predicates plus
+          // the update operators; schema defaults are filled by the Document
+          // constructor (same path findOneAndUpdate's upsert branch uses).
+          const newDocData = { ...query };
+          if (query.$or) {
+            for (const cond of query.$or) {
+              for (const [k, v] of Object.entries(cond)) {
+                if (!k.startsWith("$")) newDocData[k] = v;
+              }
+            }
+            delete newDocData.$or;
+          }
+          const newDoc = new Document(name, newDocData);
+          updateDoc(newDoc, update);
+          list.push(newDoc);
+          return { acknowledged: true, modifiedCount: 0, upsertedId: newDoc._id };
         }
         return { acknowledged: true, modifiedCount: 0 };
       }
