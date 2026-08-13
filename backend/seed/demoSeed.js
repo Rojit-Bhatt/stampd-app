@@ -52,8 +52,8 @@ const CUSTOMERS = [
     email: "asha@example.com",
     phone: "+9779800000001",
     memberships: [
-      { company: "coffesarowar", outlet: "durbarmarg", visits: 3 },
-      { company: "coffesarowar", outlet: "patan", visits: 1 }
+      { company: "coffesarowar", outlet: "durbarmarg", visits: 7 },
+      { company: "coffesarowar", outlet: "patan", visits: 2 }
     ]
   },
   {
@@ -61,8 +61,8 @@ const CUSTOMERS = [
     email: "bikash@example.com",
     phone: "+9779800000002",
     memberships: [
-      { company: "coffesarowar", outlet: "durbarmarg", visits: 4 },
-      { company: "himalayan-bites", outlet: "lakeside", visits: 2 },
+      { company: "coffesarowar", outlet: "durbarmarg", visits: 3 },
+      { company: "himalayan-bites", outlet: "lakeside", visits: 5 },
       { company: "sweet-corner", outlet: "main", visits: 0 }
     ]
   },
@@ -70,7 +70,7 @@ const CUSTOMERS = [
     name: "Chandra Rai",
     email: "chandra@example.com",
     phone: "+9779800000003",
-    memberships: [{ company: "himalayan-bites", outlet: "durbarmarg", visits: 2 }]
+    memberships: [{ company: "himalayan-bites", outlet: "durbarmarg", visits: 1 }]
   }
 ];
 
