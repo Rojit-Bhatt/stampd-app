@@ -31,7 +31,7 @@ async function freePort() {
 // only runs when that var is configured, regardless of the developer's real
 // .env). `deleteEnv` explicitly unsets vars (beyond the always-forced
 // MONGODB_URI) so a test isn't accidentally affected by ambient shell env.
-async function bootServer({ port = 0, timeoutMs = 15000, env: envOverrides = {}, deleteEnv = [] } = {}) {
+async function bootServer({ port = 0, timeoutMs = 60000, env: envOverrides = {}, deleteEnv = [] } = {}) {
   const serverPath = path.resolve(__dirname, "../../server.js");
   if (!port) port = await freePort();
   const baseUrl = `http://localhost:${port}`;

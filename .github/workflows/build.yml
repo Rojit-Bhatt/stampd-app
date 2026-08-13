@@ -45,6 +45,12 @@ jobs:
           failed=0
           for f in tests/*.js; do
             name=$(basename "$f" .js)
-            node "$f" > /tmp/ci_$name.log 2>&1 || { echo "FAIL: $name"; failed=1; }
+            node "$f" > /tmp/ci_$name.log 2>&1 || {
+              echo "FAIL: $name"
+              echo "--- tail of /tmp/ci_$name.log ---"
+              tail -20 /tmp/ci_$name.log
+              echo "--- end tail ---"
+              failed=1
+            }
           done
           exit $failed
