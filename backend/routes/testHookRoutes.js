@@ -294,6 +294,83 @@ router.post("/set-tier-thresholds", async (req, res, next) => {
   }
 });
 
+// DEV/TEST ONLY. Seeds the exact legacy redeem rows the backfill-redeem-values
+// suite exercises. Each seedRedeems entry becomes one PointsTransaction doc on
+// the given org; `seedItems` entries create MenuItem docs first, and a
+// seedRedeems rewardRef of "$itemId:N" resolves to the Nth created item so
+// the test can back a legacy row onto a real, queryable menu item. Returns
+// the created ids so the suite asserts against the report API instead of the
+// in-process DB (the parent process has no shared mock-DB connection).
+router.post("/seed-backfill-rows", async (req, res, next) => {
+  try {
+    const { organizationId, seedItems, seedRedeems, customerEmail } = req.body;
+    if (!organizationId || !Array.isArray(seedRedeems)) {
+      return res.status(400).json({ success: false, message: "organizationId + seedRedeems required" });
+    }
+    const MenuItem = require("../models/MenuItem");
+
+    // Every ledger row needs an owning membership (userId) — the report
+    // names the customer through it, and the model requires it.
+    const user = await User.findOne({
+      organizationId,
+      email: String(customerEmail || "").toLowerCase(),
+      role: "customer"
+    });
+    if (!user) {
+      return res.status(400).json({ success: false, message: "customerEmail not found at this outlet" });
+    }
+
+    const createdItems = [];
+    for (const item of seedItems || []) {
+      const created = await MenuItem.create({ organizationId, ...item });
+      createdItems.push({ id: created._id.toString() });
+    }
+
+    const ids = [];
+    for (const row of seedRedeems) {
+      const rewardRef =
+        typeof row.rewardRef === "string" && row.rewardRef.startsWith("$itemId:")
+          ? createdItems[Number(row.rewardRef.slice(8))].id
+          : row.rewardRef;
+      const doc = await PointsTransaction.create({
+        organizationId,
+        userId: user._id,
+        type: "redeem",
+        pointsCenti: row.pointsCenti,
+        balanceAfterCenti: row.balanceAfterCenti,
+        rewardKind: row.rewardKind === undefined ? "menu" : row.rewardKind,
+        rewardRef,
+        rewardName: row.rewardName,
+        rewardValueNpr: row.rewardValueNpr === undefined ? null : row.rewardValueNpr,
+        token: row.token || `backfill-test-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+        performedByName: "",
+        createdAt: new Date(Date.now() - (row.daysBack || 0) * 24 * 60 * 60 * 1000)
+      });
+      ids.push(doc._id.toString());
+    }
+
+    res.json({ success: true, createdItems, createdTransactionIds: ids });
+  } catch (error) {
+    next(error);
+  }
+});
+
+// DEV/TEST ONLY. Runs the one-time redeem-value backfill for a single org.
+router.post("/run-backfill", async (req, res, next) => {
+  try {
+    const { organizationId, dryRun } = req.body;
+    if (!organizationId) {
+      return res.status(400).json({ success: false, message: "organizationId required" });
+    }
+    const { backfillRedeemValues } = require("../services/backfillRedeemService");
+    const result = await backfillRedeemValues(organizationId, { dryRun: Boolean(dryRun) });
+    res.json(result);
+  } catch (error) {
+    console.error("[__test__/run-backfill]", error.stack);
+    next(error);
+  }
+});
+
 // DEV/TEST ONLY. Create a test transaction with a specific date (for testing
 // rolling windows that exclude old data).
 router.post("/create-dated-transaction", async (req, res, next) => {
