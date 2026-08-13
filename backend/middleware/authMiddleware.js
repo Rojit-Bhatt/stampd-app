@@ -56,7 +56,12 @@ const verifyToken = async (req, _res, next) => {
     // credential here; a token minted before the last password change/reset
     // is dead on arrival. tokenPv() treats legacy no-pv tokens as version 0,
     // matching the row's default, so nothing breaks until credentials change.
-    if (tokenPv(user) > tokenPv(decoded)) {
+    // The User row carries `passwordVersion`; the token carries the matching
+    // `pv` claim (see utils/tokenUtils). tokenPv() on the Mongoose row would
+    // always read 0 (rows have no `pv` field) and silently let stale tokens
+    // through, so compare the row field explicitly.
+    const rowPv = typeof user.passwordVersion === "number" ? user.passwordVersion : 0;
+    if (rowPv > tokenPv(decoded)) {
       const error = new Error("Access denied. Token is no longer valid.");
       error.statusCode = 401;
       throw error;

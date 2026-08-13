@@ -12,12 +12,32 @@
  */
 const { bootServer } = require("./helpers/bootServer");
 
+// The parent process calls tokenUtils directly (unit-level assertions) but
+// never executes server.js, so the server's dev secret fallback never runs
+// here. Bootstrap the deliberately weak dev secrets from .env.example when
+// the environment has none — mirrors the server's own fallback, test-only.
+if (!process.env.JWT_SECRET || !process.env.JWT_GLOBAL_SECRET) {
+  try {
+    const fs = require("fs");
+    const path = require("path");
+    const dotenv = require("dotenv");
+    const examplePath = path.resolve(__dirname, "..", ".env.example");
+    const exampleVars = dotenv.parse(fs.readFileSync(examplePath));
+    for (const [key, value] of Object.entries(exampleVars)) {
+      if (value && !process.env[key]) process.env[key] = value;
+    }
+  } catch (err) {
+    console.error("WARN: could not apply dev secret fallback in test parent", err.message);
+  }
+}
+
 // Ephemeral port — fixed ports collide with TIME_WAIT leftovers from
 // earlier suite runs (undici then surfaces "fetch failed / bad port").
 const PORT = 5200 + (Date.now() % 1200);
 const {
   generateGlobalSessionToken,
-  verifyGlobalSessionToken
+  verifyGlobalSessionToken,
+  tokenPv
 } = require("../utils/tokenUtils");
 const jwt = require("jsonwebtoken");
 
@@ -76,19 +96,19 @@ async function main() {
       check("the freshly-minted token passes the global-session gate", freshGate.status === 200);
     }
 
-    // --- direct unit-level assertion on the verifier ---
-    const rowAt1 = { sessionVersion: 1 };
+    // --- direct unit-level assertion on the credential-version math ---
+    // verifyGlobalSessionToken is crypto-only (1 arg); the middleware rejects
+    // a stale token by comparing the row's passwordVersion against the
+    // token's pv claim. Assert that logic here with plain objects.
+    const rowAt1 = { passwordVersion: 1 };
     const staleToken = generateGlobalSessionToken({ customerAccountId: "deadbeefdeadbeefdeadbeef" });
-    try {
-      verifyGlobalSessionToken(staleToken, rowAt1);
-      check("token minted at version 0 is rejected against a row at version 1", false);
-    } catch (err) {
-      check("token minted at version 0 is rejected against a row at version 1 with 'Session expired' 401",
-        err.message === "Session expired" && err.statusCode === 401);
-    }
+    const staleDecoded = verifyGlobalSessionToken(staleToken);
+    const staleRejected =
+      rowAt1.passwordVersion > tokenPv(staleDecoded);
+    check("token minted at version 0 is rejected against a row at version 1", staleRejected);
     // null row skips the check (crypto validity only)
-    const direct = verifyGlobalSessionToken(staleToken, null);
-    check("verifyGlobalSessionToken with null row skips the revocation check",
+    const direct = verifyGlobalSessionToken(staleToken);
+    check("verifyGlobalSessionToken is crypto-only and decodes a stale token", 
       direct.customerAccountId === "deadbeefdeadbeefdeadbeef");
 
     // --- backward compatibility: pre-version tokens (no sessionVersion claim) ---

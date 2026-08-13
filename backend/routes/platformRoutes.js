@@ -14,11 +14,13 @@ const {
   getPublicPlatformContact,
   getPlatformContactAdmin,
   patchPlatformContact,
-  getSanityChecksum
+  getSanityChecksum,
+  downloadCustomersReport,
+  getPlatformCustomers
 } = require("../controllers/platformController");
 const { getAdmins, postAdmin, deleteAdmin } = require("../controllers/platformTeamController");
 const { verifyToken, isPlatformAdmin, isPlatformOwner } = require("../middleware/authMiddleware");
-const { authLimiter } = require("../middleware/rateLimitMiddleware");
+const { authLimiter, platformExportLimiter } = require("../middleware/rateLimitMiddleware");
 const { verifyTurnstile } = require("../middleware/turnstileMiddleware");
 
 const router = express.Router();
@@ -53,6 +55,12 @@ router.get("/sanity-checksum", verifyToken, isPlatformAdmin, getSanityChecksum);
 router.get("/audit-log", verifyToken, isPlatformAdmin, getAuditLog);
 router.get("/analytics", verifyToken, isPlatformAdmin, getAnalytics);
 router.get("/analytics/companies-report/download", verifyToken, isPlatformAdmin, downloadCompaniesReport);
+// Customer workbook download for the platform admin (main). Must sit above
+// the :customers/:id detail path so the literal "customers" segment is
+// matched as the report route first.
+router.get("/customers/report/download", verifyToken, isPlatformAdmin, platformExportLimiter, downloadCustomersReport);
+router.get("/customers", verifyToken, isPlatformAdmin, getPlatformCustomers);
+
 router.get("/admins", verifyToken, isPlatformOwner, getAdmins);
 router.post("/admins", verifyToken, isPlatformOwner, postAdmin);
 router.delete("/admins/:id", verifyToken, isPlatformOwner, deleteAdmin);

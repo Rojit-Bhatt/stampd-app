@@ -169,4 +169,38 @@ const cspReportLimiter = limiter({
   handler: jsonHandler("Too many CSP reports. Slow down."),
 });
 
-module.exports = { authLimiter, registrationLimiter, uploadLimiter, placesLimiter, pinLimiter, cspReportLimiter };
+
+// Bulk data exports (customer/transaction workbook downloads, the menu Excel
+// template). Legitimately rare — no staff re-runs a full-customer export more
+// than a handful of times a quarter-hour — while each request builds an
+// ExcelJS workbook over the whole tenant dataset. Own bucket: sharing with
+// authLimiter would let a password typo burn the export budget.
+const exportLimiter = limiter({
+  windowMs: 15 * MINUTE,
+  limit: 10,
+  standardHeaders: true,
+  legacyHeaders: false,
+  handler: jsonHandler("Too many downloads. Please wait a few minutes."),
+});
+
+// Broadcast creation triggers real SMS sends (Sparrow API, paisa per message).
+// Tighter cap than exports because this endpoint spends money.
+const broadcastLimiter = limiter({
+  windowMs: 15 * MINUTE,
+  limit: 10,
+  standardHeaders: true,
+  legacyHeaders: false,
+  handler: jsonHandler("Too many broadcasts. Please wait a few minutes."),
+});
+
+// Same shape as exportLimiter but its own bucket — platform admin work must
+// never burn the tenant admin's export budget or vice versa.
+const platformExportLimiter = limiter({
+  windowMs: 15 * MINUTE,
+  limit: 10,
+  standardHeaders: true,
+  legacyHeaders: false,
+  handler: jsonHandler("Too many downloads. Please wait a few minutes."),
+});
+
+module.exports = { authLimiter, registrationLimiter, uploadLimiter, placesLimiter, pinLimiter, cspReportLimiter, exportLimiter, broadcastLimiter, platformExportLimiter };

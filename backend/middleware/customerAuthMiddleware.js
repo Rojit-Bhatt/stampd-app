@@ -57,7 +57,12 @@ const verifyGlobalSession = async (req, _res, next) => {
       throw error;
     }
 
-    if (tokenPv(account) > tokenPv(decoded)) {
+    // The row carries `passwordVersion`; the token carries the matching `pv`
+    // claim (see utils/tokenUtils). tokenPv() on the decoded token is used
+    // for the token side only — passing the Mongoose row to it would always
+    // read 0 (rows have no `pv` field) and silently let stale sessions through.
+    const rowPv = typeof account.passwordVersion === "number" ? account.passwordVersion : 0;
+    if (rowPv > tokenPv(decoded)) {
       const error = new Error("Access denied. Session is no longer valid.");
       error.statusCode = 401;
       throw error;
