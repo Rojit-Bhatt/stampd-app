@@ -13,7 +13,8 @@ const {
   getPublicPlans,
   getPublicPlatformContact,
   getPlatformContactAdmin,
-  patchPlatformContact
+  patchPlatformContact,
+  getSanityChecksum
 } = require("../controllers/platformController");
 const { getAdmins, postAdmin, deleteAdmin } = require("../controllers/platformTeamController");
 const { verifyToken, isPlatformAdmin, isPlatformOwner } = require("../middleware/authMiddleware");
@@ -43,6 +44,11 @@ router.post("/companies", verifyToken, isPlatformOwner, postCompany);
 router.get("/companies/:id", verifyToken, isPlatformAdmin, getCompany);
 router.patch("/companies/:id", verifyToken, isPlatformOwner, patchCompany);
 router.patch("/outlets/:outletId", verifyToken, isPlatformOwner, patchOutlet);
+
+// Daily sanity digest (G11 — backups/DR): platform-admin only; operators
+// or an external cron job poll this once a day and diff the sha256 against
+// a stored baseline to catch silent database corruption.
+router.get("/sanity-checksum", verifyToken, isPlatformAdmin, getSanityChecksum);
 
 router.get("/audit-log", verifyToken, isPlatformAdmin, getAuditLog);
 router.get("/analytics", verifyToken, isPlatformAdmin, getAnalytics);

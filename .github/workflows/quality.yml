@@ -95,3 +95,21 @@ jobs:
       # reporting regressions are all caught here.
       - name: Run full backend test suite
         run: npm test -w backend
+  # (G19) Optional load test — runs only on main after merge, against the
+  # staging replica (STAGING_URL secret). It mutates real rows via the
+  # register/earn paths, so it must never point at production. A failure here
+  # is a soft signal, not a merge blocker.
+  load:
+    name: k6 load test (staging, optional)
+    if: github.ref == 'refs/heads/main' && !github.event.repository.fork && vars.STAGING_URL != ''
+    runs-on: ubuntu-latest
+    needs: [secrets, audit]
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+      - name: Install k6
+        run: sudo snap install k6 --classic
+      - name: Run staging load test
+        env:
+          TARGET: ${{ vars.STAGING_URL }}
+        run: k6 run docs/scripts/k6-load-test.js

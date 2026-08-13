@@ -268,10 +268,22 @@ app.use((req, _res, next) => {
 app.use((error, req, res, _next) => {
   const statusCode = error.statusCode || 500;
   // Mongoose network/validation/duplicate-key errors include driver internals;
-  // log them for forensics regardless of environment.
-  console.error(
-    `[error] ${req.method} ${req.originalUrl} (${statusCode}): ${error.message}`
-  );
+  // log them for forensics regardless of environment — as one parseable JSON
+  // entry (utils/logger), with optional Sentry capture (utils/errorTracker).
+  const logger = require("./utils/logger");
+  const errorTracker = require("./utils/errorTracker");
+  logger.error("request", "Unhandled error", {
+    method: req.method,
+    path: req.originalUrl,
+    statusCode,
+    error: error.message,
+    ...(process.env.NODE_ENV !== "production" ? { stack: error.stack } : {})
+  });
+  errorTracker.capture(error, {
+    method: req.method,
+    path: req.originalUrl,
+    statusCode
+  });
   res.status(statusCode).json({
     success: false,
     message: process.env.NODE_ENV === "production"
@@ -330,7 +342,21 @@ const startServer = async () => {
   }
 
   cron.schedule("0 9 * * *", () => {
-    runDailyTriggers().catch((err) => console.error("Daily triggers run failed:", err.message));
+    runDailyTriggers().catch((err) => {
+      // A silent cron failure means no expiry sweeps, no report emails, no
+      // digest — so the operator is emailed when TRIGGER_FAILURE_ALERT_EMAIL
+      // is configured. The email service stubs to stderr in dev/test, which
+      // keeps CI green without a real mailbox.
+      require("./utils/logger").error("cron", "Daily triggers run failed", { error: err.message });
+      const alertEmail = process.env.TRIGGER_FAILURE_ALERT_EMAIL;
+      if (alertEmail) {
+        require("./services/emailService").sendEmail({
+          to: alertEmail,
+          subject: `[${PLATFORM_NAME}] Daily trigger job failed`,
+          html: `<p>The daily trigger job failed at ${new Date().toISOString()}:</p><pre>${String(err.message || err).replace(/</g, "&lt;")}</pre><p>Check the server logs for the full stack trace.</p>`
+        }).catch(() => {});
+      }
+    });
   }, { timezone: PLATFORM_TIMEZONE });
 
   app.listen(PORT, "0.0.0.0", () => {
