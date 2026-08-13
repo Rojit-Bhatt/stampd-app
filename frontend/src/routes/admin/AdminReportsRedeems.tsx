@@ -5,11 +5,14 @@ import { apiRequest, apiUrl, tenantHeaders } from "../../lib/api";
 import { Skeleton } from "../../components/ui/skeleton";
 import { DateRangeFilter, defaultDateRange, type DateRangeValue } from "../../components/shared/DateRangeFilter";
 import { useMemo } from "react";
+import { Link } from "react-router-dom";
 import { ScrollableTable } from "../../components/shared/ScrollableTable";
 import { Button } from "@/components/ui/button";
+import { tenantPath } from "../../lib/tenantPath";
+import { useTenant } from "../../context/TenantContext";
 
 interface RedeemStats {
-  rows: { date: string; customer: string; item: string; points: number; value: number | null }[];
+  rows: { date: string; customer: string; customerId: string | null; item: string; points: number; value: number | null }[];
   totalRedemptions: number;
   totalPointsRedeemed: number;
   uniqueCustomers: number;
@@ -44,6 +47,8 @@ export default function AdminReportsRedeems() {
 
   const sortLabel = (key: RedeemSortKey) =>
     sortKey === key ? (sortDir === "asc" ? "ascending" : sortDir === "desc" ? "descending" : "original order") : "unsorted";
+
+  const { companySlug, slug: outletSlug } = useTenant();
 
   const { data: stats, isLoading } = useQuery<RedeemStats>({
     queryKey: ["adminReportsRedeem", startDate, endDate],
@@ -188,11 +193,21 @@ export default function AdminReportsRedeems() {
               </div>
               {rows.map((r, i) => (
                 <div
-                  key={`${r.date}-${r.customer}-${i}`}
+                  key={`${r.date}-${r.customerId ?? r.customer}-${i}`}
                   className="grid grid-cols-[1.9fr_1.6fr_1.8fr_1.2fr_1.2fr] items-center gap-3 border-t border-[var(--line)]/60 px-4 py-3 first:border-0"
                 >
                   <span className="truncate text-[var(--ink)]">{r.date}</span>
-                  <span className="truncate text-[var(--ink)]">{r.customer}</span>
+                  {r.customerId ? (
+                    <Link
+                      to={tenantPath(companySlug, outletSlug, `admin/customers/${r.customerId}`)}
+                      className="truncate text-[var(--primary-deep)] underline decoration-transparent underline-offset-2 transition-colors hover:decoration-[var(--primary-deep)]"
+                      title={`Open ${r.customer}'s details`}
+                    >
+                      {r.customer}
+                    </Link>
+                  ) : (
+                    <span className="truncate text-[var(--muted)]">{r.customer}</span>
+                  )}
                   <span className="truncate text-[var(--ink)]">{r.item || "—"}</span>
                   <span className="font-semibold text-[var(--primary-deep)]">{r.points} pts</span>
                   <span className="text-[var(--ink)]">{r.value != null ? `Rs ${r.value}` : "—"}</span>
