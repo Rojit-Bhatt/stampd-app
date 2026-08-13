@@ -134,13 +134,18 @@ async function main() {
     });
     check("setting a first password with no currentPassword -> 200", setWithoutCurrent.status === 200, setWithoutCurrent.body);
 
-    const meAfterSet = await api("/api/customer-auth/me", { token: session });
-    check("hasPassword is true after setting one", meAfterSet.body.account?.hasPassword === true, meAfterSet.body);
-
+    // Setting the first password bumps the account's passwordVersion, so the
+    // token minted before the change is dead on arrival (same session-
+    // versioning contract the real password change exercises above).
+    // Re-login with the newly-set password and carry the fresh token forward.
     const loginWithSetPassword = await api("/api/customer-auth/login", {
       method: "POST", body: { email, password: "freshpassword1" },
     });
     check("the newly-set password signs in", loginWithSetPassword.status === 200, loginWithSetPassword.body);
+    session = loginWithSetPassword.body.token;
+
+    const meAfterSet = await api("/api/customer-auth/me", { token: session });
+    check("hasPassword is true after setting one", meAfterSet.body.account?.hasPassword === true, meAfterSet.body);
 
     console.log("\n== Anonymous callers ==");
     const noAuthRename = await api("/api/customer-auth/profile", {
