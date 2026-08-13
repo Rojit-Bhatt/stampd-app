@@ -152,16 +152,32 @@ app.use(
 app.use(compression({ threshold: 1024 }));
 app.use(express.json({ limit: "2mb" }));
 
-app.get("/", (_req, res) => {
-  res.status(200).json({
-    success: true,
-    message: `${PLATFORM_NAME} loyalty platform API is running.`
-  });
-});
-
+// Health probe for Render keep-alive pings — registered BEFORE the
+// production static/catch-all block below; Express evaluates routes in
+// registration order and a "*" catch-all would otherwise swallow "/health".
 app.get("/health", (_req, res) => {
   res.status(200).json({ status: "ok" });
 });
+
+// Serve frontend static files in production — mounted before the dev-time
+// "/" JSON placeholder so the SPA document wins at "/" (and every other
+// non-API path). CSP report-only headers are attached to the document
+// responses; asset files and API routes pass through without them.
+if (process.env.NODE_ENV === "production") {
+  const path = require("path");
+  const distPath = path.resolve(__dirname, "../frontend/dist");
+  // Report-only CSP on the SPA document (middleware hashes inline scripts
+  // at boot; no-op when the dist doesn't exist, e.g. dev). See middleware docs.
+  const { cspMiddleware } = require("./middleware/cspMiddleware");
+  app.use(cspMiddleware(distPath));
+  app.use(express.static(distPath));
+  app.get("*", (req, res, next) => {
+    if (req.path.startsWith("/api") || req.path.startsWith("/__test__")) {
+      return next();
+    }
+    res.sendFile(path.join(distPath, "index.html"));
+  });
+}
 
 // CSP violation collector — the frontend's Content-Security-Policy-Report-Only
 // (Cloudflare headers + public/_headers) reports here via report-uri. Report-only
@@ -191,6 +207,14 @@ app.post("/api/csp-report", cspReportLimiter, (req, res) => {
     console.log(
       `[CSP report-only] ${report["violated-directive"]} on ${report["document-uri"]} (blocked: ${report["blocked-uri"] || "n/a"})`
     );
+    console.log(JSON.stringify({
+      type: "csp-violation",
+      timestamp: new Date().toISOString(),
+      violatedDirective: report["violated-directive"],
+      documentUri: report["document-uri"],
+      blockedUri: report["blocked-uri"] || null,
+      userAgent: req.headers?.["user-agent"] || null
+    }));
   }
   // 204 no matter what — the spec wants the collector to never argue with a
   // reporter, or user agents may stop sending reports.
@@ -241,19 +265,6 @@ app.use("/api/images", imageRoutes);
 // (mock DB only). Never available against a real database / in production.
 if (USING_MOCK_DB) {
   app.use("/__test__", require("./routes/testHookRoutes"));
-}
-
-// Serve frontend static files in production
-if (process.env.NODE_ENV === "production") {
-  const path = require("path");
-  const distPath = path.resolve(__dirname, "../frontend/dist");
-  app.use(express.static(distPath));
-  app.get("*", (req, res, next) => {
-    if (req.path.startsWith("/api") || req.path.startsWith("/__test__")) {
-      return next();
-    }
-    res.sendFile(path.join(distPath, "index.html"));
-  });
 }
 
 app.use((req, _res, next) => {

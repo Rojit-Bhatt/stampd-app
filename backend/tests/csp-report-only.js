@@ -80,9 +80,10 @@ async function main() {
       }).then(async (r) => ({ status: r.status, headers: r.headers, body: await r.json().catch(() => null) }));
 
     // --- the SPA document carries the report-only CSP header ---
-    // "/" is the JSON API root in production; the SPA document is served
-    // by the catch-all for non-API paths such as "/login".
-    const doc = await api("/login", { headers: { Accept: "text/html" } });
+    // "/" itself is the SPA document in production (static + catch-all),
+    // so the document checks run against it; "/login" is covered by the
+    // same catch-all and gets the identical header.
+    const doc = await api("/", { headers: { Accept: "text/html" } });
     const csp = doc.headers.get("Content-Security-Policy-Report-Only");
     check("the SPA document (served at /login) returns 200 HTML", doc.status === 200 && (doc.headers.get("content-type") || "").includes("text/html"), `${doc.status} ${doc.headers.get("content-type")}`);
     check("the SPA document carries the report-only CSP header", Boolean(csp), csp);
@@ -93,11 +94,9 @@ async function main() {
     // list is valid for the current build (only src'd script tags exist).
     check("inline-script hashes are allowlisted when present", csp && csp.includes("'self'"));
 
-    // --- the JSON API root and API routes carry no CSP header ---
-    const root = await api("/");
-    check("the JSON API root carries no CSP header", !root.headers.get("Content-Security-Policy-Report-Only"));
-    const health = await api("/api/health");
-    check("the /api/health JSON route carries no CSP header", !health.headers.get("Content-Security-Policy-Report-Only"));
+    // --- the API routes carry no CSP header (JSON is never a document) ---
+    const health = await api("/health");
+    check("the /health JSON route carries no CSP header", !health.headers.get("Content-Security-Policy-Report-Only"));
 
     // --- violation reports are ingested ---
     const report = {
