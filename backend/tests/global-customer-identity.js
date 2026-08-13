@@ -24,7 +24,7 @@ const COMPANY = "coffesarowar";
 const SLUG_A = "durbarmarg";
 
 async function main() {
-  const { baseUrl, stop } = await bootServer({ port: 5031 });
+  const { baseUrl, stop } = await bootServer({ port: 0 });
   let failures = 0;
   const check = (name, cond) => {
     if (cond) console.log(`PASS ${name}`);

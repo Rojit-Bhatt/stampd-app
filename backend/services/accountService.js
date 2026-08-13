@@ -71,7 +71,21 @@ const changePassword = async (userId, { currentPassword, newPassword }) => {
   // authenticated session is proof enough to set a first password.
 
   user.password = await bcrypt.hash(newPassword, SALT_ROUNDS);
+  // Credential-version kill: every JWT minted under the old passwordVersion
+  // is rejected from the next request (tenant JWT for business_admin rows
+  // carrying a password, platform JWT for platform rows).
+  user.passwordVersion = (user.passwordVersion || 0) + 1;
   await user.save();
+
+  // Alert: same owner-notification contract as the customer/admin flows.
+  if (user.email) {
+    const { sendEmail } = require("./emailService");
+    sendEmail({
+      to: user.email,
+      subject: "Your password was changed",
+      html: `<p>Your password was just changed.</p><p>If that wasn't you, contact your platform admin right away — your sessions are already dead, but an attacker who got this far should be blocked before they try anything else.</p>`
+    }).catch((err) => console.error(`Failed to email password-change alert to ${user.email}:`, err.message));
+  }
 
   return { success: true, message: "Password updated." };
 };

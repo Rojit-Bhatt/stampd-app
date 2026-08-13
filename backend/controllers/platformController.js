@@ -11,6 +11,7 @@ const {
   updateContact
 } = require("../services/platformConfigService");
 const { listRecent } = require("../services/platformAuditService");
+const { buildDigest } = require("../services/checksumService");
 const { listPublicPlans } = require("../services/subscriptionPlanService");
 const { getPlatformCustomers: listPlatformCustomers } = require("../services/platformCustomersService");
 const {
@@ -205,6 +206,20 @@ const getPlatformContactAdmin = async (req, res, next) => {
   }
 };
 
+// Platform-admin sanity digest (G11 — backups/DR): cheap deterministic
+// row-count + balance checksum over the core business state, hashed so an
+// operator or CI cron job can detect silent DB corruption by comparing
+// against a stored baseline. Platform-admin only — the raw numbers are
+// tenant-state metadata an external party must never see.
+const getSanityChecksum = async (req, res, next) => {
+  try {
+    const digest = await buildDigest();
+    res.status(200).json({ success: true, digest });
+  } catch (error) {
+    next(error);
+  }
+};
+
 const patchPlatformContact = async (req, res, next) => {
   try {
     const contact = await updateContact(req.body || {});
@@ -240,6 +255,7 @@ const downloadCustomersReport = async (req, res, next) => {
 
 module.exports = {
   platformLogin,
+  getSanityChecksum,
   getCompanies,
   postCompany,
   getCompany,

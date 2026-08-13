@@ -17,6 +17,7 @@ const { evaluateBroadcasts } = require("./broadcastService");
 const { createNotification } = require("./notificationService");
 const { earnCenti, toPoints } = require("../utils/pointsMath");
 const { resolveDateRange } = require("../utils/dateRange");
+const { logAction: logTenantAudit } = require("./tenantAuditService");
 
 // An EARN token only has to survive being scanned: the instant it is, it
 // converts into a PendingClaim that lives 15 minutes, which is what actually
@@ -425,6 +426,21 @@ const claimPoints = async ({ token, userId, role, organizationId }) => {
         performedByUserId: existingToken.performedByUserId || null,
         performedByName: existingToken.performedByName || ""
       });
+      // points_earn ledger row: an earned points entry that would move
+      // real money (loyalty liability, and every outlet's reports) must be
+      // reconstructable from the ledger even when the QR token is later
+      // gone. Audit failure is swallowed inside logTenantAudit — see
+      // services/tenantAuditService.js.
+      logTenantAudit({
+        companyId: org.companyId,
+        organizationId,
+        actorId: existingToken.performedByUserId || null,
+        actorName: existingToken.performedByName || "",
+        actorRole: "staff",
+        targetId: userId,
+        action: "points_earn",
+        meta: { pointsEarned: responsePayload.data.pointsEarned, billAmount: existingToken.billAmount, campaignName: responsePayload.data.campaignName || null }
+      });
     });
 
     checkMilestoneTrigger({ organization: org, membership: claimer })
@@ -617,6 +633,19 @@ const redeemPoints = async ({ token, itemId, kind, userId, role, organizationId 
           balance: toPoints(updated.balanceCenti)
         }
       };
+      // points_redeem ledger row — spend, not earn: the side that actually
+      // costs the outlet something, so its provenance must be recoverable
+      // even after the redeem token is consumed and gone.
+      logTenantAudit({
+        companyId: org.companyId,
+        organizationId,
+        actorId: consumedToken.performedByUserId || null,
+        actorName: consumedToken.performedByName || "",
+        actorRole: "staff",
+        targetId: userId,
+        action: "points_redeem",
+        meta: { rewardName: item.name, pointsSpent: toPoints(priceCenti), rewardKind: item.kind, rewardRef: item.doc._id.toString() }
+      });
     });
 
     createNotification({

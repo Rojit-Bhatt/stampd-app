@@ -1,0 +1,58 @@
+# Stampd Render blueprint (G15).
+#
+# One-click staging replica of the full platform: backend web service +
+# environment variable placeholders. Secrets are NEVER committed here —
+# each one reads from the corresponding environment when the blueprint is
+# launched (Render prompts for unset values on first deploy).
+#
+# Production stays on the existing manually-configured Render services;
+# this file is the parity snapshot + the "rebuild the platform from zero"
+# escape hatch. Keep the two in sync: when production gains an env var,
+# mirror it here (as a `key` with an empty `value` unless it is a safe
+# default).
+
+services:
+  - type: web
+    name: stampd-backend-staging
+    runtime: node
+    # Blueprint builds from the repo root; Render finds the workspace
+    # start command via the root package.json when present, otherwise the
+    # build plan should point at backend/. Set `plan` per-deploy as needed.
+    plan: starter
+    rootDir: backend
+    buildCommand: npm ci --omit=dev && npm audit --audit-level=high --omit=dev
+    startCommand: node server.js
+    healthCheckPath: /health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: MONGODB_URI
+        sync: false
+      - key: JWT_SECRET
+        generateValue: true
+      - key: JWT_GLOBAL_SECRET
+        generateValue: true
+      - key: GLOBAL_SESSION_EXPIRES_IN
+        value: "14d"
+      - key: ENABLE_MFA
+        value: "false"
+      - key: BREVO_API_KEY
+        sync: false
+      - key: TURNSTILE_SECRET_KEY
+        sync: false
+      - key: TURNSTILE_SITE_KEY
+        sync: false
+      - key: APP_BASE_URL
+        sync: false
+      - key: FRONTEND_ORIGINS
+        sync: false
+      - key: SMS_API_KEY
+        sync: false
+      - key: LOG_LEVEL
+        value: info
+      - key: REDIS_URL
+        sync: false
+      - key: SENTRY_DSN
+        sync: false
+      - key: TRIGGER_FAILURE_ALERT_EMAIL
+        sync: false

@@ -70,11 +70,17 @@ const ensureUserPointsBalance = async (userId, organizationId) => {
 };
 
 const formatAuthPayload = (user) => {
-  const token = generateAuthToken({
-    userId: user._id.toString(),
-    role: user.role,
-    organizationId: user.organizationId ? user.organizationId.toString() : null
-  });
+  // The pv claim binds this JWT to the row's current credential version —
+  // legacy rows default to 0, so first issuance works unchanged; any later
+  // password change bumps the row and kills every previously-issued token.
+  const token = generateAuthToken(
+    {
+      userId: user._id.toString(),
+      role: user.role,
+      organizationId: user.organizationId ? user.organizationId.toString() : null
+    },
+    typeof user.passwordVersion === "number" ? user.passwordVersion : 0
+  );
 
   return {
     success: true,
@@ -340,9 +346,24 @@ const resetPassword = async ({ token, password, organizationId }) => {
   if (!user) throw createHttpError("Account not found.", 404);
 
   user.password = await bcrypt.hash(password, SALT_ROUNDS);
+  // Kill every previously-issued token (tenant JWT, plus the global session
+  // for global-account members — handled downstream by ensureMembership
+  // sync). tokenPv() in the middleware treats legacy tokens with no pv claim
+  // as version 0, so they die against this bumped row.
+  user.passwordVersion = (user.passwordVersion || 0) + 1;
   await user.save();
   record.usedAt = new Date();
   await record.save();
+
+  // Alert: the owner should know immediately if someone changed their
+  // password. Deliberately uninformative about what device/IP did it — the
+  // app has no device fingerprinting today, and inventing an unreliable one
+  // would only confuse the alert's message.
+  sendEmail({
+    to: user.email,
+    subject: "Your password was changed",
+    html: `<p>Your password was just changed.</p><p>If that wasn't you, contact support right away — an attacker who reset your password is still locked out of your loyalty data until they get in.</p>`
+  }).catch((err) => console.error(`Failed to email password-change alert to ${user.email}:`, err.message));
 
   return { success: true, message: "Password updated. You can now log in." };
 };

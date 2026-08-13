@@ -14,7 +14,7 @@
 const { bootServer } = require("./helpers/bootServer");
 
 async function main() {
-  const { baseUrl, stop } = await bootServer({ port: 5048 });
+  const { baseUrl, stop } = await bootServer({ port: 0 });
   let failures = 0;
   const check = (name, cond, extra) => {
     if (cond) console.log(`PASS ${name}`);

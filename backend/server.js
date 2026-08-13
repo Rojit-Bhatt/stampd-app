@@ -1,4 +1,5 @@
-require("dotenv").config();
+const dotenv = require("dotenv");
+dotenv.config();
 
 // In production the secret MUST come from the environment. In development we
 // fall back to an insecure dev key (also handled in utils/tokenUtils.js) so the
@@ -8,9 +9,35 @@ if (!process.env.JWT_SECRET) {
     console.error("FATAL: JWT_SECRET must be set in production.");
     process.exit(1);
   }
-  process.env.JWT_SECRET = "dev_only_insecure_jwt_secret_change_me";
-  console.warn("[dev] JWT_SECRET not set — using an insecure development key.");
+  // Hardcoded dev keys are no longer in source. Fall back to the value in
+  // backend/.env.example (read with dotenv so local `.env` stays the source
+  // of truth when it exists) — a deliberately weak value that never lives in
+  // git history as an active secret.
+  const fs = require("fs");
+  const path = require("path");
+  const examplePath = path.resolve(__dirname, ".env.example");
+  try {
+    const exampleVars = dotenv.parse(fs.readFileSync(examplePath));
+    // Re-apply every non-empty default from the example file (MONGODB_URI,
+    // JWT_GLOBAL_SECRET etc.) so a bare `node server.js` run still works with
+    // only .env.example present. Empty values are intentionally left unset so
+    // each module's own dev-fallback logic can take over.
+    for (const [key, value] of Object.entries(exampleVars)) {
+      if (value && !process.env[key]) process.env[key] = value;
+    }
+    if (!process.env.JWT_SECRET) {
+      throw new Error("JWT_SECRET missing in .env.example");
+    }
+    if (!process.env.JWT_GLOBAL_SECRET) {
+      throw new Error("JWT_GLOBAL_SECRET missing in .env.example");
+    }
+    console.warn("[dev] Secrets not set — using the deliberately weak values from .env.example.");
+  } catch (err) {
+    console.error("FATAL: JWT_SECRET must be set (copy backend/.env.example to backend/.env).", err.message);
+    process.exit(1);
+  }
 }
+
 
 // True when running against the in-memory mock DB (no real MONGODB_URI given).
 // Set before the fallback URI is assigned below, so later code can tell dev/mock
@@ -136,26 +163,38 @@ app.get("/health", (_req, res) => {
   res.status(200).json({ status: "ok" });
 });
 
-// CSP violation reports from the SPA document (see the Content-Security-
-// Policy-Report-Only header below). Structured console log only — no DB
-// table (YAGNI); the observation window's job is to surface real
-// violations, not to accumulate them. Accepts the standard CSP report
-// content type alongside JSON so browsers can POST it.
-// Browsers send CSP reports with kebab-case keys inside "csp-report";
-// a JSON client may send camelCase — accept both.
-app.post("/api/csp-report", express.json({ type: ["application/json", "application/csp-report"] }), (req, res) => {
-  const r = req.body?.["csp-report"] || {};
-  const kebab = (camel) => (r[camel] !== undefined ? r[camel] : r[camel.replace(/([A-Z])/g, "-$1").toLowerCase()]);
-  console.log(JSON.stringify({
-    type: "csp-violation",
-    blockedUri: kebab("blockedUri"),
-    documentUri: kebab("documentUri"),
-    violatedDirective: kebab("violatedDirective"),
-    effectiveDirective: kebab("effectiveDirective"),
-    originalPolicy: kebab("originalPolicy"),
-    timestamp: new Date().toISOString()
-  }));
-  res.sendStatus(204);
+// CSP violation collector — the frontend's Content-Security-Policy-Report-Only
+// (Cloudflare headers + public/_headers) reports here via report-uri. Report-only
+// means nothing is blocked while violations are gathered; once the policy proves
+// safe in the wild, flip it to an enforcing Content-Security-Policy. A 60/min
+// limiter keeps a misfiring page (or an attacker spamming the endpoint) from
+// filling logs: each origin is rate-limited independently.
+// Body shape per the spec: { "csp-report": { "document-uri", "violated-directive", "original-policy", ... } }.
+const { cspReportLimiter } = require("./middleware/rateLimitMiddleware");
+const cspReports = [];
+const MAX_CSP_REPORTS = 200;
+app.post("/api/csp-report", cspReportLimiter, (req, res) => {
+  const report = req.body?.["csp-report"] || req.body;
+  if (report && typeof report === "object") {
+    cspReports.unshift({
+      at: new Date().toISOString(),
+      ip: req.ip,
+      userAgent: req.headers?.["user-agent"],
+      documentUri: report["document-uri"],
+      violatedDirective: report["violated-directive"],
+      blockedUri: report["blocked-uri"],
+      originalPolicy: report["original-policy"],
+      effectiveDirective: report["effective-directive"],
+      sample: report["sample"]
+    });
+    if (cspReports.length > MAX_CSP_REPORTS) cspReports.length = MAX_CSP_REPORTS;
+    console.log(
+      `[CSP report-only] ${report["violated-directive"]} on ${report["document-uri"]} (blocked: ${report["blocked-uri"] || "n/a"})`
+    );
+  }
+  // 204 no matter what — the spec wants the collector to never argue with a
+  // reporter, or user agents may stop sending reports.
+  res.status(204).end();
 });
 
 // Platform super-admin (onboards + manages businesses/tenants).
@@ -208,12 +247,6 @@ if (USING_MOCK_DB) {
 if (process.env.NODE_ENV === "production") {
   const path = require("path");
   const distPath = path.resolve(__dirname, "../frontend/dist");
-  // Strict hash-based CSP, report-only: the header lives on the SPA
-  // document only (index.html served by the catch-all below). JSON API
-  // responses carry no CSP — a browser never parses them as documents, so
-  // the policy would be inert there anyway; the token-bearing APIs are
-  // protected by their own layers (auth, rate limits, turnstile).
-  app.use(require("./middleware/cspMiddleware").cspMiddleware(distPath));
   app.use(express.static(distPath));
   app.get("*", (req, res, next) => {
     if (req.path.startsWith("/api") || req.path.startsWith("/__test__")) {
@@ -229,11 +262,33 @@ app.use((req, _res, next) => {
   next(error);
 });
 
-app.use((error, _req, res, _next) => {
+// Security: never echo raw error messages to clients in production. Internal
+// details (mongoose schema/validation errors, network failures) only belong
+// in the server log; clients get a generic message with the same shape.
+app.use((error, req, res, _next) => {
   const statusCode = error.statusCode || 500;
+  // Mongoose network/validation/duplicate-key errors include driver internals;
+  // log them for forensics regardless of environment — as one parseable JSON
+  // entry (utils/logger), with optional Sentry capture (utils/errorTracker).
+  const logger = require("./utils/logger");
+  const errorTracker = require("./utils/errorTracker");
+  logger.error("request", "Unhandled error", {
+    method: req.method,
+    path: req.originalUrl,
+    statusCode,
+    error: error.message,
+    ...(process.env.NODE_ENV !== "production" ? { stack: error.stack } : {})
+  });
+  errorTracker.capture(error, {
+    method: req.method,
+    path: req.originalUrl,
+    statusCode
+  });
   res.status(statusCode).json({
     success: false,
-    message: error.message || "Internal Server Error",
+    message: process.env.NODE_ENV === "production"
+      ? "Internal Server Error"
+      : (error.message || "Internal Server Error"),
     ...(error.code ? { code: error.code } : {})
   });
 });
@@ -287,7 +342,21 @@ const startServer = async () => {
   }
 
   cron.schedule("0 9 * * *", () => {
-    runDailyTriggers().catch((err) => console.error("Daily triggers run failed:", err.message));
+    runDailyTriggers().catch((err) => {
+      // A silent cron failure means no expiry sweeps, no report emails, no
+      // digest — so the operator is emailed when TRIGGER_FAILURE_ALERT_EMAIL
+      // is configured. The email service stubs to stderr in dev/test, which
+      // keeps CI green without a real mailbox.
+      require("./utils/logger").error("cron", "Daily triggers run failed", { error: err.message });
+      const alertEmail = process.env.TRIGGER_FAILURE_ALERT_EMAIL;
+      if (alertEmail) {
+        require("./services/emailService").sendEmail({
+          to: alertEmail,
+          subject: `[${PLATFORM_NAME}] Daily trigger job failed`,
+          html: `<p>The daily trigger job failed at ${new Date().toISOString()}:</p><pre>${String(err.message || err).replace(/</g, "&lt;")}</pre><p>Check the server logs for the full stack trace.</p>`
+        }).catch(() => {});
+      }
+    });
   }, { timezone: PLATFORM_TIMEZONE });
 
   app.listen(PORT, "0.0.0.0", () => {

@@ -85,11 +85,11 @@ async function main() {
 
   // One server with no key configured, one with a key pointed at the stub.
   const unconfigured = await bootServer({
-    port: 5045,
+    port: 0,
     env: { GOOGLE_PLACES_API_KEY: "" }
   });
   const configured = await bootServer({
-    port: 5046,
+    port: 0,
     env: {
       GOOGLE_PLACES_API_KEY: "test-key",
       PLACES_API_BASE_URL: `http://localhost:${STUB_PORT}`

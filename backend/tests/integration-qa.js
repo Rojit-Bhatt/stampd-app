@@ -294,7 +294,7 @@ async function runQa() {
   // dedicated port so `npm test` needs no manually-started server.
   let server = null;
   if (!process.env.TEST_BASE_URL) {
-    server = await bootServer({ port: 5011 });
+    server = await bootServer({ port: 0 });
     BASE_URL = server.baseUrl;
   }
   let code = 1;

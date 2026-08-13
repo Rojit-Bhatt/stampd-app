@@ -5,6 +5,7 @@ const {
   completeProfile, updateAccountProfile, updatePreferences, savePushSubscription, removePushSubscription, changeAccountPassword,
   enterTenant, getMyTenants,
   setAvatar, removeAvatar, getAvatar, MAX_AVATAR_BYTES,
+  exportAccountData, deleteCustomerAccount
 } = require("../services/customerAccountService");
 
 const register = async (req, res, next) => {
@@ -172,6 +173,30 @@ const changePasswordController = async (req, res, next) => {
   }
 };
 
+const deleteAccountController = async (req, res, next) => {
+  try {
+    const result = await deleteCustomerAccount({
+      customerAccountId: req.customerAccount.id,
+      email: req.body.email
+    });
+    res.status(200).json(result);
+  } catch (error) {
+    next(error);
+  }
+};
+
+// (G17) Self-service data export — own account only, guarded by the same
+// global-session middleware as every other /me endpoint. No tenant headers
+// needed: the export covers global identity, not tenant-scoped data.
+const exportDataController = async (req, res, next) => {
+  try {
+    const result = await exportAccountData({ customerAccountId: req.customerAccount.id });
+    res.status(200).json(result);
+  } catch (error) {
+    next(error);
+  }
+};
+
 const enterTenantController = async (req, res, next) => {
   try {
     const result = await enterTenant({
@@ -306,6 +331,8 @@ module.exports = {
   savePushSubscription: savePushSubscriptionController,
   removePushSubscription: removePushSubscriptionController,
   changePassword: changePasswordController,
+  deleteAccount: deleteAccountController,
+  exportData: exportDataController,
   enterTenant: enterTenantController,
   getMyTenants: getMyTenantsController
 };

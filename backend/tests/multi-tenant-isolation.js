@@ -267,7 +267,7 @@ async function run() {
   // own server on a dedicated port so `npm test` needs no running server.
   let server = null;
   if (!process.env.TEST_BASE_URL) {
-    server = await bootServer({ port: 5012 });
+    server = await bootServer({ port: 0 });
     BASE = server.baseUrl;
   }
   let code = 1;

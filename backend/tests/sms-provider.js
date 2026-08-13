@@ -62,7 +62,7 @@ async function getMessageLogCount(baseUrl, organizationId, userId, triggerType) 
 }
 
 async function main() {
-  const { baseUrl, stop } = await bootServer({ port: 5055 });
+  const { baseUrl, stop } = await bootServer({ port: 0 });
   let failures = 0;
   const check = (name, cond) => {
     if (cond) console.log(`PASS ${name}`);

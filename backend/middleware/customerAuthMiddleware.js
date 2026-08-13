@@ -1,4 +1,4 @@
-const { verifyGlobalSessionToken } = require("../utils/tokenUtils");
+const { verifyGlobalSessionToken, tokenPv } = require("../utils/tokenUtils");
 const CustomerAccount = require("../models/CustomerAccount");
 
 // Duplicated from authMiddleware.js's extractToken rather than imported —
@@ -43,7 +43,12 @@ const verifyGlobalSession = async (req, _res, next) => {
       throw error;
     }
 
-    // Re-fetch on every request, same revocation posture as verifyToken.
+    // Re-fetch on every request, same revocation posture as verifyToken —
+    // and also enforce the credential version: a password change or reset
+    // bumps the account's passwordVersion, so any session minted under the
+    // old version dies immediately. tokenPv() treats legacy tokens with no
+    // `pv` claim as version 0, matching every account's default version,
+    // so existing sessions keep working until the next credential change.
     const account = await CustomerAccount.findOne({ _id: decoded.customerAccountId });
 
     if (!account) {
@@ -52,11 +57,11 @@ const verifyGlobalSession = async (req, _res, next) => {
       throw error;
     }
 
-    // Session-version check: a password change bumps the account's
-    // sessionVersion, so a previously-issued global token — still within its
-    // 30d lifetime — is rejected here with "Session expired" 401 on the very
-    // next request. No token list, no refresh dance, instant logout.
-    verifyGlobalSessionToken(token, account);
+    if (tokenPv(account) > tokenPv(decoded)) {
+      const error = new Error("Access denied. Session is no longer valid.");
+      error.statusCode = 401;
+      throw error;
+    }
 
     req.customerAccount = { id: decoded.customerAccountId };
 
