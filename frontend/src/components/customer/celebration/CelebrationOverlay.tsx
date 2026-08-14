@@ -66,7 +66,10 @@ export function CelebrationOverlay({ children }: { children: ReactNode }) {
           { opacity: 0, transition: { duration: 0 } },
         )}
         transition={m.spring("confirm")}
-        className="w-full max-w-[19.5rem] overflow-hidden rounded-[1.75rem] px-7 pb-7 pt-8"
+        // `celebration-content` is the hook for the short-landscape rule in
+        // index.css, which scales the whole composition down rather than
+        // reflowing it when the viewport is too short to seat the card.
+        className="celebration-content w-full max-w-[19.5rem] overflow-hidden rounded-[1.75rem] px-7 pb-7 pt-8"
         style={{
           // Near-opaque, so the figures never fight the dashboard behind them.
           background: "rgba(24,26,25,0.96)",

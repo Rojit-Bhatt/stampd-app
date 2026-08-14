@@ -51,7 +51,7 @@ export const COUNT_UP_MS = 600;
  *
  * ```tsx
  * const m = useMotion();
- * <motion.div animate={{ scale: 1 }} transition={m.spring("coinPop")} />
+ * <motion.div animate={{ scale: 1 }} transition={m.spring("confirm")} />
  * ```
  */
 export function useMotion() {
