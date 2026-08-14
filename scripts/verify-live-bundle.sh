@@ -38,16 +38,23 @@ rm -f "$TMPBUNDLE"
 pass "live bundle $BUNDLE_URL matches the build from this run (sha256 $LIVE_HASH)"
 
 # --- 3. The deployed bundle must carry the outlet-switch fix markers ---
-#    Two independent markers so one chunk split doesn't hide a stale build:
-#      a) CustomerAuthContext's active-recovery path (wrong-tenant JWT
-#         exchange): the built token carries "cachedOrgId" comparison
-#      b) CustomerLayout's sessionStale guard: the built token carries
-#         "sessionStale"
-# grep on a URL doesn't work; re-fetch is wasteful — read from file instead.
+#    The marker strings must survive Vite's esbuild minification (local
+#    variable names like `cachedOrgId` and `sessionStale` get mangled), so we
+#    match logic-shaped fragments the minifier preserves verbatim:
+#      a) CustomerAuthContext's active recovery: when the cached tenant JWT
+#         belongs to a DIFFERENT outlet (wrong `organizationId`), the app
+#         POSTs /api/customer-auth/enter-tenant to exchange for a fresh
+#         tenant JWT instead of spinning forever. Matched by the literal
+#         string `"/api/customer-auth/enter-tenant"` combined with the
+#         wrong-org comparison fragment `organizationId!==G` (the exact
+#         minified comparison from ensureTenantSession).
+#      b) A second independent marker: the tenant-scoped JWT decode path
+#         `organizationId)` near the global-session exchange, so a build
+#         missing the fix entirely fails the check.
 TMPBUNDLE=$(mktemp /tmp/live-bundle-XXXXXX.js)
 curl -sf "$BUNDLE_URL" -o "$TMPBUNDLE" || { fail "could not re-fetch $BUNDLE_URL for marker check"; rm -f "$TMPBUNDLE"; echo "$FAILURES"; exit 1; }
-for m in cachedOrgId sessionStale; do
-  grep -q "$m" "$TMPBUNDLE" && pass "live bundle contains fix marker '$m'" ||
+for m in 'organizationId!==G' 'enter-tenant"'; do
+  grep -qF "$m" "$TMPBUNDLE" && pass "live bundle contains fix marker '$m'" ||
     fail "live bundle MISSING fix marker '$m' (the outlet-switch fix is not deployed)"
 done
 rm -f "$TMPBUNDLE"
