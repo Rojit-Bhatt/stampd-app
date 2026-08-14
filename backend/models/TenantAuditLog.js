@@ -36,4 +36,10 @@ const TenantAuditLogSchema = new mongoose.Schema({
   // secondary tiebreaker.
   sequence: { type: Number, required: true }
 });
+// Every write does a countDocuments({ companyId }) to assign `sequence`
+// (see tenantAuditService.js) — without this index that's a full collection
+// scan on every earn/redeem/claim/edit, and it gets slower as the ledger
+// grows. Compound so it also serves companyId+sequence range queries once
+// a phase-2 read endpoint exists.
+TenantAuditLogSchema.index({ companyId: 1, sequence: 1 });
 module.exports = mongoose.model("TenantAuditLog", TenantAuditLogSchema);
