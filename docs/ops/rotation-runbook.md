@@ -17,7 +17,6 @@ update — never by editing committed files (except the rotation log below).
 | 6 | `GOOGLE_CLIENT_ID` (+ secret in Render) | Google Cloud console | Rotate in console → update Render |
 | 7 | `GOOGLE_PLACES_API_KEY` | Render + Google console | Restrict-by-referrer check still valid; rotate in console → update Render |
 | 8 | `PUSH_VAPID_{PRIVATE,PUBLIC}_KEY` | Render + frontend build | New keypair → update backend env → **rebuild and redeploy frontend** (public key is baked into the PWA) |
-| 9 | `TURNSTILE_SECRET_KEY` / site key | Cloudflare dashboard + Render + frontend build | Rotate in Cloudflare → update Render + rebuild frontend |
 
 ## After every rotation
 

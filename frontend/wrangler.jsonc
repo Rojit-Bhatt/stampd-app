@@ -35,7 +35,7 @@
           "X-Frame-Options": "SAMEORIGIN",
           "Referrer-Policy": "strict-origin-when-cross-origin",
           "Permissions-Policy": "camera=(), microphone=(), geolocation=(self)",
-          "Content-Security-Policy-Report-Only": "default-src 'self'; script-src 'self' https://challenges.cloudflare.com https://accounts.google.com https://*.googleapis.com 'unsafe-inline' https://*.google-analytics.com; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; font-src 'self' data:; connect-src 'self' https://challenges.cloudflare.com https://accounts.google.com https://www.google-analytics.com https://*.googleapis.com https://api.stampdd.club; worker-src 'self'; base-uri 'self'; form-action 'self' https://accounts.google.com; frame-ancestors 'none'; report-uri /api/csp-report"
+          "Content-Security-Policy-Report-Only": "default-src 'self'; script-src 'self' https://accounts.google.com https://*.googleapis.com 'unsafe-inline' https://*.google-analytics.com; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; font-src 'self' data:; connect-src 'self' https://accounts.google.com https://www.google-analytics.com https://*.googleapis.com https://api.stampdd.club; worker-src 'self'; base-uri 'self'; form-action 'self' https://accounts.google.com; frame-ancestors 'none'; report-uri /api/csp-report"
         }
       }
     ]

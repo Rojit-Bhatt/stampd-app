@@ -9,7 +9,6 @@ import { useCustomerAuth } from "../context/CustomerAuthContext";
 import { PLATFORM_NAME } from "../lib/platform";
 import { AuthSplitShell } from "../components/shared/auth/AuthSplitShell";
 import { ErrorInput } from "../components/shared/ErrorInput";
-import { Turnstile, TURNSTILE_ENABLED, type TurnstileHandle } from "../components/shared/Turnstile";
 
 const registerSchema = z.object({
   name: z.string().trim().min(2, "Name must be at least 2 characters."),
@@ -35,8 +34,6 @@ export default function GlobalCustomerRegister() {
   const navigate = useNavigate();
   const { registerUser } = useCustomerAuth();
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [turnstileToken, setTurnstileToken] = useState("");
-  const turnstileRef = useRef<TurnstileHandle>(null);
 
   const form = useForm<RegisterFormValues>({
     resolver: zodResolver(registerSchema),
@@ -54,13 +51,11 @@ export default function GlobalCustomerRegister() {
     try {
       const local = data.phone.replace(/\D/g, "").replace(/^0+/, "");
       await registerUser({
-        name: data.name, email: data.email, password: data.password, phone: `+977${local}`, turnstileToken,
+        name: data.name, email: data.email, password: data.password, phone: `+977${local}`,
       });
       toast.success("Welcome! You can verify your email later before redeeming.", { id: toastId });
       navigate("/explore");
     } catch (err) {
-      turnstileRef.current?.reset();
-      setTurnstileToken("");
       toast.error((err as Error).message || "Couldn't create your account — try again.", { id: toastId });
     } finally {
       setIsSubmitting(false);
@@ -186,11 +181,9 @@ export default function GlobalCustomerRegister() {
           </p>
         )}
 
-        <Turnstile ref={turnstileRef} onVerify={setTurnstileToken} />
-
         <button
           type="submit"
-          disabled={isSubmitting || (TURNSTILE_ENABLED && !turnstileToken)}
+          disabled={isSubmitting}
           className="mt-2 w-full rounded-[74px] bg-[var(--lp-cream)] py-4 text-[15px] font-bold text-[#14201C] transition-transform duration-200 hover:scale-105 disabled:opacity-50 motion-reduce:transition-none motion-reduce:hover:scale-100"
         >
           {isSubmitting ? "Please wait…" : "Create account"}

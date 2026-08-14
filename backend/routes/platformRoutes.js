@@ -21,11 +21,10 @@ const {
 const { getAdmins, postAdmin, deleteAdmin } = require("../controllers/platformTeamController");
 const { verifyToken, isPlatformAdmin, isPlatformOwner } = require("../middleware/authMiddleware");
 const { authLimiter, platformExportLimiter } = require("../middleware/rateLimitMiddleware");
-const { verifyTurnstile } = require("../middleware/turnstileMiddleware");
 
 const router = express.Router();
 
-router.post("/login", authLimiter, verifyTurnstile, platformLogin);
+router.post("/login", authLimiter, platformLogin);
 // Second MFA step for platform admins — same challenge-token contract as the
 // customer flow (see customerAccountRoutes /login/mfa).
 router.post("/login/mfa", authLimiter, require("../controllers/platformMfaController").completeMfaLogin);

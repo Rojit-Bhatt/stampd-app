@@ -10,8 +10,6 @@ import { useCustomerAuth } from "../context/CustomerAuthContext";
 import { PhoneStepModal } from "../components/customer/PhoneStepModal";
 import { AuthSplitShell } from "../components/shared/auth/AuthSplitShell";
 import { ErrorInput } from "../components/shared/ErrorInput";
-import { Turnstile, TURNSTILE_ENABLED, type TurnstileHandle } from "../components/shared/Turnstile";
-
 const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID as string | undefined;
 
 const loginSchema = z.object({
@@ -32,8 +30,6 @@ export default function GlobalCustomerLogin() {
   const [showPass, setShowPass] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showPhoneStep, setShowPhoneStep] = useState(false);
-  const [turnstileToken, setTurnstileToken] = useState("");
-  const turnstileRef = useRef<TurnstileHandle>(null);
 
   useEffect(() => {
     if (globalAccount) navigate("/explore");
@@ -57,12 +53,10 @@ export default function GlobalCustomerLogin() {
     submitted.current = true;
     setServerError(null);
     try {
-      await login(data.email, data.password, turnstileToken);
+      await login(data.email, data.password);
       toast.success("Good to see you again!", { id: toastId });
       navigate("/explore");
     } catch (err) {
-      turnstileRef.current?.reset();
-      setTurnstileToken("");
       const msg = (err as Error).message || "Couldn't sign you in — try again.";
       setServerError(msg);
       toast.error(msg, { id: toastId });
@@ -138,11 +132,9 @@ export default function GlobalCustomerLogin() {
             </button>
           </ErrorInput>
 
-          <Turnstile ref={turnstileRef} onVerify={setTurnstileToken} />
-
           <button
             type="submit"
-            disabled={isSubmitting || (TURNSTILE_ENABLED && !turnstileToken)}
+            disabled={isSubmitting}
             className="mt-2 w-full rounded-[74px] bg-[var(--lp-cream)] py-4 text-[15px] font-bold text-[#14201C] transition-transform duration-200 hover:scale-105 disabled:opacity-50 motion-reduce:transition-none motion-reduce:hover:scale-100"
           >
             {isSubmitting ? "Please wait…" : "Sign in"}

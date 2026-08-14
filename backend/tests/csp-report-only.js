@@ -98,9 +98,7 @@ async function main() {
     // summary print normally.
     const booted = await bootServer({
       port: PORT,
-      env: { MONGODB_URI: "mongodb://in-memory-fallback", NODE_ENV: "production", JWT_GLOBAL_SECRET: "test_only_insecure_global_jwt_secret",
-        TURNSTILE_SECRET_KEY: "test-only-fake-key"
-      },
+      env: { MONGODB_URI: "mongodb://in-memory-fallback", NODE_ENV: "production", JWT_GLOBAL_SECRET: "test_only_insecure_global_jwt_secret" },
       requireBeforeServer: "./mockMongooseBootstrap.js"
     });
     stop = booted.stop;

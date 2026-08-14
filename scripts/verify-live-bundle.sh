@@ -57,6 +57,14 @@ for m in 'organizationId!==G' 'enter-tenant"'; do
   grep -qF "$m" "$TMPBUNDLE" && pass "live bundle contains fix marker '$m'" ||
     fail "live bundle MISSING fix marker '$m' (the outlet-switch fix is not deployed)"
 done
+# --- 4. Regression guard: the Cloudflare Turnstile verification was removed
+#    on 2026-08-14 and must never come back. The widget's script URL
+#    (challenges.cloudflare.com/turnstile/v0/api.js) is a stable string the
+#    minifier preserves verbatim, so its absence from the live bundle proves
+#    the removal is deployed.
+grep -qF "challenges.cloudflare.com" "$TMPBUNDLE" &&
+  fail "live bundle STILL contains 'challenges.cloudflare.com' (the removed Turnstile verification has come back)" ||
+  pass "live bundle does not contain 'challenges.cloudflare.com' (Turnstile removal held)"
 rm -f "$TMPBUNDLE"
 
 [ "$FAILURES" -eq 0 ] || { echo "$FAILURES failures — deployed frontend is NOT the expected build"; exit 1; }

@@ -8,7 +8,6 @@ import { usePlatformAuth } from "../../context/PlatformAuthContext";
 import { PLATFORM_NAME } from "../../lib/platform";
 import { AuthSplitShell } from "../../components/shared/auth/AuthSplitShell";
 import { ErrorInput } from "../../components/shared/ErrorInput";
-import { Turnstile, TURNSTILE_ENABLED, type TurnstileHandle } from "../../components/shared/Turnstile";
 
 const schema = z.object({
   email: z.string().trim().email("Please enter a valid email address."),
@@ -23,8 +22,6 @@ export default function PlatformLogin() {
   const { user, login, isLoading } = usePlatformAuth();
   const navigate = useNavigate();
   const [busy, setBusy] = useState(false);
-  const [turnstileToken, setTurnstileToken] = useState("");
-  const turnstileRef = useRef<TurnstileHandle>(null);
 
   useEffect(() => {
     document.title = `Platform admin | ${PLATFORM_NAME}`;
@@ -50,12 +47,10 @@ export default function PlatformLogin() {
     setBusy(true);
     const id = toast.loading("Signing you in…");
     try {
-      await login(data.email, data.password, turnstileToken);
+      await login(data.email, data.password);
       toast.success("Good to see you again!", { id });
       navigate("/platform");
     } catch (err: any) {
-      turnstileRef.current?.reset();
-      setTurnstileToken("");
       const msg = err.message || "Couldn't sign you in — try again.";
       setServerError(msg);
       toast.error(msg, { id });
@@ -111,10 +106,9 @@ export default function PlatformLogin() {
               className="w-full bg-transparent px-0 text-sm text-[var(--lp-ink)] placeholder:text-[var(--lp-muted)] focus:outline-none"
             />
           </ErrorInput>
-          <Turnstile ref={turnstileRef} onVerify={setTurnstileToken} />
           <button
             type="submit"
-            disabled={busy || isLoading || (TURNSTILE_ENABLED && !turnstileToken)}
+            disabled={busy || isLoading}
             className="mt-2 w-full rounded-[74px] bg-[var(--lp-cream)] py-4 text-[15px] font-bold text-[#14201C] transition-transform duration-200 hover:scale-105 disabled:opacity-50 motion-reduce:transition-none motion-reduce:hover:scale-100"
           >
             {busy ? "Signing you in…" : "Sign in"}

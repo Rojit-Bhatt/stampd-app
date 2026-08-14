@@ -10,7 +10,6 @@ import { PLATFORM_NAME } from "../lib/platform";
 import { AuthSplitShell } from "../components/shared/auth/AuthSplitShell";
 import { VerifyCodeCard } from "../components/shared/auth/VerifyCodeCard";
 import { ErrorInput } from "../components/shared/ErrorInput";
-import { Turnstile, TURNSTILE_ENABLED, type TurnstileHandle } from "../components/shared/Turnstile";
 
 const schema = z.object({
   email: z.string().trim().email("Please enter a valid email address."),
@@ -53,8 +52,6 @@ export default function AdminLogin() {
   // the fix. Holds the credentials so onVerified can complete the sign-in
   // the admin was already mid-way through, without retyping anything.
   const [pendingVerify, setPendingVerify] = useState<{ email: string; password: string } | null>(null);
-  const [turnstileToken, setTurnstileToken] = useState("");
-  const turnstileRef = useRef<TurnstileHandle>(null);
 
   const onSubmit = async (data: FormValues) => {
     submitted.current = true;
@@ -63,7 +60,7 @@ export default function AdminLogin() {
     try {
       const res = await apiRequest<LoginResponse>("/api/admin-auth/login", {
         method: "POST",
-        body: { email: data.email, password: data.password, turnstileToken },
+        body: { email: data.email, password: data.password },
       });
 
       // Someone can legitimately move between roles, so clear the other
@@ -94,8 +91,6 @@ export default function AdminLogin() {
         setPendingVerify({ email: data.email, password: data.password });
         return;
       }
-      turnstileRef.current?.reset();
-      setTurnstileToken("");
       const msg = err.message || "Couldn't sign you in — try again.";
       setServerError(msg);
       toast.error(msg, { id });
@@ -188,10 +183,9 @@ export default function AdminLogin() {
                   className="w-full bg-transparent px-0 text-sm text-[var(--lp-ink)] placeholder:text-[var(--lp-muted)] focus:outline-none"
                 />
               </ErrorInput>
-              <Turnstile ref={turnstileRef} onVerify={setTurnstileToken} />
               <button
                 type="submit"
-                disabled={isSubmitting || (TURNSTILE_ENABLED && !turnstileToken)}
+                disabled={isSubmitting}
                 className="mt-2 w-full rounded-[74px] bg-[var(--lp-cream)] py-4 text-[15px] font-bold text-[#14201C] transition-transform duration-200 hover:scale-105 disabled:opacity-50 motion-reduce:transition-none motion-reduce:hover:scale-100"
               >
                 {isSubmitting ? "Signing you in…" : "Sign in"}

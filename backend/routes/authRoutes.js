@@ -6,16 +6,15 @@ const {
 const { resolveTenant } = require("../middleware/tenantMiddleware");
 const { verifyToken } = require("../middleware/authMiddleware");
 const { authLimiter, registrationLimiter } = require("../middleware/rateLimitMiddleware");
-const { verifyTurnstile } = require("../middleware/turnstileMiddleware");
 
 const router = express.Router();
 
-router.post("/register", resolveTenant, registrationLimiter, verifyTurnstile, register);
-router.post("/login", resolveTenant, authLimiter, verifyTurnstile, login);
+router.post("/register", resolveTenant, registrationLimiter, register);
+router.post("/login", resolveTenant, authLimiter, login);
 router.post("/google", resolveTenant, authLimiter, googleAuth);
 router.get("/verify-email", resolveTenant, verifyEmail);
 router.post("/resend-verification", resolveTenant, registrationLimiter, resendVerification);
-router.post("/forgot-password", resolveTenant, registrationLimiter, verifyTurnstile, forgotPassword);
+router.post("/forgot-password", resolveTenant, registrationLimiter, forgotPassword);
 router.post("/reset-password", resolveTenant, resetPassword);
 router.post("/complete-profile", verifyToken, completeProfile);
 
