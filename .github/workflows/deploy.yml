@@ -1,0 +1,90 @@
+# Auto-deploy the frontend to Cloudflare on every push to main.
+#
+# Why this exists: until this workflow, pushing to main only ran the build
+# check (build.yml) — it NEVER deployed to Cloudflare. The outlet-switch fix
+# (PR #68) was merged, CI went green, but production kept serving the old
+# build for days. See docs/bug/stale-production-deploy.md for the full
+# post-mortem.
+#
+# Flow: build-check must pass first (quality.yml/build.yml run alongside),
+# then this workflow builds, deploys via wrangler (secret token, never
+# logged), and — critically — re-fetches the LIVE bundle and asserts it
+# contains the fix markers before declaring success. Never trust a deploy's
+# success message; prove what is actually running.
+name: Deploy frontend to Cloudflare
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-frontend
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    name: Build + deploy + verify live bundle
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      # Block on the production build check: deploying a build that fails
+      # the same suite CI just ran for this push makes no sense.
+      - name: Wait for the production build check to succeed
+        uses: lewagon/wait-on-check-action@v1.3.4
+        with:
+          ref: ${{ github.sha }}
+          check-name: pnpm lockfile + build + backend suite
+          repo-token: ${{ secrets.GITHUB_TOKEN }}
+          wait-interval: 20
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      # Fresh build: plain (uncompressed) outputs, API base = production.
+      - name: Build frontend
+        env:
+          VITE_API_BASE_URL: https://api.stampdd.club
+        run: pnpm run --filter frontend build
+
+      # Record the just-built bundle's hash so we can prove the live site is
+      # serving THIS build afterwards (not a cached/stray older version).
+      - name: Fingerprint the build artifacts
+        id: buildhash
+        run: |
+          ls frontend/dist/assets/index-*.js
+          echo "hash=$(sha256sum frontend/dist/assets/index-*.js | awk '{print $1}')" >> "$GITHUB_OUTPUT"
+
+      # The deploy itself: static assets + the edge worker with the /api proxy
+      # (see scripts/deploy-frontend.sh — same logic, token from secrets).
+      - name: Deploy to Cloudflare
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: d34229f93ab7aa8e06bfacb7febe25cc
+        run: |
+          cd frontend
+          npx -y wrangler deploy --outdir=/tmp/wrangler-out
+
+      # Post-deploy verification — the deploy command finishing proves
+      # nothing (the 2026-08-13 outage: a "successful" deploy shipped a
+      # worker with no /api proxy). Give the edge 15s to roll out the new
+      # version, then prove the live stack answers AND that the served
+      # bundle is the one we just built.
+      - name: Verify live site and deployed bundle contents
+        env:
+          SITE: https://stampdd.club
+          API_BASE: https://api.stampdd.club
+        run: |
+          sleep 15
+          node scripts/smoke-prod.js
+          ./scripts/verify-live-bundle.sh "$SITE" "${{ steps.buildhash.outputs.hash }}"
+
+env:
+  # wrangler must never try to read a local token; the secret covers it.
+  CLOUDFLARE_API_TOKEN: ""
