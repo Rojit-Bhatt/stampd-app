@@ -65,6 +65,18 @@ done
 grep -qF "challenges.cloudflare.com" "$TMPBUNDLE" &&
   fail "live bundle STILL contains 'challenges.cloudflare.com' (the removed Turnstile verification has come back)" ||
   pass "live bundle does not contain 'challenges.cloudflare.com' (Turnstile removal held)"
+# --- 5. Regression guard: the Google sign-in button must be present ---
+#     The build embeds the full Client ID literal (it is read from
+#     VITE_GOOGLE_CLIENT_ID by App.tsx/AuthView/login pages). If the
+#     GOOGLE_CLIENT_ID repo secret is missing, the build strips the button
+#     entirely — this check proves the deployed build carries it.
+#     The Client ID string survives minification verbatim (it is a plain
+#     import.meta.env value concatenated into literals).
+if [ -n "${GOOGLE_CLIENT_ID_EXPECTED:-}" ]; then
+  grep -qF "$GOOGLE_CLIENT_ID_EXPECTED" "$TMPBUNDLE" &&
+    pass "live bundle contains the Google Client ID (Google sign-in is deployed)" ||
+    fail "live bundle MISSING the Google Client ID '$GOOGLE_CLIENT_ID_EXPECTED' (the Google sign-in button is not deployed)"
+fi
 rm -f "$TMPBUNDLE"
 
 [ "$FAILURES" -eq 0 ] || { echo "$FAILURES failures — deployed frontend is NOT the expected build"; exit 1; }

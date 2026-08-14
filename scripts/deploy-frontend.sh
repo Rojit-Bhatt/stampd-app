@@ -14,6 +14,9 @@ export CLOUDFLARE_ACCOUNT_ID="d34229f93ab7aa8e06bfacb7febe25cc"
 # the same value wrangler's custom build command embeds, so the local build
 # and wrangler's build produce identical artifacts.
 export VITE_API_BASE_URL="${VITE_API_BASE_URL:-https://api.stampdd.club}"
+# Google sign-in: comes from the GOOGLE_CLIENT_ID repo secret in CI, or the
+# caller's environment for local deploys. Empty = the button stays hidden.
+export VITE_GOOGLE_CLIENT_ID="${VITE_GOOGLE_CLIENT_ID:-${GOOGLE_CLIENT_ID:-}}"
 cd frontend
 npx -y pnpm@9 run build
 
