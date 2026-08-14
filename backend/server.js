@@ -194,38 +194,84 @@ if (process.env.NODE_ENV === "production") {
 // safe in the wild, flip it to an enforcing Content-Security-Policy. A 60/min
 // limiter keeps a misfiring page (or an attacker spamming the endpoint) from
 // filling logs: each origin is rate-limited independently.
-// Body shape per the spec: { "csp-report": { "document-uri", "violated-directive", "original-policy", ... } }.
+//
+// Two wire formats reach here, and for a while this collector understood
+// neither, logging "[CSP report-only] undefined on undefined" for every
+// report:
+//
+//  1. report-uri (legacy, still what Chrome sends for `report-uri`) posts
+//     Content-Type: application/csp-report with a hyphenated body
+//     { "csp-report": { "document-uri", "violated-directive", ... } }.
+//  2. report-to / Reporting API posts Content-Type: application/reports+json
+//     with an ARRAY of { type, url, user_agent, body: { documentURL,
+//     violatedDirective, blockedURL, ... } } — camelCase, nested under `body`.
+//
+// The global express.json() above parses neither, because it only claims
+// application/json — so req.body was an empty object and every field read off
+// it was undefined. Hence the route-specific parser below, which claims both
+// content types, and normalizeCspReport, which flattens either shape.
 const { cspReportLimiter } = require("./middleware/rateLimitMiddleware");
 const cspReports = [];
 const MAX_CSP_REPORTS = 200;
-app.post("/api/csp-report", cspReportLimiter, (req, res) => {
-  const report = req.body?.["csp-report"] || req.body;
-  if (report && typeof report === "object") {
+
+const cspBodyParser = express.json({
+  type: ["application/csp-report", "application/reports+json", "application/json"],
+  limit: "64kb"
+});
+
+const normalizeCspReport = (raw) => {
+  if (!raw || typeof raw !== "object") return null;
+  // Reporting API: an array of report envelopes. Take the CSP ones.
+  if (Array.isArray(raw)) {
+    return raw
+      .filter((entry) => entry && typeof entry === "object" && entry.body)
+      .map((entry) => ({
+        documentUri: entry.body.documentURL,
+        violatedDirective: entry.body.violatedDirective || entry.body.effectiveDirective,
+        blockedUri: entry.body.blockedURL,
+        originalPolicy: entry.body.originalPolicy,
+        effectiveDirective: entry.body.effectiveDirective,
+        sample: entry.body.sample
+      }));
+  }
+  const legacy = raw["csp-report"] || raw;
+  if (!legacy || typeof legacy !== "object") return null;
+  return [{
+    documentUri: legacy["document-uri"],
+    violatedDirective: legacy["violated-directive"],
+    blockedUri: legacy["blocked-uri"],
+    originalPolicy: legacy["original-policy"],
+    effectiveDirective: legacy["effective-directive"],
+    sample: legacy["sample"]
+  }];
+};
+
+app.post("/api/csp-report", cspReportLimiter, cspBodyParser, (req, res) => {
+  const reports = normalizeCspReport(req.body) || [];
+  for (const report of reports) {
+    // A report that names neither a directive nor a blocked URL carries no
+    // information — storing it only crowds out real ones in the ring buffer.
+    if (!report.violatedDirective && !report.blockedUri) continue;
     cspReports.unshift({
       at: new Date().toISOString(),
       ip: req.ip,
       userAgent: req.headers?.["user-agent"],
-      documentUri: report["document-uri"],
-      violatedDirective: report["violated-directive"],
-      blockedUri: report["blocked-uri"],
-      originalPolicy: report["original-policy"],
-      effectiveDirective: report["effective-directive"],
-      sample: report["sample"]
+      ...report
     });
     if (cspReports.length > MAX_CSP_REPORTS) cspReports.length = MAX_CSP_REPORTS;
     console.log(
-      `[CSP report-only] ${report["violated-directive"]} on ${report["document-uri"]} (blocked: ${report["blocked-uri"] || "n/a"})`
+      `[CSP report-only] ${report.violatedDirective || "unknown-directive"} on ${report.documentUri || "unknown-document"} (blocked: ${report.blockedUri || "n/a"})`
     );
     console.log(JSON.stringify({
       type: "csp-violation",
       timestamp: new Date().toISOString(),
-      violatedDirective: report["violated-directive"],
-      documentUri: report["document-uri"],
-      blockedUri: report["blocked-uri"] || null,
+      violatedDirective: report.violatedDirective || null,
+      documentUri: report.documentUri || null,
+      blockedUri: report.blockedUri || null,
       userAgent: req.headers?.["user-agent"] || null
     }));
   }
-    // 204 no matter what — the spec wants the collector to never argue with a
+  // 204 no matter what — the spec wants the collector to never argue with a
   // reporter, or user agents may stop sending reports.
   res.status(204).end();
 });

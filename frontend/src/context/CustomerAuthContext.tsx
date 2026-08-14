@@ -117,6 +117,14 @@ export function CustomerAuthProvider({ children }: { children: React.ReactNode }
   // instead of clobbering the current one.
   const latestTenantRequestRef = useRef<string | null>(null);
 
+  // Exchanges already running, keyed by the same company/outlet pair. Two
+  // callers now legitimately ask for the SAME outlet at almost the same
+  // moment — TenantProvider fires the exchange as soon as the slugs are
+  // known (before /api/tenant has resolved), and TenantSessionSync fires it
+  // again once it has tenant.id. Without this they would both POST. Sharing
+  // the promise makes the second caller await the first instead.
+  const inFlightRef = useRef<Map<string, Promise<void>>>(new Map());
+
   const persistTenant = (t: string, u: User) => {
     localStorage.setItem("customer_auth_token", t);
     localStorage.setItem("customer_auth_user", JSON.stringify(u));
@@ -148,9 +156,19 @@ export function CustomerAuthProvider({ children }: { children: React.ReactNode }
   const readCachedTenantToken = (): string | null =>
     localStorage.getItem("customer_auth_token");
 
-  const ensureTenantSession = async (_slug: string, tenantOrgId: string | null) => {
-    const requestKey = tenantOrgId || _slug;
+  const ensureTenantSession = async (tenantKey: string, tenantOrgId: string | null) => {
+    // Keyed on the company/outlet PAIR, never on the organizationId, because
+    // the id isn't known yet on the earliest call (TenantProvider fires this
+    // before /api/tenant resolves) — and a key that changes identity between
+    // two calls for the same outlet would make the in-flight guard below
+    // discard the first call's own response. A bare outlet slug wouldn't do
+    // either: outlet slugs are unique only WITHIN a company.
+    const requestKey = tenantKey;
     latestTenantRequestRef.current = requestKey;
+
+    const running = inFlightRef.current.get(requestKey);
+    if (running) return running;
+
     const globalToken = localStorage.getItem("customer_global_session");
 
     // The app keeps ONE shared tenant-JWT slot across every outlet. If the
@@ -177,6 +195,18 @@ export function CustomerAuthProvider({ children }: { children: React.ReactNode }
       // and re-POSTing on every open would waste round-trips and hit the
       // latestTenantRequestRef race window for no gain.
       const needExchange = !cachedOrgId || cachedOrgId !== tenantOrgId;
+
+      // The earliest caller (TenantProvider, before /api/tenant resolves)
+      // passes a null tenantOrgId, so it cannot evaluate the skip above: with
+      // a cached JWT present, `cachedOrgId !== null` is always true and this
+      // would exchange on EVERY outlet open, turning the revisit case from
+      // zero network calls into one. So the early call only proceeds when the
+      // exchange is needed no matter what the id turns out to be — i.e. when
+      // there is no cached tenant JWT at all (first entry after login, after
+      // logout, or a brand-new device). Every other case waits for
+      // TenantSessionSync to call again with a real id and decide properly.
+      if (tenantOrgId === null && cachedOrgId) return;
+
       if (!needExchange) {
         const cachedUser = localStorage.getItem("customer_auth_user");
         if (cachedUser) {
@@ -192,38 +222,46 @@ export function CustomerAuthProvider({ children }: { children: React.ReactNode }
       }
 
       setIsLoading(true);
-      try {
-        const storedAccount = localStorage.getItem("customer_global_account");
-        if (storedAccount) setGlobalAccount(JSON.parse(storedAccount));
+      const exchange = (async () => {
+        try {
+          const storedAccount = localStorage.getItem("customer_global_account");
+          if (storedAccount) setGlobalAccount(JSON.parse(storedAccount));
 
-        const res = await apiRequest<{ success: boolean; token: string; user: User }>(
-          "/api/customer-auth/enter-tenant",
-          { method: "POST", role: "customer-global" },
-        );
-        // The user may have navigated to a different outlet while this was
-        // in flight — a newer ensureTenantSession call has since become the
-        // latest request. Applying this response now would attach the
-        // outlet this call was FOR onto the outlet now on screen.
-        if (latestTenantRequestRef.current !== requestKey) return;
-        if (res.success && res.token && res.user) {
-          persistTenant(res.token, res.user);
+          const res = await apiRequest<{ success: boolean; token: string; user: User }>(
+            "/api/customer-auth/enter-tenant",
+            { method: "POST", role: "customer-global" },
+          );
+          // The user may have navigated to a different outlet while this was
+          // in flight — a newer ensureTenantSession call has since become the
+          // latest request. Applying this response now would attach the
+          // outlet this call was FOR onto the outlet now on screen.
+          if (latestTenantRequestRef.current !== requestKey) return;
+          if (res.success && res.token && res.user) {
+            persistTenant(res.token, res.user);
+          }
+        } catch (err) {
+          // Global session invalid/expired/revoked — drop it and any tenant
+          // token, don't silently keep the customer half-signed-in. Only act
+          // if this is still the latest request; a stale failure must not
+          // clear a session a newer, successful request just established.
+          if (latestTenantRequestRef.current !== requestKey) return;
+          const status = (err as any).status;
+          if (status === 401 || status === 403) {
+            clearGlobal();
+            clearTenant();
+          }
+          throw err;
+        } finally {
+          // Cleared before isLoading so a caller awaiting this promise and
+          // immediately re-calling gets a fresh attempt rather than the
+          // settled one — matters on the 401 path, where the next call must
+          // be free to re-exchange against a newly established session.
+          inFlightRef.current.delete(requestKey);
+          if (latestTenantRequestRef.current === requestKey) setIsLoading(false);
         }
-      } catch (err) {
-        // Global session invalid/expired/revoked — drop it and any tenant
-        // token, don't silently keep the customer half-signed-in. Only act
-        // if this is still the latest request; a stale failure must not
-        // clear a session a newer, successful request just established.
-        if (latestTenantRequestRef.current !== requestKey) return;
-        const status = (err as any).status;
-        if (status === 401 || status === 403) {
-          clearGlobal();
-          clearTenant();
-        }
-        throw err;
-      } finally {
-        if (latestTenantRequestRef.current === requestKey) setIsLoading(false);
-      }
-      return;
+      })();
+      inFlightRef.current.set(requestKey, exchange);
+      return exchange;
     }
 
     // No global session (pre-migration device, or never logged in) — only

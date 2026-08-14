@@ -1,7 +1,8 @@
-import React, { createContext, useContext, useRef } from "react";
+import React, { createContext, useContext, useEffect, useRef } from "react";
 import { useParams, useLocation } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { tenantPath } from "../lib/tenantPath";
+import { useCustomerAuth } from "./CustomerAuthContext";
 import { apiRequest, setTenantRef } from "../lib/api";
 import { tenantPalette } from "../lib/color";
 import type { EventReward } from "../components/customer/EventCard";
@@ -93,6 +94,39 @@ export function TenantProvider({ children }: { children: React.ReactNode }) {
   // already carries the company+outlet headers the public routes require.
   setTenantRef(companySlug && outletSlug ? { company: companySlug, outlet: outletSlug } : null);
 
+  // Start the tenant-session exchange HERE rather than leaving it all to
+  // TenantSessionSync, which is a CHILD and therefore cannot run until this
+  // component stops returning its loading spinner — i.e. not until
+  // /api/tenant has resolved. That made a cold load three serial round trips
+  // deep before a single dashboard number was even requested:
+  //   index.html+bundle -> GET /api/tenant -> POST enter-tenant -> /api/points/*
+  //
+  // The exchange never needed /api/tenant: the backend resolves the outlet
+  // from the X-Company-Slug/X-Outlet-Slug headers set on the line above (see
+  // middleware/tenantMiddleware.js extractTenantRef), not from any id the
+  // client sends. So it can run CONCURRENTLY with the tenant query.
+  //
+  // The null organizationId is passed because that id is exactly what isn't
+  // known yet. ensureTenantSession deliberately does nothing in that case
+  // unless there is no cached tenant JWT at all — the one situation where an
+  // exchange is required regardless of what the id turns out to be. Every
+  // other case still waits for TenantSessionSync to call with the real id,
+  // so the "already the right outlet, skip the POST" fast path is untouched
+  // and a revisit gains no extra request.
+  //
+  // Isolation is unaffected: what guarantees an outlet never renders another
+  // outlet's data is CustomerLayout's sessionStale gate plus the status latch
+  // below, neither of which depends on WHEN this request starts.
+  const { ensureTenantSession } = useCustomerAuth();
+  const tenantKey = companySlug && outletSlug ? `${companySlug}/${outletSlug}` : null;
+  const prefetchedRef = useRef<string | null>(null);
+  useEffect(() => {
+    if (!tenantKey || prefetchedRef.current === tenantKey) return;
+    prefetchedRef.current = tenantKey;
+    ensureTenantSession(tenantKey, null).catch(() => {});
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tenantKey]);
+
   // A plain useQuery (no staleTime override) so it refetches on window focus
   // and remount like the rest of the app's data hooks — branding/program/
   // contact/events an admin edits mid-session now reach an already-open
@@ -148,7 +182,6 @@ export function TenantProvider({ children }: { children: React.ReactNode }) {
   // refetch flicker fix intact (same key -> never resets) while forcing a
   // real loading state for an actual outlet switch. See
   // docs/bug/repro-tenant-status-latch.js for the isolated repro.
-  const tenantKey = `${companySlug}/${outletSlug}`;
   const prevTenantKeyRef = useRef<string | null>(null);
   const statusRef = useRef<"loading" | "ready" | "suspended" | "notfound">("loading");
   if (prevTenantKeyRef.current !== tenantKey) {

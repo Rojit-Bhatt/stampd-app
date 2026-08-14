@@ -223,6 +223,32 @@ unchanged, and keep `CustomerLayout`'s `sessionStale` gate exactly as it is,
 so R5 still holds: the gate, not the request ordering, is what guarantees
 isolation.
 
+**Narrowed during implementation.** The plan above assumed the early call
+could simply run on every outlet open. It can't: the tenant JWT carries only
+`organizationId`, no slugs (`authService.formatAuthPayload`), so a caller
+that doesn't yet know the id cannot evaluate the existing skip test
+`!cachedOrgId || cachedOrgId !== tenantOrgId` — with a null id and a cached
+JWT present, that is unconditionally true. A naive early call would therefore
+exchange on **every** outlet open, turning the revisit case from zero network
+calls into one and handing straight back the round trip it just saved.
+
+So the early call proceeds only when there is no cached tenant JWT at all —
+first entry after login, after logout, a new device — the one case where the
+exchange is required regardless of what the id turns out to be. Strict
+improvement, no revisit regression. It does mean an outlet **switch** (cached
+JWT present, belonging to the other outlet) still waits for `/api/tenant`
+before exchanging; removing that last serial hop needs the slug→orgId mapping
+on the client, which is a larger change than this bug warrants. Listed under
+follow-ups instead.
+
+The request key also moved from `tenantOrgId || slug` to the `company/outlet`
+pair across all callers, because the early and late calls for one outlet must
+share an identity or the in-flight guard would discard the early call's own
+response. That incidentally closes a latent collision: a bare outlet slug is
+unique only within its company.
+
+Regression harness: `docs/bug/repro-tenant-session-prefetch.js`.
+
 ### P5 — Scope the account query by outlet (small, R5 hardening)
 
 `useAccount.ts` keys on `["account", role]` with no tenant in the key, but
@@ -240,7 +266,13 @@ useful instead of noise. Lowest priority; do last.
 
 ## 4. Verification
 
-1. `cd frontend && npm run build` — clean typecheck and build.
+**Build with pnpm, not npm.** An `npm install` in this repo produces a
+silently wrong PWA build: workbox's glob for the precache manifest fails
+(`brace_expansion_1.expand is not a function`) and the manifest comes out with
+5 entries instead of the real set — a warning, not an error, so the build
+"succeeds". `pnpm install` resolves it correctly. CI already uses pnpm.
+
+1. `cd frontend && npx tsc --noEmit && npx vite build` — clean.
 2. Inspect the built `dist/sw.js`: must contain `skipWaiting` and
    `clientsClaim`; manifest entry count must be below 128 and must not list
    admin/platform chunks.

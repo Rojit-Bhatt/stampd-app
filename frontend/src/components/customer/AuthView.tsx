@@ -92,7 +92,7 @@ export function AuthView({ mode }: { mode: Mode }) {
     const toastId = toast.loading("Signing you in…");
     try {
       await login(data.email, data.password);
-      await ensureTenantSession(slug, tenant?.id ?? null);
+      await ensureTenantSession(`${companySlug}/${slug}`, tenant?.id ?? null);
       toast.success("Good to see you again!", { id: toastId });
       navigate(tenantPath(companySlug, slug, "dashboard"));
     } catch (err) {
@@ -113,7 +113,7 @@ export function AuthView({ mode }: { mode: Mode }) {
         companySlug, outletSlug: slug,
         birthdayMonth: data.birthdayMonth, birthdayDay: data.birthdayDay, gender: data.gender ?? undefined,
       });
-      await ensureTenantSession(slug, tenant?.id ?? null);
+      await ensureTenantSession(`${companySlug}/${slug}`, tenant?.id ?? null);
       toast.success("Welcome! You can verify your email later before redeeming.", { id: toastId });
       navigate(tenantPath(companySlug, slug, "dashboard"));
     } catch (err) {
@@ -127,7 +127,7 @@ export function AuthView({ mode }: { mode: Mode }) {
     if (!credential) return;
     try {
       const { needsPhone } = await loginWithGoogle(credential);
-      await ensureTenantSession(slug, tenant?.id ?? null);
+      await ensureTenantSession(`${companySlug}/${slug}`, tenant?.id ?? null);
       if (needsPhone) setShowPhoneStep(true);
       else navigate(tenantPath(companySlug, slug, "dashboard"));
     } catch (err) {

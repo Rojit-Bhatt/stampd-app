@@ -245,7 +245,7 @@ export default function ClaimLanding() {
     setBusy(true);
     try {
       await login(email, password);
-      await ensureTenantSession(slug, tenant?.id ?? null);
+      await ensureTenantSession(`${companySlug}/${slug}`, tenant?.id ?? null);
       if (pendingClaimId) setStage("fulfilling");
     } catch (e) {
       toast.error((e as Error).message || "Couldn't sign you in — try again.");
@@ -262,7 +262,7 @@ export default function ClaimLanding() {
         pendingClaimId: pendingClaimId ?? undefined,
         claimSecret: claimSecret ?? undefined,
       });
-      await ensureTenantSession(slug, tenant?.id ?? null);
+      await ensureTenantSession(`${companySlug}/${slug}`, tenant?.id ?? null);
       if (pendingClaimId) {
         setStage("fulfilling");
       } else {
@@ -280,7 +280,7 @@ export default function ClaimLanding() {
     setBusy(true);
     try {
       const { needsPhone } = await loginWithGoogle(credential);
-      await ensureTenantSession(slug, tenant?.id ?? null);
+      await ensureTenantSession(`${companySlug}/${slug}`, tenant?.id ?? null);
       if (needsPhone) {
         setShowPhoneStep(true);
       } else {

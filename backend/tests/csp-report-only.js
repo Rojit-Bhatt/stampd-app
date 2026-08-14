@@ -141,6 +141,43 @@ async function main() {
     };
     const posted = await api("/api/csp-report", { method: "POST", body: report });
     check("POST /api/csp-report returns 204", posted.status === 204, posted.body);
+
+    // --- the two content types browsers ACTUALLY use ---
+    // The global express.json() only claims application/json, so for a long
+    // time neither of these parsed: req.body was {} and every field logged as
+    // undefined ("[CSP report-only] undefined on undefined"). Production logs
+    // were full of exactly that. These two posts are the regression guard —
+    // each must produce a structured line naming its real directive.
+    const legacyContentType = await api("/api/csp-report", {
+      method: "POST",
+      headers: { "Content-Type": "application/csp-report" },
+      body: {
+        "csp-report": {
+          "document-uri": "https://example.com/legacy",
+          "violated-directive": "font-src",
+          "blocked-uri": "https://fonts.gstatic.com/s/inter/x.woff2"
+        }
+      }
+    });
+    check("POST with Content-Type: application/csp-report returns 204", legacyContentType.status === 204);
+
+    // Reporting API shape: an ARRAY of envelopes, camelCase, under `body`.
+    const reportingApi = await api("/api/csp-report", {
+      method: "POST",
+      headers: { "Content-Type": "application/reports+json" },
+      body: [{
+        type: "csp-violation",
+        url: "https://example.com/reporting-api",
+        body: {
+          documentURL: "https://example.com/reporting-api",
+          violatedDirective: "frame-src",
+          effectiveDirective: "frame-src",
+          blockedURL: "https://accounts.google.com/"
+        }
+      }]
+    });
+    check("POST with Content-Type: application/reports+json returns 204", reportingApi.status === 204);
+
     // Done ingesting — stop diverting the parent's console.log so this
     // suite's own check() output and summary are visible again. The child
     // server has already flushed the violation line above; anything it
@@ -166,6 +203,32 @@ async function main() {
         check("the log carries documentUri", parsed.documentUri === "https://example.com/");
         check("the log carries a timestamp", /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}/.test(parsed.timestamp));
       }
+
+      // Both alternate wire formats must reach the log with their REAL
+      // directive — "undefined" here is the exact production symptom.
+      const all = [...logs, ...serverLines].filter((l) => l.includes('"type":"csp-violation"'));
+      const hasDirective = (directive, blocked) =>
+        all.some((l) => l.includes(`"violatedDirective":"${directive}"`) && l.includes(blocked));
+      check(
+        "application/csp-report body is parsed (font-src violation logged, not undefined)",
+        hasDirective("font-src", "fonts.gstatic.com"),
+      );
+      check(
+        "application/reports+json array body is parsed (frame-src violation logged, not undefined)",
+        hasDirective("frame-src", "accounts.google.com"),
+      );
+      // JSON.stringify DROPS undefined keys, so the production symptom shows
+      // up as an ABSENT violatedDirective, not a null one — assert every
+      // logged line actually names a directive.
+      const directives = all.map((l) => {
+        try { return JSON.parse(l.replace(/^\[server:\d+\]\s*/, "")).violatedDirective; }
+        catch { return null; }
+      });
+      check(
+        "every logged violation names a directive (no undefined-on-undefined lines)",
+        directives.length > 0 && directives.every(Boolean),
+        JSON.stringify(directives),
+      );
     }
 
     // --- dev-mode behaviour: with NODE_ENV unset there is no dist served

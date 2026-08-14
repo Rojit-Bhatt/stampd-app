@@ -6,15 +6,18 @@ import { useCustomerAuth } from "../../context/CustomerAuthContext";
 // dashboard, ...) — this is what makes global-session recognition apply
 // everywhere a customer can enter the app, not just the QR-claim flow.
 export function TenantSessionSync() {
-  const { tenant } = useTenant();
+  const { companySlug, outletSlug, tenant } = useTenant();
   const { ensureTenantSession } = useCustomerAuth();
 
   useEffect(() => {
     if (tenant) {
-      ensureTenantSession(tenant.slug, tenant.id).catch(() => {});
+      // Keyed on the company/outlet PAIR so this shares an identity with the
+      // earlier call TenantProvider makes before this component can even
+      // mount — an outlet slug alone is unique only within its company.
+      ensureTenantSession(`${companySlug}/${outletSlug}`, tenant.id).catch(() => {});
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [tenant?.slug, tenant?.id]);
+  }, [companySlug, outletSlug, tenant?.id]);
 
   return null;
 }

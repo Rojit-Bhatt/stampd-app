@@ -41,6 +41,37 @@ export default defineConfig({
       // index.html instead) — list it here so the service worker still
       // precaches it.
       includeAssets: ["apple-touch-icon.png"],
+      injectManifest: {
+        // The installed PWA is the CUSTOMER app — start_url is /explore, and
+        // a customer never opens the business or platform console. Precaching
+        // those route chunks made every customer phone download and store the
+        // entire back office it will never see, on every new worker version.
+        //
+        // Excluding a chunk only removes it from the precache; the console
+        // still loads it from the network exactly as before, it just isn't
+        // offline-capable. That is the intended trade: staff use the console
+        // at a counter on wifi, customers scan a QR on mobile data.
+        globIgnores: [
+          "**/node_modules/**/*",
+          "assets/Admin*.js",
+          "assets/Platform*.js",
+          "assets/Compan*.js",
+          "assets/Branding-*.js",
+          "assets/MenuManagement-*.js",
+          "assets/GenerateQr-*.js",
+          "assets/RedeemPoints-*.js",
+          "assets/PointsProgram-*.js",
+          "assets/RegisterCompany-*.js",
+          "assets/SubscriptionKeys-*.js",
+          "assets/SubscriptionPanel-*.js",
+          "assets/Plans-*.js",
+          "assets/ReviewQrGenerator-*.js",
+          "assets/StaffPinGate-*.js",
+          "assets/CreatePreviewModal-*.js",
+          "assets/DateRangeFilter-*.js",
+          "assets/ScrollableTable-*.js",
+        ],
+      },
       manifest: {
         name: "Stampd",
         short_name: "Stampd",
