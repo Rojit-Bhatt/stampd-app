@@ -2,7 +2,7 @@
   X-Content-Type-Options: nosniff
   X-Frame-Options: SAMEORIGIN
   Referrer-Policy: strict-origin-when-cross-origin
-  Permissions-Policy: camera=(), microphone=(), geolocation=(self)
+  Permissions-Policy: camera=(self), microphone=(), geolocation=(self)
   # Report-only first: stampdd.club deploys as a PWA (service worker +
   # Google/Cloudflare third-party scripts) and a hard CSP in one shot would
   # be an outage gamble. CSP-Report-Only reports violations to the API's
