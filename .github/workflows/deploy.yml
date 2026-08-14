@@ -47,22 +47,14 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
-      # Fresh build: plain (uncompressed) outputs, API base = production.
-      - name: Build frontend
-        env:
-          VITE_API_BASE_URL: https://api.stampdd.club
-        run: pnpm run --filter frontend build
-
-      # Record the just-built bundle's hash so we can prove the live site is
-      # serving THIS build afterwards (not a cached/stray older version).
-      - name: Fingerprint the build artifacts
-        id: buildhash
-        run: |
-          ls frontend/dist/assets/index-*.js
-          echo "hash=$(sha256sum frontend/dist/assets/index-*.js | awk '{print $1}')" >> "$GITHUB_OUTPUT"
-
       # The deploy itself: static assets + the edge worker with the /api proxy
       # (see scripts/deploy-frontend.sh — same logic, token from secrets).
+      # NOTE: wrangler's custom build command re-runs `VITE_API_BASE_URL=... pnpm
+      # build` itself and ships THAT output. Fingerprint AFTER the deploy so the
+      # hash compared against the live bundle is the one actually shipped.
+      # (Earlier setup built here AND inside wrangler; the two builds produced
+      # different hashes and the verify step falsely failed — see the
+      # 2026-08-14 post-mortem in docs/bug/turnstile-google-diagnosis.md.)
       - name: Deploy to Cloudflare
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
@@ -70,6 +62,14 @@ jobs:
         run: |
           cd frontend
           npx -y wrangler deploy --outdir=/tmp/wrangler-out
+
+      # Fingerprint the build that was ACTUALLY deployed (wrangler's own build
+      # output) so the live-bundle check proves the live site serves this one.
+      - name: Fingerprint the deployed build
+        id: buildhash
+        run: |
+          ls frontend/dist/assets/index-*.js
+          echo "hash=$(sha256sum frontend/dist/assets/index-*.js | awk '{print $1}')" >> "$GITHUB_OUTPUT"
 
       # Post-deploy verification — the deploy command finishing proves
       # nothing (the 2026-08-13 outage: a "successful" deploy shipped a
