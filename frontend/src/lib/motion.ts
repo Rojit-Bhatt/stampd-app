@@ -17,14 +17,18 @@ export const INSTANT: Transition = { duration: 0 };
 export const SPRINGS = {
   /** Default UI entrance — dialogs, sheets, cards, numbers. Critically damped, no overshoot. */
   settle: { type: "spring", stiffness: 260, damping: 26 },
-  /** Earn: the coin lands. Overshoots to 1.16 before settling. */
-  coinPop: { type: "spring", stiffness: 280, damping: 14 },
-  /** Redeem: the exchange. Voucher flips rotateY 90 -> 0. */
-  voucherFlip: { type: "spring", stiffness: 220, damping: 18 },
-  /** Earn: the figure rises from behind the ledger rule. Slight overshoot, like a value landing. */
-  ledgerRise: { type: "spring", stiffness: 210, damping: 21 },
-  /** Redeem: the figure settles down onto the rule. Heavier and flatter than the rise — spending should not bounce. */
-  ledgerSettle: { type: "spring", stiffness: 190, damping: 28 },
+  /**
+   * A confirmation surface arriving. Critically damped — no overshoot at all.
+   *
+   * Bounce is earned by momentum: it reads as right when the user flicked or
+   * threw the thing themselves. Earn/redeem are system-initiated results, so a
+   * bounce here would be decoration rather than physics. Expressed as
+   * bounce/duration (Apple's damping/response pair) rather than
+   * stiffness/damping, because those are the terms this is tuned in.
+   */
+  confirm: { type: "spring", bounce: 0, duration: 0.4 },
+  /** Same character, quicker — for elements landing ON a surface that has already arrived. */
+  confirmQuick: { type: "spring", bounce: 0, duration: 0.3 },
   /** Card-stack swipe/settle — deliberately softer and slower than `settle`, for a large element the eye tracks the whole way rather than a small one that just needs to arrive. */
   cardGlide: { type: "spring", stiffness: 170, damping: 26 },
 } satisfies Record<string, Transition>;
