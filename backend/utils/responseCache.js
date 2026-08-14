@@ -7,7 +7,15 @@
 //
 // Design invariants:
 // - Keys include tenant (company+outlet) and locale, so variations can never
-//   be served to the wrong tenant or language.
+//   be served to the wrong tenant or language. That is only true of THIS
+//   store, though: every outlet fetches the same URL (`GET /api/tenant`,
+//   `GET /api/menu`) and is distinguished solely by the X-Company-Slug /
+//   X-Outlet-Slug request headers. Browser and CDN caches key on the URL, so
+//   without the `Vary` below they re-served the first outlet's body for the
+//   next outlet for the whole max-age — the "switching outlets shows the
+//   previous outlet's dashboard" bug. Tenant-scoped responses are also
+//   `private`: a shared cache that ignores Vary must not hold one outlet's
+//   body at all. See tests/response-cache.js.
 // - Cached bodies are plain JS objects (uncompressed). Express still runs
 //   `compression()` AFTER the cache layer, so JSON/HTML responses get exactly
 //   one compression pass — no double-compression, per the transit task.
@@ -19,6 +27,11 @@
 //   too when it fronts the API.
 
 const DEFAULT_TTL_MS = 5 * 60 * 1000; // 5 minutes
+
+// The request headers a cached body actually depends on. Exactly the inputs
+// cacheKey() reads, so a downstream cache splits its entries the same way
+// this store does.
+const TENANT_VARY = "X-Company-Slug, X-Outlet-Slug, Accept-Language";
 
 let store = new Map();
 
@@ -61,14 +74,22 @@ function cacheKey(req, opts) {
 function cacheMiddleware({ kind, ttlMs = DEFAULT_TTL_MS, tenantKey: tenantKeyFn, localeKey, extraKey } = {}) {
   return function responseCache(req, res, next) {
     if (req.method !== "GET" && req.method !== "HEAD") return next();
+    const tenant = tenantKeyFn ? tenantKeyFn(req) : tenantKey(req);
     const key = cacheKey(req, { kind, tenantKey: tenantKeyFn, localeKey, extraKey });
+    // Everything the cache key varies on has to be declared to downstream
+    // caches too, or they collapse distinct tenants/locales onto one URL.
+    res.vary(TENANT_VARY);
+    // A tenant-scoped body belongs to exactly one outlet and one visitor's
+    // request headers — never let a shared cache hold it. Only the genuinely
+    // global catalogs (tenantKey: () => "global") stay publicly cacheable.
+    const visibility = tenant === "global" ? "public" : "private";
+    const cacheControl = `${visibility}, max-age=${Math.round(ttlMs / 1000)}`;
     const entry = store.get(key);
     if (entry && entry.expiresAt > Date.now()) {
-      // Cache-Control: short max-age — Cloudflare (or any CDN) can re-serve
-      // this exact response until the server purges the key on content edits.
-      // The header value mirrors the TTL so stale edge copies can't outlive
-      // the server's copy.
-      res.set("Cache-Control", `public, max-age=${Math.round(ttlMs / 1000)}`);
+      // Cache-Control: short max-age — a cache may re-serve this exact
+      // response until the server purges the key on content edits. The header
+      // value mirrors the TTL so stale copies can't outlive the server's.
+      res.set("Cache-Control", cacheControl);
       return res.json(entry.body);
     }
     // Intercept res.json to capture the body for future cache hits.
@@ -77,7 +98,7 @@ function cacheMiddleware({ kind, ttlMs = DEFAULT_TTL_MS, tenantKey: tenantKeyFn,
       const code = res.statusCode >= 200 && res.statusCode < 300;
       if (code && !res.headersSent) {
         store.set(key, { body: typeof body === "string" ? { data: body } : body, expiresAt: Date.now() + ttlMs });
-        res.set("Cache-Control", `public, max-age=${Math.round(ttlMs / 1000)}`);
+        res.set("Cache-Control", cacheControl);
       }
       return originalJson(body);
     };

@@ -15,6 +15,29 @@ npm run dev
 
 The backend can run with its in-memory fallback during local development. Use MongoDB when you need persistence across restarts or when testing database-specific behaviour.
 
+### macOS (Apple Silicon): one extra step
+
+`package-lock.json` was generated on Linux, so it records only the `linux-*`
+builds of the packages that ship a native binary. On an arm64 Mac, `npm ci`
+therefore installs none of them and Vite dies at startup with `Cannot find
+module @rollup/rollup-darwin-arm64` (or the esbuild / lightningcss /
+`@tailwindcss/oxide` / sharp equivalent — they surface one at a time, so fixing
+them individually turns into whack-a-mole). Install all six in a single
+command, which leaves the lockfile untouched:
+
+```bash
+npm i --no-save @rollup/rollup-darwin-arm64 @esbuild/darwin-arm64 lightningcss-darwin-arm64 @img/sharp-darwin-arm64 @img/sharp-libvips-darwin-arm64 @tailwindcss/oxide-darwin-arm64
+```
+
+Re-run it after any `npm ci`, which wipes them again. Install them one at a
+time and npm prunes the previous one — it has to be one command.
+
+Regenerating the lockfile on macOS does fix this permanently, but it also
+re-hoists `zod` (backend wants `^4`, frontend wants `^3`), which drags
+`@hookform/resolvers` to the root against `zod@4` and breaks the frontend
+typecheck. That dependency split needs resolving first — don't regenerate the
+lockfile as a drive-by.
+
 ## Change guidelines
 
 Keep HTTP concerns in route modules and reusable business rules in services. Preserve the existing middleware order and do not bypass tenant or role checks for convenience. Frontend API calls should use the existing client utilities or hooks rather than duplicating headers, error parsing, or session handling in individual views.

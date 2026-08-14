@@ -46,6 +46,7 @@ async function main() {
     }).then(async (r) => ({
       status: r.status,
       cacheControl: r.headers.get("cache-control"),
+      vary: r.headers.get("vary"),
       body: await r.json().catch(() => null)
     }));
   };
@@ -76,8 +77,10 @@ async function main() {
     // ---- 1. Cold vs warm: cached read is fast ----
     const cold = await timed(() => api("/api/menu"));
     check("cold public menu -> 200", cold.res.status === 200);
-    check("cold response has public, max-age=300 Cache-Control",
-      cold.res.cacheControl && /public, max-age=300/.test(cold.res.cacheControl), cold.res.cacheControl);
+    // `private`, not `public`: a tenant-scoped body must never sit in a shared
+    // cache that might ignore Vary and hand it to another outlet. See 6.
+    check("cold response has private, max-age=300 Cache-Control",
+      cold.res.cacheControl && /private, max-age=300/.test(cold.res.cacheControl), cold.res.cacheControl);
     const coldMs = cold.ms;
     const itemInCold = cold.res.body.items.find((i) => (i.id || i._id) === itemId);
     check("cold response contains seeded item", Boolean(itemInCold));
@@ -85,7 +88,7 @@ async function main() {
     const warm = await timed(() => api("/api/menu"));
     check("warm (cached) public menu -> 200", warm.res.status === 200);
     check("warm response carries the same Cache-Control",
-      warm.res.cacheControl && /public, max-age=300/.test(warm.res.cacheControl), warm.res.cacheControl);
+      warm.res.cacheControl && /private, max-age=300/.test(warm.res.cacheControl), warm.res.cacheControl);
     check("warm body identical to cold body", JSON.stringify(warm.res.body) === JSON.stringify(cold.res.body));
     const warmMs = warm.ms;
     // Threshold is proportional to the measured warm latency: what the test
@@ -155,6 +158,33 @@ async function main() {
       plansFirst.res.cacheControl && /public, max-age=300/.test(plansFirst.res.cacheControl), plansFirst.res.cacheControl);
     const plansSecond = await timed(() => api("/api/platform/plans/public"));
     check("plans warm read under 5ms", plansSecond.ms < warmLimitMs, { plansWarmMs: plansSecond.ms });
+
+    // ---- 6. Downstream caches key on the URL, not on our headers ----
+    // The isolation checks above only prove THIS process keys correctly. Every
+    // outlet requests the same URL (`GET /api/tenant`, `GET /api/menu`) and is
+    // told apart solely by X-Company-Slug / X-Outlet-Slug, so without those
+    // headers named in Vary the browser (and any CDN) re-served the first
+    // outlet's body for the next outlet for the whole max-age — which is
+    // exactly the "switched outlets, still seeing the previous outlet's
+    // dashboard" bug the frontend could not fix from its side.
+    const varyDeclares = (v) =>
+      Boolean(v) &&
+      /x-company-slug/i.test(v) &&
+      /x-outlet-slug/i.test(v) &&
+      /accept-language/i.test(v);
+    const tenantA = await api("/api/tenant", { slug: SLUG });
+    const tenantB = await api("/api/tenant", { slug: SECOND_OUTLET });
+    check("tenant A and B really are different bodies on the same URL",
+      tenantA.body?.tenant?.id !== tenantB.body?.tenant?.id,
+      { a: tenantA.body?.tenant?.name, b: tenantB.body?.tenant?.name });
+    check("/api/tenant Vary names both slug headers and Accept-Language",
+      varyDeclares(tenantA.vary), tenantA.vary);
+    check("/api/menu Vary names both slug headers and Accept-Language",
+      varyDeclares(firstOutRead.vary), firstOutRead.vary);
+    check("/api/tenant is private (never held by a shared cache)",
+      tenantA.cacheControl && /^private\b/.test(tenantA.cacheControl), tenantA.cacheControl);
+    check("global plans catalog stays publicly cacheable",
+      plansFirst.res.cacheControl && /^public\b/.test(plansFirst.res.cacheControl), plansFirst.res.cacheControl);
 
     console.log(`\n${failures === 0 ? "ALL PASS" : failures + " FAILURES"}`);
     process.exit(failures === 0 ? 0 : 1);

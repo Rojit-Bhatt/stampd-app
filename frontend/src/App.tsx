@@ -10,6 +10,7 @@ import { TenantProvider } from './context/TenantContext';
 import { CelebrationProvider } from './context/CelebrationContext';
 import { Toaster } from "@/lib/toast";
 import ErrorBoundary from './components/ErrorBoundary';
+import { ScrollToTop } from './components/ScrollToTop';
 import { AdminGuard } from './components/admin/AdminGuard';
 import { AdminLayout } from './components/admin/AdminLayout';
 import { PlatformLayout } from './components/platform/PlatformLayout';
@@ -106,6 +107,11 @@ const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID as string | undef
 export default function App() {
   const routes = (
     <BrowserRouter>
+      {/* Outside the Suspense boundary too: the route being navigated TO is
+          lazy, so anything inside the boundary is unmounted while its chunk
+          loads — the reset has to come from a component that stays mounted
+          across that gap. */}
+      <ScrollToTop />
       {/* Above the Suspense boundary on purpose. A celebration outlives the
           navigation that triggers it — earn/redeem fire it and immediately
           route to the outlet dashboard, which is lazy-loaded. Suspending
