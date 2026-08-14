@@ -11,4 +11,19 @@
   # Edit origins to match the actual deployment before promoting:
   #   - connect-src needs the API origin (VITE_API_BASE_URL)
   #   - img-src needs the API origin + stampdd.club if avatars are hosted there
-  Content-Security-Policy-Report-Only: default-src 'self'; script-src 'self' https://accounts.google.com https://*.googleapis.com 'unsafe-inline' https://*.google-analytics.com; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; font-src 'self' data:; connect-src 'self' https://accounts.google.com https://www.google-analytics.com https://*.googleapis.com https://api.stampdd.club; worker-src 'self'; base-uri 'self'; form-action 'self' https://accounts.google.com; frame-ancestors 'none'; report-uri /api/csp-report
+  #
+  # Every directive below must describe an origin the app ACTUALLY loads from.
+  # A report-only policy that doesn't still costs real time: each violation is
+  # its own POST to report-uri, issued during page load, same-origin as the
+  # document — so a wrong policy turns one page load into ~40-100 extra
+  # requests contending with the app's own. The three origins called out here
+  # were each measured producing violations on a live /explore load:
+  #   - font-src: src/styles/fonts.css @imports Google Fonts, whose woff2
+  #     files are served from fonts.gstatic.com (26 violations on one load)
+  #   - style-src: that same @import fetches the stylesheet from
+  #     fonts.googleapis.com, and Google Sign-In injects accounts.google.com/gsi/style
+  #   - frame-src: Google Sign-In renders an accounts.google.com iframe. It was
+  #     absent entirely, so it fell back to default-src 'self' and violated on
+  #     every render.
+  # See docs/bug/2026-08-14-stale-sw-and-csp-report-storm.md.
+  Content-Security-Policy-Report-Only: default-src 'self'; script-src 'self' https://accounts.google.com https://*.googleapis.com 'unsafe-inline' https://*.google-analytics.com; style-src 'self' 'unsafe-inline' https://accounts.google.com https://fonts.googleapis.com; img-src 'self' data: https:; font-src 'self' data: https://fonts.gstatic.com; connect-src 'self' https://accounts.google.com https://www.google-analytics.com https://*.googleapis.com https://api.stampdd.club; frame-src 'self' https://accounts.google.com; worker-src 'self'; base-uri 'self'; form-action 'self' https://accounts.google.com; frame-ancestors 'none'; report-uri /api/csp-report

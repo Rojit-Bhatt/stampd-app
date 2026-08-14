@@ -183,6 +183,9 @@ importers:
       workbox-precaching:
         specifier: ^7.4.1
         version: 7.4.1
+      workbox-window:
+        specifier: ^7.4.1
+        version: 7.4.1
       zod:
         specifier: ^3.25.0
         version: 3.25.76

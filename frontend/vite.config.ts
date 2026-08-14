@@ -13,6 +13,12 @@ export default defineConfig({
       strategies: "injectManifest",
       srcDir: "src",
       filename: "sw.ts",
+      // main.tsx registers the worker itself via `virtual:pwa-register`, so
+      // the plugin must not ALSO emit registerSW.js and a <script> tag for it
+      // — that would register the same worker twice. The emitted script is a
+      // bare one-shot register with no update polling, which is precisely
+      // what left deployed devices stuck on an old build.
+      injectRegister: null,
       // Without this the plugin is a BUILD-ONLY plugin: `vite dev` serves no
       // manifest, injects no <link rel="manifest">, and registers no service
       // worker. Chrome judges installability from exactly those, so it never
