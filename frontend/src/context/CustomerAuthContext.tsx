@@ -144,12 +144,54 @@ export function CustomerAuthProvider({ children }: { children: React.ReactNode }
     setGlobalAccount(null);
   };
 
+  // Reads the customer_auth_token slot synchronously — used below to decide
+  // whether an exchange is even needed, without waiting for React state.
+  const readCachedTenantToken = (): string | null =>
+    localStorage.getItem("customer_auth_token");
+
   const ensureTenantSession = async (_slug: string, tenantOrgId: string | null) => {
     const requestKey = tenantOrgId || _slug;
     latestTenantRequestRef.current = requestKey;
     const globalToken = localStorage.getItem("customer_global_session");
 
+    // The app keeps ONE shared tenant-JWT slot across every outlet. If the
+    // cached JWT belongs to a DIFFERENT outlet than the one on screen, this
+    // page's data queries would hit the wrong tenant (backend scopes by the
+    // JWT, never the URL) and the sessionStale gate in CustomerLayout would
+    // show the full-screen spinner until a re-fire happened. But the effect
+    // that re-fires this function (TenantSessionSync's tenant.id change)
+    // does NOT fire on a second visit to an outlet the customer already
+    // opened — its tenant query result is identical to the first visit, so
+    // nothing ever kicked off recovery: the spinner stayed forever.
+    //
+    // Fix: treat "stored JWT belongs to the wrong tenant" as an active
+    // recovery path, exactly like an absent JWT. With a valid global
+    // session, exchanging for a fresh tenant JWT is free and fast — do it
+    // here, don't wait for anything else to re-trigger it. (Backend
+    // regression: tests/outlet-switch-stuck-loader.js.)
     if (globalToken) {
+      const cachedToken = readCachedTenantToken();
+      const payload = cachedToken ? decodeJwtPayload(cachedToken) : null;
+      const cachedOrgId = payload?.organizationId || null;
+      // Skip the (relatively cheap) exchange when the cached JWT already
+      // belongs to this tenant — the customer just switches back and forth,
+      // and re-POSTing on every open would waste round-trips and hit the
+      // latestTenantRequestRef race window for no gain.
+      const needExchange = !cachedOrgId || cachedOrgId !== tenantOrgId;
+      if (!needExchange) {
+        const cachedUser = localStorage.getItem("customer_auth_user");
+        if (cachedUser) {
+          try {
+            setUser(JSON.parse(cachedUser));
+          } catch {
+            clearTenant();
+          }
+        }
+        setToken(cachedToken);
+        setIsLoading(false);
+        return;
+      }
+
       setIsLoading(true);
       try {
         const storedAccount = localStorage.getItem("customer_global_account");
