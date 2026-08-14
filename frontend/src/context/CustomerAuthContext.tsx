@@ -50,9 +50,9 @@ interface CustomerAuthContextType {
   // only one customer auth system going forward) — same method names as
   // before so AuthView/PhoneStepModal barely need to change, just what
   // happens underneath. login/loginWithGoogle only establish the global
-  // session; callers must follow up with ensureTenantSession(slug, orgId)
-  // to actually enter a specific cafe (exactly what TenantSessionSync
-  // already does on every page mount).
+  // session; callers must follow up with
+  // ensureTenantSession("company/outlet", orgId) to actually enter a specific
+  // cafe (exactly what TenantSessionSync already does on every page mount).
   login: (email: string, password: string) => Promise<void>;
   registerUser: (options: {
     name: string;
