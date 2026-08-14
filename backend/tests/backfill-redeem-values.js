@@ -179,6 +179,45 @@ async function main() {
       report2.body?.rows || report2.body,
     );
 
+    // Clickable-name regression: the history table links each row to the
+    // customer's detail page — but only when the API row carries the
+    // owning customer's id. The test customer above owns the seeded rows,
+    // so a report row for one of them must carry its real customerId. A
+    // missing field is the exact regression being guarded against.
+    const linkedRow = (report2.body?.rows || []).find(
+      (r) => String(r.customer || "") === "Backfill Tester" && r.item === "Backfill Priced Mocha"
+    );
+    check(
+      "the redeem report row carries the owning customer's id so the name is linkable",
+      typeof linkedRow?.customerId === "string" && /^[0-9a-f]{24}$/.test(linkedRow.customerId),
+      linkedRow || (report2.body?.rows || report2.body),
+    );
+
+    console.log("\n== The Excel export is unchanged by the fix ==");
+    const exportRes = await fetch(
+      `${baseUrl}/api/admin/reports/redeem/download`,
+      {
+        headers: {
+          Authorization: `Bearer ${adminLogin.body.token}`,
+          "X-Company-Slug": "coffesarowar",
+          "X-Outlet-Slug": "patan",
+        },
+      }
+    );
+    check("the redeem export downloads", exportRes.status === 200 && exportRes.headers.get("content-type")?.includes("spreadsheetml"), exportRes.headers);
+    if (exportRes.status === 200) {
+      const ExcelJS = require("exceljs");
+      const workbook = new ExcelJS.Workbook();
+      await workbook.xlsx.load(Buffer.from(await exportRes.arrayBuffer()));
+      const sheet = workbook.worksheets[0];
+      const header = (sheet.getRow(1).values || []).filter(Boolean);
+      check(
+        "the export keeps the documented 5 columns (no CustomerId column added)",
+        Array.isArray(header) && header.length === 5 && header.join("|") === "When|Customer|Item / Reward|Points Redeemed|Value (Rs)",
+        header,
+      );
+    }
+
     // Cleanup: remove the seeded test docs so re-runs start clean.
     await api("/api/admin/rewards", {}); // no-op guard — left in for clarity
     console.log(`\n${failures} check(s) failed.`);

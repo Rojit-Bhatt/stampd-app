@@ -352,6 +352,7 @@ const getRedeemStats = async (organizationId, { startDate, endDate } = {}) => {
     .map((t) => ({
       date: new Date(t.createdAt).toISOString().slice(0, 16).replace("T", " "),
       customer: escapeFormula(nameById.get(t.userId.toString()) || t.performedByName || "Unknown"),
+      customerId: t.userId.toString(),
       item: escapeFormula(t.rewardName || ""),
       points: toPoints(-t.pointsCenti),
       value: t.rewardValueNpr ?? null
