@@ -17,7 +17,7 @@ const SLUG = "durbarmarg";
 const DAY_MS = 24 * 60 * 60 * 1000;
 
 async function main() {
-  const { baseUrl, stop } = await bootServer({ port: 5038 });
+  const { baseUrl, stop } = await bootServer({ port: 0 });
   let failures = 0;
   const check = (name, cond, extra) => {
     if (cond) console.log(`PASS ${name}`);

@@ -14,6 +14,7 @@ export interface AdminRewardItem {
   imageUrl: string;
   imageId: string | null;
   pointsPrice: number;
+  valueNpr: number | null;
   isActive: boolean;
   sortOrder: number;
 }
@@ -24,12 +25,27 @@ interface Draft {
   imageUrl: string;
   imageId: string | null;
   pointsPrice: number;
+  valueNpr: string; // kept as a string so the optional field renders empty cleanly
 }
 
-const emptyDraft = (): Draft => ({ name: "", description: "", imageUrl: "", imageId: null, pointsPrice: 100 });
+const emptyDraft = (): Draft => ({ name: "", description: "", imageUrl: "", imageId: null, pointsPrice: 100, valueNpr: "" });
 
 const draftFrom = (r: AdminRewardItem): Draft => ({
-  name: r.name, description: r.description, imageUrl: r.imageUrl, imageId: r.imageId, pointsPrice: r.pointsPrice,
+  name: r.name,
+  description: r.description,
+  imageUrl: r.imageUrl,
+  imageId: r.imageId,
+  pointsPrice: r.pointsPrice,
+  valueNpr: r.valueNpr != null ? String(r.valueNpr) : "",
+});
+
+const toPatch = (d: Draft) => ({
+  name: d.name,
+  description: d.description,
+  imageUrl: d.imageUrl,
+  imageId: d.imageId,
+  pointsPrice: d.pointsPrice,
+  valueNpr: d.valueNpr.trim() === "" ? null : Number(d.valueNpr),
 });
 
 interface RewardFormModalProps {
@@ -50,12 +66,12 @@ export function RewardFormModal({ open, onOpenChange, initial, onSaved }: Reward
   const invalidate = () => qc.invalidateQueries({ queryKey: ["adminRewards"] });
 
   const create = useMutation({
-    mutationFn: (d: Draft) => apiRequest("/api/admin/rewards", { method: "POST", role: "admin", body: d }),
+    mutationFn: (d: Draft) => apiRequest("/api/admin/rewards", { method: "POST", role: "admin", body: toPatch(d) }),
     onSuccess: invalidate,
   });
   const update = useMutation({
     mutationFn: ({ id, patch }: { id: string; patch: Draft }) =>
-      apiRequest(`/api/admin/rewards/${id}`, { method: "PATCH", role: "admin", body: patch }),
+      apiRequest(`/api/admin/rewards/${id}`, { method: "PATCH", role: "admin", body: toPatch(patch) }),
     onSuccess: invalidate,
   });
 
@@ -114,6 +130,17 @@ export function RewardFormModal({ open, onOpenChange, initial, onSaved }: Reward
               className="w-20 bg-transparent text-sm focus:outline-none"
             />
             <span className="text-sm text-[var(--muted)]">points</span>
+          </label>
+          <label className="flex items-center gap-2 rounded-[11px] border border-[var(--line)] bg-[var(--bg)] px-3.5 py-2.5">
+            <input
+              type="number"
+              min={0}
+              value={draft.valueNpr}
+              onChange={(e) => setDraft({ ...draft, valueNpr: e.target.value })}
+              placeholder="Optional"
+              className="w-20 bg-transparent text-sm focus:outline-none"
+            />
+            <span className="text-sm text-[var(--muted)]">value (Rs) — shown in reports</span>
           </label>
           <textarea
             value={draft.description}

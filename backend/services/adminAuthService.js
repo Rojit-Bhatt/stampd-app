@@ -75,7 +75,8 @@ const adminLogin = async ({ email, password }) => {
       kind: "company_owner",
       token: generateCompanySessionToken({
         adminAccountId: account._id.toString(),
-        companyId: company._id.toString()
+        companyId: company._id.toString(),
+        pv: typeof account.passwordVersion === "number" ? account.passwordVersion : 0
       }),
       account: { id: account._id.toString(), name: account.name, email: account.email },
       company: { slug: company.slug, name: company.name }
@@ -249,9 +250,20 @@ const resetAdminPassword = async ({ token, password }) => {
   if (!account) throw createHttpError("Account not found.", 404);
 
   account.password = await bcrypt.hash(password, SALT_ROUNDS);
+  // Credential-version kill — identical contract to the customer flows:
+  // every company-owner session (and any tenant JWT if a membership row
+  // held a legacy password) embedding the old pv dies on next use.
+  account.passwordVersion = (account.passwordVersion || 0) + 1;
   await account.save();
   record.usedAt = new Date();
   await record.save();
+
+  // Alert: owner-notification contract, same as the customer flows.
+  sendEmail({
+    to: account.email,
+    subject: "Your password was changed",
+    html: `<p>Your password was just changed.</p><p>If that wasn't you, contact the platform support team right away — your sessions are already dead, but an attacker who got this far should be blocked before they try anything else.</p>`
+  }).catch((err) => console.error(`Failed to email password-change alert to ${account.email}:`, err.message));
 
   return { success: true, message: "Password updated. You can now sign in." };
 };

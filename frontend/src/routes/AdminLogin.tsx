@@ -9,7 +9,7 @@ import { tenantPath } from "../lib/tenantPath";
 import { PLATFORM_NAME } from "../lib/platform";
 import { AuthSplitShell } from "../components/shared/auth/AuthSplitShell";
 import { VerifyCodeCard } from "../components/shared/auth/VerifyCodeCard";
-import { Turnstile, TURNSTILE_ENABLED, type TurnstileHandle } from "../components/shared/Turnstile";
+import { ErrorInput } from "../components/shared/ErrorInput";
 
 const schema = z.object({
   email: z.string().trim().email("Please enter a valid email address."),
@@ -37,25 +37,30 @@ export default function AdminLogin() {
     document.title = `Business sign in | ${PLATFORM_NAME}`;
   }, []);
 
+  const form = useForm<FormValues>({ resolver: zodResolver(schema) });
   const {
     register,
     handleSubmit,
-    formState: { errors, isSubmitting },
-  } = useForm<FormValues>({ resolver: zodResolver(schema) });
+    formState: { errors, isSubmitting, touchedFields },
+  } = form;
+  // Wrong-credential errors point at both fields (never reveal which side
+  // misfired) and clear the moment the admin starts typing again.
+  const [serverError, setServerError] = useState<string | null>(null);
+  const submitted = useRef(false);
 
   // Set only on NEEDS_VERIFICATION — the one case where "try again" isn't
   // the fix. Holds the credentials so onVerified can complete the sign-in
   // the admin was already mid-way through, without retyping anything.
   const [pendingVerify, setPendingVerify] = useState<{ email: string; password: string } | null>(null);
-  const [turnstileToken, setTurnstileToken] = useState("");
-  const turnstileRef = useRef<TurnstileHandle>(null);
 
   const onSubmit = async (data: FormValues) => {
+    submitted.current = true;
+    setServerError(null);
     const id = toast.loading("Signing you in…");
     try {
       const res = await apiRequest<LoginResponse>("/api/admin-auth/login", {
         method: "POST",
-        body: { email: data.email, password: data.password, turnstileToken },
+        body: { email: data.email, password: data.password },
       });
 
       // Someone can legitimately move between roles, so clear the other
@@ -86,9 +91,9 @@ export default function AdminLogin() {
         setPendingVerify({ email: data.email, password: data.password });
         return;
       }
-      turnstileRef.current?.reset();
-      setTurnstileToken("");
-      toast.error(err.message || "Couldn't sign you in — try again.", { id });
+      const msg = err.message || "Couldn't sign you in — try again.";
+      setServerError(msg);
+      toast.error(msg, { id });
     }
   };
 
@@ -140,26 +145,47 @@ export default function AdminLogin() {
 
           <div className="rounded-[20px] border border-[var(--lp-line)] bg-white/[0.04] p-6">
             <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col gap-3">
-              <input
-                type="email"
-                placeholder="Email"
-                autoComplete="username"
-                {...register("email")}
-                className="rounded-2xl border border-[var(--lp-line)] bg-white/[0.04] px-4 py-3.5 text-sm text-[var(--lp-ink)] placeholder:text-[var(--lp-muted)] focus:border-[var(--lp-green)] focus:outline-none"
-              />
-              {errors.email && <p className="pl-1 text-xs font-semibold text-[var(--lp-terra)]">{errors.email.message}</p>}
-              <input
-                type="password"
-                placeholder="Password"
-                autoComplete="current-password"
-                {...register("password")}
-                className="rounded-2xl border border-[var(--lp-line)] bg-white/[0.04] px-4 py-3.5 text-sm text-[var(--lp-ink)] placeholder:text-[var(--lp-muted)] focus:border-[var(--lp-green)] focus:outline-none"
-              />
-              {errors.password && <p className="pl-1 text-xs font-semibold text-[var(--lp-terra)]">{errors.password.message}</p>}
-              <Turnstile ref={turnstileRef} onVerify={setTurnstileToken} />
+              <ErrorInput
+                label="Email"
+                id="admin-login-email"
+                mode="landing"
+                error={serverError ?? errors.email?.message}
+                touched={!!touchedFields.email || !!serverError}
+                forced={submitted.current || !!serverError}
+                className="bg-white/[0.04]"
+              >
+                <input
+                  type="email"
+                  placeholder="Email"
+                  autoComplete="username"
+                  {...register("email", { onChange: () => setServerError(null) })}
+                  aria-invalid={!!(serverError || errors.email)}
+                  aria-describedby={serverError || errors.email ? "admin-login-email-error" : undefined}
+                  className="w-full bg-transparent px-0 text-sm text-[var(--lp-ink)] placeholder:text-[var(--lp-muted)] focus:outline-none"
+                />
+              </ErrorInput>
+              <ErrorInput
+                label="Password"
+                id="admin-login-password"
+                mode="landing"
+                error={serverError ?? errors.password?.message}
+                touched={!!touchedFields.password || !!serverError}
+                forced={submitted.current || !!serverError}
+                className="bg-white/[0.04]"
+              >
+                <input
+                  type="password"
+                  placeholder="Password"
+                  autoComplete="current-password"
+                  {...register("password", { onChange: () => setServerError(null) })}
+                  aria-invalid={!!(serverError || errors.password)}
+                  aria-describedby={serverError || errors.password ? "admin-login-password-error" : undefined}
+                  className="w-full bg-transparent px-0 text-sm text-[var(--lp-ink)] placeholder:text-[var(--lp-muted)] focus:outline-none"
+                />
+              </ErrorInput>
               <button
                 type="submit"
-                disabled={isSubmitting || (TURNSTILE_ENABLED && !turnstileToken)}
+                disabled={isSubmitting}
                 className="mt-2 w-full rounded-[74px] bg-[var(--lp-cream)] py-4 text-[15px] font-bold text-[#14201C] transition-transform duration-200 hover:scale-105 disabled:opacity-50 motion-reduce:transition-none motion-reduce:hover:scale-100"
               >
                 {isSubmitting ? "Signing you in…" : "Sign in"}

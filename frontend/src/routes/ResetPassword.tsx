@@ -12,17 +12,26 @@ export default function ResetPassword() {
   const [password, setPassword] = useState("");
   const [confirm, setConfirm] = useState("");
   const [busy, setBusy] = useState(false);
+  // Inline field errors — red label directly under the offending input with
+  // a red border — replacing the old toast-only validation.
+  const [passwordError, setPasswordError] = useState<string | null>(null);
+  const [confirmError, setConfirmError] = useState<string | null>(null);
+  // Shows after the first submit attempt; until then only touched fields
+  // surface their errors (blur-gated).
+  const [attempted, setAttempted] = useState(false);
+
+  const validate = () => {
+    const pErr = password.length < 6 ? "Needs to be at least 6 characters." : null;
+    setPasswordError(pErr);
+    const cErr = !pErr && confirm && password !== confirm ? "Those passwords don't match." : null;
+    setConfirmError(cErr);
+    return !pErr && !cErr;
+  };
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (password.length < 6) {
-      toast.error("Needs to be at least 6 characters.");
-      return;
-    }
-    if (password !== confirm) {
-      toast.error("Those passwords don't match.");
-      return;
-    }
+    setAttempted(true);
+    if (!validate()) return;
     const token = params.get("token");
     setBusy(true);
     try {
@@ -41,22 +50,66 @@ export default function ResetPassword() {
       <div className="w-full max-w-sm">
         <h2 className="font-display text-[22px] font-bold text-[var(--ink)]">Choose a new password</h2>
         <form onSubmit={submit} className="mt-4 flex flex-col gap-3">
+          <label htmlFor="reset-password" className="block text-[13px] font-semibold text-[var(--ink)]">
+            New password
+          </label>
           <input
+            id="reset-password"
             type="password"
             required
             value={password}
-            onChange={(e) => setPassword(e.target.value)}
+            onChange={(e) => {
+              setPassword(e.target.value);
+              setPasswordError(null);
+              setConfirmError(null);
+            }}
+            onBlur={() => {
+              if (attempted || password.length > 0) setPasswordError(password.length < 6 ? "Needs to be at least 6 characters." : null);
+            }}
             placeholder="New password"
-            className="rounded-[var(--radius-btn)] border border-[var(--line)] bg-[var(--bg)] px-4 py-3.5 text-sm text-[var(--ink)] focus:border-[var(--primary)] focus:outline-none"
+            aria-invalid={!!passwordError}
+            aria-describedby={passwordError ? "reset-password-error" : undefined}
+            className={`rounded-[var(--radius-btn)] border bg-[var(--bg)] px-4 py-3.5 text-sm text-[var(--ink)] focus:outline-none ${
+              passwordError
+                ? "border-[var(--err)]"
+                : "border-[var(--line)] focus:border-[var(--primary)]"
+            }`}
           />
+          {passwordError && (
+            <p id="reset-password-error" role="alert" className="pl-1 text-xs font-semibold text-[var(--err)]" aria-live="assertive">
+              {passwordError}
+            </p>
+          )}
+          <label htmlFor="reset-confirm" className="block text-[13px] font-semibold text-[var(--ink)]">
+            Confirm password
+          </label>
           <input
+            id="reset-confirm"
             type="password"
             required
             value={confirm}
-            onChange={(e) => setConfirm(e.target.value)}
+            onChange={(e) => {
+              setConfirm(e.target.value);
+              setConfirmError(null);
+            }}
+            onBlur={() => {
+              if (attempted || confirm.length > 0)
+                setConfirmError(password !== confirm ? "Those passwords don't match." : null);
+            }}
             placeholder="Confirm password"
-            className="rounded-[var(--radius-btn)] border border-[var(--line)] bg-[var(--bg)] px-4 py-3.5 text-sm text-[var(--ink)] focus:border-[var(--primary)] focus:outline-none"
+            aria-invalid={!!confirmError}
+            aria-describedby={confirmError ? "reset-confirm-error" : undefined}
+            className={`rounded-[var(--radius-btn)] border bg-[var(--bg)] px-4 py-3.5 text-sm text-[var(--ink)] focus:outline-none ${
+              confirmError
+                ? "border-[var(--err)]"
+                : "border-[var(--line)] focus:border-[var(--primary)]"
+            }`}
           />
+          {confirmError && (
+            <p id="reset-confirm-error" role="alert" className="pl-1 text-xs font-semibold text-[var(--err)]" aria-live="assertive">
+              {confirmError}
+            </p>
+          )}
           <button
             disabled={busy}
             className="rounded-[var(--radius-btn)] py-4 text-[15px] font-bold text-white disabled:opacity-50"

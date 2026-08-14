@@ -11,7 +11,12 @@ const {
   updateContact
 } = require("../services/platformConfigService");
 const { listRecent } = require("../services/platformAuditService");
+const { buildDigest } = require("../services/checksumService");
 const { listPublicPlans } = require("../services/subscriptionPlanService");
+const { getPlatformCustomers: listPlatformCustomers } = require("../services/platformCustomersService");
+const {
+  buildPlatformCustomersWorkbook
+} = require("../services/platformAnalyticsService");
 const {
   getPlatformAnalytics,
   getPlatformCompanyReportRows,
@@ -19,6 +24,22 @@ const {
   getPublicStats: getPublicStatsService
 } = require("../services/platformAnalyticsService");
 const User = require("../models/User");
+const { clearCache } = require("../utils/responseCache");
+const Organization = require("../models/Organization");
+
+// Company- or outlet-level writes flow into public tenant/menu output —
+// purge the cached keys for every affected outlet.
+const purgeCompanyTenants = async (companyId) => {
+  try {
+    const orgs = await Organization.find({ companyId });
+    for (const org of orgs) {
+      clearCache({ tenant: String(org._id), kind: "publicTenant" });
+      clearCache({ tenant: String(org._id), kind: "publicMenu" });
+    }
+  } catch (_) {
+    // Best-effort purge — a miss only costs one slow read.
+  }
+};
 
 const platformLogin = async (req, res, next) => {
   try {
@@ -82,6 +103,7 @@ const patchCompany = async (req, res, next) => {
       actorId: req.user.id,
       actorName: actor ? actor.name : "Unknown"
     });
+    await purgeCompanyTenants(req.params.id);
     res.status(200).json(result);
   } catch (error) {
     next(error);
@@ -102,6 +124,8 @@ const patchOutlet = async (req, res, next) => {
       actorId: req.user.id,
       actorName: actor ? actor.name : "Unknown"
     });
+    // An outlet rename/category/status change affects its public tenant page.
+    await clearCache({ tenant: String(req.params.outletId), kind: "publicTenant" });
     res.status(200).json(result);
   } catch (error) {
     next(error);
@@ -182,6 +206,20 @@ const getPlatformContactAdmin = async (req, res, next) => {
   }
 };
 
+// Platform-admin sanity digest (G11 — backups/DR): cheap deterministic
+// row-count + balance checksum over the core business state, hashed so an
+// operator or CI cron job can detect silent DB corruption by comparing
+// against a stored baseline. Platform-admin only — the raw numbers are
+// tenant-state metadata an external party must never see.
+const getSanityChecksum = async (req, res, next) => {
+  try {
+    const digest = await buildDigest();
+    res.status(200).json({ success: true, digest });
+  } catch (error) {
+    next(error);
+  }
+};
+
 const patchPlatformContact = async (req, res, next) => {
   try {
     const contact = await updateContact(req.body || {});
@@ -191,8 +229,33 @@ const patchPlatformContact = async (req, res, next) => {
   }
 };
 
+// Every CustomerAccount ever created — verified and unverified, with and
+// without an outlet membership. Identity and state only; nothing a tenant
+// could not already see for its own customers.
+const getPlatformCustomers = async (req, res, next) => {
+  try {
+    const result = await listPlatformCustomers({ search: req.query.search });
+    res.status(200).json({ success: true, ...result });
+  } catch (error) {
+    next(error);
+  }
+};
+
+const downloadCustomersReport = async (req, res, next) => {
+  try {
+    const { rows } = await listPlatformCustomers({ search: req.query.search });
+    const buffer = await buildPlatformCustomersWorkbook({ rows });
+    res.setHeader("Content-Type", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
+    res.setHeader("Content-Disposition", "attachment; filename=\"customers-report.xlsx\"");
+    res.send(buffer);
+  } catch (error) {
+    next(error);
+  }
+};
+
 module.exports = {
   platformLogin,
+  getSanityChecksum,
   getCompanies,
   postCompany,
   getCompany,
@@ -205,5 +268,7 @@ module.exports = {
   getPublicPlans,
   getPublicPlatformContact,
   getPlatformContactAdmin,
-  patchPlatformContact
+  patchPlatformContact,
+  getPlatformCustomers,
+  downloadCustomersReport
 };

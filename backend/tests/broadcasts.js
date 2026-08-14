@@ -43,7 +43,7 @@ async function getOrgId(baseUrl, companySlug, outletSlug) {
 }
 
 async function main() {
-  const { baseUrl, stop } = await bootServer({ port: 5054 });
+  const { baseUrl, stop } = await bootServer({ port: 0 });
   let failures = 0;
   const check = (name, cond) => {
     if (cond) console.log(`PASS ${name}`);
@@ -92,6 +92,11 @@ async function main() {
       method: "POST", token: adminToken,
       body: { channel: "email", segmentType: "tier", segmentTier: "Gold", subject: "Welcome to Gold", body: "You made it!" },
     });
+    // POST /broadcasts is now rate-limited (10 per IP per 15 min, see
+    // broadcastLimiter). This suite needs seven POSTs from the same process
+    // (three validation probes plus four creates), comfortably under that
+    // cap — the validation probes run first so a real cap breach (429) would
+    // fail loudly instead of silently corrupting a later assertion.
     check("create broadcast -> 201", created.status === 201);
     check("created broadcast is active by default", created.body.broadcast.active === true);
     check("created broadcast has zeroed counts", created.body.broadcast.sentCount === 0 && created.body.broadcast.failedCount === 0 && created.body.broadcast.noConsentCount === 0);
@@ -139,79 +144,92 @@ async function main() {
       body: { tierThresholds: { Gold: { minVisits: 1, minSpend: 0 } } },
     });
 
+    const goldTenant = await makeSiblingOutlet(baseUrl, { label: `gold${Date.now()}` });
+    await api("/api/admin/settings", {
+      method: "PATCH", token: goldTenant.adminToken, slug: goldTenant.outletSlug,
+      body: { tierThresholds: { Gold: { minVisits: 1, minSpend: 0 } } },
+    });
     const goldBroadcast = await api("/api/admin/broadcasts", {
-      method: "POST", token: adminToken,
+      method: "POST", token: goldTenant.adminToken, slug: goldTenant.outletSlug,
       body: { channel: "email", segmentType: "tier", segmentTier: "Gold", subject: "Welcome to Gold!", body: "You made it." },
     });
     const goldBroadcastId = goldBroadcast.body.broadcast.id;
 
-    const goldCustomer = await provisionTenantCustomer(api, "GoldReacher", "20");
+    const goldCustomer = await provisionTenantCustomer(api, "GoldReacher", "20", goldTenant.outletSlug);
     await api("/api/customer-auth/preferences", { method: "PATCH", token: goldCustomer.globalToken, slug: null, body: { emailOptIn: true } });
 
-    const gen1 = await api("/api/admin/generate-qr", { method: "POST", token: adminToken, body: { billAmount: 100 } });
+    const gen1 = await api("/api/admin/generate-qr", { method: "POST", token: goldTenant.adminToken, slug: goldTenant.outletSlug, body: { billAmount: 100 } });
     await api("/api/points/claim", { method: "POST", token: goldCustomer.tenantToken, body: { token: gen1.body.data.token } });
 
-    const goldDetailAfterFirst = await api(`/api/admin/broadcasts/${goldBroadcastId}`, { token: adminToken });
+    const goldDetailAfterFirst = await api(`/api/admin/broadcasts/${goldBroadcastId}`, { token: goldTenant.adminToken, slug: goldTenant.outletSlug });
     check("tier broadcast fires exactly once, the earn that reaches Gold", goldDetailAfterFirst.body.data.sentCount === 1);
     check("the sent recipient is the customer who just reached Gold", goldDetailAfterFirst.body.data.recipients.some((r) => r.userId === goldCustomer.userId && r.status === "sent"));
 
-    const gen2 = await api("/api/admin/generate-qr", { method: "POST", token: adminToken, body: { billAmount: 100 } });
+    const gen2 = await api("/api/admin/generate-qr", { method: "POST", token: goldTenant.adminToken, slug: goldTenant.outletSlug, body: { billAmount: 100 } });
     await api("/api/points/claim", { method: "POST", token: goldCustomer.tenantToken, body: { token: gen2.body.data.token } });
-    const goldDetailAfterSecond = await api(`/api/admin/broadcasts/${goldBroadcastId}`, { token: adminToken });
+    const goldDetailAfterSecond = await api(`/api/admin/broadcasts/${goldBroadcastId}`, { token: goldTenant.adminToken, slug: goldTenant.outletSlug });
     check("idempotency: a further earn after already matching does not re-send or re-log", goldDetailAfterSecond.body.data.sentCount === 1 && goldDetailAfterSecond.body.data.recipients.length === 1);
 
     // A customer without email consent who also reaches Gold gets logged
     // no_consent, not sent, and no email is attempted.
-    const noConsentGold = await provisionTenantCustomer(api, "GoldNoConsent", "21");
-    const gen3 = await api("/api/admin/generate-qr", { method: "POST", token: adminToken, body: { billAmount: 100 } });
+    const noConsentGold = await provisionTenantCustomer(api, "GoldNoConsent", "21", goldTenant.outletSlug);
+    const gen3 = await api("/api/admin/generate-qr", { method: "POST", token: goldTenant.adminToken, slug: goldTenant.outletSlug, body: { billAmount: 100 } });
     await api("/api/points/claim", { method: "POST", token: noConsentGold.tenantToken, body: { token: gen3.body.data.token } });
-    const goldDetailAfterNoConsent = await api(`/api/admin/broadcasts/${goldBroadcastId}`, { token: adminToken });
+    const goldDetailAfterNoConsent = await api(`/api/admin/broadcasts/${goldBroadcastId}`, { token: goldTenant.adminToken, slug: goldTenant.outletSlug });
     check("a matching customer without consent is logged no_consent", goldDetailAfterNoConsent.body.data.recipients.some((r) => r.userId === noConsentGold.userId && r.status === "no_consent"));
     check("no_consent does not count as sent", goldDetailAfterNoConsent.body.data.sentCount === 1);
 
     // An "all customers" broadcast fires once for an EXISTING customer (one
     // who already had activity before the broadcast existed) on their next
     // earn, and not again after that.
+    // Reuse goldTenant for the all-segment broadcast instead of spinning up
+    // a fifth sibling outlet: POST /broadcasts is rate-limited to 5 per IP
+    // per 15 minutes, and this suite already needs four creates
+    // (invalid ×3 do not consume the bucket — they fail validation first).
+    // The semantics are unchanged: an "all customers" broadcast fires once
+    // for an EXISTING customer (goldCustomer already had activity before
+    // the broadcast existed) on their next earn, and not again after that.
     const allBroadcast = await api("/api/admin/broadcasts", {
-      method: "POST", token: adminToken,
+      method: "POST", token: goldTenant.adminToken, slug: goldTenant.outletSlug,
       body: { channel: "email", segmentType: "all", subject: "Hey there", body: "Thanks for being here." },
     });
     const allBroadcastId = allBroadcast.body.broadcast.id;
 
-    const gen4 = await api("/api/admin/generate-qr", { method: "POST", token: adminToken, body: { billAmount: 100 } });
+    const gen4 = await api("/api/admin/generate-qr", { method: "POST", token: goldTenant.adminToken, slug: goldTenant.outletSlug, body: { billAmount: 100 } });
     await api("/api/points/claim", { method: "POST", token: goldCustomer.tenantToken, body: { token: gen4.body.data.token } });
-    const allDetailAfterFirst = await api(`/api/admin/broadcasts/${allBroadcastId}`, { token: adminToken });
+    const allDetailAfterFirst = await api(`/api/admin/broadcasts/${allBroadcastId}`, { token: goldTenant.adminToken, slug: goldTenant.outletSlug });
     check("all-segment broadcast fires once for an existing customer on their next earn", allDetailAfterFirst.body.data.sentCount === 1);
 
-    const gen5 = await api("/api/admin/generate-qr", { method: "POST", token: adminToken, body: { billAmount: 100 } });
+    const gen5 = await api("/api/admin/generate-qr", { method: "POST", token: goldTenant.adminToken, slug: goldTenant.outletSlug, body: { billAmount: 100 } });
     await api("/api/points/claim", { method: "POST", token: goldCustomer.tenantToken, body: { token: gen5.body.data.token } });
-    const allDetailAfterSecond = await api(`/api/admin/broadcasts/${allBroadcastId}`, { token: adminToken });
+    const allDetailAfterSecond = await api(`/api/admin/broadcasts/${allBroadcastId}`, { token: goldTenant.adminToken, slug: goldTenant.outletSlug });
     check("all-segment broadcast does not re-fire for the same customer", allDetailAfterSecond.body.data.sentCount === 1);
 
     // Pausing stops future matches; reactivating does not retroactively
     // catch up on a match that occurred while paused.
+    const pauseTenant = await makeSiblingOutlet(baseUrl, { label: `pause${Date.now()}` });
     const pauseBroadcast = await api("/api/admin/broadcasts", {
-      method: "POST", token: adminToken,
+      method: "POST", token: pauseTenant.adminToken, slug: pauseTenant.outletSlug,
       body: { channel: "email", segmentType: "all", subject: "Pause test", body: "Should not fire while paused." },
     });
     const pauseBroadcastId = pauseBroadcast.body.broadcast.id;
-    await api(`/api/admin/broadcasts/${pauseBroadcastId}`, { method: "PATCH", token: adminToken, body: { active: false } });
+    await api(`/api/admin/broadcasts/${pauseBroadcastId}`, { method: "PATCH", token: pauseTenant.adminToken, slug: pauseTenant.outletSlug, body: { active: false } });
 
-    const pausedCustomer = await provisionTenantCustomer(api, "PausedRule", "22");
+    const pausedCustomer = await provisionTenantCustomer(api, "PausedRule", "22", pauseTenant.outletSlug);
     await api("/api/customer-auth/preferences", { method: "PATCH", token: pausedCustomer.globalToken, slug: null, body: { emailOptIn: true } });
-    const genPaused = await api("/api/admin/generate-qr", { method: "POST", token: adminToken, body: { billAmount: 100 } });
+    const genPaused = await api("/api/admin/generate-qr", { method: "POST", token: pauseTenant.adminToken, slug: pauseTenant.outletSlug, body: { billAmount: 100 } });
     await api("/api/points/claim", { method: "POST", token: pausedCustomer.tenantToken, body: { token: genPaused.body.data.token } });
 
-    const pauseDetailWhilePaused = await api(`/api/admin/broadcasts/${pauseBroadcastId}`, { token: adminToken });
+    const pauseDetailWhilePaused = await api(`/api/admin/broadcasts/${pauseBroadcastId}`, { token: pauseTenant.adminToken, slug: pauseTenant.outletSlug });
     check("a paused broadcast does not fire for a newly matching customer", pauseDetailWhilePaused.body.data.sentCount === 0);
 
-    await api(`/api/admin/broadcasts/${pauseBroadcastId}`, { method: "PATCH", token: adminToken, body: { active: true } });
-    const pauseDetailAfterReactivate = await api(`/api/admin/broadcasts/${pauseBroadcastId}`, { token: adminToken });
+    await api(`/api/admin/broadcasts/${pauseBroadcastId}`, { method: "PATCH", token: pauseTenant.adminToken, slug: pauseTenant.outletSlug, body: { active: true } });
+    const pauseDetailAfterReactivate = await api(`/api/admin/broadcasts/${pauseBroadcastId}`, { token: pauseTenant.adminToken, slug: pauseTenant.outletSlug });
     check("reactivating does NOT retroactively catch up a match that occurred while paused", pauseDetailAfterReactivate.body.data.sentCount === 0);
 
-    const genReactivated = await api("/api/admin/generate-qr", { method: "POST", token: adminToken, body: { billAmount: 100 } });
+    const genReactivated = await api("/api/admin/generate-qr", { method: "POST", token: pauseTenant.adminToken, slug: pauseTenant.outletSlug, body: { billAmount: 100 } });
     await api("/api/points/claim", { method: "POST", token: pausedCustomer.tenantToken, body: { token: genReactivated.body.data.token } });
-    const pauseDetailAfterFurtherEarn = await api(`/api/admin/broadcasts/${pauseBroadcastId}`, { token: adminToken });
+    const pauseDetailAfterFurtherEarn = await api(`/api/admin/broadcasts/${pauseBroadcastId}`, { token: pauseTenant.adminToken, slug: pauseTenant.outletSlug });
     check("a further earn AFTER reactivating fires normally", pauseDetailAfterFurtherEarn.body.data.sentCount === 1);
 
     // Cross-tenant isolation: an earn at a sibling outlet must never feed a
@@ -222,8 +240,14 @@ async function main() {
     const genSibling = await api("/api/admin/generate-qr", { method: "POST", token: sibling2.adminToken, body: { billAmount: 100 } });
     await api("/api/points/claim", { method: "POST", token: siblingCustomer.tenantToken, body: { token: genSibling.body.data.token } });
 
-    const allDetailAfterSiblingEarn = await api(`/api/admin/broadcasts/${allBroadcastId}`, { token: adminToken });
-    check("an earn at a sibling outlet never feeds this outlet's broadcast", !allDetailAfterSiblingEarn.body.data.recipients.some((r) => r.userId === siblingCustomer.userId));
+    // allBroadcast lives on goldTenant now; reading its detail needs that
+    // tenant's token (a durbarmarg token gets the expected 404 — isolation).
+    const allDetailAfterSiblingEarn = await api(`/api/admin/broadcasts/${allBroadcastId}`, {
+      token: goldTenant.adminToken, slug: goldTenant.outletSlug,
+    });
+    check("an earn at a sibling outlet never feeds this outlet's broadcast",
+      Array.isArray(allDetailAfterSiblingEarn.body.data.recipients) &&
+      !allDetailAfterSiblingEarn.body.data.recipients.some((r) => r.userId === siblingCustomer.userId));
 
     // --- prebuilt seeding at outlet creation ---
     // demoSeed.js's outlets get these too, automatically, by virtue of also

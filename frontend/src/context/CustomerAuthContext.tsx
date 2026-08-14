@@ -53,7 +53,7 @@ interface CustomerAuthContextType {
   // session; callers must follow up with ensureTenantSession(slug, orgId)
   // to actually enter a specific cafe (exactly what TenantSessionSync
   // already does on every page mount).
-  login: (email: string, password: string, turnstileToken?: string) => Promise<void>;
+  login: (email: string, password: string) => Promise<void>;
   registerUser: (options: {
     name: string;
     email: string;
@@ -66,7 +66,6 @@ interface CustomerAuthContextType {
     // so without this a pending claim could be bound by anyone who guessed
     // its id — see pendingClaimService.linkPendingClaimToAccount.
     claimSecret?: string;
-    turnstileToken?: string;
     // Only sent by the tenant-scoped register form — the one registration
     // surface with an outlet in scope to check required fields against.
     companySlug?: string;
@@ -144,12 +143,54 @@ export function CustomerAuthProvider({ children }: { children: React.ReactNode }
     setGlobalAccount(null);
   };
 
+  // Reads the customer_auth_token slot synchronously — used below to decide
+  // whether an exchange is even needed, without waiting for React state.
+  const readCachedTenantToken = (): string | null =>
+    localStorage.getItem("customer_auth_token");
+
   const ensureTenantSession = async (_slug: string, tenantOrgId: string | null) => {
     const requestKey = tenantOrgId || _slug;
     latestTenantRequestRef.current = requestKey;
     const globalToken = localStorage.getItem("customer_global_session");
 
+    // The app keeps ONE shared tenant-JWT slot across every outlet. If the
+    // cached JWT belongs to a DIFFERENT outlet than the one on screen, this
+    // page's data queries would hit the wrong tenant (backend scopes by the
+    // JWT, never the URL) and the sessionStale gate in CustomerLayout would
+    // show the full-screen spinner until a re-fire happened. But the effect
+    // that re-fires this function (TenantSessionSync's tenant.id change)
+    // does NOT fire on a second visit to an outlet the customer already
+    // opened — its tenant query result is identical to the first visit, so
+    // nothing ever kicked off recovery: the spinner stayed forever.
+    //
+    // Fix: treat "stored JWT belongs to the wrong tenant" as an active
+    // recovery path, exactly like an absent JWT. With a valid global
+    // session, exchanging for a fresh tenant JWT is free and fast — do it
+    // here, don't wait for anything else to re-trigger it. (Backend
+    // regression: tests/outlet-switch-stuck-loader.js.)
     if (globalToken) {
+      const cachedToken = readCachedTenantToken();
+      const payload = cachedToken ? decodeJwtPayload(cachedToken) : null;
+      const cachedOrgId = payload?.organizationId || null;
+      // Skip the (relatively cheap) exchange when the cached JWT already
+      // belongs to this tenant — the customer just switches back and forth,
+      // and re-POSTing on every open would waste round-trips and hit the
+      // latestTenantRequestRef race window for no gain.
+      const needExchange = !cachedOrgId || cachedOrgId !== tenantOrgId;
+      if (!needExchange) {
+        const cachedUser = localStorage.getItem("customer_auth_user");
+        if (cachedUser) {
+          try {
+            setUser(JSON.parse(cachedUser));
+          } catch {
+            clearTenant();
+          }
+        }
+        setToken(cachedToken);
+        setIsLoading(false);
+        return;
+      }
+
       setIsLoading(true);
       try {
         const storedAccount = localStorage.getItem("customer_global_account");
@@ -209,10 +250,10 @@ export function CustomerAuthProvider({ children }: { children: React.ReactNode }
     setIsLoading(false);
   };
 
-  const login = async (email: string, password: string, turnstileToken?: string) => {
+  const login = async (email: string, password: string) => {
     const res = await apiRequest<{ success: boolean; token: string; account: GlobalAccount }>(
       "/api/customer-auth/login",
-      { method: "POST", body: { email, password, turnstileToken } },
+      { method: "POST", body: { email, password } },
     );
     if (!res.success || !res.token || !res.account) {
       throw new Error("Invalid response payload from server.");

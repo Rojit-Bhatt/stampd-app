@@ -1,4 +1,4 @@
-const { verifyGlobalSessionToken } = require("../utils/tokenUtils");
+const { verifyGlobalSessionToken, tokenPv } = require("../utils/tokenUtils");
 const CustomerAccount = require("../models/CustomerAccount");
 
 // Duplicated from authMiddleware.js's extractToken rather than imported —
@@ -43,10 +43,26 @@ const verifyGlobalSession = async (req, _res, next) => {
       throw error;
     }
 
-    // Re-fetch on every request, same revocation posture as verifyToken.
+    // Re-fetch on every request, same revocation posture as verifyToken —
+    // and also enforce the credential version: a password change or reset
+    // bumps the account's passwordVersion, so any session minted under the
+    // old version dies immediately. tokenPv() treats legacy tokens with no
+    // `pv` claim as version 0, matching every account's default version,
+    // so existing sessions keep working until the next credential change.
     const account = await CustomerAccount.findOne({ _id: decoded.customerAccountId });
 
     if (!account) {
+      const error = new Error("Access denied. Session is no longer valid.");
+      error.statusCode = 401;
+      throw error;
+    }
+
+    // The row carries `passwordVersion`; the token carries the matching `pv`
+    // claim (see utils/tokenUtils). tokenPv() on the decoded token is used
+    // for the token side only — passing the Mongoose row to it would always
+    // read 0 (rows have no `pv` field) and silently let stale sessions through.
+    const rowPv = typeof account.passwordVersion === "number" ? account.passwordVersion : 0;
+    if (rowPv > tokenPv(decoded)) {
       const error = new Error("Access denied. Session is no longer valid.");
       error.statusCode = 401;
       throw error;

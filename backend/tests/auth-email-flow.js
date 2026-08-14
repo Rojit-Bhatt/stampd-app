@@ -16,7 +16,7 @@ const SLUG = "durbarmarg";
 const H = { "Content-Type": "application/json", "X-Company-Slug": COMPANY, "X-Outlet-Slug": SLUG };
 
 async function main() {
-  const { baseUrl, stop } = await bootServer({ port: 5013 });
+  const { baseUrl, stop } = await bootServer({ port: 0 });
   let failures = 0;
   const check = (name, cond) => {
     if (cond) console.log(`PASS ${name}`);

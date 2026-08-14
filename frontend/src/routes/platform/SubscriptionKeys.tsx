@@ -3,6 +3,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import toast from "@/lib/toast";
 import { apiRequest } from "../../lib/api";
 import { Skeleton } from "../../components/ui/skeleton";
+import { ScrollableTable, STICKY_FIRST_CELL } from "../../components/shared/ScrollableTable";
 
 interface SubscriptionPlanOption {
   slug: string;
@@ -112,18 +113,18 @@ export default function SubscriptionKeys() {
         </div>
       </div>
 
-      <div className="shadow-ambient overflow-hidden rounded-[var(--radius-card)] bg-[var(--surface)]">
+      <ScrollableTable minContentWidth="760px">
         <div className="grid grid-cols-[1.4fr_1fr_1fr_1.4fr_auto] border-b border-[var(--line)] px-5 py-3 text-[11px] font-bold uppercase tracking-wider text-[var(--soft)]">
-          <span>Code</span>
+          <span className={STICKY_FIRST_CELL}>Code</span>
           <span>Plan</span>
           <span>Status</span>
           <span>Note</span>
-          <span></span>
+          <span className="pr-5"></span>
         </div>
         {isLoading ? (
           Array.from({ length: 3 }).map((_, i) => (
             <div key={i} className="grid grid-cols-[1.4fr_1fr_1fr_1.4fr_auto] items-center gap-3 border-b border-[var(--line)] px-5 py-3.5 last:border-b-0">
-              <Skeleton className="h-3.5 w-28" />
+              <Skeleton className={`h-3.5 w-28 ${STICKY_FIRST_CELL}`} />
               <Skeleton className="h-5 w-14 rounded-full" />
               <Skeleton className="h-5 w-14 rounded-full" />
               <Skeleton className="h-3.5 w-32" />
@@ -135,7 +136,7 @@ export default function SubscriptionKeys() {
         ) : (
           keys.map((k) => (
             <div key={k.id} className="grid grid-cols-[1.4fr_1fr_1fr_1.4fr_auto] items-center gap-3 border-b border-[var(--line)] px-5 py-3.5 text-sm last:border-b-0">
-              <span className="font-mono font-bold">{k.code}</span>
+              <span className={`font-mono font-bold ${STICKY_FIRST_CELL}`}>{k.code}</span>
               <span className="capitalize">{k.planSlug}</span>
               <span>
                 <span
@@ -145,7 +146,7 @@ export default function SubscriptionKeys() {
                   {k.status}
                 </span>
               </span>
-              <span className="truncate text-[var(--muted)]">{k.note || "—"}</span>
+              <span className="text-[var(--muted)]">{k.note || "—"}</span>
               <span>
                 {k.status === "unused" && (
                   <button onClick={() => revoke.mutate(k.code)} className="rounded-full border border-[var(--line)] px-3 py-1.5 text-xs font-bold hover:bg-[var(--bg)]">
@@ -156,7 +157,7 @@ export default function SubscriptionKeys() {
             </div>
           ))
         )}
-      </div>
+      </ScrollableTable>
     </div>
   );
 }

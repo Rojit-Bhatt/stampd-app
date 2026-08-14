@@ -14,6 +14,41 @@ const Company = require("../models/Company");
 const MessageLog = require("../models/MessageLog");
 const { resolveTenant } = require("../middleware/tenantMiddleware");
 
+// DEV/TEST ONLY. Driver-level command monitor for the batch-writes-perf
+// benchmark: counts find vs write round trips the server issues, so a
+// benchmark can assert the refactored trigger path stays O(1) round trips
+// per org instead of one per user. Command monitoring has existed in the
+// mongoose driver since 3.x and is cheap enough to leave always-on in the
+// mock-DB-only test build.
+const mongoose = require("mongoose");
+// Round-trip accounting. The real driver emits "commandStarted" events and
+// these accumulate there; the dev/test in-memory mock engine never touches
+// the driver, so in that build the counters live on the mock connection
+// (__mockOpStats, set up by the mock engine). Either way the benchmark
+// reads the same two numbers.
+const readStats = () => {
+  // The dev/test in-memory mock engine exposes its round-trip counters on
+  // mongoose itself (__mockOpStats) — `mongoose.connection` is only created
+  // once the mock boots, so this falls through to the plain counters when
+  // the connection object doesn't exist yet.
+  if (mongoose.__mockOpStats) {
+    return { ...mongoose.__mockOpStats, mockBuild: true };
+  }
+  return { findOps: opStats.findOps, writeOps: opStats.writeOps, mockBuild: false };
+};
+const opStats = { findOps: 0, writeOps: 0 };
+try {
+  if (mongoose.connection && typeof mongoose.connection.on === "function") {
+    mongoose.connection.on("commandStarted", (event) => {
+      const cmd = event.commandName || "";
+      if (cmd.startsWith("find")) opStats.findOps++;
+      else if (/insert|update|delete|replace/.test(cmd)) opStats.writeOps++;
+    });
+  }
+} catch (_) {
+  // Monitoring unavailable — the mock engine's own counters take over.
+}
+
 const router = express.Router();
 
 // DEV/TEST ONLY. Mints a raw verification/reset token for an email so
@@ -259,6 +294,83 @@ router.post("/set-tier-thresholds", async (req, res, next) => {
   }
 });
 
+// DEV/TEST ONLY. Seeds the exact legacy redeem rows the backfill-redeem-values
+// suite exercises. Each seedRedeems entry becomes one PointsTransaction doc on
+// the given org; `seedItems` entries create MenuItem docs first, and a
+// seedRedeems rewardRef of "$itemId:N" resolves to the Nth created item so
+// the test can back a legacy row onto a real, queryable menu item. Returns
+// the created ids so the suite asserts against the report API instead of the
+// in-process DB (the parent process has no shared mock-DB connection).
+router.post("/seed-backfill-rows", async (req, res, next) => {
+  try {
+    const { organizationId, seedItems, seedRedeems, customerEmail } = req.body;
+    if (!organizationId || !Array.isArray(seedRedeems)) {
+      return res.status(400).json({ success: false, message: "organizationId + seedRedeems required" });
+    }
+    const MenuItem = require("../models/MenuItem");
+
+    // Every ledger row needs an owning membership (userId) — the report
+    // names the customer through it, and the model requires it.
+    const user = await User.findOne({
+      organizationId,
+      email: String(customerEmail || "").toLowerCase(),
+      role: "customer"
+    });
+    if (!user) {
+      return res.status(400).json({ success: false, message: "customerEmail not found at this outlet" });
+    }
+
+    const createdItems = [];
+    for (const item of seedItems || []) {
+      const created = await MenuItem.create({ organizationId, ...item });
+      createdItems.push({ id: created._id.toString() });
+    }
+
+    const ids = [];
+    for (const row of seedRedeems) {
+      const rewardRef =
+        typeof row.rewardRef === "string" && row.rewardRef.startsWith("$itemId:")
+          ? createdItems[Number(row.rewardRef.slice(8))].id
+          : row.rewardRef;
+      const doc = await PointsTransaction.create({
+        organizationId,
+        userId: user._id,
+        type: "redeem",
+        pointsCenti: row.pointsCenti,
+        balanceAfterCenti: row.balanceAfterCenti,
+        rewardKind: row.rewardKind === undefined ? "menu" : row.rewardKind,
+        rewardRef,
+        rewardName: row.rewardName,
+        rewardValueNpr: row.rewardValueNpr === undefined ? null : row.rewardValueNpr,
+        token: row.token || `backfill-test-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+        performedByName: "",
+        createdAt: new Date(Date.now() - (row.daysBack || 0) * 24 * 60 * 60 * 1000)
+      });
+      ids.push(doc._id.toString());
+    }
+
+    res.json({ success: true, createdItems, createdTransactionIds: ids });
+  } catch (error) {
+    next(error);
+  }
+});
+
+// DEV/TEST ONLY. Runs the one-time redeem-value backfill for a single org.
+router.post("/run-backfill", async (req, res, next) => {
+  try {
+    const { organizationId, dryRun } = req.body;
+    if (!organizationId) {
+      return res.status(400).json({ success: false, message: "organizationId required" });
+    }
+    const { backfillRedeemValues } = require("../services/backfillRedeemService");
+    const result = await backfillRedeemValues(organizationId, { dryRun: Boolean(dryRun) });
+    res.json(result);
+  } catch (error) {
+    console.error("[__test__/run-backfill]", error.stack);
+    next(error);
+  }
+});
+
 // DEV/TEST ONLY. Create a test transaction with a specific date (for testing
 // rolling windows that exclude old data).
 router.post("/create-dated-transaction", async (req, res, next) => {
@@ -342,6 +454,9 @@ router.post("/run-daily-triggers", async (req, res, next) => {
     await runDailyTriggers();
     res.status(200).json({ success: true });
   } catch (error) {
+    // Emit the full stack to the test harness so a batch-refactor bug shows
+    // exactly which find/update blew up instead of a bare message.
+    console.error("[__test__/run-daily-triggers]", error.stack);
     next(error);
   }
 });
@@ -358,7 +473,11 @@ router.post("/backdate-balance", async (req, res, next) => {
 
     res.status(200).json({ success: true });
   } catch (error) {
-    next(error);
+    if (process.env.DEBUG_HOOKS) {
+      res.status(500).json({ success: false, message: error.message, stack: error.stack });
+    } else {
+      next(error);
+    }
   }
 });
 
@@ -389,6 +508,118 @@ router.get("/push-subscription-count", async (req, res, next) => {
   } catch (error) {
     next(error);
   }
+});
+
+// DEV/TEST ONLY. Bulk-seeds customers with a birthday today, email consent,
+// and (optionally) an aged balance so runDailyTriggers has real work to do
+// at scale. Creates rows directly (models level) — deliberately bypassing
+// the registration rate limiter and consent forms, which are covered by
+// their own tests; this exists so the batch-writes benchmark can reach
+// hundreds of seeded customers in seconds.
+router.post("/seed-customers", async (req, res, next) => {
+  try {
+    const { organizationId, count, birthdayToday, ageBalanceDays, earnEach } = req.body;
+    const n = Math.min(Math.max(Number(count) || 0, 0), 2000);
+    const org = await Organization.findOne({ _id: organizationId });
+    if (!org) return res.status(404).json({ success: false, message: "Organization not found." });
+
+    // One CustomerAccount shared by all seeded memberships is wrong for the
+    // trigger paths (per-customer consent + MessageLog per membership), so
+    // create N distinct accounts but batch the writes (insertMany, the whole
+    // point of this test):
+    const CHUNK = 500;
+    const CustomerAccountModel = require("../models/CustomerAccount");
+    const crypto = require("crypto");
+
+    const accounts = [];
+    const now = new Date();
+    const todayMonth = now.getMonth() + 1;
+    const todayDay = now.getDate();
+    for (let i = 0; i < n; i++) {
+      accounts.push({
+        email: `seed-${organizationId}-${crypto.randomBytes(6).toString("hex")}@test.co`.toLowerCase(),
+        name: `SeedCustomer${i}`,
+        phone: `981111${String(i).padStart(6, "0")}`,
+        password: "hashed",
+        birthdayMonth: birthdayToday ? todayMonth : 7,
+        birthdayDay: birthdayToday ? todayDay : 4,
+        marketingConsent: { email: { granted: true, updatedAt: now }, push: { granted: true, updatedAt: now }, sms: { granted: false } },
+        emailVerified: true,
+        createdAt: now,
+        updatedAt: now
+      });
+    }
+    for (let i = 0; i < accounts.length; i += CHUNK) {
+      await CustomerAccountModel.insertMany(accounts.slice(i, i + CHUNK));
+    }
+    const created = await CustomerAccountModel.find({ name: { $regex: /^SeedCustomer/ } }).limit(n * 2);
+    const accountIds = created.map((a) => a._id);
+
+    const users = [];
+    for (let i = 0; i < accountIds.length; i++) {
+      // Distinct emails per org (index) and a real phone — phone is
+      // required for customer rows even when customerAccountId is set,
+      // and the mock DB doesn't run validators so seed them outright.
+      users.push({
+        organizationId,
+        customerAccountId: accountIds[i],
+        name: "seed",
+        email: `seed-${i}@${organizationId}.test.co`,
+        phone: `981111${String(i).padStart(6, "0")}`,
+        role: "customer",
+        emailVerified: true,
+        createdAt: now,
+        updatedAt: now
+      });
+    }
+    for (let i = 0; i < users.length; i += CHUNK) {
+      await User.insertMany(users.slice(i, i + CHUNK));
+    }
+    const seededUsers = await User.find({ organizationId, role: "customer", customerAccountId: { $in: accountIds } });
+
+    if (earnEach) {
+      const balances = seededUsers.map((u) => ({
+        organizationId,
+        userId: u._id,
+        balanceCenti: 1000,
+        lastActivityAt: ageBalanceDays ? new Date(Date.now() - ageBalanceDays * 24 * 60 * 60 * 1000) : now,
+        expiresAt: null,
+        expiredAt: null,
+        createdAt: now,
+        updatedAt: now
+      }));
+      for (let i = 0; i < balances.length; i += CHUNK) {
+        await PointsBalance.insertMany(balances.slice(i, i + CHUNK));
+      }
+      const earnTxns = seededUsers.map((u) => ({
+        organizationId,
+        userId: u._id,
+        type: "earn",
+        pointsCenti: 1000,
+        balanceAfterCenti: 1000,
+        billAmount: 10,
+        earnPercent: 10,
+        createdAt: now
+      }));
+      for (let i = 0; i < earnTxns.length; i += CHUNK) {
+        await PointsTransaction.insertMany(earnTxns.slice(i, i + CHUNK));
+      }
+    }
+
+    res.json({ success: true, seeded: seededUsers.length });
+  } catch (error) {
+    next(error);
+  }
+});
+
+router.get("/db-op-stats", (_req, res) => {
+  res.json(readStats());
+});
+router.post("/reset-db-op-stats", (_req, res) => {
+  if (mongoose.__mockResetOps) mongoose.__mockResetOps();
+  opStats.findOps = 0;
+  opStats.writeOps = 0;
+  res.json({ success: true });
 });
 
 router.post("/stub-webpush-behavior", async (req, res, next) => {

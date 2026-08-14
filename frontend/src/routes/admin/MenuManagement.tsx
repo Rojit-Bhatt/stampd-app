@@ -10,6 +10,7 @@ import { ConfirmDialog } from "../../components/shared/ConfirmDialog";
 import { MenuImportPreviewModal, type MenuImportPreview } from "../../components/admin/MenuImportPreviewModal";
 import { FileDrop } from "../../components/shared/FileDrop";
 import { MenuRewardModal, type MenuRewardPatch } from "../../components/admin/MenuRewardModal";
+import { ScrollableTable, STICKY_FIRST_CELL } from "../../components/shared/ScrollableTable";
 
 interface MenuItem {
   id?: string;
@@ -127,12 +128,33 @@ export default function MenuManagement() {
         role: "admin",
         body: { ...body, price: body.price.trim() === "" ? undefined : Number(body.price) },
       }),
+    onMutate: async (body) => {
+      await qc.cancelQueries({ queryKey: ["adminMenu"] });
+      const previous = qc.getQueriesData<MenuItem[]>({ queryKey: ["adminMenu"] });
+      const seeded: MenuItem = {
+        ...(body as unknown as MenuItem),
+        id: `optimistic-${Date.now()}`,
+        price: body.price.trim() === "" ? null : Number(body.price),
+        pointsPrice: null,
+        isAvailable: true,
+        isFeatured: false,
+        sortOrder: 0,
+      };
+      qc.setQueriesData<MenuItem[]>({ queryKey: ["adminMenu"] }, (old) =>
+        Array.isArray(old) ? [...old, seeded] : old,
+      );
+      return { previous };
+    },
     onSuccess: () => {
       invalidate();
       setDraft({ name: "", description: "", price: "", category: "General" });
       toast.success("Item added!");
     },
-    onError: (e) => toast.error((e as Error).message || "Couldn't add that — try again."),
+    onError: (_e, _vars, ctx) => {
+      ctx?.previous?.forEach(([key, data]) => qc.setQueryData(key, data));
+      toast.error("The item could not be added — restored.", { duration: 6000 });
+    },
+    onSettled: invalidate,
   });
 
   const patchItem = useMutation({
@@ -155,10 +177,20 @@ export default function MenuManagement() {
 
   const deleteItem = useMutation({
     mutationFn: (id: string) => apiRequest(`/api/admin/menu/${id}`, { method: "DELETE", role: "admin" }),
-    onSuccess: () => {
-      invalidate();
-      toast.success("Item removed.");
+    onMutate: async (id) => {
+      await qc.cancelQueries({ queryKey: ["adminMenu"] });
+      const previous = qc.getQueriesData<MenuItem[]>({ queryKey: ["adminMenu"] });
+      qc.setQueriesData<MenuItem[]>({ queryKey: ["adminMenu"] }, (old) =>
+        old?.filter((item) => itemId(item) !== id),
+      );
+      return { previous };
     },
+    onSuccess: () => toast.success("Item removed."),
+    onError: (_error, _vars, context) => {
+      context?.previous?.forEach(([key, data]) => qc.setQueryData(key, data));
+      toast.error("The item could not be deleted — restored.", { duration: 6000 });
+    },
+    onSettled: invalidate,
   });
 
   const categories = useMemo(() => Array.from(new Set(items.map((i) => i.category || "General"))), [items]);
@@ -309,29 +341,51 @@ export default function MenuManagement() {
       {/* List */}
       <div style={{ opacity: menuEnabled ? 1 : 0.55 }}>
         {isLoading ? (
-          <div className="overflow-hidden rounded-[var(--radius-card)] border border-[var(--line)] bg-[var(--surface)] shadow-ambient">
+          <ScrollableTable minContentWidth="640px">
+            <div className="grid grid-cols-[2fr_80px_90px_84px_76px_40px] border-b border-[var(--line)] px-4 py-3 text-[11px] font-bold uppercase tracking-wider text-[var(--soft)]">
+              <span className={STICKY_FIRST_CELL}>Item</span>
+              <span>Price</span>
+              <span>Points</span>
+              <span>Status</span>
+              <span>Featured</span>
+              <span className="pr-4" />
+            </div>
             {Array.from({ length: 4 }).map((_, i) => (
-              <div key={i} className="flex items-center gap-3 border-b border-[var(--line)] px-4 py-3.5 last:border-b-0">
-                <div className="min-w-0 flex-1">
+              <div
+                key={i}
+                className="grid items-center gap-3 border-b border-[var(--line)] px-4 py-3.5 last:border-b-0"
+                style={{ gridTemplateColumns: "2fr 80px 90px 84px 76px 40px" }}
+              >
+                <div className={`min-w-0 ${STICKY_FIRST_CELL}`}>
                   <Skeleton className="mb-1.5 h-3.5 w-36" />
                   <Skeleton className="h-3 w-48" />
                 </div>
                 <Skeleton className="h-3.5 w-10" />
+                <Skeleton className="h-3.5 w-10" />
               </div>
             ))}
-          </div>
+          </ScrollableTable>
         ) : filteredItems.length === 0 ? (
           <div className="rounded-[16px] border border-dashed border-[var(--line)] p-8 text-center text-sm text-[var(--muted)]">
             {items.length === 0 ? "No menu items yet. Add your first above." : "No items match these filters."}
           </div>
         ) : (
-          <div className="overflow-hidden rounded-[var(--radius-card)] border border-[var(--line)] bg-[var(--surface)] shadow-ambient">
+          <ScrollableTable minContentWidth="640px">
+            <div className="grid grid-cols-[2fr_80px_90px_84px_76px_40px] border-b border-[var(--line)] px-4 py-3 text-[11px] font-bold uppercase tracking-wider text-[var(--soft)]">
+              <span className={STICKY_FIRST_CELL}>Item</span>
+              <span>Price</span>
+              <span>Points</span>
+              <span>Status</span>
+              <span>Featured</span>
+              <span className="pr-4" />
+            </div>
             {filteredItems.map((i) => (
               <div
                 key={itemId(i)}
-                className="flex items-center gap-3 border-b border-[var(--line)] px-4 py-3.5 last:border-b-0"
+                className="grid items-center gap-3 border-b border-[var(--line)] px-4 py-3.5 last:border-b-0"
+                style={{ gridTemplateColumns: "2fr 80px 90px 84px 76px 40px" }}
               >
-                <div className="flex-1 min-w-0">
+                <div className={`min-w-0 ${STICKY_FIRST_CELL}`}>
                   <div className="truncate text-sm font-semibold">{i.name}</div>
                   <div className="truncate text-[13px] text-[var(--muted)]">
                     {i.category || "General"}
@@ -388,7 +442,7 @@ export default function MenuManagement() {
                 </button>
               </div>
             ))}
-          </div>
+          </ScrollableTable>
         )}
       </div>
       <p className="mt-2.5 text-[13px] text-[var(--soft)]">

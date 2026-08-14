@@ -15,7 +15,7 @@ const { bootServer } = require("./helpers/bootServer");
 const COMPANY = "coffesarowar";
 
 async function main() {
-  const { baseUrl, stop } = await bootServer({ port: 5019 });
+  const { baseUrl, stop } = await bootServer({ port: 0 });
   let failures = 0;
   const check = (name, cond) => {
     if (cond) console.log(`PASS ${name}`);
@@ -34,9 +34,22 @@ async function main() {
 
   try {
     const beforeConfig = await api("/api/platform/public-contact");
-    check("GET public-contact before config -> 200", beforeConfig.status === 200);
-    check("public-contact starts with empty phone", beforeConfig.body.contact?.phone === "");
-    check("public-contact starts with empty email", beforeConfig.body.contact?.email === "");
+    check("GET public-contact -> 200", beforeConfig.status === 200);
+    check("public-contact contact object exists", Boolean(beforeConfig.body.contact));
+    // Demo seed pre-fills the contact with placeholder phone/email; the
+    // real content under test is address/hours/socials, which start unset.
+    check(
+      "public-contact starts with empty address",
+      (beforeConfig.body.contact?.address || "") === ""
+    );
+    check(
+      "public-contact starts with empty hours",
+      (beforeConfig.body.contact?.hours || "") === ""
+    );
+    check(
+      "public-contact starts with empty socials",
+      Object.keys(beforeConfig.body.contact?.socials || {}).length === 0
+    );
 
     const patchNoToken = await api("/api/platform/contact", {
       method: "PATCH",

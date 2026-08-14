@@ -18,6 +18,17 @@ const CustomerAccountSchema = new mongoose.Schema({
   // the account, and the cache-buster that lets the served image be marked
   // immutable (see the avatar endpoint in customerAccountController).
   avatarVersion: { type: Number, default: 0 },
+  // Bumped on every password change/reset (see tokenUtils password-version
+  // check). All JWTs carry the version they were minted with; a token whose
+  // version is behind the account's version is rejected, so a stolen token
+  // dies instantly when credentials change — no revocation table needed.
+  passwordVersion: { type: Number, default: 0 },
+  // Optional TOTP-based MFA, behind the ENABLE_MFA flag: setup returns a
+  // hashed secret + QR payload (secret never stored plaintext), enable
+  // requires a valid first code, and login demands a second step once
+  // mfaEnabled is true.
+  mfaEnabled: { type: Boolean, default: false },
+  mfaSecretEncrypted: { type: String, default: null },
   marketingConsent: {
     email: {
       granted: { type: Boolean, default: false },

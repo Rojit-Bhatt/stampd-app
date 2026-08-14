@@ -133,7 +133,28 @@ export function TenantProvider({ children }: { children: React.ReactNode }) {
   // (typically the 404) in between genuinely-settled states. Only update
   // the latch when the query is UNAMBIGUOUSLY loaded or UNAMBIGUOUSLY
   // errored; otherwise keep whatever we last knew to be true.
+  //
+  // BUT that transient state is indistinguishable from the FIRST render of
+  // a genuinely different outlet's query (new queryKey, no cache entry yet,
+  // also isLoading:false/isError:false/tenant:undefined for one tick) — so
+  // without the reset below, switching outlets kept the PREVIOUS outlet's
+  // "ready" status latched, handed `tenant: null` to context instead of
+  // blocking here, and let CustomerLayout's `Boolean(tenant) &&
+  // tokenOrgId !== tenant?.id` stale-session gate read false (Boolean(null)
+  // is false) — bypassing the gate and letting every data hook below fire
+  // with the OLD outlet's still-cached JWT, poisoning the NEW outlet's
+  // query cache with the wrong outlet's numbers. Resetting the latch
+  // whenever the outlet identity itself changes keeps the background-
+  // refetch flicker fix intact (same key -> never resets) while forcing a
+  // real loading state for an actual outlet switch. See
+  // docs/bug/repro-tenant-status-latch.js for the isolated repro.
+  const tenantKey = `${companySlug}/${outletSlug}`;
+  const prevTenantKeyRef = useRef<string | null>(null);
   const statusRef = useRef<"loading" | "ready" | "suspended" | "notfound">("loading");
+  if (prevTenantKeyRef.current !== tenantKey) {
+    prevTenantKeyRef.current = tenantKey;
+    statusRef.current = "loading";
+  }
   if (tenant) {
     statusRef.current = "ready";
   } else if (isError) {

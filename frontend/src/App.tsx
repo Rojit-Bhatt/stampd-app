@@ -53,6 +53,7 @@ const PlatformSettings = lazy(() => import('./routes/platform/PlatformSettings')
 const PlatformContact = lazy(() => import('./routes/platform/PlatformContact'));
 const PlatformAuditLog = lazy(() => import('./routes/platform/PlatformAuditLog'));
 const PlatformAnalytics = lazy(() => import('./routes/platform/PlatformAnalytics'));
+const PlatformCustomers = lazy(() => import('./routes/platform/PlatformCustomers'));
 const PlatformTeam = lazy(() => import('./routes/platform/PlatformTeam'));
 const Plans = lazy(() => import('./routes/platform/Plans'));
 const SubscriptionKeys = lazy(() => import('./routes/platform/SubscriptionKeys'));
@@ -76,6 +77,7 @@ const MenuManagement = lazy(() => import('./routes/admin/MenuManagement'));
 const AdminEvents = lazy(() => import('./routes/admin/AdminEvents'));
 const AdminReportsSummary = lazy(() => import('./routes/admin/AdminReportsSummary'));
 const AdminReportsCustomers = lazy(() => import('./routes/admin/AdminReportsCustomers'));
+const AdminReportsRedeems = lazy(() => import('./routes/admin/AdminReportsRedeems'));
 const AdminImpact = lazy(() => import('./routes/admin/AdminImpact'));
 const AdminTransactions = lazy(() => import('./routes/admin/AdminTransactions'));
 const AdminCampaigns = lazy(() => import('./routes/admin/AdminCampaigns'));
@@ -92,7 +94,9 @@ function TenantScope() {
   return (
     <TenantProvider>
       <TenantSessionSync />
-      <Outlet />
+      <CelebrationProvider>
+        <Outlet />
+      </CelebrationProvider>
     </TenantProvider>
   );
 }
@@ -160,6 +164,7 @@ export default function App() {
             <Route path="contact" element={<PlatformContact />} />
             <Route path="audit-log" element={<PlatformAuditLog />} />
             <Route path="analytics" element={<PlatformAnalytics />} />
+            <Route path="customers" element={<PlatformCustomers />} />
             <Route path="team" element={<PlatformTeam />} />
             <Route path="plans" element={<Plans />} />
             <Route path="subscription-keys" element={<SubscriptionKeys />} />
@@ -232,6 +237,7 @@ export default function App() {
               <Route path="subscription" element={<AdminSubscription />} />
               <Route path="reports/summary" element={<AdminReportsSummary />} />
               <Route path="reports/customers" element={<AdminReportsCustomers />} />
+              <Route path="reports/redeem" element={<AdminReportsRedeems />} />
               <Route path="reports/impact" element={<AdminImpact />} />
               <Route path="transactions" element={<AdminTransactions />} />
               <Route path="campaigns" element={<AdminCampaigns />} />

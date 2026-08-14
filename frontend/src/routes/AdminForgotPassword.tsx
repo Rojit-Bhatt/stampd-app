@@ -1,9 +1,8 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { apiRequest } from "../lib/api";
 import { PLATFORM_NAME } from "../lib/platform";
 import { StampdLogo } from "../components/shared/StampdLogo";
-import { Turnstile, TURNSTILE_ENABLED, type TurnstileHandle } from "../components/shared/Turnstile";
 
 // Slug-less, like the staff login it sits under: the email identifies the
 // AdminAccount, and a company owner has no outlet to be scoped to.
@@ -13,8 +12,6 @@ export default function AdminForgotPassword() {
   const [email, setEmail] = useState("");
   const [sent, setSent] = useState(false);
   const [busy, setBusy] = useState(false);
-  const [turnstileToken, setTurnstileToken] = useState("");
-  const turnstileRef = useRef<TurnstileHandle>(null);
 
   useEffect(() => {
     document.title = `Reset your password | ${PLATFORM_NAME}`;
@@ -24,7 +21,7 @@ export default function AdminForgotPassword() {
     e.preventDefault();
     setBusy(true);
     try {
-      await apiRequest("/api/admin-auth/forgot-password", { method: "POST", body: { email, turnstileToken } });
+      await apiRequest("/api/admin-auth/forgot-password", { method: "POST", body: { email } });
       // Deliberately unconditional: the server answers the same way whether
       // or not the account exists, and so does this — otherwise the form
       // becomes an account-existence oracle.
@@ -32,8 +29,6 @@ export default function AdminForgotPassword() {
     } catch {
       setSent(true);
     } finally {
-      turnstileRef.current?.reset();
-      setTurnstileToken("");
       setBusy(false);
     }
   };
@@ -66,10 +61,9 @@ export default function AdminForgotPassword() {
                 placeholder="Email"
                 className="rounded-[var(--radius-btn)] border border-[var(--line)] bg-[var(--bg)] px-4 py-3.5 text-sm focus:border-[var(--primary)] focus:outline-none"
               />
-              <Turnstile ref={turnstileRef} onVerify={setTurnstileToken} />
               <button
                 type="submit"
-                disabled={busy || (TURNSTILE_ENABLED && !turnstileToken)}
+                disabled={busy}
                 className="mt-1 w-full rounded-[var(--radius-btn)] py-4 text-[15px] font-bold text-white transition-opacity hover:opacity-90 disabled:opacity-50"
                 style={{ background: "var(--primary)" }}
               >

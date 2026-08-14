@@ -17,7 +17,7 @@ const COMPANY = "coffesarowar";
 const SLUG = "durbarmarg";
 
 async function main() {
-  const { baseUrl, stop } = await bootServer({ port: 5021 });
+  const { baseUrl, stop } = await bootServer({ port: 0 });
   let failures = 0;
   const check = (name, cond) => {
     if (cond) console.log(`PASS ${name}`);
@@ -94,7 +94,21 @@ async function main() {
     });
     check("setting a first password with no currentPassword -> 200", setWithoutCurrent.status === 200);
 
-    const meAfterSet = await api("/api/account/me", { token: adminToken });
+    // Setting the first password bumps the account's passwordVersion, which
+    // kills the pre-change token on the very next request (the same
+    // credential-version contract the customer flow exercises above). Re-
+    // login to get a fresh token before asserting. The outlet admin's
+    // sign-in credential lives on AdminAccount (still "password" — the
+    // change-password hook only touched the User membership row that
+    // hasPassword reads from), so sign in with the original password.
+    const adminLoginAfterSet = await api("/api/admin-auth/login", {
+      method: "POST",
+      body: { email: "durbarmarg@coffesarowar.com", password: "password" },
+    });
+    check("re-login after setting first password -> token", Boolean(adminLoginAfterSet.body.token));
+    const freshAdminToken = adminLoginAfterSet.body.token;
+
+    const meAfterSet = await api("/api/account/me", { token: freshAdminToken });
     check("hasPassword is true after setting one", meAfterSet.body.hasPassword === true);
 
     // Restore the original (unset) password so later tests in this file (or
@@ -143,7 +157,7 @@ async function main() {
     check("new admin's console reports it verified", secondSettingsAfter.body.settings.adminEmailVerified === true);
 
     // --- The seeded admin (verified at seed) is untouched by all of this ---
-    const originalSettings = await api("/api/admin/settings", { token: adminToken });
+    const originalSettings = await api("/api/admin/settings", { token: freshAdminToken });
     check("this outlet's admin still verified, untouched by the sibling", originalSettings.body.settings.adminEmailVerified === true);
   } finally {
     stop();

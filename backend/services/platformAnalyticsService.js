@@ -78,6 +78,7 @@ const getPlatformAnalytics = async () => {
     outletsTotal,
     outletsActiveOrgs,
     customersTotal,
+    unverifiedCustomersTotal,
     newCustomersCurrent,
     newCustomersPrevious,
     txnsCurrent,
@@ -91,6 +92,11 @@ const getPlatformAnalytics = async () => {
     // than one outlet (exactly what the isolation-test customer "bikash"
     // is seeded to exercise).
     CustomerAccount.countDocuments({}),
+    // Every registered website account — sign-ups included, whether or not
+    // they have joined any outlet, and whether or not their email is
+    // verified yet. That is what "total registered customers" means to the
+    // platform admin; membership counts live elsewhere.
+    CustomerAccount.countDocuments({ emailVerified: false }),
     User.countDocuments({ role: "customer", createdAt: currentRange }),
     User.countDocuments({ role: "customer", createdAt: previousRange }),
     PointsTransaction.find({ createdAt: currentRange }),
@@ -132,6 +138,10 @@ const getPlatformAnalytics = async () => {
     outletsTotal,
     outletsActive: outletsActiveOrgs.length,
     customersTotal,
+    // All sign-ups, unverified included (unverifiedCustomersTotal is the
+    // complement detail; the platform admin asked for the full sign-up
+    // count regardless of membership or verification).
+    totalRegisteredCustomers: customersTotal + unverifiedCustomersTotal,
     newCustomers: { value: newCustomersCurrent, trend: weekOverWeekTrend(newCustomersCurrent, newCustomersPrevious) },
     pointsIssued: { value: toPoints(pointsCurrent), trend: weekOverWeekTrend(pointsCurrent, pointsPrevious) },
     revenue: { value: Math.round(revenueCurrent * 100) / 100, trend: weekOverWeekTrend(revenueCurrent, revenuePrevious) },
@@ -235,6 +245,27 @@ const buildPlatformCompanyReportWorkbook = async ({ rows, start, end }) => {
   return workbook.xlsx.writeBuffer();
 };
 
+// Same convention as the companies workbook: header on row 1 so a plain
+// admin can sort/filter immediately in Excel. "Verified" is written as
+// Yes/No text — raw booleans sort poorly in Excel and read as opaque.
+const buildPlatformCustomersWorkbook = async ({ rows }) => {
+  const workbook = new ExcelJS.Workbook();
+  const sheet = workbook.addWorksheet("Customers".slice(0, 31));
+  sheet.addRow([
+    "Customer", "Email", "Phone", "Company", "Outlet",
+    "Points", "Redemptions", "Tier", "Joined", "Verified"
+  ]);
+  const fmtDate = (d) => (d ? new Date(d).toISOString().slice(0, 10) : "");
+  for (const r of rows) {
+    sheet.addRow([
+      r.name, r.email, r.phone || "", r.companyName || "",
+      r.outletName || "", r.points, r.redemptionCount,
+      r.tier || "Untiered", fmtDate(r.joinedAt), r.emailVerified ? "Yes" : "No"
+    ]);
+  }
+  return workbook.xlsx.writeBuffer();
+};
+
 // Below this many outlets the landing page shows no figures at all. A
 // pre-launch platform reporting "3 outlets" reads worse than reporting
 // nothing, and there is no honest way to dress up a small number.
@@ -280,4 +311,4 @@ const getPublicStats = async () => {
   };
 };
 
-module.exports = { getPlatformAnalytics, getPlatformTierDistribution, getPlatformCompanyReportRows, buildPlatformCompanyReportWorkbook, getPublicStats };
+module.exports = { getPlatformAnalytics, getPlatformTierDistribution, getPlatformCompanyReportRows, buildPlatformCompanyReportWorkbook, buildPlatformCustomersWorkbook, getPublicStats };

@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { QRCodeCanvas } from "qrcode.react";
+import QRCode from "qrcode";
 
 import type { SelectedPlace } from "./PlaceSearch";
 
@@ -20,6 +20,73 @@ const BG = "#14201C";
 const PANEL = "#1D2F28";
 const CREAM = "#F3ECE2";
 const GREEN = "#0FA968";
+
+// Dark ink for the QR modules — the reference QR is black-on-white, and the
+// flyer panel is the same cream, so one palette covers both outputs.
+const QR_INK = "#14201C";
+
+// Stampd mark colours, matching `StampdLogo`.
+const MARK_DARK = "#1F1B18";
+
+// Draws the circular Stampd tile (cream disc + coin mark) to match the
+// reference QR: a solid cream circle holding the two-coin mark, centred.
+// `cx, cy` is the circle's centre and `r` its radius.
+//
+// Proportions were measured from the reference image:
+//   - tile diameter ≈ 84% of the QR width → radius ≈ 0.42 × QR width
+//   - each coin's diameter ≈ 55% of the tile's diameter
+//   - coins overlap: front coin centred down-right at ≈ 0.18 × coin diameter
+//   - back coin is an outlined ring (no fill), front coin is filled dark with
+//     a cream four-point star, exactly like `StampdLogo`.
+function drawStampdCircle(ctx: CanvasRenderingContext2D, cx: number, cy: number, r: number) {
+  // The filled cream disc, matching the QR panel colour so it reads as one
+  // intentional tile cut out of the code, not a sticker.
+  ctx.fillStyle = CREAM;
+  ctx.beginPath();
+  ctx.arc(cx, cy, r, 0, Math.PI * 2);
+  ctx.closePath();
+  ctx.fill();
+
+  // The two-coin mark, sized so it fills the tile like the reference (not the
+  // tiny floating mark from before).
+  const coinR = r * 0.275;
+  const shift = coinR * 0.36;
+  const backX = cx - shift, backY = cy - shift;
+  const frontX = cx + shift, frontY = cy + shift;
+
+  // Back coin: outlined ring only — it sits behind the front coin and reads
+  // as the coin the front one overlaps.
+  ctx.strokeStyle = MARK_DARK;
+  ctx.lineWidth = coinR * 0.13;
+  ctx.beginPath();
+  ctx.arc(backX, backY, coinR, 0, Math.PI * 2);
+  ctx.stroke();
+
+  // Front coin: filled dark disc — drawn second so it occludes the back ring.
+  ctx.fillStyle = MARK_DARK;
+  ctx.beginPath();
+  ctx.arc(frontX, frontY, coinR, 0, Math.PI * 2);
+  ctx.closePath();
+  ctx.fill();
+
+  // Cream four-point star on the front coin, same geometry as `StampdLogo`.
+  const starR = coinR * 0.42;
+  ctx.fillStyle = CREAM;
+  ctx.beginPath();
+  for (let i = 0; i < 4; i++) {
+    const a = (Math.PI / 2) * i;
+    const tipX = frontX + Math.cos(a) * starR;
+    const tipY = frontY + Math.sin(a) * starR;
+    const aMid = a + Math.PI / 4;
+    const innerX = frontX + Math.cos(aMid) * starR * 0.34;
+    const innerY = frontY + Math.sin(aMid) * starR * 0.34;
+    if (i === 0) ctx.moveTo(tipX, tipY);
+    else ctx.lineTo(tipX, tipY);
+    ctx.lineTo(innerX, innerY);
+  }
+  ctx.closePath();
+  ctx.fill();
+}
 
 function drawStars(ctx: CanvasRenderingContext2D, cx: number, y: number, size: number) {
   const gap = size * 1.5;
@@ -66,20 +133,43 @@ function download(canvas: HTMLCanvasElement, filename: string) {
   }, "image/png");
 }
 
-function loadImage(src: string): Promise<HTMLImageElement> {
-  return new Promise((resolve, reject) => {
-    const img = new Image();
-    img.onload = () => resolve(img);
-    img.onerror = reject;
-    img.src = src;
+// One source of truth for the branded QR: qrcode renders the modules into a
+// fresh canvas, then the circular Stampd tile is burned into its centre —
+// exactly like the reference image. `level="M"` keeps the logo inside the
+// error-correction budget; `marginSize` leaves the finder patterns untouched.
+//
+// Rendering it fresh each time (instead of hiding a React-rendered QR canvas)
+// means the flyer and the QR-only download share one function and the logo is
+// never out of sync between outputs.
+async function buildQrCanvas(value: string): Promise<HTMLCanvasElement> {
+  const canvas = document.createElement("canvas");
+  // `toCanvas` is the browser API: it paints the full code into the provided
+  // canvas at the requested `width`, with the `margin` module count.
+  await QRCode.toCanvas(canvas, value, {
+    color: { dark: QR_INK, light: "#FFFFFF" },
+    // Level H (~30% of the code can be damaged) is needed now: the circular
+    // Stampd tile covers roughly a 42% width area of the code, which exceeds
+    // what M (~15%) can recover. H also makes the printed flyer more robust
+    // against smudges and low-contrast lighting.
+    errorCorrectionLevel: "H",
+    margin: 2,
+    width: QR_PX,
   });
+
+  const ctx = canvas.getContext("2d");
+  if (!ctx) throw new Error("Could not build the QR canvas.");
+  // Burn the circular Stampd tile into the centre of the code — this is what
+  // makes the QR look like the reference image on every output. The flyer's
+  // cream panel sits behind it, and the QR-only download carries its own white
+  // surround, so the same tile works for both. Diameter ≈ 84% of QR width per
+  // the measured reference proportions; the M error-correction budget covers it.
+  drawStampdCircle(ctx, QR_PX / 2, QR_PX / 2, QR_PX * 0.21);
+  return canvas;
 }
 
-// White background + the QR + a centered logo, replacing the raw transparent
-// QR canvas for the standalone download. Margin matches QR_PANEL's own
-// padding (60px) so the white square reads as a deliberate card, not a crop.
-// The logo is sized to ~18% of the QR's width, comfortably inside the ~15%
-// error-correction budget `level="M"` gives, so it doesn't break scanning.
+// White background + the branded QR, for the standalone download. Margin
+// matches QR_PANEL's own padding (60px) so the white square reads as a
+// deliberate card, not a crop.
 async function buildQrOnlyCanvas(qrCanvas: HTMLCanvasElement): Promise<HTMLCanvasElement> {
   const margin = 60;
   const size = QR_PX + margin * 2;
@@ -94,12 +184,6 @@ async function buildQrOnlyCanvas(qrCanvas: HTMLCanvasElement): Promise<HTMLCanva
   ctx.fillRect(0, 0, size, size);
   ctx.drawImage(qrCanvas, margin, margin, QR_PX, QR_PX);
 
-  const logo = await loadImage("/pwa-512x512.png");
-  const logoSize = QR_PX * 0.18;
-  const logoX = (size - logoSize) / 2;
-  const logoY = (size - logoSize) / 2;
-  ctx.drawImage(logo, logoX, logoY, logoSize, logoSize);
-
   return canvas;
 }
 
@@ -108,8 +192,8 @@ function safeFilename(name: string) {
 }
 
 export function ReviewFlyer({ place }: { place: SelectedPlace }) {
-  const qrWrapRef = useRef<HTMLDivElement>(null);
   const flyerRef = useRef<HTMLCanvasElement>(null);
+  const qrCanvasRef = useRef<HTMLCanvasElement | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
 
   useEffect(() => {
@@ -121,12 +205,17 @@ export function ReviewFlyer({ place }: { place: SelectedPlace }) {
       await document.fonts.ready;
       if (cancelled) return;
 
-      const qrCanvas = qrWrapRef.current?.querySelector("canvas");
       const canvas = flyerRef.current;
-      if (!qrCanvas || !canvas) return;
+      if (!canvas) return;
 
       const ctx = canvas.getContext("2d");
       if (!ctx) return;
+
+      // The branded QR is the shared asset for both outputs — build it once
+      // and reuse it for the flyer and the QR-only download.
+      const qrCanvas = await buildQrCanvas(place.reviewUrl);
+      qrCanvasRef.current = qrCanvas;
+      if (cancelled) return;
 
       canvas.width = W;
       canvas.height = H;
@@ -171,14 +260,6 @@ export function ReviewFlyer({ place }: { place: SelectedPlace }) {
       ctx.font = "400 46px 'Space Grotesk', sans-serif";
       ctx.fillText("Scan with your camera", W / 2, panelY + QR_PANEL + 100);
 
-      ctx.fillStyle = "rgba(243, 236, 226, 0.62)";
-      ctx.font = "400 30px Inter, sans-serif";
-      ctx.fillText("It takes ten seconds. Thank you.", W / 2, panelY + QR_PANEL + 152);
-
-      ctx.fillStyle = "rgba(243, 236, 226, 0.42)";
-      ctx.font = "500 24px 'IBM Plex Mono', monospace";
-      ctx.fillText("Made free with Stampd · stampd.co", W / 2, H - 110);
-
       canvas.toBlob((blob) => {
         if (!blob || cancelled) return;
         setPreviewUrl((old) => {
@@ -200,20 +281,6 @@ export function ReviewFlyer({ place }: { place: SelectedPlace }) {
 
   return (
     <div className="mt-12 grid gap-10 lg:grid-cols-[minmax(0,1fr)_320px]">
-      {/* The QR is rendered off-screen at full size purely as a source for
-          drawImage. bgColor is transparent so the "QR only" download drops
-          onto any light artwork; the flyer supplies its own cream panel. */}
-      <div ref={qrWrapRef} className="sr-only" aria-hidden="true">
-        <QRCodeCanvas
-          value={place.reviewUrl}
-          size={QR_PX}
-          bgColor="rgba(0,0,0,0)"
-          fgColor="#14201C"
-          level="M"
-          marginSize={2}
-        />
-      </div>
-
       <canvas ref={flyerRef} className="hidden" />
 
       <div className="rounded-3xl border border-[var(--lp-line)] p-4">
@@ -242,7 +309,7 @@ export function ReviewFlyer({ place }: { place: SelectedPlace }) {
         <button
           type="button"
           onClick={async () => {
-            const qr = qrWrapRef.current?.querySelector("canvas");
+            const qr = qrCanvasRef.current ?? await buildQrCanvas(place.reviewUrl).catch(() => null);
             if (!qr) return;
             const composite = await buildQrOnlyCanvas(qr);
             download(composite, `${slug}-review-qr.png`);

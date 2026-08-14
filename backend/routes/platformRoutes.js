@@ -13,16 +13,29 @@ const {
   getPublicPlans,
   getPublicPlatformContact,
   getPlatformContactAdmin,
-  patchPlatformContact
+  patchPlatformContact,
+  getSanityChecksum,
+  downloadCustomersReport,
+  getPlatformCustomers
 } = require("../controllers/platformController");
 const { getAdmins, postAdmin, deleteAdmin } = require("../controllers/platformTeamController");
 const { verifyToken, isPlatformAdmin, isPlatformOwner } = require("../middleware/authMiddleware");
-const { authLimiter } = require("../middleware/rateLimitMiddleware");
-const { verifyTurnstile } = require("../middleware/turnstileMiddleware");
+const { authLimiter, platformExportLimiter } = require("../middleware/rateLimitMiddleware");
 
 const router = express.Router();
 
-router.post("/login", authLimiter, verifyTurnstile, platformLogin);
+router.post("/login", authLimiter, platformLogin);
+// Second MFA step for platform admins — same challenge-token contract as the
+// customer flow (see customerAccountRoutes /login/mfa).
+router.post("/login/mfa", authLimiter, require("../controllers/platformMfaController").completeMfaLogin);
+
+// Platform-admin MFA lifecycle — gated by the same ENABLE_MFA flag; every
+// endpoint 404s when the flag is off. Admin rows carry their own mfa fields.
+const platformMfa = require("../controllers/platformMfaController");
+router.get("/me/mfa/status", verifyToken, isPlatformAdmin, platformMfa.assertMfaAvailable, platformMfa.status);
+router.post("/me/mfa/setup", verifyToken, isPlatformAdmin, platformMfa.assertMfaAvailable, platformMfa.setup);
+router.post("/me/mfa/enable", verifyToken, isPlatformAdmin, platformMfa.assertMfaAvailable, platformMfa.enable);
+router.post("/me/mfa/disable", authLimiter, verifyToken, isPlatformAdmin, platformMfa.assertMfaAvailable, platformMfa.disable);
 
 // The platform registers companies; each company then registers its own
 // outlets. The platform keeps read access to every outlet and can still
@@ -33,9 +46,20 @@ router.get("/companies/:id", verifyToken, isPlatformAdmin, getCompany);
 router.patch("/companies/:id", verifyToken, isPlatformOwner, patchCompany);
 router.patch("/outlets/:outletId", verifyToken, isPlatformOwner, patchOutlet);
 
+// Daily sanity digest (G11 — backups/DR): platform-admin only; operators
+// or an external cron job poll this once a day and diff the sha256 against
+// a stored baseline to catch silent database corruption.
+router.get("/sanity-checksum", verifyToken, isPlatformAdmin, getSanityChecksum);
+
 router.get("/audit-log", verifyToken, isPlatformAdmin, getAuditLog);
 router.get("/analytics", verifyToken, isPlatformAdmin, getAnalytics);
 router.get("/analytics/companies-report/download", verifyToken, isPlatformAdmin, downloadCompaniesReport);
+// Customer workbook download for the platform admin (main). Must sit above
+// the :customers/:id detail path so the literal "customers" segment is
+// matched as the report route first.
+router.get("/customers/report/download", verifyToken, isPlatformAdmin, platformExportLimiter, downloadCustomersReport);
+router.get("/customers", verifyToken, isPlatformAdmin, getPlatformCustomers);
+
 router.get("/admins", verifyToken, isPlatformOwner, getAdmins);
 router.post("/admins", verifyToken, isPlatformOwner, postAdmin);
 router.delete("/admins/:id", verifyToken, isPlatformOwner, deleteAdmin);

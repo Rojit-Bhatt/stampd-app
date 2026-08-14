@@ -1,4 +1,5 @@
 const fetch = globalThis.fetch;
+const { googleReviewsBreaker, DependencyUnavailableError } = require("../utils/dependencyBreakers");
 
 /**
  * Fetch and proxy Google reviews for Cafe Coffesarowar
@@ -13,15 +14,27 @@ const getGoogleReviews = async (req, res, next) => {
     return res.status(200).json({
       success: false,
       source: "no_api_key",
-      message: "GOOGLE_PLACES_API_KEY is missing. Please configure it in your environment/Settings.",
+      message: "Google reviews are currently unavailable.",
       reviews: []
     });
   }
 
   try {
     const googleUrl = `https://maps.googleapis.com/maps/api/place/details/json?place_id=${placeId}&fields=reviews&key=${apiKey}`;
-    
-    const response = await fetch(googleUrl);
+
+    // Circuit-broken: a dead/slow Google fast-fails instead of hanging the
+    // page render, and repeated failures open the circuit for the whole
+    // dependency. Either way the catch block below returns the same
+    // graceful empty-review response the route already guarantees.
+    let response;
+    try {
+      response = await googleReviewsBreaker.exec(async () => fetch(googleUrl));
+    } catch (err) {
+      if (err instanceof DependencyUnavailableError) {
+        throw new Error(`Google Places API unavailable (${err.code}).`);
+      }
+      throw err;
+    }
     if (!response.ok) {
       throw new Error(`Google Places API responded with status ${response.status}`);
     }

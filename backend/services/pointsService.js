@@ -17,6 +17,7 @@ const { evaluateBroadcasts } = require("./broadcastService");
 const { createNotification } = require("./notificationService");
 const { earnCenti, toPoints } = require("../utils/pointsMath");
 const { resolveDateRange } = require("../utils/dateRange");
+const { logAction: logTenantAudit } = require("./tenantAuditService");
 
 // An EARN token only has to survive being scanned: the instant it is, it
 // converts into a PendingClaim that lives 15 minutes, which is what actually
@@ -425,6 +426,21 @@ const claimPoints = async ({ token, userId, role, organizationId }) => {
         performedByUserId: existingToken.performedByUserId || null,
         performedByName: existingToken.performedByName || ""
       });
+      // points_earn ledger row: an earned points entry that would move
+      // real money (loyalty liability, and every outlet's reports) must be
+      // reconstructable from the ledger even when the QR token is later
+      // gone. Audit failure is swallowed inside logTenantAudit — see
+      // services/tenantAuditService.js.
+      logTenantAudit({
+        companyId: org.companyId,
+        organizationId,
+        actorId: existingToken.performedByUserId || null,
+        actorName: existingToken.performedByName || "",
+        actorRole: "staff",
+        targetId: userId,
+        action: "points_earn",
+        meta: { pointsEarned: responsePayload.data.pointsEarned, billAmount: existingToken.billAmount, campaignName: responsePayload.data.campaignName || null }
+      });
     });
 
     checkMilestoneTrigger({ organization: org, membership: claimer })
@@ -592,9 +608,13 @@ const redeemPoints = async ({ token, itemId, kind, userId, role, organizationId 
             rewardKind: item.kind,
             rewardRef: item.doc._id,
             rewardName: item.name,
-            // Only a menu item has a rupee price; a RewardItem is points-only
-            // by design, so this stays null rather than recording it as free.
-            rewardValueNpr: item.kind === "menu" ? (item.doc.price ?? null) : null,
+            // A menu item carries its sale price; a RewardItem is
+            // points-only but may carry an indicative value the owner set
+            // (RewardItem.valueNpr) so the redeem report's "Value (Rs)"
+            // column has something to show beyond "—".
+            rewardValueNpr: item.kind === "menu"
+              ? (item.doc.price ?? null)
+              : (item.doc.valueNpr ?? null),
             token,
             performedByUserId: consumedToken.performedByUserId || null,
             performedByName: consumedToken.performedByName || "",
@@ -613,6 +633,19 @@ const redeemPoints = async ({ token, itemId, kind, userId, role, organizationId 
           balance: toPoints(updated.balanceCenti)
         }
       };
+      // points_redeem ledger row — spend, not earn: the side that actually
+      // costs the outlet something, so its provenance must be recoverable
+      // even after the redeem token is consumed and gone.
+      logTenantAudit({
+        companyId: org.companyId,
+        organizationId,
+        actorId: consumedToken.performedByUserId || null,
+        actorName: consumedToken.performedByName || "",
+        actorRole: "staff",
+        targetId: userId,
+        action: "points_redeem",
+        meta: { rewardName: item.name, pointsSpent: toPoints(priceCenti), rewardKind: item.kind, rewardRef: item.doc._id.toString() }
+      });
     });
 
     createNotification({
@@ -709,10 +742,12 @@ const getOutletTransactions = async (organizationId, { limit = 100, startDate, e
     });
   }
   const capped = rows.slice(0, limit);
-
   const userIds = [...new Set(capped.map((r) => r.userId.toString()))];
-  const users = await Promise.all(userIds.map((id) => User.findOne({ _id: id, organizationId })));
-  const nameById = new Map(users.filter(Boolean).map((u) => [u._id.toString(), u.name]));
+  // One batched $in read instead of N findOne round trips (was an N+1):
+  const users = userIds.length > 0
+    ? await User.find({ _id: { $in: userIds }, organizationId })
+    : [];
+  const nameById = new Map(users.map((u) => [u._id.toString(), u.name]));
 
   return {
     success: true,
@@ -732,12 +767,36 @@ const getCustomerDetailRows = async (organizationId) => {
   const customers = await User.find({ role: "customer", organizationId })
     .populate("customerAccountId")
     .sort({ name: 1 });
-
+  // One batched read of balances and transactions per outlet (was N+1:
+  // one find + one find per customer). Tier resolution still needs each
+  // customer's own earn set, so that loop stays — its query is indexed
+  // (organizationId, userId, createdAt) and reads are small in practice.
+  const customerIds = customers.map((c) => c._id);
+  const balancesByUser = new Map(
+    customerIds.length > 0
+      ? (await PointsBalance.find({ userId: { $in: customerIds }, organizationId }))
+          .map((b) => [b.userId.toString(), b])
+      : []
+  );
+  const txnsByUser = new Map(
+    customerIds.length > 0
+      ? (await PointsTransaction.find({ userId: { $in: customerIds }, organizationId }))
+          .reduce((byUser, t) => {
+            const key = t.userId.toString();
+            const list = byUser.get(key) || [];
+            list.push(t);
+            byUser.set(key, list);
+            return byUser;
+          }, new Map())
+      : []
+  );
   const rows = await Promise.all(
     customers.map(async (customer) => {
-      const balance = await PointsBalance.findOne({ userId: customer._id, organizationId });
-      const allTxns = await PointsTransaction.find({ userId: customer._id, organizationId })
-        .sort({ createdAt: -1 });
+      const idKey = customer._id.toString();
+      const balance = balancesByUser.get(idKey) || null;
+      const allTxns = (txnsByUser.get(idKey) || []).sort(
+        (a, b) => new Date(b.createdAt) - new Date(a.createdAt)
+      );
 
       const earns = allTxns.filter((t) => t.type === "earn");
       const redeems = allTxns.filter((t) => t.type === "redeem");

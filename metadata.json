@@ -1,6 +1,5 @@
 {
-  "name": "Cafe Loyalty",
-  "description": "A secure, mobile-responsive digital loyalty platform for a café consisting of a Customer Web App and a Barista Admin Console.",
-  "requestFramePermissions": ["camera"],
-  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+  "name": "Stampd",
+  "description": "A secure, mobile-responsive multi-tenant loyalty platform (stampdd.club) serving cafés in Nepal: Customer Web App, Barista Admin Console, Company Console, and a public platform site with landing, pricing, and a free Google review QR tool.",
+  "requestFramePermissions": ["camera"]
 }

@@ -1,6 +1,7 @@
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient, type QueryKey } from "@tanstack/react-query";
 import { apiRequest } from "../lib/api";
 import { useAdminAuth } from "../context/AdminAuthContext";
+import toast from "../lib/toast";
 
 export interface Campaign {
   id: string;
@@ -44,21 +45,79 @@ export function useCampaigns() {
   });
 }
 
+// Keys whose campaign list may live in cache — the query is scoped by orgId,
+// but optimistically-mutating both variants keeps the toggle instant no
+// matter which one is currently cached.
+const CAMPAIGN_KEYS: QueryKey[] = [
+  ["adminCampaigns"],
+  ["adminDashboardStats"],
+];
+
+// Apply `fn` optimistically to every campaign list in cache, stashing
+// snapshots first so a failure can restore the exact prior state.
+async function optimisticCampaigns(
+  qc: ReturnType<typeof useQueryClient>,
+  fn: (old: unknown) => unknown
+): Promise<Map<string, unknown>> {
+  const snapshots = new Map<string, unknown>();
+  for (const k of CAMPAIGN_KEYS) {
+    const prev = qc.getQueryData(k);
+    if (prev !== undefined) snapshots.set(JSON.stringify(k), prev);
+  }
+  await Promise.all(CAMPAIGN_KEYS.map((k) => qc.cancelQueries({ queryKey: k })));
+  for (const k of CAMPAIGN_KEYS) {
+    qc.setQueryData(k, (old: unknown) => fn(old));
+  }
+  return snapshots;
+}
+
+function restoreSnapshots(
+  qc: ReturnType<typeof useQueryClient>,
+  snapshots: unknown
+): void {
+  if (!snapshots || !(snapshots instanceof Map)) return;
+  for (const [keyStr, prev] of snapshots as Map<string, unknown>) {
+    qc.setQueryData(JSON.parse(keyStr), prev);
+  }
+}
+
 export function useCampaignMutations() {
   const qc = useQueryClient();
-  const invalidate = () => {
-    qc.invalidateQueries({ queryKey: ["adminCampaigns"] });
+  const reconcile = () => {
     // A campaign changes what the next bill is worth, so the QR preview and
     // the dashboard both go stale the moment one is touched.
-    qc.invalidateQueries({ queryKey: ["adminDashboardStats"] });
+    for (const k of CAMPAIGN_KEYS) qc.invalidateQueries({ queryKey: k });
   };
 
+  // Optimistic: the UI flips/create/deletes instantly; on failure the cache
+  // rolls back to the snapshot and a visible toast explains the restore so
+  // the admin is never misled about what is saved.
   const create = useMutation({
     mutationFn: (draft: CampaignDraft) =>
       apiRequest<{ success: boolean; campaign: Campaign }>("/api/admin/campaigns", {
         method: "POST", role: "admin", body: draft,
       }),
-    onSuccess: invalidate,
+    onMutate: async (draft) => {
+      const seeded: Campaign = {
+        id: `optimistic-${Date.now()}`,
+        name: draft.name,
+        description: draft.description,
+        multiplier: draft.multiplier,
+        startAt: draft.startAt,
+        endAt: draft.endAt,
+        daysOfWeek: draft.daysOfWeek,
+        isActive: true,
+        isLive: false,
+      } as Campaign;
+      return optimisticCampaigns(qc, (old) =>
+        Array.isArray(old) ? [...old, seeded] : old
+      );
+    },
+    onError: (_err, _vars, ctx) => {
+      restoreSnapshots(qc, ctx);
+      toast.error("Your campaign could not be created — restored.", { duration: 6000 });
+    },
+    onSettled: reconcile,
   });
 
   const update = useMutation({
@@ -66,13 +125,33 @@ export function useCampaignMutations() {
       apiRequest<{ success: boolean; campaign: Campaign }>(`/api/admin/campaigns/${id}`, {
         method: "PATCH", role: "admin", body: patch,
       }),
-    onSuccess: invalidate,
+    onMutate: async ({ id, patch }) =>
+      optimisticCampaigns(qc, (old) =>
+        Array.isArray(old)
+          ? old.map((c: Campaign) => (c.id === id ? { ...c, ...patch } : c))
+          : old
+      ),
+    onError: (_err, _vars, ctx) => {
+      restoreSnapshots(qc, ctx);
+      toast.error("Your campaign could not be saved — restored.", { duration: 6000 });
+    },
+    onSettled: reconcile,
   });
 
   const remove = useMutation({
     mutationFn: (id: string) =>
       apiRequest(`/api/admin/campaigns/${id}`, { method: "DELETE", role: "admin" }),
-    onSuccess: invalidate,
+    onMutate: async (id) =>
+      optimisticCampaigns(qc, (old) =>
+        Array.isArray(old)
+          ? old.filter((c: Campaign) => c.id !== id)
+          : old
+      ),
+    onError: (_err, _vars, ctx) => {
+      restoreSnapshots(qc, ctx);
+      toast.error("Your campaign could not be deleted — restored.", { duration: 6000 });
+    },
+    onSettled: reconcile,
   });
 
   return { create, update, remove };

@@ -26,7 +26,7 @@ const COMPANY = "coffesarowar";
 const OUTLET = "durbarmarg";
 
 async function main() {
-  const { baseUrl, stop } = await bootServer({ port: 5053 });
+  const { baseUrl, stop } = await bootServer({ port: 0 });
   let failures = 0;
   const check = (name, cond, extra) => {
     if (cond) console.log(`PASS ${name}`);
@@ -50,7 +50,7 @@ async function main() {
     const login = await api("/api/customer-auth/login", {
       method: "POST", body: { email, password: "password" },
     });
-    const session = login.body?.token;
+    let session = login.body?.token;
     check("customer signs in globally", Boolean(session), login.body);
 
     // Join an outlet, so there's a membership row for the rename to fan out
@@ -111,6 +111,10 @@ async function main() {
       method: "POST", body: { email, password: "brandnewpass123" },
     });
     check("the NEW password signs in", withNew.status === 200, withNew.body);
+    // A real password change now revokes the token minted before it
+    // (session versioning) — carry the freshly-minted one forward so the
+    // rest of the suite keeps working as before.
+    session = withNew.body.token;
     const withOld = await api("/api/customer-auth/login", {
       method: "POST", body: { email, password: "password" },
     });
@@ -130,13 +134,18 @@ async function main() {
     });
     check("setting a first password with no currentPassword -> 200", setWithoutCurrent.status === 200, setWithoutCurrent.body);
 
-    const meAfterSet = await api("/api/customer-auth/me", { token: session });
-    check("hasPassword is true after setting one", meAfterSet.body.account?.hasPassword === true, meAfterSet.body);
-
+    // Setting the first password bumps the account's passwordVersion, so the
+    // token minted before the change is dead on arrival (same session-
+    // versioning contract the real password change exercises above).
+    // Re-login with the newly-set password and carry the fresh token forward.
     const loginWithSetPassword = await api("/api/customer-auth/login", {
       method: "POST", body: { email, password: "freshpassword1" },
     });
     check("the newly-set password signs in", loginWithSetPassword.status === 200, loginWithSetPassword.body);
+    session = loginWithSetPassword.body.token;
+
+    const meAfterSet = await api("/api/customer-auth/me", { token: session });
+    check("hasPassword is true after setting one", meAfterSet.body.account?.hasPassword === true, meAfterSet.body);
 
     console.log("\n== Anonymous callers ==");
     const noAuthRename = await api("/api/customer-auth/profile", {

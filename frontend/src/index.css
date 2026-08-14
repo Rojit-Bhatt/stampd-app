@@ -478,3 +478,24 @@ html.landing-dark {
   --color-chart-scale-05: var(----chart-scale-05);
   --color-chart-scale-pattern-color: var(----chart-scale-pattern-color);
 }
+
+/* Celebration cards are taller than a short phone landscape viewport. Scale the
+   complete composition as one unit so the ticket and balance card keep generous
+   breathing room without changing the readable portrait/tablet layout. */
+@media (max-height: 500px) and (orientation: landscape) {
+  .celebration-content {
+    transform: scale(0.86) !important;
+    transform-origin: center;
+  }
+}
+
+/* Horizontally scrollable tables — pin the first column of every row
+   automatically when the row container carries `scrollable-table-sticky-first`
+   (applied by the shared <ScrollableTable /> when `stickyFirst` is true). */
+.scrollable-table-sticky-first > * > :first-child {
+  position: sticky;
+  left: 0;
+  z-index: 1;
+  background: var(--surface);
+  border-right: 1px solid var(--line);
+}

@@ -6,10 +6,11 @@ import toast from "@/lib/toast";
 import { apiRequest, apiUrl, tenantHeaders } from "../../lib/api";
 import { useTenant } from "../../context/TenantContext";
 import { tenantPath } from "../../lib/tenantPath";
+import { ScrollableTable, STICKY_FIRST_CELL } from "../../components/shared/ScrollableTable";
 import { formatPoints, type PointsTransaction } from "../../hooks/usePoints";
 import { formatNpr } from "../../lib/subscription";
 import { Skeleton } from "../../components/ui/skeleton";
-import { DateRangeFilter, defaultDateRange, type DateRangeValue } from "../../components/shared/DateRangeFilter";
+import { DateRangeFilter, type DateRangeValue } from "../../components/shared/DateRangeFilter";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 
@@ -28,11 +29,18 @@ const TYPE_META: Record<PointsTransaction["type"], { label: string; Icon: typeof
 
 function useTransactions(range: DateRangeValue) {
   const { companySlug, outletSlug } = useTenant();
+  // Build query params only when a real date range is selected. Empty strings
+  // mean "show everything" — the backend returns the newest 100 rows with no
+  // date filter, and the backend returns up to 5000 rows when dates are passed.
+  const params = new URLSearchParams();
+  if (range.startDate) params.set("startDate", range.startDate);
+  if (range.endDate) params.set("endDate", range.endDate);
+  const queryString = params.toString();
   return useQuery<AdminTransaction[]>({
     queryKey: ["adminTransactions", companySlug, outletSlug, range.startDate, range.endDate],
     queryFn: async () => {
       const res = await apiRequest<{ success: boolean; data: AdminTransaction[] }>(
-        `/api/admin/transactions?startDate=${range.startDate}&endDate=${range.endDate}`,
+        `/api/admin/transactions${queryString ? `?${queryString}` : ""}`,
         { role: "admin" },
       );
       return res.data || [];
@@ -45,7 +53,11 @@ function useTransactions(range: DateRangeValue) {
 // so this page never offers to change anything.
 export default function AdminTransactions() {
   const { companySlug, outletSlug } = useTenant();
-  const [range, setRange] = useState<DateRangeValue>(defaultDateRange(30));
+  // Default to no date range so the full ledger is visible on load. A
+  // trailing 30-day window silently hid any redeem/earn older than 29 days,
+  // making admins think those rows were missing entirely. The date filter
+  // only applies when the user explicitly picks a range.
+  const [range, setRange] = useState<DateRangeValue>({ startDate: "", endDate: "" });
   const { data: rows = [], isLoading } = useTransactions(range);
   const [query, setQuery] = useState("");
   const [type, setType] = useState<TypeFilter>("all");
@@ -63,8 +75,13 @@ export default function AdminTransactions() {
   const download = async () => {
     setDownloading(true);
     try {
+      // Same rule as the list query: only pass dates that are actually set.
+      const dlParams = new URLSearchParams();
+      if (range.startDate) dlParams.set("startDate", range.startDate);
+      if (range.endDate) dlParams.set("endDate", range.endDate);
+      const dlQuery = dlParams.toString();
       const res = await fetch(
-        apiUrl(`/api/admin/reports/transactions/download?startDate=${range.startDate}&endDate=${range.endDate}`),
+        apiUrl(`/api/admin/reports/transactions/download${dlQuery ? `?${dlQuery}` : ""}`),
         {
           headers: {
             Authorization: `Bearer ${localStorage.getItem("admin_auth_token")}`,
@@ -128,19 +145,19 @@ export default function AdminTransactions() {
         </div>
       </div>
 
-      <div className="shadow-ambient overflow-hidden rounded-[var(--radius-card)] bg-[var(--surface)]">
+      <ScrollableTable minContentWidth="700px">
         <div className="grid grid-cols-[1.6fr_1fr_1.4fr_1fr_1fr] border-b border-[var(--line)] px-5 py-3 text-[11px] font-bold uppercase tracking-wider text-[var(--soft)]">
-          <span>Customer</span>
+          <span className={STICKY_FIRST_CELL}>Customer</span>
           <span>Type</span>
           <span>Detail</span>
           <span className="text-right">Points</span>
-          <span className="text-right">Balance</span>
+          <span className="text-right pr-5">Balance</span>
         </div>
 
         {isLoading ? (
           Array.from({ length: 6 }).map((_, i) => (
             <div key={i} className="grid grid-cols-[1.6fr_1fr_1.4fr_1fr_1fr] items-center gap-3 border-b border-[var(--line)] px-5 py-3.5 last:border-b-0">
-              <Skeleton className="h-3.5 w-32" />
+              <Skeleton className={`h-3.5 w-32 ${STICKY_FIRST_CELL}`} />
               <Skeleton className="h-3.5 w-14" />
               <Skeleton className="h-3.5 w-24" />
               <Skeleton className="ml-auto h-3.5 w-10" />
@@ -159,7 +176,7 @@ export default function AdminTransactions() {
                 key={r.id}
                 className="grid grid-cols-[1.6fr_1fr_1.4fr_1fr_1fr] items-center gap-3 border-b border-[var(--line)] px-5 py-3.5 text-sm last:border-b-0"
               >
-                <span className="min-w-0">
+                <span className={`min-w-0 ${STICKY_FIRST_CELL}`}>
                   <Link
                     to={tenantPath(companySlug, outletSlug, `admin/customers/${r.customerId}`)}
                     className="block truncate font-bold hover:underline"
@@ -189,14 +206,14 @@ export default function AdminTransactions() {
                   {r.points > 0 ? "+" : ""}
                   {formatPoints(r.points)}
                 </span>
-                <span className="text-right font-semibold text-[var(--muted)]">
+                <span className="text-right font-semibold text-[var(--muted)] pr-5">
                   {formatPoints(r.balanceAfter)}
                 </span>
               </div>
             );
           })
         )}
-      </div>
+      </ScrollableTable>
     </div>
   );
 }

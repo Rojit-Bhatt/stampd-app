@@ -19,6 +19,8 @@ const {
 const {
   getDashboard,
   getSummary,
+  getRedeemReport,
+  downloadRedeems,
   getImpact,
   getTierDistribution,
   getLeaderboardReport,
@@ -34,7 +36,17 @@ const { uploadImageFile, uploadImage, deleteImage } = require("../controllers/im
 const staffController = require("../controllers/staffController");
 const { getNotifications, postMarkRead, postMarkAllRead } = require("../controllers/notificationController");
 const { verifyToken, isBusinessAdmin, requireStaffPermission } = require("../middleware/authMiddleware");
-const { pinLimiter } = require("../middleware/rateLimitMiddleware");
+const {
+  pinLimiter,
+  exportLimiter,
+  broadcastLimiter,
+} = require("../middleware/rateLimitMiddleware");
+const { validateBody } = require("../middleware/validateBody");
+const {
+  generateQrSchema,
+  generateRedeemQrSchema,
+  updateMySettingsSchema
+} = require("../middleware/validateSchemas");
 
 const router = express.Router();
 
@@ -59,20 +71,24 @@ const canStaff = requireStaffPermission("manage_staff");
 // pinLimiter shares its bucket with verify-pin, so the inline PIN
 // re-verification here can't be used to sweep the PIN space at a looser
 // rate — and its `skip` means a PIN-less outlet is never counted at all.
-router.post("/generate-qr", verifyToken, isBusinessAdmin, pinLimiter, generateAdminQRToken);
-router.post("/generate-redeem-qr", verifyToken, isBusinessAdmin, pinLimiter, generateAdminRedeemToken);
+// Body validation at the route: by the time the handlers run, req.body is
+// the sanitized zod output (unknown keys stripped, billAmount coerced), so
+// the handler cannot forward accidental extra fields — the settings PATCH
+// passes through the same gate with its own schema.
+router.post("/generate-qr", verifyToken, isBusinessAdmin, pinLimiter, validateBody(generateQrSchema), generateAdminQRToken);
+router.post("/generate-redeem-qr", verifyToken, isBusinessAdmin, pinLimiter, validateBody(generateRedeemQrSchema), generateAdminRedeemToken);
 // Deliberately NOT behind requireStaffPermission: a "staff" account calling
 // this is the entire point. Rate-limited instead.
 router.post("/verify-pin", verifyToken, isBusinessAdmin, pinLimiter, staffController.verifyPinController);
 router.get("/transactions", verifyToken, isBusinessAdmin, canReports, getTransactions);
 router.get("/customers", verifyToken, isBusinessAdmin, canReports, getCustomersList);
 router.get("/settings", verifyToken, isBusinessAdmin, getMySettings);
-router.patch("/settings", verifyToken, isBusinessAdmin, canSettings, updateMySettings);
+router.patch("/settings", verifyToken, isBusinessAdmin, canSettings, validateBody(updateMySettingsSchema), updateMySettings);
 router.get("/menu", verifyToken, isBusinessAdmin, listMenu);
 router.post("/menu", verifyToken, isBusinessAdmin, canCatalog, createMenuItem);
 router.post("/menu/import/preview", verifyToken, isBusinessAdmin, canCatalog, uploadMenuFile, previewMenuImport);
 router.post("/menu/import/confirm", verifyToken, isBusinessAdmin, canCatalog, confirmMenuImport);
-router.get("/menu/template", verifyToken, isBusinessAdmin, downloadMenuTemplate);
+router.get("/menu/template", verifyToken, isBusinessAdmin, exportLimiter, downloadMenuTemplate);
 router.patch("/menu/:id", verifyToken, isBusinessAdmin, canCatalog, updateMenuItem);
 router.delete("/menu/:id", verifyToken, isBusinessAdmin, canCatalog, deleteMenuItem);
 router.get("/dashboard-stats", verifyToken, isBusinessAdmin, canReports, getDashboard);
@@ -81,9 +97,14 @@ router.get("/leaderboard", verifyToken, isBusinessAdmin, canReports, getLeaderbo
 router.get("/reports/summary", verifyToken, isBusinessAdmin, canReports, getSummary);
 // The value view. A report, so it sits behind the same view_reports gate.
 router.get("/impact", verifyToken, isBusinessAdmin, canReports, getImpact);
-router.get("/reports/summary/download", verifyToken, isBusinessAdmin, canReports, downloadSummary);
-router.get("/reports/customers/download", verifyToken, isBusinessAdmin, canReports, downloadCustomers);
-router.get("/reports/transactions/download", verifyToken, isBusinessAdmin, canReports, downloadTransactions);
+router.get("/reports/summary/download", verifyToken, isBusinessAdmin, canReports, exportLimiter, downloadSummary);
+router.get("/reports/customers/download", verifyToken, isBusinessAdmin, canReports, exportLimiter, downloadCustomers);
+router.get("/reports/transactions/download", verifyToken, isBusinessAdmin, canReports, exportLimiter, downloadTransactions);
+// The redemption ledger — its own JSON read AND download, both behind the
+// same view_reports gate as the other reports.
+router.get("/reports/redeem", verifyToken, isBusinessAdmin, canReports, getRedeemReport);
+router.get("/reports/redeem/download", verifyToken, isBusinessAdmin, canReports, exportLimiter, downloadRedeems);
+
 // Campaigns change what a bill is worth; Events are display-only listings.
 // Two different things, deliberately two different route groups.
 router.get("/campaigns", verifyToken, isBusinessAdmin, campaignController.list);
@@ -111,7 +132,7 @@ router.delete("/events/:id", verifyToken, isBusinessAdmin, canMarketing, deleteE
 // Unlike the catalog, a broadcast is NOT customer-visible — it holds message
 // bodies and audience filters. Read is gated with the writes.
 router.get("/broadcasts", verifyToken, isBusinessAdmin, canMarketing, broadcastController.list);
-router.post("/broadcasts", verifyToken, isBusinessAdmin, canMarketing, broadcastController.create);
+router.post("/broadcasts", verifyToken, isBusinessAdmin, canMarketing, broadcastLimiter, broadcastController.create);
 router.get("/broadcasts/:id", verifyToken, isBusinessAdmin, canMarketing, broadcastController.detail);
 router.patch("/broadcasts/:id", verifyToken, isBusinessAdmin, canMarketing, broadcastController.update);
 router.delete("/broadcasts/:id", verifyToken, isBusinessAdmin, canMarketing, broadcastController.remove);

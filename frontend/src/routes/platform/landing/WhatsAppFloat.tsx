@@ -3,7 +3,7 @@ import { useState } from "react";
 
 import { usePlatformContact } from "../../../hooks/usePlatformContact";
 
-/** Strips spaces, dashes and a leading + so the number is wa.me-safe. */
+/** Strips spaces, dashes and a leading + so the number is WhatsApp-link-safe. */
 export const toWaNumber = (phone: string) => phone.replace(/[^\d]/g, "");
 
 /**
@@ -26,7 +26,9 @@ export function WhatsAppFloat() {
 
   return (
     <a
-      href={`https://wa.me/${number}`}
+      href={`https://api.whatsapp.com/send?phone=${number}&text=${encodeURIComponent(
+        "Hi! I have a question about Stampd."
+      )}`}
       target="_blank"
       rel="noreferrer noopener"
       onMouseEnter={() => setOpen(true)}

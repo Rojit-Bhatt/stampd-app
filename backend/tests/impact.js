@@ -12,7 +12,7 @@ const { bootServer } = require("./helpers/bootServer");
 const { makeCompanyWithOutlet } = require("./helpers/makeOutlet");
 
 async function main() {
-  const { baseUrl, stop } = await bootServer({ port: 5049 });
+  const { baseUrl, stop } = await bootServer({ port: 0 });
   let failures = 0;
   const check = (name, cond, extra) => {
     if (cond) console.log(`PASS ${name}`);
@@ -59,6 +59,17 @@ async function main() {
       body: { email, password: "password" },
     });
     const customerToken = customerLogin.body.token;
+
+    // Seed baseline, captured before the tester touches anything: patan
+    // already has demo history (Asha — two backdated visits on different
+    // days, i.e. a repeat customer — plus her seed revenue). Everything
+    // below is asserted as a delta the tester alone creates.
+    const seedImpact = await api("/api/admin/impact", { token: adminToken });
+    check("seed baseline reads", seedImpact.status === 200, seedImpact.body);
+    const seedCustomers = seedImpact.body?.customers || 0;
+    const seedRepeat = seedImpact.body?.repeatCustomers || 0;
+    const seedRevenue = seedImpact.body?.revenueTracked || 0;
+    check("the seed already shows a repeat customer at patan", seedRepeat >= 1, seedImpact.body);
 
     const earn = async (billAmount) => {
       const qr = await api("/api/admin/generate-qr", {
@@ -126,11 +137,21 @@ async function main() {
     const impact = await api("/api/admin/impact", { token: adminToken });
     check("the impact endpoint answers", impact.status === 200, impact.body);
 
-    // Our tester earned exactly once above, so at this point they are a
-    // customer but not a repeat customer.
-    check("the tester counts as a customer", impact.body?.customers >= 1, impact.body);
-    check("one earn is not yet a repeat", impact.body?.repeatCustomers === 0, impact.body);
-    check("retention is 0% with no repeats", impact.body?.retentionPercent === 0, impact.body);
+    // After the tester's single earn they are a new customer (one more than
+    // the seed baseline) but not yet a repeat customer — a single earn is a
+    // single activity day, and the seed's Asha remains the only repeater.
+    check("the tester counts as a customer", impact.body?.customers === seedCustomers + 1, impact.body);
+    check("one earn is not yet a repeat", impact.body?.repeatCustomers === seedRepeat, impact.body);
+    check(
+      "the tester's bill is tracked as revenue on top of the seed baseline",
+      impact.body?.revenueTracked === seedRevenue + 20000,
+      impact.body,
+    );
+    check(
+      "retention reflects the baseline — the tester is not repeating",
+      impact.body?.retentionPercent === Math.round((seedRepeat / impact.body.customers) * 100),
+      impact.body,
+    );
 
     // A membership with no earn must not dilute the denominator: /explore
     // provisions one of these every time somebody merely opens the page.
@@ -147,24 +168,25 @@ async function main() {
       { before: beforeLurker, after: afterLurker.body?.customers },
     );
 
-    // Second earn: now a repeat customer, and ALL their revenue counts as
-    // repeat revenue — the first visit included.
+    // Second earn the same day: two transactions in one afternoon are the
+    // same visit, so the tester is still not a repeat customer; only the
+    // revenue delta is expected. (The seed's Asha remains the lone repeater.)
     await earn(500);
     const impact2 = await api("/api/admin/impact", { token: adminToken });
-    check("a second earn makes a repeat customer", impact2.body?.repeatCustomers === 1, impact2.body);
+    check("two earns the same day are one visit — still not a repeat", impact2.body?.repeatCustomers === seedRepeat, impact2.body);
     check(
-      "repeat revenue includes the repeat customer's first visit",
-      impact2.body?.repeatRevenue === 20500,
+      "the second bill adds to tracked revenue",
+      impact2.body?.revenueTracked === seedRevenue + 20500,
       impact2.body,
     );
     check(
-      "avg spend per repeat customer is repeat revenue over repeat customers",
-      impact2.body?.avgSpendPerRepeatCustomer === 20500,
+      "customers is unchanged by the second earn",
+      impact2.body?.customers === seedCustomers + 1,
       impact2.body,
     );
     check(
       "retention is repeat over customers as a percentage",
-      impact2.body?.retentionPercent === Math.round((1 / impact2.body.customers) * 100),
+      impact2.body?.retentionPercent === Math.round((seedRepeat / impact2.body.customers) * 100),
       impact2.body,
     );
 

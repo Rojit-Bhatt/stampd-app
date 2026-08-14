@@ -1,0 +1,14 @@
+/*
+  X-Content-Type-Options: nosniff
+  X-Frame-Options: SAMEORIGIN
+  Referrer-Policy: strict-origin-when-cross-origin
+  Permissions-Policy: camera=(self), microphone=(), geolocation=(self)
+  # Report-only first: stampdd.club deploys as a PWA (service worker +
+  # Google/Cloudflare third-party scripts) and a hard CSP in one shot would
+  # be an outage gamble. CSP-Report-Only reports violations to the API's
+  # /api/csp-report collector without blocking anything; once the collected
+  # violations show the policy is right, promote it to Content-Security-Policy.
+  # Edit origins to match the actual deployment before promoting:
+  #   - connect-src needs the API origin (VITE_API_BASE_URL)
+  #   - img-src needs the API origin + stampdd.club if avatars are hosted there
+  Content-Security-Policy-Report-Only: default-src 'self'; script-src 'self' https://accounts.google.com https://*.googleapis.com 'unsafe-inline' https://*.google-analytics.com; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; font-src 'self' data:; connect-src 'self' https://accounts.google.com https://www.google-analytics.com https://*.googleapis.com https://api.stampdd.club; worker-src 'self'; base-uri 'self'; form-action 'self' https://accounts.google.com; frame-ancestors 'none'; report-uri /api/csp-report

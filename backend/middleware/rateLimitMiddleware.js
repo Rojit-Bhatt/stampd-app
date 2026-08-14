@@ -1,15 +1,20 @@
-const { rateLimit } = require("express-rate-limit");
+const { rateLimit, MemoryStore } = require("express-rate-limit");
+
+// Shared store (G14 — multi-instance readiness). REDIS_URL unset → every
+// limiter runs on the per-process MemoryStore and nothing outside this
+// module even knows redis exists. REDIS_URL set → one lazy single-client
+// connects and every limiter shares it through RedisStore, so the limits
+// stay correct behind a load balancer. The client is reused (not recreated)
+// and never touched if the env var is off.
 
 // Rate limiters for the unauthenticated, abuse-prone endpoints (login,
 // register, forgot-password, resend-verification). Applied per-route, never
 // globally — a global limiter would also throttle legitimate high-frequency
 // traffic like the claim page's status poll.
 //
-// Store: the default in-memory MemoryStore, on purpose. It is correct for a
-// single backend instance (what's deployed). If this ever scales to more than
-// one instance behind a load balancer, each instance would keep its own
-// counts and the effective limit would multiply by the instance count — at
-// that point switch to a shared store (e.g. Redis). Not needed yet.
+// Store: per-limiter MemoryStore by default (correct for a single backend
+// instance); switch to a shared Redis store with REDIS_URL when the deploy
+// grows past one instance. See getStore() below.
 //
 // Keying: express-rate-limit's default key is the client IP (IPv6-safe). In
 // production the app sits behind Render's proxy, so server.js sets
@@ -29,8 +34,49 @@ const jsonHandler = (message) => (req, res) => {
 const MINUTE = 60 * 1000;
 const HOUR = 60 * MINUTE;
 
+// Shared rate-limit store (G14). Lazy — neither redis nor the connection is
+// ever created unless REDIS_URL is set; falling back to the default
+// MemoryStore is the correct single-instance configuration, not a degraded
+// state. RedisStore is resolved from express-rate-limit's official store
+// adapter list so the store interface contract stays the app's only concern.
+let cachedStore = undefined;
+const getStore = () => {
+  if (cachedStore !== undefined) return cachedStore;
+  if (!process.env.REDIS_URL) {
+    cachedStore = undefined; // express-rate-limit uses MemoryStore when no store is given
+    return undefined;
+  }
+  try {
+    // eslint-disable-next-line global-require
+    const { createClient } = require("redis");
+    const { RedisStore } = require("express-rate-limit");
+    const client = createClient({ url: process.env.REDIS_URL });
+    client.on("error", (err) => {
+      // A Redis connection problem must never take the app down: fall back to
+      // the per-process memory store so rate limiting keeps working while the
+      // operator fixes the datasource.
+      require("../utils/logger").warn("rate-limit", "Redis store error, falling back to memory", { error: err.message });
+      cachedStore = new MemoryStore();
+    });
+    client.connect().catch(() => {
+      cachedStore = new MemoryStore();
+    });
+    cachedStore = new RedisStore({ sendCommand: (...args) => client.sendCommand(args) });
+    return cachedStore;
+  } catch (err) {
+    // redis package missing or unusable — stay on MemoryStore.
+    cachedStore = undefined;
+    require("../utils/logger").warn("rate-limit", "Redis store unavailable, using memory store", { error: String(err.message || err) });
+    return undefined;
+  }
+};
+
+// Small wrapper that injects the (possibly shared) store without touching
+// every limiter's declaration below.
+const limiter = (opts) => rateLimit({ ...opts, store: getStore() });
+
 // Login attempts: has to tolerate normal typo retries, so a looser window.
-const authLimiter = rateLimit({
+const authLimiter = limiter({
   windowMs: 15 * MINUTE,
   limit: 20,
   standardHeaders: true,
@@ -41,7 +87,7 @@ const authLimiter = rateLimit({
 // Account creation and email-triggering actions (register, forgot-password,
 // resend-verification): legitimately rare per person, so a tighter cap that
 // also throttles email-spam abuse.
-const registrationLimiter = rateLimit({
+const registrationLimiter = limiter({
   windowMs: HOUR,
   limit: 10,
   standardHeaders: true,
@@ -55,7 +101,7 @@ const registrationLimiter = rateLimit({
 // picture more than a handful of times an hour. Its own bucket rather than
 // reusing registrationLimiter: sharing would let picture-fiddling burn the
 // budget for password resets, which actually matter.
-const uploadLimiter = rateLimit({
+const uploadLimiter = limiter({
   windowMs: HOUR,
   limit: 20,
   standardHeaders: true,
@@ -68,7 +114,7 @@ const uploadLimiter = rateLimit({
 // — so this is a cost control, not just an abuse control. Its own bucket
 // rather than reusing authLimiter: a visitor hunting for their shop should
 // never be able to burn the budget that protects the login endpoints.
-const placesLimiter = rateLimit({
+const placesLimiter = limiter({
   windowMs: 5 * MINUTE,
   limit: 30,
   standardHeaders: true,
@@ -101,7 +147,7 @@ const placesLimiter = rateLimit({
 // counter routes byte-identical for every outlet that hasn't turned PINs on.
 // express.json() is mounted globally before every route in server.js, so
 // req.body is populated by the time `skip` runs.
-const pinLimiter = rateLimit({
+const pinLimiter = limiter({
   windowMs: MINUTE,
   limit: 20,
   standardHeaders: true,
@@ -110,4 +156,51 @@ const pinLimiter = rateLimit({
   handler: jsonHandler("Too many attempts. Please wait a minute and try again."),
 });
 
-module.exports = { authLimiter, registrationLimiter, uploadLimiter, placesLimiter, pinLimiter };
+// CSP violation reports are fire-and-forget: a misbehaving page can loop them
+// (and report-uri spam is a known nuisance/DDoS vector), so cap this endpoint
+// at 60/min per client. Its own bucket, never authLimiter's: the CSP endpoint
+// is public and unauthenticated — it must not borrow state from anything
+// privileged, and nothing privileged should share its state either.
+const cspReportLimiter = limiter({
+  windowMs: MINUTE,
+  limit: 60,
+  standardHeaders: true,
+  legacyHeaders: false,
+  handler: jsonHandler("Too many CSP reports. Slow down."),
+});
+
+
+// Bulk data exports (customer/transaction workbook downloads, the menu Excel
+// template). Legitimately rare — no staff re-runs a full-customer export more
+// than a handful of times a quarter-hour — while each request builds an
+// ExcelJS workbook over the whole tenant dataset. Own bucket: sharing with
+// authLimiter would let a password typo burn the export budget.
+const exportLimiter = limiter({
+  windowMs: 15 * MINUTE,
+  limit: 10,
+  standardHeaders: true,
+  legacyHeaders: false,
+  handler: jsonHandler("Too many downloads. Please wait a few minutes."),
+});
+
+// Broadcast creation triggers real SMS sends (Sparrow API, paisa per message).
+// Tighter cap than exports because this endpoint spends money.
+const broadcastLimiter = limiter({
+  windowMs: 15 * MINUTE,
+  limit: 10,
+  standardHeaders: true,
+  legacyHeaders: false,
+  handler: jsonHandler("Too many broadcasts. Please wait a few minutes."),
+});
+
+// Same shape as exportLimiter but its own bucket — platform admin work must
+// never burn the tenant admin's export budget or vice versa.
+const platformExportLimiter = limiter({
+  windowMs: 15 * MINUTE,
+  limit: 10,
+  standardHeaders: true,
+  legacyHeaders: false,
+  handler: jsonHandler("Too many downloads. Please wait a few minutes."),
+});
+
+module.exports = { authLimiter, registrationLimiter, uploadLimiter, placesLimiter, pinLimiter, cspReportLimiter, exportLimiter, broadcastLimiter, platformExportLimiter };

@@ -1,0 +1,76 @@
+# CI: mirror the Cloudflare Pages deployment steps (pnpm install
+# --frozen-lockfile) so a stale pnpm-lock.yaml or a broken build fails the
+# branch BEFORE it reaches production. Also runs the full backend test suite.
+#
+# NOTE: quality.yml (npm-based) covers typecheck + lint + focused backend
+# checks; this workflow is the production path (pnpm) for the Pages build.
+name: Production build check (pnpm)
+
+on:
+  push:
+    branches: [main, security-roadmap]
+  pull_request:
+    branches: [main]
+
+jobs:
+  production-check:
+    name: pnpm lockfile + build + backend suite
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      # pnpm/action-setup MUST come before setup-node: setup-node injects a
+      # bundled (newer) pnpm into PATH that ignores pnpm-workspace.yaml and
+      # treats our npm-style workspace declaration as a single project.
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      # Fail fast: Cloudflare Pages runs exactly this command in /frontend.
+      # If pnpm-lock.yaml is older than package.json, this step fails here,
+      # not in production.
+      - name: Fail fast if the lockfile is out of date
+        run: pnpm install --frozen-lockfile
+
+      # Typecheck on the SAME package manager Cloudflare Pages uses. This
+      # caught the zod 3-vs-4 collision that npm's flat layout hid from the
+      # npm-based quality.yml job (see docs/review-2026-08-findings.md).
+      - name: Typecheck frontend (pnpm)
+        run: cd frontend && pnpm exec tsc --noEmit
+
+      - name: Build frontend (what Cloudflare Pages ships)
+        run: pnpm run --filter frontend build
+
+      - name: Run full backend test suite
+        run: |
+          cd backend
+          failed=0
+          for f in tests/*.js; do
+            name=$(basename "$f" .js)
+            # Per-suite hard timeout: one slow or hung suite must never block
+            # the whole job (GitHub's 6h limit). Full local run ≈ 15 min for
+            # 67 suites, so 5 min per suite is generous.
+            timeout 300 node "$f" > /tmp/ci_$name.log 2>&1 || {
+              echo "FAIL: $name"
+              echo "--- tail of /tmp/ci_$name.log ---"
+              tail -20 /tmp/ci_$name.log
+              echo "--- end tail ---"
+              failed=1
+            }
+          done
+          exit $failed
+
+      # Live production smoke test — verifies the deployed stack answers as
+      # expected: SPA HTML on /, API-as-JSON through the edge proxy, CORS
+      # preflight, public tenant resolution, backend health. Runs only on
+      # pushes to main because it hits the real production endpoints.
+      - name: Production smoke test
+        if: github.ref == 'refs/heads/main'
+        env:
+          SITE: https://stampdd.club
+          API_BASE: https://api.stampdd.club
+        run: node scripts/smoke-prod.js

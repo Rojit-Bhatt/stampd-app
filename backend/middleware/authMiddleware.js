@@ -1,4 +1,4 @@
-const { verifyAuthToken } = require("../utils/tokenUtils");
+const { verifyAuthToken, tokenPv } = require("../utils/tokenUtils");
 const User = require("../models/User");
 const Organization = require("../models/Organization");
 const Company = require("../models/Company");
@@ -46,6 +46,22 @@ const verifyToken = async (req, _res, next) => {
     const user = await User.findOne({ _id: decoded.userId });
 
     if (!user || user.role !== decoded.role) {
+      const error = new Error("Access denied. Token is no longer valid.");
+      error.statusCode = 401;
+      throw error;
+    }
+
+    // Credential-version guard. Platform admins (and legacy business_admin
+    // rows that still own a password directly on this row) keep their
+    // credential here; a token minted before the last password change/reset
+    // is dead on arrival. tokenPv() treats legacy no-pv tokens as version 0,
+    // matching the row's default, so nothing breaks until credentials change.
+    // The User row carries `passwordVersion`; the token carries the matching
+    // `pv` claim (see utils/tokenUtils). tokenPv() on the Mongoose row would
+    // always read 0 (rows have no `pv` field) and silently let stale tokens
+    // through, so compare the row field explicitly.
+    const rowPv = typeof user.passwordVersion === "number" ? user.passwordVersion : 0;
+    if (rowPv > tokenPv(decoded)) {
       const error = new Error("Access denied. Token is no longer valid.");
       error.statusCode = 401;
       throw error;

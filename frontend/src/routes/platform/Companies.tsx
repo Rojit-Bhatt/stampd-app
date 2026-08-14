@@ -3,6 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { Link, useNavigate } from "react-router-dom";
 import { Search, ChevronRight } from "lucide-react";
 import { apiRequest } from "../../lib/api";
+import { ScrollableTable } from "../../components/shared/ScrollableTable";
 import { Skeleton } from "../../components/ui/skeleton";
 import type { BusinessCategory } from "../../hooks/useAdminSettings";
 import { usePlatformAuth } from "../../context/PlatformAuthContext";
@@ -205,33 +206,35 @@ export default function Companies() {
 
                 {open && (
                   <div className="border-t border-[var(--line)] bg-[var(--bg)] px-5 py-3">
-                    {c.outlets.length === 0 ? (
-                      <p className="py-2 text-xs text-[var(--muted)]">
-                        No outlets yet — this company registers its own.
-                      </p>
-                    ) : (
-                      <div className="flex flex-col gap-1">
-                        <div className="grid grid-cols-[2fr_1fr_1fr_1fr] px-1 pb-1 text-[10px] font-bold uppercase tracking-wider text-[var(--soft)]">
-                          <span>Outlet</span>
-                          <span>Status</span>
-                          <span>Customers</span>
-                          <span>Points</span>
-                        </div>
-                        {c.outlets.map((o) => (
-                          <div key={o.id} className="grid grid-cols-[2fr_1fr_1fr_1fr] items-center px-1 py-1.5 text-[13px]">
-                            <span className="min-w-0">
-                              <span className="block truncate font-semibold">{o.name}</span>
-                              <span className="block truncate font-mono text-[11px] text-[var(--soft)]">
-                                /{c.slug}/{o.slug}
-                              </span>
-                            </span>
-                            <span className="text-[var(--muted)]">{o.status}</span>
-                            <span className="font-semibold">{o.customersCount}</span>
-                            <span className="font-semibold">{o.pointsIssued}</span>
+                    <ScrollableTable minContentWidth="520px" stickyFirst={false} className="border-0 shadow-none rounded-none">
+                      {c.outlets.length === 0 ? (
+                        <p className="py-2 text-xs text-[var(--muted)]">
+                          No outlets yet — this company registers its own.
+                        </p>
+                      ) : (
+                        <div className="flex flex-col gap-1">
+                          <div className="grid grid-cols-[2fr_1fr_1fr_1fr] px-1 pb-1 text-[10px] font-bold uppercase tracking-wider text-[var(--soft)]">
+                            <span>Outlet</span>
+                            <span>Status</span>
+                            <span>Customers</span>
+                            <span>Points</span>
                           </div>
-                        ))}
-                      </div>
-                    )}
+                          {c.outlets.map((o) => (
+                            <div key={o.id} className="grid grid-cols-[2fr_1fr_1fr_1fr] items-center px-1 py-1.5 text-[13px]">
+                              <span className="min-w-0">
+                                <span className="block truncate font-semibold">{o.name}</span>
+                                <span className="block truncate font-mono text-[11px] text-[var(--soft)]">
+                                  /{c.slug}/{o.slug}
+                                </span>
+                              </span>
+                              <span className="text-[var(--muted)]">{o.status}</span>
+                              <span className="font-semibold">{o.customersCount}</span>
+                              <span className="font-semibold">{o.pointsIssued}</span>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </ScrollableTable>
                   </div>
                 )}
               </div>

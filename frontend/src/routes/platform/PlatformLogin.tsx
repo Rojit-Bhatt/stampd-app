@@ -7,7 +7,7 @@ import toast from "@/lib/toast";
 import { usePlatformAuth } from "../../context/PlatformAuthContext";
 import { PLATFORM_NAME } from "../../lib/platform";
 import { AuthSplitShell } from "../../components/shared/auth/AuthSplitShell";
-import { Turnstile, TURNSTILE_ENABLED, type TurnstileHandle } from "../../components/shared/Turnstile";
+import { ErrorInput } from "../../components/shared/ErrorInput";
 
 const schema = z.object({
   email: z.string().trim().email("Please enter a valid email address."),
@@ -22,8 +22,6 @@ export default function PlatformLogin() {
   const { user, login, isLoading } = usePlatformAuth();
   const navigate = useNavigate();
   const [busy, setBusy] = useState(false);
-  const [turnstileToken, setTurnstileToken] = useState("");
-  const turnstileRef = useRef<TurnstileHandle>(null);
 
   useEffect(() => {
     document.title = `Platform admin | ${PLATFORM_NAME}`;
@@ -32,23 +30,30 @@ export default function PlatformLogin() {
     if (user && user.role === "platform") navigate("/platform");
   }, [user, navigate]);
 
+  const form = useForm<FormValues>({ resolver: zodResolver(schema) });
   const {
     register,
     handleSubmit,
-    formState: { errors },
-  } = useForm<FormValues>({ resolver: zodResolver(schema) });
+    formState: { errors, touchedFields },
+  } = form;
+  // Wrong-credential errors point at both fields (never reveal which side
+  // misfired) and clear the moment the admin starts typing again.
+  const [serverError, setServerError] = useState<string | null>(null);
+  const submitted = useRef(false);
 
   const onSubmit = async (data: FormValues) => {
+    submitted.current = true;
+    setServerError(null);
     setBusy(true);
     const id = toast.loading("Signing you in…");
     try {
-      await login(data.email, data.password, turnstileToken);
+      await login(data.email, data.password);
       toast.success("Good to see you again!", { id });
       navigate("/platform");
     } catch (err: any) {
-      turnstileRef.current?.reset();
-      setTurnstileToken("");
-      toast.error(err.message || "Couldn't sign you in — try again.", { id });
+      const msg = err.message || "Couldn't sign you in — try again.";
+      setServerError(msg);
+      toast.error(msg, { id });
     } finally {
       setBusy(false);
     }
@@ -63,26 +68,47 @@ export default function PlatformLogin() {
 
       <div className="rounded-[20px] border border-[var(--lp-line)] bg-white/[0.04] p-6">
         <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col gap-3">
-          <input
-            type="email"
-            placeholder="Email"
-            autoComplete="username"
-            {...register("email")}
-            className="rounded-2xl border border-[var(--lp-line)] bg-white/[0.04] px-4 py-3.5 text-sm text-[var(--lp-ink)] placeholder:text-[var(--lp-muted)] focus:border-[var(--lp-green)] focus:outline-none"
-          />
-          {errors.email && <p className="pl-1 text-xs font-semibold text-[var(--lp-terra)]">{errors.email.message}</p>}
-          <input
-            type="password"
-            placeholder="Password"
-            autoComplete="current-password"
-            {...register("password")}
-            className="rounded-2xl border border-[var(--lp-line)] bg-white/[0.04] px-4 py-3.5 text-sm text-[var(--lp-ink)] placeholder:text-[var(--lp-muted)] focus:border-[var(--lp-green)] focus:outline-none"
-          />
-          {errors.password && <p className="pl-1 text-xs font-semibold text-[var(--lp-terra)]">{errors.password.message}</p>}
-          <Turnstile ref={turnstileRef} onVerify={setTurnstileToken} />
+          <ErrorInput
+            label="Email"
+            id="platform-login-email"
+            mode="landing"
+            error={serverError ?? errors.email?.message}
+            touched={!!touchedFields.email || !!serverError}
+            forced={submitted.current || !!serverError}
+            className="bg-white/[0.04]"
+          >
+            <input
+              type="email"
+              placeholder="Email"
+              autoComplete="username"
+              {...register("email", { onChange: () => setServerError(null) })}
+              aria-invalid={!!(serverError || errors.email)}
+              aria-describedby={serverError || errors.email ? "platform-login-email-error" : undefined}
+              className="w-full bg-transparent px-0 text-sm text-[var(--lp-ink)] placeholder:text-[var(--lp-muted)] focus:outline-none"
+            />
+          </ErrorInput>
+          <ErrorInput
+            label="Password"
+            id="platform-login-password"
+            mode="landing"
+            error={serverError ?? errors.password?.message}
+            touched={!!touchedFields.password || !!serverError}
+            forced={submitted.current || !!serverError}
+            className="bg-white/[0.04]"
+          >
+            <input
+              type="password"
+              placeholder="Password"
+              autoComplete="current-password"
+              {...register("password", { onChange: () => setServerError(null) })}
+              aria-invalid={!!(serverError || errors.password)}
+              aria-describedby={serverError || errors.password ? "platform-login-password-error" : undefined}
+              className="w-full bg-transparent px-0 text-sm text-[var(--lp-ink)] placeholder:text-[var(--lp-muted)] focus:outline-none"
+            />
+          </ErrorInput>
           <button
             type="submit"
-            disabled={busy || isLoading || (TURNSTILE_ENABLED && !turnstileToken)}
+            disabled={busy || isLoading}
             className="mt-2 w-full rounded-[74px] bg-[var(--lp-cream)] py-4 text-[15px] font-bold text-[#14201C] transition-transform duration-200 hover:scale-105 disabled:opacity-50 motion-reduce:transition-none motion-reduce:hover:scale-100"
           >
             {busy ? "Signing you in…" : "Sign in"}

@@ -5,7 +5,12 @@ const {
   updatePlan,
   archivePlan
 } = require("../services/subscriptionPlanService");
+const { clearCache } = require("../utils/responseCache");
 const User = require("../models/User");
+
+// The public plans catalog is cached; any mutation that changes it must
+// purge the key so the next read rebuilds fresh.
+const purgePlansCache = () => clearCache({ tenant: "global", kind: "publicPlans" });
 
 const getPublicPlans = async (req, res, next) => {
   try {
@@ -34,6 +39,7 @@ const postPlan = async (req, res, next) => {
       actorId: req.user.id,
       actorName: actor ? actor.name : "Unknown"
     });
+    purgePlansCache();
     res.status(201).json(result);
   } catch (error) {
     next(error);
@@ -50,6 +56,7 @@ const patchPlan = async (req, res, next) => {
       actorId: req.user.id,
       actorName: actor ? actor.name : "Unknown"
     });
+    purgePlansCache();
     res.status(200).json(result);
   } catch (error) {
     next(error);
@@ -64,6 +71,7 @@ const deletePlan = async (req, res, next) => {
       actorId: req.user.id,
       actorName: actor ? actor.name : "Unknown"
     });
+    purgePlansCache();
     res.status(200).json(result);
   } catch (error) {
     next(error);

@@ -35,9 +35,12 @@ __pycache__/
 # Local project scratch and worktrees
 .superpowers/
 .worktrees/
+.claude/
+graphify-out/
 
 # Editor and IDE files
 .idea/
 .vscode/
 *.swp
 *.swo
+.worktrees

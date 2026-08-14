@@ -242,6 +242,24 @@ const getTierDistributionStats = async (organizationId) => {
   return counts;
 };
 
+// CSV / XLSX formula injection guard (CWE-1236): a cell whose first
+// character is = + - @ can be executed as a formula by spreadsheet apps
+// (e.g. "=CMD|..." in LibreOffice/Excel). Escape happens once here, at the
+// boundary where stored user content enters the export workbook — all
+// name/email/address/reward fields come from DB rows that any staff
+// member could have authored. Prepending a single quote forces plain-text
+// rendering and preserves the visible value when exported back out.
+// Formula injection needs a real expression after the prefix character. A bare
+// '+' followed by a digit (e.g. a phone like "+9779813334444") is data, not a
+// formula — Excel only evaluates it as one when a digit chain yields an
+// expression, which is extremely rare; require a letter/paren/space after the
+// prefix to avoid mangling phone numbers and currency strings.
+const ESCAPE_FORMULA_PREFIX_RE = /^[=\-@]|^[+](?=[A-Za-z()\s])/;
+const escapeFormula = (v) => {
+  if (typeof v !== "string") return v;
+  return ESCAPE_FORMULA_PREFIX_RE.test(v.trim()) ? "'" + v : v;
+};
+
 const buildSummaryWorkbook = async (stats) => {
   const workbook = new ExcelJS.Workbook();
   const sheet = workbook.addWorksheet("Summary");
@@ -268,17 +286,17 @@ const buildCustomersWorkbook = async (organizationId) => {
   ]);
   for (const r of rows) {
     sheet.addRow([
-      r.name,
-      r.email,
-      r.phone,
-      r.address,
+      escapeFormula(r.name),
+      escapeFormula(r.email),
+      escapeFormula(r.phone),
+      escapeFormula(r.address),
       r.customerNo,
       r.pointsBalance,
       r.lifetimePoints,
       r.redemptionCount,
       r.totalSpent,
       r.lastActivityAt ? new Date(r.lastActivityAt).toISOString().slice(0, 10) : "",
-      r.tier || "—"
+      escapeFormula(r.tier || "—")
     ]);
   }
   return workbook.xlsx.writeBuffer();
@@ -297,13 +315,99 @@ const buildTransactionsWorkbook = async (organizationId, { startDate, endDate } 
   for (const r of rows) {
     sheet.addRow([
       new Date(r.createdAt).toISOString().slice(0, 16).replace("T", " "),
-      r.customerName,
+      escapeFormula(r.customerName),
       r.type,
       r.points,
       r.balanceAfter,
       r.billAmount ?? "",
-      r.rewardName || ""
+      escapeFormula(r.rewardName || "")
     ]);
+  }
+  return workbook.xlsx.writeBuffer();
+};
+
+// One ledger pass over the range's redeem rows. Rows are rendered newest
+// first — the redeem page is a ledger, and the newest redemptions are the
+// ones an admin reaches for first. `topItem` picks the most-redeemed
+// rewardName; ties go to whichever name surfaces first, which is fine for a
+// tiebreaker.
+const getRedeemStats = async (organizationId, { startDate, endDate } = {}) => {
+  const { start, end } = resolveDateRange(startDate, endDate);
+  const range = { $gte: start, $lte: end };
+
+  const txns = await PointsTransaction.find({ organizationId, type: "redeem", createdAt: range });
+
+  // The history table must name the customer whose points actually moved.
+  // `performedByName` is staff attribution (set only when a PIN-identified
+  // staff member generated the redeem QR) and is blank for app-initiated
+  // redeems — hence the old "Unknown" rows. Batch-resolve names from the
+  // owning User docs; fall back to staff attribution, then "Unknown".
+  const userIds = [...new Set(txns.map((t) => t.userId.toString()))];
+  const users = userIds.length > 0
+    ? await User.find({ _id: { $in: userIds }, organizationId })
+    : [];
+  const nameById = new Map(users.map((u) => [u._id.toString(), u.name]));
+
+  const rows = txns
+    .map((t) => ({
+      date: new Date(t.createdAt).toISOString().slice(0, 16).replace("T", " "),
+      customer: escapeFormula(nameById.get(t.userId.toString()) || t.performedByName || "Unknown"),
+      customerId: t.userId.toString(),
+      item: escapeFormula(t.rewardName || ""),
+      points: toPoints(-t.pointsCenti),
+      value: t.rewardValueNpr ?? null
+    }))
+    .sort((a, b) => (b.date < a.date ? -1 : b.date > a.date ? 1 : 0));
+  const totalPointsRedeemed = toPoints(-sumCenti(txns));
+  const uniqueCustomers = new Set(txns.map((t) => t.userId.toString())).size;
+
+  const itemCounts = new Map();
+  for (const t of txns) {
+    const name = t.rewardName || "Unknown";
+    itemCounts.set(name, (itemCounts.get(name) || 0) + 1);
+  }
+  let topItem = null;
+  let topCount = 0;
+  for (const [name, count] of itemCounts) {
+    if (count > topCount) {
+      topCount = count;
+      topItem = name;
+    }
+  }
+
+  // Daily series: only days that actually had redemptions appear — a ledger
+  // of quiet zeroes wastes the admin's scroll. Newest day at the top.
+  const byDay = new Map();
+  for (const t of txns) {
+    const key = dayKey(t.createdAt);
+    const bucket = byDay.get(key) || { date: key, redemptions: 0, points: 0 };
+    bucket.redemptions += 1;
+    bucket.points += -t.pointsCenti / 100;
+    byDay.set(key, bucket);
+  }
+
+  return {
+    rows,
+    totalRedemptions: txns.length,
+    totalPointsRedeemed,
+    uniqueCustomers,
+    topItem,
+    daily: Array.from(byDay.values()).sort((a, b) => (a.date < b.date ? -1 : 1)),
+    startDate: start.toISOString().slice(0, 10),
+    endDate: end.toISOString().slice(0, 10)
+  };
+};
+
+// The redeem page's spreadsheet export — same headers as the on-screen
+// table, so the download is a faithful copy of what the admin just filtered.
+const buildRedeemsWorkbook = async (organizationId, { startDate, endDate } = {}) => {
+  const stats = await getRedeemStats(organizationId, { startDate, endDate });
+
+  const workbook = new ExcelJS.Workbook();
+  const sheet = workbook.addWorksheet("Redemptions");
+  sheet.addRow(["When", "Customer", "Item / Reward", "Points Redeemed", "Value (Rs)"]);
+  for (const r of stats.rows) {
+    sheet.addRow([r.date, r.customer, r.item, r.points, r.value ?? ""]);
   }
   return workbook.xlsx.writeBuffer();
 };
@@ -317,5 +421,7 @@ module.exports = {
   buildSummaryWorkbook,
   buildCustomersWorkbook,
   buildTransactionsWorkbook,
+  getRedeemStats,
+  buildRedeemsWorkbook,
   resolveDateRange
 };

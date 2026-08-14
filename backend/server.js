@@ -1,4 +1,5 @@
-require("dotenv").config();
+const dotenv = require("dotenv");
+dotenv.config();
 
 // In production the secret MUST come from the environment. In development we
 // fall back to an insecure dev key (also handled in utils/tokenUtils.js) so the
@@ -8,9 +9,35 @@ if (!process.env.JWT_SECRET) {
     console.error("FATAL: JWT_SECRET must be set in production.");
     process.exit(1);
   }
-  process.env.JWT_SECRET = "dev_only_insecure_jwt_secret_change_me";
-  console.warn("[dev] JWT_SECRET not set — using an insecure development key.");
+  // Hardcoded dev keys are no longer in source. Fall back to the value in
+  // backend/.env.example (read with dotenv so local `.env` stays the source
+  // of truth when it exists) — a deliberately weak value that never lives in
+  // git history as an active secret.
+  const fs = require("fs");
+  const path = require("path");
+  const examplePath = path.resolve(__dirname, ".env.example");
+  try {
+    const exampleVars = dotenv.parse(fs.readFileSync(examplePath));
+    // Re-apply every non-empty default from the example file (MONGODB_URI,
+    // JWT_GLOBAL_SECRET etc.) so a bare `node server.js` run still works with
+    // only .env.example present. Empty values are intentionally left unset so
+    // each module's own dev-fallback logic can take over.
+    for (const [key, value] of Object.entries(exampleVars)) {
+      if (value && !process.env[key]) process.env[key] = value;
+    }
+    if (!process.env.JWT_SECRET) {
+      throw new Error("JWT_SECRET missing in .env.example");
+    }
+    if (!process.env.JWT_GLOBAL_SECRET) {
+      throw new Error("JWT_GLOBAL_SECRET missing in .env.example");
+    }
+    console.warn("[dev] Secrets not set — using the deliberately weak values from .env.example.");
+  } catch (err) {
+    console.error("FATAL: JWT_SECRET must be set (copy backend/.env.example to backend/.env).", err.message);
+    process.exit(1);
+  }
 }
+
 
 // True when running against the in-memory mock DB (no real MONGODB_URI given).
 // Set before the fallback URI is assigned below, so later code can tell dev/mock
@@ -42,6 +69,7 @@ if (USING_MOCK_DB) {
   };
 }
 
+const fs = require("fs");
 const express = require("express");
 const cors = require("cors");
 const helmet = require("helmet");
@@ -106,22 +134,109 @@ app.use(
     crossOriginResourcePolicy: { policy: "cross-origin" }
   })
 );
-// threshold: 1kb default — skips compressing tiny bodies where gzip framing
-// overhead would outweigh the saving. Images (jpeg/png/webp) are already
-// compressed and are excluded automatically by the `compressible` mime check,
-// so this only touches JSON/text/html.
-app.use(compression());
+// Response compression in transit. gzip only — the Express 4 `compression`
+// package implements gzip/deflate (not brotli), and gzip is what essentially
+// every HTTP client advertises in Accept-Encoding. `threshold: 1kb` skips
+// tiny bodies where gzip framing overhead would outweigh the saving.
+// Images (jpeg/png/webp/gif) are already compressed and are excluded
+// automatically by the `compressible` mime check, so this only touches
+// JSON/text/html.
+//
+// Double-compression protection (see backend/tests/response-compression.js
+// for the automated checks):
+//  1. Nothing in this process gzip-encodes a body by hand — grep the
+//     codebase for zlib/createGzip/createBrotli and no such middleware
+//     exists in any request path.
+//  2. The frontend deploys to Cloudflare Workers Static Assets (assets-
+//     only). Cloudflare auto-compresses the *static* JS/CSS at the edge
+//     and passes dynamic JSON from this server through untouched.
+app.use(compression({ threshold: 1024 }));
 app.use(express.json({ limit: "2mb" }));
 
+// Health probe for Render keep-alive pings — registered BEFORE the
+// production static/catch-all block below; Express evaluates routes in
+// registration order and a "*" catch-all would otherwise swallow "/health".
+app.get("/health", (_req, res) => {
+  res.status(200).json({ status: "ok" });
+});
+
+// Serve frontend static files in production — mounted before the dev-time
+// "/" JSON placeholder so the SPA document wins at "/" (and every other
+// non-API path). CSP report-only headers are attached to the document
+// responses; asset files and API routes pass through without them.
+if (process.env.NODE_ENV === "production") {
+  const path = require("path");
+  const distPath = path.resolve(__dirname, "../frontend/dist");
+  // Only serve the frontend here when the build actually exists. Some
+  // environments (e.g. CI jobs that only run the backend suite) set
+  // NODE_ENV=production without building frontend/dist — without this
+  // guard express.static would answer nothing and the catch-all would
+  // 404 every path, breaking both "npm test" and health probes.
+  const distBuilt = fs.existsSync(path.join(distPath, "index.html"));
+  if (distBuilt) {
+    // Report-only CSP on the SPA document (middleware hashes inline scripts
+    // at boot; no-op when the dist doesn't exist). See middleware docs.
+    const { cspMiddleware } = require("./middleware/cspMiddleware");
+    app.use(cspMiddleware(distPath));
+    app.use(express.static(distPath));
+    app.get("*", (req, res, next) => {
+      if (req.path.startsWith("/api") || req.path.startsWith("/__test__")) {
+        return next();
+      }
+      res.sendFile(path.join(distPath, "index.html"));
+    });
+  }
+}
+
+// CSP violation collector — the frontend's Content-Security-Policy-Report-Only
+// (Cloudflare headers + public/_headers) reports here via report-uri. Report-only
+// means nothing is blocked while violations are gathered; once the policy proves
+// safe in the wild, flip it to an enforcing Content-Security-Policy. A 60/min
+// limiter keeps a misfiring page (or an attacker spamming the endpoint) from
+// filling logs: each origin is rate-limited independently.
+// Body shape per the spec: { "csp-report": { "document-uri", "violated-directive", "original-policy", ... } }.
+const { cspReportLimiter } = require("./middleware/rateLimitMiddleware");
+const cspReports = [];
+const MAX_CSP_REPORTS = 200;
+app.post("/api/csp-report", cspReportLimiter, (req, res) => {
+  const report = req.body?.["csp-report"] || req.body;
+  if (report && typeof report === "object") {
+    cspReports.unshift({
+      at: new Date().toISOString(),
+      ip: req.ip,
+      userAgent: req.headers?.["user-agent"],
+      documentUri: report["document-uri"],
+      violatedDirective: report["violated-directive"],
+      blockedUri: report["blocked-uri"],
+      originalPolicy: report["original-policy"],
+      effectiveDirective: report["effective-directive"],
+      sample: report["sample"]
+    });
+    if (cspReports.length > MAX_CSP_REPORTS) cspReports.length = MAX_CSP_REPORTS;
+    console.log(
+      `[CSP report-only] ${report["violated-directive"]} on ${report["document-uri"]} (blocked: ${report["blocked-uri"] || "n/a"})`
+    );
+    console.log(JSON.stringify({
+      type: "csp-violation",
+      timestamp: new Date().toISOString(),
+      violatedDirective: report["violated-directive"],
+      documentUri: report["document-uri"],
+      blockedUri: report["blocked-uri"] || null,
+      userAgent: req.headers?.["user-agent"] || null
+    }));
+  }
+    // 204 no matter what — the spec wants the collector to never argue with a
+  // reporter, or user agents may stop sending reports.
+  res.status(204).end();
+});
+
+// Dev-time JSON placeholder for "/" — in production the production static
+// block above wins this path and serves the SPA document instead.
 app.get("/", (_req, res) => {
   res.status(200).json({
     success: true,
     message: `${PLATFORM_NAME} loyalty platform API is running.`
   });
-});
-
-app.get("/health", (_req, res) => {
-  res.status(200).json({ status: "ok" });
 });
 
 // Platform super-admin (onboards + manages businesses/tenants).
@@ -170,30 +285,39 @@ if (USING_MOCK_DB) {
   app.use("/__test__", require("./routes/testHookRoutes"));
 }
 
-// Serve frontend static files in production
-if (process.env.NODE_ENV === "production") {
-  const path = require("path");
-  const distPath = path.resolve(__dirname, "../frontend/dist");
-  app.use(express.static(distPath));
-  app.get("*", (req, res, next) => {
-    if (req.path.startsWith("/api") || req.path.startsWith("/__test__")) {
-      return next();
-    }
-    res.sendFile(path.join(distPath, "index.html"));
-  });
-}
-
 app.use((req, _res, next) => {
   const error = new Error(`Route not found: ${req.originalUrl}`);
   error.statusCode = 404;
   next(error);
 });
 
-app.use((error, _req, res, _next) => {
+// Security: never echo raw error messages to clients in production. Internal
+// details (mongoose schema/validation errors, network failures) only belong
+// in the server log; clients get a generic message with the same shape.
+app.use((error, req, res, _next) => {
   const statusCode = error.statusCode || 500;
+  // Mongoose network/validation/duplicate-key errors include driver internals;
+  // log them for forensics regardless of environment — as one parseable JSON
+  // entry (utils/logger), with optional Sentry capture (utils/errorTracker).
+  const logger = require("./utils/logger");
+  const errorTracker = require("./utils/errorTracker");
+  logger.error("request", "Unhandled error", {
+    method: req.method,
+    path: req.originalUrl,
+    statusCode,
+    error: error.message,
+    ...(process.env.NODE_ENV !== "production" ? { stack: error.stack } : {})
+  });
+  errorTracker.capture(error, {
+    method: req.method,
+    path: req.originalUrl,
+    statusCode
+  });
   res.status(statusCode).json({
     success: false,
-    message: error.message || "Internal Server Error",
+    message: process.env.NODE_ENV === "production"
+      ? "Internal Server Error"
+      : (error.message || "Internal Server Error"),
     ...(error.code ? { code: error.code } : {})
   });
 });
@@ -247,7 +371,21 @@ const startServer = async () => {
   }
 
   cron.schedule("0 9 * * *", () => {
-    runDailyTriggers().catch((err) => console.error("Daily triggers run failed:", err.message));
+    runDailyTriggers().catch((err) => {
+      // A silent cron failure means no expiry sweeps, no report emails, no
+      // digest — so the operator is emailed when TRIGGER_FAILURE_ALERT_EMAIL
+      // is configured. The email service stubs to stderr in dev/test, which
+      // keeps CI green without a real mailbox.
+      require("./utils/logger").error("cron", "Daily triggers run failed", { error: err.message });
+      const alertEmail = process.env.TRIGGER_FAILURE_ALERT_EMAIL;
+      if (alertEmail) {
+        require("./services/emailService").sendEmail({
+          to: alertEmail,
+          subject: `[${PLATFORM_NAME}] Daily trigger job failed`,
+          html: `<p>The daily trigger job failed at ${new Date().toISOString()}:</p><pre>${String(err.message || err).replace(/</g, "&lt;")}</pre><p>Check the server logs for the full stack trace.</p>`
+        }).catch(() => {});
+      }
+    });
   }, { timezone: PLATFORM_TIMEZONE });
 
   app.listen(PORT, "0.0.0.0", () => {

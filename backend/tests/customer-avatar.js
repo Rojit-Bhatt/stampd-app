@@ -31,7 +31,7 @@ const PNG_1X1 = Buffer.from(
 const WEBP_1X1 = Buffer.from("UklGRhoAAABXRUJQVlA4TA0AAAAvAAAAEAcQERGIiP4HAA==", "base64");
 
 async function main() {
-  const { baseUrl, stop } = await bootServer({ port: 5052 });
+  const { baseUrl, stop } = await bootServer({ port: 0 });
   let failures = 0;
   const check = (name, cond, extra) => {
     if (cond) console.log(`PASS ${name}`);

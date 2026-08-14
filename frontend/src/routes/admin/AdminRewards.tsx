@@ -53,15 +53,27 @@ export default function AdminRewards() {
       );
       return { previous };
     },
-    onError: (error, _vars, context) => {
+    onError: (_error, _vars, context) => {
       context?.previous?.forEach(([key, data]) => qc.setQueryData(key, data));
-      toast.error((error as Error).message || "Couldn't update that — try again.");
+      toast.error("The reward could not be updated — restored.", { duration: 6000 });
     },
     onSettled: invalidate,
   });
   const remove = useMutation({
     mutationFn: (id: string) => apiRequest(`/api/admin/rewards/${id}`, { method: "DELETE", role: "admin" }),
-    onSuccess: invalidate,
+    onMutate: async (id) => {
+      await qc.cancelQueries({ queryKey: ["adminRewards"] });
+      const previous = qc.getQueriesData<AdminRewardItem[]>({ queryKey: ["adminRewards"] });
+      qc.setQueriesData<AdminRewardItem[]>({ queryKey: ["adminRewards"] }, (old) =>
+        old?.filter((item) => item.id !== id),
+      );
+      return { previous };
+    },
+    onError: (_error, _vars, context) => {
+      context?.previous?.forEach(([key, data]) => qc.setQueryData(key, data));
+      toast.error("The reward could not be deleted — restored.", { duration: 6000 });
+    },
+    onSettled: invalidate,
   });
 
   return (

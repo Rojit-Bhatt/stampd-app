@@ -9,6 +9,7 @@ const PointsBalance = require("../models/PointsBalance");
 const { toPoints } = require("../utils/pointsMath");
 const { PLATFORM_TIMEZONE, VAPID_SUBJECT, VAPID_PUBLIC_KEY, VAPID_PRIVATE_KEY } = require("../config/platform");
 const webpush = require("web-push");
+const { pushNotificationBreaker } = require("../utils/dependencyBreakers");
 const PushSubscription = require("../models/PushSubscription");
 
 webpush.setVapidDetails(VAPID_SUBJECT, VAPID_PUBLIC_KEY, VAPID_PRIVATE_KEY);
@@ -45,7 +46,12 @@ const stripHtml = (html) => html.replace(/<[^>]+>/g, "");
 // exactly as before.
 const sendPushToSubscription = async (sub, payload) => {
   try {
-    await webpush.sendNotification({ endpoint: sub.endpoint, keys: sub.keys }, JSON.stringify(payload));
+    // Circuit-broken: a slow or dead push endpoint fast-fails instead of
+    // hanging, and repeated failures open the circuit for the whole
+    // dependency so the trigger loops stop wasting sends on it.
+    await pushNotificationBreaker.exec(async () =>
+      webpush.sendNotification({ endpoint: sub.endpoint, keys: sub.keys }, JSON.stringify(payload))
+    );
     return { ok: true };
   } catch (err) {
     if (err.statusCode === 410 || err.statusCode === 404) {
@@ -57,7 +63,45 @@ const sendPushToSubscription = async (sub, payload) => {
   }
 };
 
-const sendTrigger = async (type, { organization, customer, membership, context = {} }) => {
+// Batched daily-trigger entry point: preloads the org's push subscriptions
+// (one find for the whole org, keyed by customerAccountId) so the per-user
+// loop sends push without a round trip per customer. Milestone callers
+// (sendTrigger below) keep the per-call find — a single push lookup for
+// one customer is cheap and milestone fires once per customer anyway.
+const sendTriggersBatch = async (type, { organization, customers }) => {
+  const subsByAccount = new Map();
+  const accountIds = customers
+    .map((e) => e.customer && e.customer._id)
+    .filter((id) => id !== undefined && id !== null);
+  if (accountIds.length > 0) {
+    const subs = await PushSubscription.find({ customerAccountId: { $in: accountIds } });
+    for (const sub of subs) {
+      const key = sub.customerAccountId.toString();
+      const list = subsByAccount.get(key) || [];
+      list.push(sub);
+      subsByAccount.set(key, list);
+    }
+  }
+  const results = [];
+  for (const entry of customers) {
+    // Callers pass entries as { customer, membership, context } — guard the
+    // shape explicitly instead of reading _id off whatever "customer" means.
+    const account = entry.customer;
+    if (!account || !account._id) continue;
+    const subs = subsByAccount.get(account._id.toString()) || [];
+    const result = await sendTrigger(type, {
+      organization,
+      customer: account,
+      membership: entry.membership,
+      context: entry.context || {},
+      pushSubscriptions: subs
+    });
+    results.push(result);
+  }
+  return results;
+};
+
+const sendTrigger = async (type, { organization, customer, membership, context = {}, pushSubscriptions = null }) => {
   const { subject, html } = renderTemplate(type, { organization, customer, context });
   let sent = false;
 
@@ -68,7 +112,11 @@ const sendTrigger = async (type, { organization, customer, membership, context =
   }
 
   if (customer.marketingConsent?.push?.granted) {
-    const subscriptions = await PushSubscription.find({ customerAccountId: customer._id });
+    // Preloaded by sendTriggersBatch for the batched daily-trigger path —
+    // falls back to the per-user find for single-call milestone sends.
+    const subscriptions = pushSubscriptions !== null
+      ? pushSubscriptions
+      : await PushSubscription.find({ customerAccountId: customer._id });
     for (const sub of subscriptions) {
       sendPushToSubscription(sub, { title: subject, body: stripHtml(html) });
     }
@@ -126,57 +174,89 @@ const todayInPlatformTimezone = () => {
   };
 };
 
+// Batch birthday lookup: instead of scanning every membership then querying
+// the CustomerAccount one at a time, ask for the (month, day) combinations
+// that are actually today and collect the qualifying memberships in a
+// single $in pass. The MessageLog idempotency guard uses a single $in too.
+// Batch birthday lookup: instead of scanning every membership then querying
+// the CustomerAccount one at a time, ask for the (month, day) combinations
+// that are actually today and collect the qualifying memberships in a
+// single $in pass. The MessageLog idempotency guard uses a single $in too,
+// and push subscriptions are fetched once for the whole eligible set.
 const runBirthdayTriggerForOrg = async (org, todayMonth, todayDay) => {
-  const members = await User.find({ role: "customer", organizationId: org._id });
   const yearStart = new Date(new Date().getFullYear(), 0, 1);
+  const members = await User.find({ role: "customer", organizationId: org._id });
+  const accountIds = members.filter((m) => m.customerAccountId).map((m) => m.customerAccountId);
+  if (accountIds.length === 0) return;
+  const accounts = await CustomerAccount.find({ _id: { $in: accountIds } });
+  const accountById = new Map(accounts.map((a) => [a._id.toString(), a]));
+  const eligible = members
+    .filter((m) => {
+      const a = accountById.get(m.customerAccountId.toString());
+      return a && a.birthdayMonth === todayMonth && a.birthdayDay === todayDay;
+    })
+    .map((m) => ({ customer: accountById.get(m.customerAccountId.toString()), membership: m, context: {} }));
+  if (eligible.length === 0) return;
 
-  for (const member of members) {
-    if (!member.customerAccountId) continue;
-    const customer = await CustomerAccount.findOne({ _id: member.customerAccountId });
-    if (!customer) continue;
-    if (customer.birthdayMonth !== todayMonth || customer.birthdayDay !== todayDay) continue;
+  const alreadySent = await MessageLog.find({
+    organizationId: org._id,
+    userId: { $in: eligible.map((e) => e.membership._id) },
+    triggerType: "birthday",
+    sentAt: { $gte: yearStart }
+  });
+  const sentByUser = new Set(alreadySent.map((l) => l.userId.toString()));
+  const unsent = eligible.filter((e) => !sentByUser.has(e.membership._id.toString()));
 
-    const alreadySent = await MessageLog.findOne({
-      organizationId: org._id,
-      userId: member._id,
-      triggerType: "birthday",
-      sentAt: { $gte: yearStart }
-    });
-    if (alreadySent) continue;
-
-    await sendTrigger("birthday", { organization: org, customer, membership: member, context: {} });
+  if (unsent.length > 0) {
+    await sendTriggersBatch("birthday", { organization: org, customers: unsent });
   }
 };
 
+// Batch inactivity lookup: memberships and balances are joined in memory
+// (single read each, keyed by userId), and the idempotency guard uses one
+// $in query instead of one per user. Only the sends (email/push/sms — they
+// must stay per-user for consent + personalization) remain a loop.
+// Batch inactivity lookup: memberships and balances are joined in memory
+// (single read each, keyed by userId), and the idempotency guard uses one
+// $in query instead of one per user. Only the sends (email/push/sms — they
+// must stay per-user for consent + personalization) remain a loop, and
+// even push subscriptions are fetched once for the whole eligible set.
 const runInactivityTriggerForOrg = async (org, days) => {
   const cutoff = new Date(Date.now() - days * 24 * 60 * 60 * 1000);
   const cooldownStart = new Date(Date.now() - days * 24 * 60 * 60 * 1000);
 
+  const members = await User.find({ role: "customer", organizationId: org._id });
   const balances = await PointsBalance.find({ organizationId: org._id });
-  const inactiveBalances = balances.filter(
-    (b) => b.lastActivityAt && new Date(b.lastActivityAt).getTime() <= cutoff.getTime()
-  );
+  const balanceByUser = new Map(balances.map((b) => [b.userId.toString(), b]));
 
-  for (const balance of inactiveBalances) {
-    const member = await User.findOne({ _id: balance.userId, organizationId: org._id });
-    if (!member || !member.customerAccountId) continue;
-    const customer = await CustomerAccount.findOne({ _id: member.customerAccountId });
-    if (!customer) continue;
+  const inactive = members
+    .filter((m) => m.customerAccountId)
+    .map((m) => ({ member: m, balance: balanceByUser.get(m._id.toString()) }))
+    .filter(({ balance }) => balance && balance.lastActivityAt && new Date(balance.lastActivityAt).getTime() <= cutoff.getTime());
+  if (inactive.length === 0) return;
 
-    const alreadySent = await MessageLog.findOne({
-      organizationId: org._id,
-      userId: member._id,
-      triggerType: "inactivity",
-      sentAt: { $gte: cooldownStart }
-    });
-    if (alreadySent) continue;
+  const accountIds = [...new Set(inactive.map(({ member }) => member.customerAccountId.toString()))];
+  const accounts = await CustomerAccount.find({ _id: { $in: accountIds } });
+  const accountById = new Map(accounts.map((a) => [a._id.toString(), a]));
 
-    await sendTrigger("inactivity", {
-      organization: org,
-      customer,
+  const alreadySent = await MessageLog.find({
+    organizationId: org._id,
+    userId: { $in: inactive.map(({ member }) => member._id) },
+    triggerType: "inactivity",
+    sentAt: { $gte: cooldownStart }
+  });
+  const sentByUser = new Set(alreadySent.map((l) => l.userId.toString()));
+
+    const unsent = inactive
+    .filter(({ member }) => !sentByUser.has(member._id.toString()))
+    .filter(({ member }) => accountById.has(member.customerAccountId.toString()))
+    .map(({ member, balance }) => ({
+      customer: accountById.get(member.customerAccountId.toString()),
       membership: member,
       context: { balance: toPoints(balance.balanceCenti), days }
-    });
+    }));
+  if (unsent.length > 0) {
+    await sendTriggersBatch("inactivity", { organization: org, customers: unsent });
   }
 };
 
@@ -195,4 +275,4 @@ const runDailyTriggers = async () => {
   }
 };
 
-module.exports = { sendTrigger, sendPushToSubscription, checkMilestoneTrigger, runDailyTriggers };
+module.exports = { sendTrigger, sendTriggersBatch, sendPushToSubscription, checkMilestoneTrigger, runDailyTriggers };

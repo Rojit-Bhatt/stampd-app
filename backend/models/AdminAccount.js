@@ -24,6 +24,17 @@ const AdminAccountSchema = new mongoose.Schema({
   emailVerified: { type: Boolean, default: false },
   failedLoginAttempts: { type: Number, default: 0 },
   lockedUntil: { type: Date, default: null },
+  // Mirrors CustomerAccount.passwordVersion: every JWT minted from this
+  // account embeds the current version, and verification rejects any token
+  // minted under an older version — so a stolen admin token dies instantly
+  // on a password change or reset, with no revocation table.
+  passwordVersion: { type: Number, default: 0 },
+  // Optional TOTP-based MFA behind ENABLE_MFA; encrypted at rest via
+  // AES-256-GCM (never stored plaintext or hashed — disable must verify
+  // a code against the original secret). Shared helpers, see mfaService
+  // (keyed by AdminAccount for admin-side logins).
+  mfaEnabled: { type: Boolean, default: false },
+  mfaSecretEncrypted: { type: String, default: null },
 
   // company_owner -> manages the company, its outlets and its subscription;
   //                  organizationId is null (owns all of them, not one).

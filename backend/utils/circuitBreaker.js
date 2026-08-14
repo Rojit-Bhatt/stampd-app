@@ -24,17 +24,35 @@ function createCircuitBreaker({ name, timeoutMs = 5000, failureThreshold = 5, re
   let nextAttemptAt = 0;
   let halfOpenTrialInFlight = false;
   let inFlight = 0;
+  // Rate-limited degradation visibility: log the first trip and the first
+  // recovery, then at most once a minute for any further trips while the
+  // dependency stays down. Operators see it; a flapping dependency can't
+  // flood stdout.
+  const MIN_WARN_INTERVAL_MS = 60_000;
+  let lastWarnAt = 0;
+  const warnOncePerMinute = (when, msg) => {
+    const now = Date.now();
+    if (when === "trip" || now - lastWarnAt >= MIN_WARN_INTERVAL_MS) {
+      // eslint-disable-next-line no-console
+      console.warn(`[circuit-breaker:${name}] ${msg}`);
+      lastWarnAt = now;
+    }
+  };
 
   const recordSuccess = () => {
+    const wasOpenOrHalfOpen = state !== "CLOSED";
     failureCount = 0;
     state = "CLOSED";
+    if (wasOpenOrHalfOpen) warnOncePerMinute("recovery", `recovered — circuit closed`);
   };
 
   const recordFailure = () => {
+    const wasClosed = state === "CLOSED";
     failureCount += 1;
     if (state === "HALF_OPEN" || failureCount >= failureThreshold) {
       state = "OPEN";
       nextAttemptAt = Date.now() + resetTimeoutMs;
+      if (wasClosed) warnOncePerMinute("trip", `circuit opened after ${failureCount} consecutive failures`);
     }
   };
 

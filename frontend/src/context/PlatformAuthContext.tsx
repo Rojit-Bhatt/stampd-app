@@ -12,7 +12,7 @@ interface PlatformAuthContextType {
   user: PlatformUser | null;
   token: string | null;
   isLoading: boolean;
-  login: (email: string, password: string, turnstileToken?: string) => Promise<void>;
+  login: (email: string, password: string) => Promise<void>;
   logout: () => void;
 }
 
@@ -46,12 +46,12 @@ export function PlatformAuthProvider({ children }: { children: React.ReactNode }
     }
   }, []);
 
-  const login = async (email: string, password: string, turnstileToken?: string) => {
+  const login = async (email: string, password: string) => {
     setIsLoading(true);
     try {
       const res = await apiRequest<{ success: boolean; token: string; user: PlatformUser }>(
         "/api/platform/login",
-        { method: "POST", role: "platform", body: { email, password, turnstileToken } },
+        { method: "POST", role: "platform", body: { email, password } },
       );
       if (res.success && res.token && res.user) {
         if (res.user.role !== "platform") {

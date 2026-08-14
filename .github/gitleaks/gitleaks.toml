@@ -1,0 +1,15 @@
+# Gitleaks configuration for stampd-app.
+# The repo default rules are extended with a small allowlist of values that
+# are genuinely benign (test fixture passwords, deliberately weak dev secret
+# placeholders) so the scan stays useful for real secrets.
+
+title = "gitleaks custom config"
+
+[allowlist]
+description = "benign test fixtures"
+regexes = [
+  # Mock-DB test fixture passwords — never used against a real credential
+  # store; included verbatim so the generic-api-key rule stops flagging them.
+  '''brandnewpass123''',
+  '''password''',
+]

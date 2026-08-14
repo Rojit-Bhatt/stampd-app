@@ -1,6 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { ChevronsUpDown, Building2, ArrowLeft } from "lucide-react";
 import { useNavigate, useParams } from "react-router-dom";
+import toast from "@/lib/toast";
 import { apiRequest } from "../../lib/api";
 import { tenantPath } from "../../lib/tenantPath";
 import {
@@ -71,10 +72,8 @@ export function OrgSwitcher() {
       localStorage.setItem("admin_auth_token", res.token);
       localStorage.setItem("admin_auth_user", JSON.stringify(res.user));
       window.location.href = tenantPath(res.companySlug, res.outletSlug, "admin");
-    } catch {
-      // enter-outlet failing here is rare (the outlet existed a moment ago,
-      // per the list this menu is built from) — a full reload retry is
-      // simpler than a bespoke error path for a case this narrow.
+    } catch (err) {
+      toast.error((err as Error).message || "Couldn't open that outlet — try again.");
     }
   };
 

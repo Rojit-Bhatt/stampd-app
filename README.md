@@ -217,6 +217,8 @@ NODE_ENV=production npm start
 
 The backend process must receive a production MongoDB URI, a strong JWT secret, the allowed frontend origins, and any credentials required by enabled integrations. If the frontend is deployed separately, build it with the correct `VITE_API_BASE_URL` and configure the API’s `FRONTEND_ORIGINS` to include the deployed frontend origin.
 
+**Actual stampdd.club topology:** the backend runs on Render (npm, as above); the frontend runs on Cloudflare Workers Static Assets, deployed via `wrangler deploy` from `frontend/`. That build uses **pnpm with a frozen lockfile** (`frontend/pnpm-lock.yaml`, mirrored by `.github/workflows/build.yml` and `deploy.yml`), not npm — this is intentional: pnpm's strict dependency resolution catches missing/undeclared packages that npm's looser hoisting can hide. `npm install`/`package-lock.json` remain the source of truth for local dev and this repo's own CI (`quality.yml`); `pnpm-lock.yaml` exists only to mirror the Cloudflare build path and must be regenerated (`pnpm install`) whenever frontend dependencies change.
+
 The repository also contains `frontend/wrangler.jsonc` for a static frontend deployment path. That option still requires the API to be hosted separately and reachable from the browser.
 
 ## Security and data handling
