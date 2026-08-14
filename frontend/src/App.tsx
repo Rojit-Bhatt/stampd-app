@@ -92,9 +92,7 @@ function TenantScope() {
   return (
     <TenantProvider>
       <TenantSessionSync />
-      <CelebrationProvider>
-        <Outlet />
-      </CelebrationProvider>
+      <Outlet />
     </TenantProvider>
   );
 }
@@ -104,6 +102,13 @@ const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID as string | undef
 export default function App() {
   const routes = (
     <BrowserRouter>
+      {/* Above the Suspense boundary on purpose. A celebration outlives the
+          navigation that triggers it — earn/redeem fire it and immediately
+          route to the outlet dashboard, which is lazy-loaded. Suspending
+          unmounts everything inside this boundary, so a provider mounted in
+          the route tree gets torn down mid-celebration and its auto-dismiss
+          timer cleared, which strands the overlay on screen. */}
+      <CelebrationProvider>
       <Suspense
         fallback={
           <div className="flex min-h-screen items-center justify-center bg-[var(--bg)] text-[var(--ink)]">
@@ -238,6 +243,7 @@ export default function App() {
           <Route path="*" element={<NotFound />} />
         </Routes>
       </Suspense>
+      </CelebrationProvider>
     </BrowserRouter>
   );
 

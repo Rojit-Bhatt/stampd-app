@@ -1,10 +1,11 @@
 import { createContext, useCallback, useContext, useEffect, useRef, useState } from "react";
 import type { ReactNode } from "react";
+import { createPortal } from "react-dom";
 import { AnimatePresence, useReducedMotion } from "motion/react";
 
 import { CelebrationOverlay } from "../components/customer/celebration/CelebrationOverlay";
 import { EarnBurst } from "../components/customer/celebration/EarnBurst";
-import { RedeemVoucher } from "../components/customer/celebration/RedeemVoucher";
+import { RedeemLedger } from "../components/customer/celebration/RedeemLedger";
 
 export interface EarnCelebrationData {
   points: number;
@@ -23,9 +24,14 @@ export interface RedeemCelebrationData {
 }
 
 type CelebrationState =
-  | { kind: "earn"; data: EarnCelebrationData }
-  | { kind: "redeem"; data: RedeemCelebrationData }
+  | { kind: "earn"; id: number; data: EarnCelebrationData }
+  | { kind: "redeem"; id: number; data: RedeemCelebrationData }
   | null;
+
+// Distinguishes back-to-back celebrations of the same kind (e.g. two earns
+// in a row) so AnimatePresence sees a genuinely new key each time, instead
+// of treating the second as an update to the first mid-exit.
+let nextCelebrationId = 0;
 
 // Long enough to read the figure, short enough not to block the customer
 // from the dashboard that's already loaded underneath. Redeem gets longer
@@ -57,7 +63,7 @@ export function CelebrationProvider({ children }: { children: ReactNode }) {
   const showEarn = useCallback(
     (data: EarnCelebrationData) => {
       if (timerRef.current) clearTimeout(timerRef.current);
-      setCelebration({ kind: "earn", data });
+      setCelebration({ kind: "earn", id: nextCelebrationId++, data });
       timerRef.current = setTimeout(
         () => setCelebration(null),
         prefersReduced ? EARN_MS_REDUCED : EARN_MS,
@@ -69,7 +75,7 @@ export function CelebrationProvider({ children }: { children: ReactNode }) {
   const showRedeem = useCallback(
     (data: RedeemCelebrationData) => {
       if (timerRef.current) clearTimeout(timerRef.current);
-      setCelebration({ kind: "redeem", data });
+      setCelebration({ kind: "redeem", id: nextCelebrationId++, data });
       timerRef.current = setTimeout(
         () => setCelebration(null),
         prefersReduced ? REDEEM_MS_REDUCED : REDEEM_MS,
@@ -81,17 +87,25 @@ export function CelebrationProvider({ children }: { children: ReactNode }) {
   return (
     <CelebrationContext.Provider value={{ showEarn, showRedeem }}>
       {children}
-      <AnimatePresence>
-        {celebration && (
-          <CelebrationOverlay key={celebration.kind}>
-            {celebration.kind === "earn" ? (
-              <EarnBurst data={celebration.data} />
-            ) : (
-              <RedeemVoucher data={celebration.data} />
-            )}
-          </CelebrationOverlay>
-        )}
-      </AnimatePresence>
+      {/* Portalled to document.body so the overlay clears any scrolling or
+          overflow ancestor in the route mounted underneath. AnimatePresence
+          lives INSIDE the portal, not outside it: it has to see the overlay as
+          a direct presence child to know when the exit animation finished, and
+          a portal boundary between them can strand the overlay on screen. */}
+      {createPortal(
+        <AnimatePresence>
+          {celebration && (
+            <CelebrationOverlay key={`${celebration.kind}-${celebration.id}`}>
+              {celebration.kind === "earn" ? (
+                <EarnBurst data={celebration.data} />
+              ) : (
+                <RedeemLedger data={celebration.data} />
+              )}
+            </CelebrationOverlay>
+          )}
+        </AnimatePresence>,
+        document.body,
+      )}
     </CelebrationContext.Provider>
   );
 }
