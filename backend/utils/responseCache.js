@@ -78,7 +78,7 @@ function cacheMiddleware({ kind, ttlMs = DEFAULT_TTL_MS, tenantKey: tenantKeyFn,
     const key = cacheKey(req, { kind, tenantKey: tenantKeyFn, localeKey, extraKey });
     // Everything the cache key varies on has to be declared to downstream
     // caches too, or they collapse distinct tenants/locales onto one URL.
-    res.vary(TENANT_VARY);
+    res.set("Vary", TENANT_VARY);
     // A tenant-scoped body belongs to exactly one outlet and one visitor's
     // request headers — never let a shared cache hold it. Only the genuinely
     // global catalogs (tenantKey: () => "global") stay publicly cacheable.
