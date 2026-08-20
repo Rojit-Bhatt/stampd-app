@@ -37,7 +37,7 @@ jobs:
       # Block on the production build check: deploying a build that fails
       # the same suite CI just ran for this push makes no sense.
       - name: Wait for the production build check to succeed
-        uses: lewagon/wait-on-check-action@v1.3.4
+        uses: lewagon/wait-on-check-action@v1.9.1
         with:
           ref: ${{ github.sha }}
           check-name: pnpm lockfile + build + backend suite
