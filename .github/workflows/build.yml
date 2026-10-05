@@ -71,6 +71,6 @@ jobs:
       - name: Production smoke test
         if: github.ref == 'refs/heads/main'
         env:
-          SITE: https://stampdd.club
+          SITE: https://loyalty.stampdd.club
           API_BASE: https://api.stampdd.club
         run: node scripts/smoke-prod.js

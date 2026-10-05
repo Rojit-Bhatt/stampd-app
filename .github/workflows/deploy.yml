@@ -83,7 +83,7 @@ jobs:
       # bundle is the one we just built.
       - name: Verify live site and deployed bundle contents
         env:
-          SITE: https://stampdd.club
+          SITE: https://loyalty.stampdd.club
           API_BASE: https://api.stampdd.club
           GOOGLE_CLIENT_ID_EXPECTED: ${{ secrets.GOOGLE_CLIENT_ID }}
         run: |
