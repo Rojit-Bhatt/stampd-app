@@ -221,12 +221,15 @@ async function main() {
     // Cleanup: remove the seeded test docs so re-runs start clean.
     await api("/api/admin/rewards", {}); // no-op guard — left in for clarity
     console.log(`\n${failures} check(s) failed.`);
+    // stop() BEFORE exiting: process.exit skips `finally`, which used to
+    // orphan the server on fixed port 5051 — the next run then talked to
+    // the orphan, which died (EPIPE) on its first log line: ECONNRESET.
+    stop();
     process.exit(failures > 0 ? 1 : 0);
   } catch (err) {
     console.error("TEST ERROR:", err);
-    process.exit(1);
-  } finally {
     stop();
+    process.exit(1);
   }
 }
 

@@ -1,4 +1,5 @@
 const { verifyAuthToken, tokenPv } = require("../utils/tokenUtils");
+const { classifyAuthError } = require("../utils/errorResponse");
 const User = require("../models/User");
 const Organization = require("../models/Organization");
 const Company = require("../models/Company");
@@ -137,8 +138,9 @@ const verifyToken = async (req, _res, next) => {
 
     next();
   } catch (error) {
-    error.statusCode = 401;
-    next(error);
+    // Deliberate 401s keep theirs; JWT failures -> friendly 401; anything
+    // else (DB outage) -> 500, not "signed out" (utils/errorResponse).
+    next(classifyAuthError(error));
   }
 };
 

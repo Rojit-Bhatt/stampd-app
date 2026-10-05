@@ -97,8 +97,11 @@ const resolveTenant = async (req, _res, next) => {
     req.organizationId = organization._id.toString();
     next();
   } catch (error) {
+    // Every deliberate failure above carries its own status. Anything else
+    // is a database/driver error: a 500, so its detail stays hidden in
+    // production (utils/errorResponse) instead of going out as a 400.
     if (!error.statusCode) {
-      error.statusCode = 400;
+      error.statusCode = 500;
     }
     next(error);
   }

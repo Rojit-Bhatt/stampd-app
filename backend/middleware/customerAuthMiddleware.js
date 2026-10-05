@@ -1,3 +1,4 @@
+const { classifyAuthError } = require("../utils/errorResponse");
 const {
   verifyGlobalSessionToken,
   generateGlobalSessionToken,
@@ -99,8 +100,9 @@ const verifyGlobalSession = async (req, res, next) => {
 
     next();
   } catch (error) {
-    error.statusCode = 401;
-    next(error);
+    // Deliberate 401s keep theirs; JWT failures -> friendly 401; anything
+    // else (DB outage) -> 500, not "signed out" (utils/errorResponse).
+    next(classifyAuthError(error));
   }
 };
 

@@ -341,9 +341,11 @@ app.use((req, _res, next) => {
   next(error);
 });
 
-// Security: never echo raw error messages to clients in production. Internal
-// details (mongoose schema/validation errors, network failures) only belong
-// in the server log; clients get a generic message with the same shape.
+// Security: never echo raw SERVER-error (5xx) messages to clients in
+// production. Internal details (mongoose schema/validation errors, network
+// failures) only belong in the server log. Deliberate 4xx messages are
+// written for the customer and go out as-is.
+const { errorResponseBody } = require("./utils/errorResponse");
 app.use((error, req, res, _next) => {
   const statusCode = error.statusCode || 500;
   // Mongoose network/validation/duplicate-key errors include driver internals;
@@ -363,13 +365,11 @@ app.use((error, req, res, _next) => {
     path: req.originalUrl,
     statusCode
   });
-  res.status(statusCode).json({
-    success: false,
-    message: process.env.NODE_ENV === "production"
-      ? "Internal Server Error"
-      : (error.message || "Internal Server Error"),
-    ...(error.code ? { code: error.code } : {})
-  });
+  // Deliberate 4xx messages reach the client; 5xx detail never does in
+  // production — see utils/errorResponse.
+  res.status(statusCode).json(
+    errorResponseBody(error, statusCode, { production: process.env.NODE_ENV === "production" })
+  );
 });
 
 // Opt-out escape hatch for a from-scratch run with none of the demo
