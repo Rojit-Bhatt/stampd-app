@@ -22,7 +22,7 @@ jobs:
       # pnpm/action-setup MUST come before setup-node: setup-node injects a
       # bundled (newer) pnpm into PATH that ignores pnpm-workspace.yaml and
       # treats our npm-style workspace declaration as a single project.
-      - uses: pnpm/action-setup@v4
+      - uses: pnpm/action-setup@v6
         with:
           version: 9
 
