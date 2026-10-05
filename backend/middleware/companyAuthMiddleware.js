@@ -1,4 +1,5 @@
 const { verifyCompanySessionToken, tokenPv } = require("../utils/tokenUtils");
+const { classifyAuthError } = require("../utils/errorResponse");
 const AdminAccount = require("../models/AdminAccount");
 
 // Duplicated from authMiddleware.js's extractToken rather than imported —
@@ -74,8 +75,9 @@ const verifyCompanySession = async (req, _res, next) => {
 
     next();
   } catch (error) {
-    error.statusCode = 401;
-    next(error);
+    // Deliberate 401s keep theirs; JWT failures -> friendly 401; anything
+    // else (DB outage) -> 500, not "signed out" (utils/errorResponse).
+    next(classifyAuthError(error));
   }
 };
 
