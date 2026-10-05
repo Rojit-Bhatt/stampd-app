@@ -17,7 +17,7 @@ jobs:
     name: pnpm lockfile + build + backend suite
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       # pnpm/action-setup MUST come before setup-node: setup-node injects a
       # bundled (newer) pnpm into PATH that ignores pnpm-workspace.yaml and
