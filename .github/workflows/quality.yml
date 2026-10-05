@@ -27,7 +27,7 @@ jobs:
         # gitleaks CLI in detect mode on the full history — no license
         # required for private repos (the managed gitleaks-action needs a
         # paid license on private repos). Exits non-zero on any finding.
-        uses: gitleaks/gitleaks-action@v2
+        uses: gitleaks/gitleaks-action@v3
         with:
           version: v8.21.2
         env:
