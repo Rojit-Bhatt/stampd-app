@@ -30,7 +30,7 @@ This is intentional, not drift: `package-lock.json` (npm) is the source of truth
 
 ## Customer auth model
 
-Two tokens: a **global session** (`customer_global_session`, 14d, proves the CustomerAccount) exchanged via `POST /api/customer-auth/enter-tenant` for a **tenant JWT** (`customer_auth_token`, 7d, one membership `User` row per outlet). The tenant slot is shared across outlets. `ensureTenantSession` must never reuse an expired or other-outlet tenant JWT, and `apiRequest` recovers a customer 401 once by re-exchanging — the 2026-10 "sign in again / 0 points" incident was a reused expired tenant JWT. Never render a failed balance read as 0.
+Two tokens: a **global session** (`customer_global_session`, proves the CustomerAccount; rolling — 90d of inactivity, re-issued via the `X-Session-Token` header once a day old, hard cap 365d since sign-in, revoked by `sign-out-everywhere`/password change via `revokeAllSessions`) exchanged via `POST /api/customer-auth/enter-tenant` for a **tenant JWT** (`customer_auth_token`, 7d, one membership `User` row per outlet). The tenant slot is shared across outlets. `ensureTenantSession` must never reuse an expired or other-outlet tenant JWT, and `apiRequest` recovers a customer 401 once by re-exchanging — the 2026-10 "sign in again / 0 points" incident was a reused expired tenant JWT. Never render a failed balance read as 0.
 
 ## Backend data layer
 
