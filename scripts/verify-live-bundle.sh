@@ -3,7 +3,7 @@
 # frontend build, and that it contains the outlet-switch fix.
 #
 # Usage: ./scripts/verify-live-bundle.sh <SITE> <expected-index-bundle-hash>
-#   SITE: e.g. https://stampdd.club
+#   SITE: e.g. https://loyalty.stampdd.club
 #   expected-index-bundle-hash: sha256 of the index-*.js built in this run
 #     (the built file is matched by glob frontend/dist/assets/index-*.js;
 #      the workflow passes its sha256sum output).

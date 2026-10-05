@@ -22,7 +22,7 @@
 // it can run against any tenant without secrets; public tenant info is, by
 // design, unauthenticated.
 
-const SITE = process.env.SITE || "https://stampdd.club";
+const SITE = process.env.SITE || "https://loyalty.stampdd.club";
 const API_BASE = process.env.API_BASE || "https://api.stampdd.club";
 const TENANT_COMPANY = (process.env.TENANT_COMPANY || "drgn").toLowerCase();
 const TENANT_OUTLET = (process.env.TENANT_OUTLET || "cofeesarowar").toLowerCase();
