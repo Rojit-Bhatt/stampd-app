@@ -35,6 +35,14 @@ const DynamicQRTokenSchema = new mongoose.Schema({
   createdAt: { type: Date, default: Date.now }
 });
 
-DynamicQRTokenSchema.index({ createdAt: 1 }, { expireAfterSeconds: 30 });
+// Cleanup only — validity is enforced per purpose in pointsService
+// (consumeDynamicQrToken: earn 30s, redeem REDEEM_TOKEN_TTL_SECONDS = 180s).
+// This must cover the LONGEST window: at 30s, MongoDB deleted redeem tokens
+// while the customer was still choosing a reward ("Invalid QR token").
+// Changing it here alone doesn't touch an existing database —
+// utils/ensureTtlIndex migrates it at boot (server.js).
+const QR_TOKEN_TTL_SECONDS = 180;
+DynamicQRTokenSchema.index({ createdAt: 1 }, { expireAfterSeconds: QR_TOKEN_TTL_SECONDS });
 
 module.exports = mongoose.model("DynamicQRToken", DynamicQRTokenSchema);
+module.exports.QR_TOKEN_TTL_SECONDS = QR_TOKEN_TTL_SECONDS;

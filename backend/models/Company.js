@@ -47,9 +47,10 @@ const CompanySchema = new mongoose.Schema({
   createdAt: { type: Date, default: Date.now }
 });
 
-// The in-memory mock DB doesn't enforce `unique` indexes (Schema.index is a
-// no-op) — uniqueness is enforced by an explicit findOne check in
+// slug's unique index is declared on the field itself (`unique: true`) —
+// declaring it again here is what logged Mongoose's "Duplicate schema index"
+// warning on every boot. The in-memory mock DB doesn't enforce `unique`
+// indexes — uniqueness is enforced by an explicit findOne check in
 // companyService, the same pattern customerAccountService already relies on.
-CompanySchema.index({ slug: 1 }, { unique: true });
 
 module.exports = mongoose.model("Company", CompanySchema);
