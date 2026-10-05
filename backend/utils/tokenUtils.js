@@ -69,13 +69,23 @@ const getGlobalJwtSecret = () => {
 // `if (!decoded.userId || !decoded.role)` check even before considering it's
 // signed with a different secret entirely — it can never grant tenant access
 // on its own, only exchange for a tenant JWT via the enter-tenant endpoint.
-const generateGlobalSessionToken = ({ customerAccountId, pv = 0 }) => {
-  return jwt.sign({ type: "global_customer", customerAccountId, pv }, getGlobalJwtSecret(), {
-    // 14 days, not 60: a leaked global session should stop being useful
-    // within a reasonable window even without a credential change. Overridable
-    // with GLOBAL_SESSION_EXPIRES_IN; the value ships via the deployment env,
-    // not a code default change at runtime.
-    expiresIn: process.env.GLOBAL_SESSION_EXPIRES_IN || "14d"
+// Customer sessions ROLL: 90 days of inactivity ends one, but
+// verifyGlobalSession re-issues the token (X-Session-Token) once it is a day
+// old, so an active customer is never asked to sign in again. `at` is the
+// original sign-in time, carried unchanged through every renewal, and
+// GLOBAL_SESSION_MAX_AGE_DAYS caps the whole chain — renewal must never make
+// a stolen token immortal. Server-side revocation is
+// customerAccountService.revokeAllSessions (sign-out-everywhere, password
+// change/reset). GLOBAL_SESSION_EXPIRES_IN still overrides the window.
+const GLOBAL_SESSION_TTL = () => process.env.GLOBAL_SESSION_EXPIRES_IN || "90d";
+const GLOBAL_SESSION_MAX_AGE_SECONDS = () =>
+  Number(process.env.GLOBAL_SESSION_MAX_AGE_DAYS || 365) * 24 * 60 * 60;
+const GLOBAL_SESSION_REFRESH_AFTER_SECONDS = 24 * 60 * 60;
+
+const generateGlobalSessionToken = ({ customerAccountId, pv = 0, at }) => {
+  const authTime = typeof at === "number" ? at : Math.floor(Date.now() / 1000);
+  return jwt.sign({ type: "global_customer", customerAccountId, pv, at: authTime }, getGlobalJwtSecret(), {
+    expiresIn: GLOBAL_SESSION_TTL()
   });
 };
 
@@ -133,6 +143,8 @@ module.exports = {
   verifyAuthToken,
   generateGlobalSessionToken,
   verifyGlobalSessionToken,
+  GLOBAL_SESSION_MAX_AGE_SECONDS,
+  GLOBAL_SESSION_REFRESH_AFTER_SECONDS,
   generateCompanySessionToken,
   verifyCompanySessionToken,
   tokenPv,

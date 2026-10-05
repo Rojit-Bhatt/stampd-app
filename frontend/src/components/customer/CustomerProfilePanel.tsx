@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { LogOut, User, Contact, Bell, ShieldCheck, Moon, Sun } from "lucide-react";
+import { LogOut, User, Contact, Bell, ShieldCheck, Moon, Sun, MonitorSmartphone } from "lucide-react";
 import toast from "@/lib/toast";
 import { passwordStrength, STRENGTH_LEVELS, strengthColor } from "@/lib/passwordStrength";
 
@@ -10,6 +10,14 @@ import { AvatarPicker } from "./AvatarPicker";
 import { VerifyCodeCard } from "../shared/auth/VerifyCodeCard";
 import { SettingsList, type SettingsSection } from "../shared/profile/SettingsList";
 import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+} from "@/components/ui/dialog";
 
 /**
  * The customer's profile, in one place.
@@ -571,6 +579,64 @@ export function CustomerProfilePanel({ onLogout }: { onLogout: () => void }) {
         <LogOut className="h-4 w-4" />
         Log out
       </Button>
+
+      <SignOutEverywhere onDone={onLogout} />
     </div>
+  );
+}
+
+// Sessions roll (an active customer stays signed in), so "Log out" above
+// only clears THIS device. This is the server-side kill: every session and
+// outlet sign-in for the account, on every device — the only revocation a
+// Google-only account (no password to change) has.
+function SignOutEverywhere({ onDone }: { onDone: () => void }) {
+  const [open, setOpen] = useState(false);
+  const [busy, setBusy] = useState(false);
+
+  const confirm = async () => {
+    setBusy(true);
+    try {
+      await apiRequest("/api/customer-auth/sign-out-everywhere", { method: "POST", role: "customer-global" });
+      setOpen(false);
+      toast.success("Signed out of all devices.");
+      onDone();
+    } catch (err) {
+      toast.error((err as Error).message || "Couldn't sign out everywhere — try again.");
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <>
+      <Button
+        variant="ghost"
+        onClick={() => setOpen(true)}
+        className="-mt-4 w-full text-[13px] text-[var(--soft)] hover:text-[var(--ink)]"
+      >
+        <MonitorSmartphone className="h-4 w-4" />
+        Sign out of all devices
+      </Button>
+
+      <Dialog open={open} onOpenChange={(next) => !busy && setOpen(next)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Sign out of all devices?</DialogTitle>
+            <DialogDescription>
+              Every phone and browser signed in to your account — including this one — will need to
+              sign in again. Your points are not affected.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="ghost" onClick={() => setOpen(false)} disabled={busy}>
+              Cancel
+            </Button>
+            <Button onClick={confirm} disabled={busy}>
+              {busy ? "Signing out…" : "Sign out everywhere"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </>
   );
 }

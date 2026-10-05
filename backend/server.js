@@ -120,7 +120,11 @@ const ALLOWED_ORIGINS = (
 app.use(
   cors({
     origin: ALLOWED_ORIGINS,
-    credentials: true
+    credentials: true,
+    // The renewed customer session (customerAuthMiddleware) rides on this
+    // header; the app is cross-origin to the API, so it must be exposed or
+    // the browser hides it from fetch.
+    exposedHeaders: ["X-Session-Token"]
   })
 );
 // contentSecurityPolicy off — this is a JSON+image API, not an HTML app, so

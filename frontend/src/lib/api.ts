@@ -138,6 +138,9 @@ export async function apiRequest<T = unknown>(
   // Whether this request carried a tenant JWT — the only kind of 401 the
   // recovery below can do anything about.
   let sentTenantToken = false;
+  // The global customer session this request carried, if any — compared
+  // against the slot before storing a renewal (see below).
+  let sentGlobalToken: string | null = null;
 
   if (typeof window !== "undefined") {
     const tokenKey =
@@ -154,6 +157,7 @@ export async function apiRequest<T = unknown>(
     if (token) {
       headers.set("Authorization", `Bearer ${token}`);
       sentTenantToken = tokenKey === "customer_auth_token";
+      if (tokenKey === "customer_global_session") sentGlobalToken = token;
     }
   }
 
@@ -173,6 +177,21 @@ export async function apiRequest<T = unknown>(
   }
 
   const response = await fetch(url, config);
+
+  // Rolling customer session: the backend re-issues the global session once
+  // it is a day old (X-Session-Token), so an active customer stays signed
+  // in. Stored only if the slot still holds the token this request sent —
+  // a logout or a different sign-in meanwhile must not be overwritten by a
+  // late response.
+  const renewedSession = response.headers.get("X-Session-Token");
+  if (
+    renewedSession &&
+    sentGlobalToken &&
+    typeof window !== "undefined" &&
+    localStorage.getItem("customer_global_session") === sentGlobalToken
+  ) {
+    localStorage.setItem("customer_global_session", renewedSession);
+  }
 
   // A tenant-JWT request the server refused: recover the session once and
   // retry, instead of letting the caller render a dead token as "0 points"

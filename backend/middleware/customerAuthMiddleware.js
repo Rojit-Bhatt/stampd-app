@@ -1,4 +1,10 @@
-const { verifyGlobalSessionToken, tokenPv } = require("../utils/tokenUtils");
+const {
+  verifyGlobalSessionToken,
+  generateGlobalSessionToken,
+  tokenPv,
+  GLOBAL_SESSION_MAX_AGE_SECONDS,
+  GLOBAL_SESSION_REFRESH_AFTER_SECONDS
+} = require("../utils/tokenUtils");
 const CustomerAccount = require("../models/CustomerAccount");
 
 // Duplicated from authMiddleware.js's extractToken rather than imported —
@@ -25,7 +31,7 @@ const extractToken = (req) => {
 // Verifies a global session token (proves "you are this CustomerAccount"
 // across every tenant) — structurally and cryptographically distinct from a
 // tenant JWT, so this must never be confused with authMiddleware.verifyToken.
-const verifyGlobalSession = async (req, _res, next) => {
+const verifyGlobalSession = async (req, res, next) => {
   try {
     const token = extractToken(req);
 
@@ -68,7 +74,28 @@ const verifyGlobalSession = async (req, _res, next) => {
       throw error;
     }
 
-    req.customerAccount = { id: decoded.customerAccountId };
+    // Absolute cap on a rolling session: `at` is the original sign-in
+    // (tokens minted before rolling sessions have none — their iat is the
+    // best available stand-in).
+    const nowSeconds = Math.floor(Date.now() / 1000);
+    const authTime = typeof decoded.at === "number" ? decoded.at : decoded.iat;
+    if (nowSeconds - authTime > GLOBAL_SESSION_MAX_AGE_SECONDS()) {
+      const error = new Error("Your session has expired. Please sign in again.");
+      error.statusCode = 401;
+      throw error;
+    }
+
+    // Roll the session: once the token is a day old, hand back a fresh one
+    // (same sign-in time, current credential version). The client stores
+    // it from the X-Session-Token header — exposed via CORS in server.js.
+    if (nowSeconds - decoded.iat > GLOBAL_SESSION_REFRESH_AFTER_SECONDS) {
+      res.set(
+        "X-Session-Token",
+        generateGlobalSessionToken({ customerAccountId: decoded.customerAccountId, pv: rowPv, at: authTime })
+      );
+    }
+
+    req.customerAccount = { id: decoded.customerAccountId, authTime };
 
     next();
   } catch (error) {
