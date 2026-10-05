@@ -87,7 +87,10 @@ const getCampaigns = async (req, res, next) => {
 
 const getBalance = async (req, res, next) => {
   try {
-    const result = await getPointsBalanceByUserId(req.user.id, req.user.organizationId);
+    const result = await getPointsBalanceByUserId(req.user.id, req.user.organizationId, {
+      org: req.tenantOrg,
+      company: req.tenantCompany
+    });
     res.status(200).json(result);
   } catch (error) {
     next(error);

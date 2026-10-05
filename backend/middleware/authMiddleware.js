@@ -43,7 +43,16 @@ const verifyToken = async (req, _res, next) => {
     // Re-verify against the DB on every request, so a demoted/deleted user or
     // a suspended tenant's already-issued token stops working immediately
     // instead of staying valid for the rest of its lifetime (JWT_EXPIRES_IN).
-    const user = await User.findOne({ _id: decoded.userId });
+    //
+    // The membership and its outlet are independent reads (both ids come
+    // from the token), so they go out together — every read here is a
+    // network round trip in production, paid on every authenticated call.
+    // The User row is read-only here (every field below has an explicit
+    // fallback), so it is lean.
+    const [user, organization] = await Promise.all([
+      User.findOne({ _id: decoded.userId }).lean(),
+      decoded.organizationId ? Organization.findOne({ _id: decoded.organizationId }) : null
+    ]);
 
     if (!user || user.role !== decoded.role) {
       const error = new Error("Access denied. Token is no longer valid.");
@@ -67,9 +76,8 @@ const verifyToken = async (req, _res, next) => {
       throw error;
     }
 
+    let company = null;
     if (decoded.organizationId) {
-      const organization = await Organization.findOne({ _id: decoded.organizationId });
-
       if (!organization || organization.status === "suspended" || organization.status === "archived") {
         const error = new Error("This business is suspended.");
         error.statusCode = 401;
@@ -81,7 +89,7 @@ const verifyToken = async (req, _res, next) => {
       // suspended — resolveTenant already blocks this on the public side;
       // an already-issued JWT must lose access the same way, not just ride
       // out the rest of JWT_EXPIRES_IN.
-      const company = await Company.findOne({ _id: organization.companyId });
+      company = await Company.findOne({ _id: organization.companyId });
 
       if (!company || company.status === "suspended") {
         const error = new Error("This business is suspended.");
@@ -100,7 +108,7 @@ const verifyToken = async (req, _res, next) => {
     // access. That is the no-migration promise, not an oversight.
     let staffRole = null;
     if (user.role === "business_admin" && user.adminAccountId) {
-      const adminAccount = await AdminAccount.findOne({ _id: user.adminAccountId });
+      const adminAccount = await AdminAccount.findOne({ _id: user.adminAccountId }).lean();
       staffRole = adminAccount ? (adminAccount.staffRole || null) : null;
     }
 
@@ -120,6 +128,12 @@ const verifyToken = async (req, _res, next) => {
       // (or any account predating this field) — full access.
       staffRole
     };
+    // The outlet and company just verified, for handlers that need them
+    // anyway (points program, tiers) — saves them re-reading both. Full
+    // Mongoose documents, not lean: they feed resolveProgram, which relies
+    // on schema defaults for fields older rows may predate.
+    req.tenantOrg = organization || null;
+    req.tenantCompany = company;
 
     next();
   } catch (error) {

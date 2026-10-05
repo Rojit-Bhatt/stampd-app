@@ -241,6 +241,14 @@ class Query {
     return this;
   }
 
+  // Real Mongoose returns plain objects (no save/defaults) from a lean
+  // query; the mock's documents are already plain enough to read from, so
+  // this is a pass-through. Callers must still never .save() a lean result —
+  // the mock can't catch that, production would.
+  lean() {
+    return this;
+  }
+
   then(onFulfilled, onRejected) {
     countFind();
     return this.execFn(this).then(onFulfilled, onRejected);
