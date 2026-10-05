@@ -5,9 +5,10 @@ const {
   fulfillPendingClaim
 } = require("../services/pendingClaimService");
 
-const createHttpError = (message, statusCode) => {
+const createHttpError = (message, statusCode, code) => {
   const error = new Error(message);
   error.statusCode = statusCode;
+  if (code) error.code = code;
   return error;
 };
 
@@ -43,7 +44,7 @@ const fulfill = async (req, res, next) => {
   try {
     const user = await User.findOne({ _id: req.user.id });
     if (!user || !user.customerAccountId) {
-      throw createHttpError("Account not found.", 404);
+      throw createHttpError("Account not found.", 404, "ACCOUNT_NOT_FOUND");
     }
     const result = await fulfillPendingClaim({
       pendingClaimId: req.params.pendingClaimId,

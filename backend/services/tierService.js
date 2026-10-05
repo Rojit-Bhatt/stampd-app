@@ -25,7 +25,7 @@ const resolveTier = async (organizationId, customerId, { org, earns } = {}) => {
         userId: customerId,
         type: "earn",
         createdAt: { $gte: since }
-      });
+      }).lean();
 
   const visits = resolvedEarns.length;
   const spend = resolvedEarns.reduce((sum, t) => sum + (t.billAmount || 0), 0);

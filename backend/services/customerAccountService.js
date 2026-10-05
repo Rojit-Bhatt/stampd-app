@@ -157,6 +157,41 @@ const ensureMembership = async ({ customerAccountId, organizationId, account }) 
     account = account || (await CustomerAccount.findOne({ _id: customerAccountId }));
     if (!account) throw createHttpError("Account not found.", 404);
 
+    // A pre-migration customer row the backfill never linked: same outlet,
+    // same email, no customerAccountId. It holds this person's points, so
+    // creating a fresh row beside it would show them 0 (or, with the
+    // {organizationId, email} unique index, 500 on every enter-tenant).
+    // Adopt it instead — but only for a verified account: registering a
+    // global account takes nothing but an email address, so adopting on an
+    // unverified one would hand a stranger someone else's balance.
+    const legacy = await User.findOne({
+      organizationId,
+      email: normalizeEmail(account.email),
+      role: "customer",
+      customerAccountId: null
+    });
+    if (legacy) {
+      if (!account.emailVerified) {
+        throw createHttpError(
+          "Verify your email to bring your existing points at this outlet into your account.",
+          403,
+          "VERIFY_EMAIL_TO_LINK"
+        );
+      }
+      legacy.customerAccountId = account._id;
+      // Same retirement backfillCustomerAccounts does: the credential lives
+      // on the global account now, so the old per-outlet login must stop
+      // working with a possibly-stale password.
+      legacy.password = undefined;
+      legacy.googleId = null;
+      legacy.name = account.name;
+      legacy.phone = account.phone || legacy.phone || "";
+      legacy.emailVerified = true;
+      await legacy.save();
+      await ensureUserPointsBalance(legacy._id, organizationId);
+      return legacy;
+    }
+
     user = await User.create({
       organizationId,
       customerAccountId,

@@ -1,8 +1,9 @@
 import React, { useEffect, useRef, useState } from "react";
 import { useParams, useSearchParams, useNavigate } from "react-router-dom";
+import { useQueryClient } from "@tanstack/react-query";
 import { Mail, Lock, User, Phone, Timer, AlertTriangle, Check, WifiOff } from "lucide-react";
 import toast from "@/lib/toast";
-import { apiRequest } from "../lib/api";
+import { apiRequest, decodeJwtPayload, isJwtExpired } from "../lib/api";
 import { useTenant } from "../context/TenantContext";
 import { useCustomerAuth } from "../context/CustomerAuthContext";
 import { useCelebration } from "../context/CelebrationContext";
@@ -29,15 +30,28 @@ type Stage =
 // counter fails in ordinary ways, and "something went wrong" leaves the
 // customer unsure whether to re-scan, ask staff, or wait.
 //
-// These are classified from the server's message text because the backend
-// returns a bare 400 for most of them; only "already-added" carries a real
-// code (CLAIM_ALREADY_FULFILLED). Adding codes backend-side would make this
-// robust — until then, an unrecognised message falls through to "unknown",
-// which still renders a sane screen rather than guessing wrong.
-type ClaimFailure = "expired" | "already-used" | "already-added" | "session-expired" | "offline" | "unknown";
+// Classified by the server's error code first (pendingClaimService now
+// tags every claim refusal); the message-text matching below only covers
+// the QR-token errors from pointsService, which still carry no code. An
+// unrecognised error falls through to "unknown", which still renders a sane
+// screen rather than guessing wrong.
+type ClaimFailure =
+  | "expired"
+  | "already-used"
+  | "already-added"
+  | "session-expired"
+  | "phone-required"
+  | "wrong-account"
+  | "verify-to-link"
+  | "offline"
+  | "unknown";
 
 function classifyFailure(err: Error & { code?: string; status?: number }): ClaimFailure {
   if (err.code === "CLAIM_ALREADY_FULFILLED") return "already-added";
+  if (err.code === "CLAIM_EXPIRED") return "expired";
+  if (err.code === "PHONE_REQUIRED") return "phone-required";
+  if (err.code === "CLAIM_OTHER_ACCOUNT") return "wrong-account";
+  if (err.code === "VERIFY_EMAIL_TO_LINK") return "verify-to-link";
   // A fetch that never reached the server — the claim itself is untouched and
   // still held, so this must not read as "your points are gone".
   if (!navigator.onLine || err.name === "TypeError") return "offline";
@@ -84,7 +98,8 @@ export default function ClaimLanding() {
   const [params] = useSearchParams();
   const navigate = useNavigate();
   const { tenant } = useTenant();
-  const { user, isLoading, ensureTenantSession, login, registerUser, loginWithGoogle } = useCustomerAuth();
+  const { user, token, globalAccount, isLoading, ensureTenantSession, login, registerUser, loginWithGoogle } = useCustomerAuth();
+  const queryClient = useQueryClient();
   const { showEarn } = useCelebration();
 
   const [stage, setStage] = useState<Stage>("resolving");
@@ -126,17 +141,55 @@ export default function ClaimLanding() {
   // Step 2: once TenantSessionSync (mounted alongside this page) has settled,
   // see if we're already tenant-authenticated — if so, fulfill immediately
   // with zero forms; otherwise ask the customer to sign in or sign up.
+  //
+  // "Signed in" means a live tenant JWT for THIS outlet — not just a cached
+  // user. The token slot is shared across outlets, so scanning another
+  // outlet's QR from inside the app used to fire fulfill with the previous
+  // outlet's JWT ("Claim not found"); and an expired JWT read as signed in
+  // and bounced straight to "sign in again". Wait for the tenant (to know
+  // its id) and for the exchange to settle before deciding.
+  const tokenOrgId = token ? decodeJwtPayload(token)?.organizationId ?? null : null;
+  const hasLiveSession =
+    Boolean(user && token && tenant && tokenOrgId === tenant.id && !isJwtExpired(token));
+  //
+  // With a global session but no live tenant JWT yet, run the exchange here
+  // rather than reading the shared slot: this effect (a child) commits before
+  // TenantSessionSync's, so on an in-app hop from another outlet it would
+  // otherwise see that outlet's token and show the sign-in form to a
+  // customer who is already signed in.
   useEffect(() => {
-    if (stage !== "checking" || isLoading || checkedOnce.current) return;
+    if (stage !== "checking" || isLoading || !tenant || checkedOnce.current) return;
     checkedOnce.current = true;
-    setStage(user ? "fulfilling" : "choose");
-  }, [stage, isLoading, user]);
+    if (hasLiveSession) {
+      setStage("fulfilling");
+      return;
+    }
+    if (!globalAccount) {
+      setStage("choose");
+      return;
+    }
+    ensureTenantSession(`${companySlug}/${slug}`, tenant.id)
+      .then(() => setStage("fulfilling"))
+      .catch((e) => {
+        if (!showVerifyToLink(e)) setStage("choose");
+      });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [stage, isLoading, tenant, hasLiveSession]);
 
   // Shared between the awaiting-verification poll and the already-fulfilled
   // race below: both need "go fetch what actually happened and show it."
   // Sets stage itself on a definitive outcome (fulfilled or expired) and
   // reports whether it did, so callers only need to handle "still nothing
   // to show yet" (transient fetch failure, or genuinely still pending).
+  // The dashboard this page navigates to caches the balance (staleTime), so
+  // an earn must invalidate it — otherwise the card under the celebration
+  // shows the pre-earn figure. The in-app scanner now lands here too, and it
+  // used to do this itself.
+  const markEarned = () => {
+    queryClient.invalidateQueries({ queryKey: ["pointsBalance"] });
+    queryClient.invalidateQueries({ queryKey: ["pointsHistory"] });
+  };
+
   const checkStatus = async (claimId: string, expiredMessage?: string) => {
     try {
       const res = await apiRequest<{ success: boolean; data: { fulfilled: boolean; expired: boolean } & Partial<ClaimResult> }>(
@@ -158,6 +211,7 @@ export default function ClaimLanding() {
           multiplier: res.data.multiplier,
           campaignName: res.data.campaignName,
         });
+        markEarned();
         setStage("success");
         navigate(tenantPath(companySlug, slug, "dashboard"));
         return true;
@@ -193,6 +247,7 @@ export default function ClaimLanding() {
         multiplier: res.data.multiplier,
         campaignName: res.data.campaignName,
       });
+      markEarned();
       setStage("success");
       navigate(tenantPath(companySlug, slug, "dashboard"));
     } catch (e) {
@@ -213,7 +268,11 @@ export default function ClaimLanding() {
         return;
       }
       const message = err.message || "";
-      if (message.toLowerCase().includes("verify your email")) {
+      // VERIFY_EMAIL_TO_LINK: this outlet holds an older membership with this
+      // email, which only a verified account may take over. The claim stays
+      // bound to the account, and autoFulfillForAccount lands it the moment
+      // the email is verified — exactly the awaiting-verification path.
+      if (err.code === "VERIFY_EMAIL_TO_LINK") {
         setStage("awaiting-verification");
       } else {
         setFailure(classifyFailure(err));
@@ -241,6 +300,42 @@ export default function ClaimLanding() {
     return () => clearInterval(interval);
   }, [stage, pendingClaimId, claimSecret]);
 
+  // The outlet has an older membership under this email that only a
+  // verified account may take over (backend: ensureMembership). Not a
+  // dead end: the claim is still held, so show the screen that lets them
+  // verify and come straight back.
+  const showVerifyToLink = (e: unknown) => {
+    if ((e as { code?: string })?.code !== "VERIFY_EMAIL_TO_LINK") return false;
+    setFailure("verify-to-link");
+    setErrorMsg((e as Error).message);
+    setStage("error");
+    return true;
+  };
+
+  const retryAfterVerify = async () => {
+    setBusy(true);
+    try {
+      await ensureTenantSession(`${companySlug}/${slug}`, tenant?.id ?? null);
+      if (pendingClaimId) setStage("fulfilling");
+    } catch (e) {
+      toast.error((e as Error).message || "Still not verified — check your inbox.");
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  // A claim bound at signup is fulfilled server-side the moment the email is
+  // verified (autoFulfillForAccount), even from another device — so poll
+  // while the verify-to-link screen is up, same as awaiting-verification.
+  useEffect(() => {
+    if (stage !== "error" || failure !== "verify-to-link" || !pendingClaimId) return;
+    const interval = setInterval(() => {
+      checkStatus(pendingClaimId);
+    }, 4000);
+    return () => clearInterval(interval);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [stage, failure, pendingClaimId, claimSecret]);
+
   const onLogin = async (email: string, password: string) => {
     setBusy(true);
     try {
@@ -248,6 +343,7 @@ export default function ClaimLanding() {
       await ensureTenantSession(`${companySlug}/${slug}`, tenant?.id ?? null);
       if (pendingClaimId) setStage("fulfilling");
     } catch (e) {
+      if (showVerifyToLink(e)) return;
       toast.error((e as Error).message || "Couldn't sign you in — try again.");
     } finally {
       setBusy(false);
@@ -269,6 +365,7 @@ export default function ClaimLanding() {
         navigate(tenantPath(companySlug, slug, "dashboard"));
       }
     } catch (e) {
+      if (showVerifyToLink(e)) return;
       toast.error((e as Error).message || "Couldn't create your account — try again.");
     } finally {
       setBusy(false);
@@ -289,6 +386,7 @@ export default function ClaimLanding() {
         }
       }
     } catch (err) {
+      if (showVerifyToLink(err)) return;
       toast.error((err as Error).message || "Google sign-in didn't work — try again.");
     } finally {
       setBusy(false);
@@ -328,6 +426,54 @@ export default function ClaimLanding() {
               : undefined
           }
           primary={{ label: "See my points", to: tenantPath(companySlug, slug, "dashboard") }}
+        />
+      );
+    }
+
+    if (failure === "phone-required") {
+      return (
+        <>
+          <ClaimStateScreen
+            icon={<Phone className="h-6 w-6" />}
+            tone="warn"
+            title="Add your phone number"
+            body="The outlet needs a contact number before points can be added. Your claim is still held — add it and we'll finish."
+            primary={{ label: "Add phone number", onClick: () => setShowPhoneStep(true) }}
+            secondary={{ label: backLabel, to: home }}
+          />
+          {showPhoneStep && (
+            <PhoneStepModal
+              onDone={() => {
+                setShowPhoneStep(false);
+                if (pendingClaimId) setStage("fulfilling");
+              }}
+            />
+          )}
+        </>
+      );
+    }
+
+    if (failure === "verify-to-link") {
+      return (
+        <ClaimStateScreen
+          icon={<Mail className="h-6 w-6" />}
+          tone="neutral"
+          title="Verify your email first"
+          body="You already have points at this outlet from before. Verify your email to bring them into this account — your new points are held for 15 minutes."
+          primary={{ label: busy ? "Checking…" : "I've verified — add my points", onClick: retryAfterVerify }}
+          secondary={{ label: backLabel, to: home }}
+        />
+      );
+    }
+
+    if (failure === "wrong-account") {
+      return (
+        <ClaimStateScreen
+          icon={<AlertTriangle className="h-6 w-6" />}
+          tone="warn"
+          title="Claimed by another account"
+          body="These points were already taken by a different sign-in. If that wasn't you, ask staff for a new code."
+          primary={{ label: backLabel, to: home }}
         />
       );
     }

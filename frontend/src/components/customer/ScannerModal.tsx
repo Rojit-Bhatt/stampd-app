@@ -1,21 +1,32 @@
 import { useEffect, useRef, useState } from "react";
 import { X, ScanLine, QrCode, CameraOff } from "lucide-react";
 import { Html5Qrcode } from "html5-qrcode";
-import toast from "@/lib/toast";
-import { useQueryClient } from "@tanstack/react-query";
-import { apiRequest } from "../../lib/api";
 import { useNavigate } from "react-router-dom";
 import { useTenant } from "../../context/TenantContext";
-import { useCelebration } from "../../context/CelebrationContext";
-import { PhoneStepModal } from "./PhoneStepModal";
 import { tenantPath } from "../../lib/tenantPath";
 
-interface EarnResult {
-  pointsEarned: number;
-  billAmount: number;
-  balance: number;
-  multiplier?: number;
-  campaignName?: string | null;
+// Where a scanned code should land. Staff QRs encode a full
+// /[company]/[outlet]/(claim|redeem)?token=... URL; the outlet in THAT path
+// is the one the token belongs to, which need not be the outlet currently
+// open in the app. Only the path is kept — never the host — so a QR can't
+// send the customer off-site. A bare token (old-style code) is treated as an
+// earn at the current outlet.
+export function scanDestination(decodedText: string, companySlug: string, outletSlug: string): string {
+  try {
+    const url = new URL(decodedText);
+    const token = url.searchParams.get("token");
+    const match = url.pathname.match(/^\/([^/]+)\/([^/]+)\/(claim|redeem)\/?$/);
+    if (token && match) {
+      return `/${match[1]}/${match[2]}/${match[3]}?token=${encodeURIComponent(token)}`;
+    }
+    if (token) {
+      const kind = url.pathname.endsWith("/redeem") ? "redeem" : "claim";
+      return `${tenantPath(companySlug, outletSlug, kind)}?token=${encodeURIComponent(token)}`;
+    }
+  } catch {
+    // Not a URL — decodedText is the raw token itself.
+  }
+  return `${tenantPath(companySlug, outletSlug, "claim")}?token=${encodeURIComponent(decodedText.trim())}`;
 }
 
 export function ScannerModal({
@@ -31,19 +42,15 @@ export function ScannerModal({
 }) {
   const { companySlug } = useTenant();
   const scannerRef = useRef<Html5Qrcode | null>(null);
-  const queryClient = useQueryClient();
   const navigate = useNavigate();
-  const { showEarn } = useCelebration();
 
   const [cameraError, setCameraError] = useState<string | null>(null);
   const [isBlocked, setIsBlocked] = useState(false);
-  const [pendingToken, setPendingToken] = useState<string | null>(null);
 
   useEffect(() => {
     if (!open) {
       setCameraError(null);
       setIsBlocked(false);
-      setPendingToken(null);
       return;
     }
 
@@ -87,47 +94,6 @@ export function ScannerModal({
     };
   }, [open]);
 
-  const claimToken = async (rawToken: string) => {
-    const toastId = toast.loading("Adding your points…");
-    try {
-      const response = await apiRequest<{
-        success: boolean;
-        message: string;
-        data?: EarnResult;
-      }>("/api/points/claim", {
-        method: "POST",
-        body: { token: rawToken },
-      });
-
-      if (response.success && response.data) {
-        queryClient.invalidateQueries({ queryKey: ["pointsBalance"] });
-        queryClient.invalidateQueries({ queryKey: ["pointsHistory"] });
-        toast.dismiss(toastId);
-        showEarn({
-          points: response.data.pointsEarned,
-          billAmount: response.data.billAmount,
-          balance: response.data.balance,
-          outletName: tenantName,
-          multiplier: response.data.multiplier,
-          campaignName: response.data.campaignName,
-        });
-        onClose();
-        navigate(tenantPath(companySlug, slug, "dashboard"));
-      } else {
-        throw new Error(response.message || "Couldn't add those points — try again.");
-      }
-    } catch (err) {
-      const code = (err as { code?: string }).code;
-      if (code === "PHONE_REQUIRED") {
-        toast.dismiss(toastId);
-        setPendingToken(rawToken);
-        return;
-      }
-      toast.error((err as Error).message || "Couldn't add those points — try again.", { id: toastId });
-      onClose();
-    }
-  };
-
   useEffect(() => {
     if (!open) return;
 
@@ -139,7 +105,7 @@ export function ScannerModal({
     let isMounted = true;
     let qrScanner: Html5Qrcode | null = null;
 
-    if (!cameraError && !pendingToken) {
+    if (!cameraError) {
       try {
         qrScanner = new Html5Qrcode("qr-reader-viewport");
         scannerRef.current = qrScanner;
@@ -165,32 +131,16 @@ export function ScannerModal({
                 }
               }
 
-              // GenerateQr now encodes a full /:slug/claim?token=... URL (so
-              // scanning with the phone's own camera app opens the seamless
-              // claim landing page) — the in-app scanner decodes the same
-              // image, so extract the raw token from it. Falls back to
-              // decodedText itself for robustness (e.g. an old-style bare
-              // token, in case a stale/cached QR is scanned).
-              let rawToken = decodedText;
-              let isRedeem = false;
-              try {
-                const url = new URL(decodedText);
-                rawToken = url.searchParams.get("token") || decodedText;
-                // Staff can put up either QR. A redeem code isn't something
-                // to claim — it opens the catalog so the customer picks what
-                // to spend on, so hand it off rather than posting an earn.
-                isRedeem = url.pathname.endsWith("/redeem");
-              } catch {
-                // Not a URL — decodedText is already the raw token.
-              }
-
-              if (isRedeem) {
-                onClose();
-                navigate(`${tenantPath(companySlug, slug, "redeem")}?token=${encodeURIComponent(rawToken)}`);
-                return;
-              }
-
-              await claimToken(rawToken);
+              // Every scan lands on the same page the phone's own camera
+              // opens. ClaimLanding converts the 30-second earn token into a
+              // 15-minute PendingClaim the moment it loads, switches the
+              // session to the QR's outlet, and handles the phone step — the
+              // old in-app path POSTed the raw token against whichever
+              // outlet was open (another outlet's QR -> "Invalid QR token")
+              // and retried it after the phone step, by which time a
+              // 30-second token had usually expired.
+              onClose();
+              navigate(scanDestination(decodedText, companySlug, slug));
             },
             () => {
               // Silent failure
@@ -235,7 +185,7 @@ export function ScannerModal({
         }
       }
     };
-  }, [open, onClose, queryClient, navigate, companySlug, slug, cameraError, pendingToken]);
+  }, [open, onClose, navigate, companySlug, slug, cameraError]);
 
   const handleRetry = () => {
     setCameraError(null);
@@ -243,18 +193,6 @@ export function ScannerModal({
   };
 
   if (!open) return null;
-
-  if (pendingToken) {
-    return (
-      <PhoneStepModal
-        onDone={() => {
-          const token = pendingToken;
-          setPendingToken(null);
-          if (token) claimToken(token);
-        }}
-      />
-    );
-  }
 
   return (
     <div

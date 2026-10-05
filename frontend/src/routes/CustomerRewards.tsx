@@ -12,7 +12,7 @@ import { Skeleton } from "../components/ui/skeleton";
 // puts up a redeem QR, the customer scans it) — see pointsService.redeemPoints.
 // This page is for browsing and knowing what to ask for.
 export default function CustomerRewards() {
-  const { data: points, isLoading: balanceLoading } = usePointsBalance();
+  const { data: points, isLoading: balanceLoading, isError: balanceError } = usePointsBalance();
   const { data: catalog = [], isLoading: catalogLoading } = useRewardCatalog();
 
   const balance = points?.balance ?? 0;
@@ -28,7 +28,9 @@ export default function CustomerRewards() {
         <p className="mt-0.5 text-sm text-[var(--muted)]">
           {isLoading
             ? "Loading…"
-            : `You have ${formatPoints(balance)} points to spend here.`}
+            : balanceError
+              ? "Couldn't load your points — try again in a moment."
+              : `You have ${formatPoints(balance)} points to spend here.`}
         </p>
       </header>
 

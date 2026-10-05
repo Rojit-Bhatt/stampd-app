@@ -61,9 +61,12 @@ const loadOrganizationOrThrow = async (organizationId) => {
 // An outlet's own program fields are null unless it explicitly overrides
 // them, so they must never be read straight off the document — resolve
 // against the owning company's defaults first.
-const loadProgram = async (org) => {
-  const company = org.companyId ? await Company.findOne({ _id: org.companyId }) : null;
-  return resolveProgram(company, org);
+// `company` may be passed when the caller already holds it (the auth
+// middleware loads it on every request); otherwise it is read here.
+const loadProgram = async (org, company) => {
+  const resolvedCompany =
+    company !== undefined ? company : org.companyId ? await Company.findOne({ _id: org.companyId }) : null;
+  return resolveProgram(resolvedCompany, org);
 };
 
 // A bill is required for every earn: the award is a function of it, so
@@ -662,24 +665,32 @@ const redeemPoints = async ({ token, itemId, kind, userId, role, organizationId 
 
 // --- reads ------------------------------------------------------------
 
-const getPointsBalanceByUserId = async (userId, organizationId) => {
+// `tenant` is the outlet + company the auth middleware already verified for
+// this request (req.tenantOrg / req.tenantCompany). Reusing them saves two
+// reads; they are only trusted when they are for the outlet asked about.
+const getPointsBalanceByUserId = async (userId, organizationId, tenant = {}) => {
   if (!userId) {
     throw createHttpError("Authenticated user context is required.", 401);
   }
 
-  const org = await loadOrganizationOrThrow(organizationId);
-  const program = await loadProgram(org);
-
-  const balance = await PointsBalance.findOne({ userId, organizationId });
+  const reuse = tenant.org && tenant.org._id.toString() === String(organizationId);
+  const org = reuse ? tenant.org : await loadOrganizationOrThrow(organizationId);
   const now = new Date();
-  const { multiplier, campaign } = await resolveActiveMultiplier(organizationId, now);
-  const tier = await resolveTier(organizationId, userId, { org });
+
+  // Independent reads, issued together: each is a round trip to the
+  // database, and the customer is waiting on the slowest one, not the sum.
+  const [program, balance, { multiplier, campaign }, tier] = await Promise.all([
+    loadProgram(org, reuse ? tenant.company : undefined),
+    PointsBalance.findOne({ userId, organizationId }).lean(),
+    resolveActiveMultiplier(organizationId, now),
+    resolveTier(organizationId, userId, { org })
+  ]);
 
   return {
     success: true,
     data: {
       balance: toPoints(effectiveBalanceCenti(balance, now)),
-      lastActivityAt: balance ? balance.lastActivityAt : null,
+      lastActivityAt: balance ? balance.lastActivityAt ?? null : null,
       expiresAt: expiresAtFor(balance),
       earnPercent: program.earnPercent,
       pointsExpiryDays: program.pointsExpiryDays,
@@ -695,7 +706,7 @@ const formatTransaction = (txn) => ({
   type: txn.type,
   points: toPoints(txn.pointsCenti),
   balanceAfter: toPoints(txn.balanceAfterCenti),
-  billAmount: txn.billAmount,
+  billAmount: txn.billAmount ?? null,
   rewardName: txn.rewardName || "",
   // What the reward was worth in rupees at the moment it was handed over.
   // Null for a points-only RewardItem and for any row predating the field.
@@ -722,8 +733,11 @@ const getPointsHistoryByUserId = async (userId, organizationId, limit = 50) => {
     throw createHttpError("Authenticated user context is required.", 401);
   }
 
-  const rows = await PointsTransaction.find({ userId, organizationId }).sort({ createdAt: -1 });
-  return { success: true, data: rows.slice(0, limit).map(formatTransaction) };
+  const rows = await PointsTransaction.find({ userId, organizationId })
+    .sort({ createdAt: -1 })
+    .limit(limit)
+    .lean();
+  return { success: true, data: rows.map(formatTransaction) };
 };
 
 // The outlet's whole ledger, newest first — the admin transaction history.
@@ -732,20 +746,22 @@ const getPointsHistoryByUserId = async (userId, organizationId, limit = 50) => {
 // neither, and must keep seeing the true most-recent rows, not a trailing-
 // 30-day window it never asked for. The Transactions page and its Excel
 // export are the only callers that ever pass a range.
+//
+// The range and the cap are applied IN the query: this used to load the
+// outlet's entire ledger and filter/slice it in JS — on every poll of the
+// admin dashboard's live feed (every 5s), growing with every earn.
+// {organizationId, createdAt} is indexed, so this reads only the rows shown.
 const getOutletTransactions = async (organizationId, { limit = 100, startDate, endDate } = {}) => {
-  let rows = await PointsTransaction.find({ organizationId }).sort({ createdAt: -1 });
+  const filter = { organizationId };
   if (startDate || endDate) {
     const { start, end } = resolveDateRange(startDate, endDate);
-    rows = rows.filter((t) => {
-      const createdAt = new Date(t.createdAt);
-      return createdAt >= start && createdAt <= end;
-    });
+    filter.createdAt = { $gte: start, $lte: end };
   }
-  const capped = rows.slice(0, limit);
+  const capped = await PointsTransaction.find(filter).sort({ createdAt: -1 }).limit(limit).lean();
   const userIds = [...new Set(capped.map((r) => r.userId.toString()))];
   // One batched $in read instead of N findOne round trips (was an N+1):
   const users = userIds.length > 0
-    ? await User.find({ _id: { $in: userIds }, organizationId })
+    ? await User.find({ _id: { $in: userIds }, organizationId }).lean()
     : [];
   const nameById = new Map(users.map((u) => [u._id.toString(), u.name]));
 

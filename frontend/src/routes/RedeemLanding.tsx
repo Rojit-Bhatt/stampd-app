@@ -1,12 +1,12 @@
 import { useState } from "react";
-import { useSearchParams, useNavigate, Link } from "react-router-dom";
+import { useSearchParams, useNavigate, useLocation, Link } from "react-router-dom";
 import { useQueryClient } from "@tanstack/react-query";
 import { ChevronLeft, Gift, Loader2, MailWarning } from "lucide-react";
 import toast from "@/lib/toast";
 import { useTenant } from "../context/TenantContext";
 import { useCustomerAuth } from "../context/CustomerAuthContext";
 import { usePointsBalance, useRewardCatalog, formatPoints } from "../hooks/usePoints";
-import { apiRequest } from "../lib/api";
+import { apiRequest, decodeJwtPayload, isJwtExpired } from "../lib/api";
 import { tenantPath } from "../lib/tenantPath";
 import { useCelebration } from "../context/CelebrationContext";
 import { RewardCard } from "../components/customer/RewardCard";
@@ -45,10 +45,30 @@ export default function RedeemLanding() {
   const navigate = useNavigate();
   const qc = useQueryClient();
   const { tenant, companySlug, outletSlug } = useTenant();
-  const { globalAccount } = useCustomerAuth();
+  const { globalAccount, user, token: authToken, isLoading: authLoading } = useCustomerAuth();
+  const location = useLocation();
 
-  const { data: points, isLoading: balanceLoading } = usePointsBalance();
-  const { data: catalog = [], isLoading: catalogLoading } = useRewardCatalog();
+  // This page sits outside CustomerLayout (it arrives from a phone camera),
+  // so it has to apply the same gate itself: a live tenant JWT for THIS
+  // outlet before any query fires. Without it the balance/catalog/redeem
+  // calls went out with no token, an expired one, or another outlet's —
+  // showing 0 points and failing the redeem with "Access denied" or
+  // "Invalid QR token".
+  const tokenOrgId = authToken ? decodeJwtPayload(authToken)?.organizationId ?? null : null;
+  const hasLiveSession = Boolean(
+    user && user.role === "customer" && authToken && tenant && tokenOrgId === tenant.id && !isJwtExpired(authToken),
+  );
+  // Still settling: the tenant isn't resolved yet, the exchange is running,
+  // or a global session holds a tenant JWT that is about to be swapped (for
+  // another outlet, or expired) — TenantSessionSync's exchange commits after
+  // this page's first render, and either replaces the token or clears it, so
+  // this can't hang. Without the last case an in-app hop flashed "Sign in".
+  const swapPending =
+    Boolean(globalAccount && authToken && tenant) && (tokenOrgId !== tenant?.id || isJwtExpired(authToken));
+  const settling = !tenant || authLoading || swapPending;
+
+  const { data: points, isLoading: balanceLoading, isError: balanceError } = usePointsBalance(hasLiveSession);
+  const { data: catalog = [], isLoading: catalogLoading } = useRewardCatalog(hasLiveSession);
   const [redeeming, setRedeeming] = useState<string | null>(null);
   const [pending, setPending] = useState<PendingReward | null>(null);
   const [needsVerification, setNeedsVerification] = useState(false);
@@ -66,14 +86,25 @@ export default function RedeemLanding() {
     );
   }
 
-  if (!globalAccount) {
+  if (settling) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-[var(--bg)]">
+        <div className="h-8 w-8 animate-spin rounded-full border-2 border-[var(--primary)] border-t-transparent" />
+      </div>
+    );
+  }
+
+  if (!hasLiveSession || !globalAccount) {
+    // Sign in at THIS outlet and come straight back to this redeem link —
+    // the old /customer-login detour landed on /explore and lost the code.
+    const next = encodeURIComponent(`${location.pathname}${location.search}`);
     return (
       <Shell title="Sign in to redeem" backTo={tenantPath(companySlug, outletSlug)}>
         <p className="mb-5 text-sm text-[var(--muted)]">
-          Your points live with your account — sign in and scan again.
+          Your points live with your account — sign in and we'll bring you right back here.
         </p>
         <Button asChild size="lg">
-          <Link to="/customer-login">Sign in</Link>
+          <Link to={`${tenantPath(companySlug, outletSlug, "login")}?next=${next}`}>Sign in</Link>
         </Button>
       </Shell>
     );
@@ -168,7 +199,14 @@ export default function RedeemLanding() {
           Your balance
         </div>
         <div className="mt-1 font-numeral text-4xl leading-none text-[var(--primary)]">
-          {loading ? <Skeleton className="mx-auto h-9 w-24" /> : formatPoints(balance)}
+          {loading ? (
+            <Skeleton className="mx-auto h-9 w-24" />
+          ) : balanceError ? (
+            // A failed read is not a zero balance — never show it as one.
+            <span className="text-base text-[var(--muted)]">Couldn't load — pull to refresh</span>
+          ) : (
+            formatPoints(balance)
+          )}
         </div>
       </div>
 

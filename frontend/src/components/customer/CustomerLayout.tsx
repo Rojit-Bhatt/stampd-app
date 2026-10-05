@@ -65,7 +65,11 @@ export function CustomerLayout() {
   // inside it (points balance, catalog, ...) would fire against the old JWT,
   // caching the old outlet's numbers under the new outlet's query key.
   const tokenOrgId = token ? decodeJwtPayload(token)?.organizationId : null;
-  const sessionStale = Boolean(tenant) && tokenOrgId !== tenant?.id;
+  // Only a token for ANOTHER outlet is stale. No token at all is "signed
+  // out", and must fall through to the login redirect below — counting it as
+  // stale (null !== tenant.id) held the spinner up forever for a customer
+  // whose session had been cleared.
+  const sessionStale = Boolean(tenant) && Boolean(token) && tokenOrgId !== tenant?.id;
 
   useEffect(() => {
     if (!isLoading && !sessionStale && (!user || user.role !== "customer")) {

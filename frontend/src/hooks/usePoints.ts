@@ -56,7 +56,7 @@ export interface RewardItem {
   imageId?: string | null;
 }
 
-export function usePointsBalance() {
+export function usePointsBalance(enabled = true) {
   const { companySlug, outletSlug } = useTenant();
   return useQuery<PointsBalance>({
     queryKey: ["pointsBalance", companySlug, outletSlug],
@@ -65,6 +65,11 @@ export function usePointsBalance() {
       return response.data;
     },
     staleTime: 1000 * 30,
+    // One quiet retry, not react-query's default three with backoff: the
+    // balance card has a manual refresh, and a tap that fails should say so
+    // within a couple of seconds, not spin for ~25.
+    retry: 1,
+    enabled,
   });
 }
 

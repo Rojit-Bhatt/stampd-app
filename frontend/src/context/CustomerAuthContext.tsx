@@ -1,5 +1,11 @@
-import React, { createContext, useContext, useRef, useState } from "react";
-import { apiRequest, decodeJwtPayload } from "../lib/api";
+import React, { createContext, useContext, useEffect, useRef, useState } from "react";
+import {
+  apiRequest,
+  decodeJwtPayload,
+  getTenantRef,
+  isJwtExpired,
+  setCustomerUnauthorizedHandler,
+} from "../lib/api";
 
 export interface User {
   id: string;
@@ -187,7 +193,11 @@ export function CustomerAuthProvider({ children }: { children: React.ReactNode }
     // here, don't wait for anything else to re-trigger it. (Backend
     // regression: tests/outlet-switch-stuck-loader.js.)
     if (globalToken) {
-      const cachedToken = readCachedTenantToken();
+      const rawCachedToken = readCachedTenantToken();
+      // An expired tenant JWT is as good as none — see isJwtExpired. Without
+      // this, a cached token for the right outlet was reused forever past
+      // its 7-day life (the global session lives 14), and every call 401'd.
+      const cachedToken = rawCachedToken && !isJwtExpired(rawCachedToken) ? rawCachedToken : null;
       const payload = cachedToken ? decodeJwtPayload(cachedToken) : null;
       const cachedOrgId = payload?.organizationId || null;
       // Skip the (relatively cheap) exchange when the cached JWT already
@@ -246,8 +256,18 @@ export function CustomerAuthProvider({ children }: { children: React.ReactNode }
           // clear a session a newer, successful request just established.
           if (latestTenantRequestRef.current !== requestKey) return;
           const status = (err as any).status;
-          if (status === 401 || status === 403) {
+          const code = (err as any).code;
+          // VERIFY_EMAIL_TO_LINK is a 403 about THIS outlet's old membership,
+          // not about the session — signing the customer out for it would
+          // just loop them back to the same refusal.
+          if (status === 401 || (status === 403 && code !== "VERIFY_EMAIL_TO_LINK")) {
             clearGlobal();
+            clearTenant();
+          } else if (!cachedToken || cachedOrgId !== tenantOrgId) {
+            // Any other failure (5xx, network): the cached tenant JWT is
+            // still not usable for THIS outlet, and leaving it in place kept
+            // CustomerLayout's sessionStale spinner up forever. Drop it so
+            // the outlet's login screen shows instead.
             clearTenant();
           }
           throw err;
@@ -271,6 +291,14 @@ export function CustomerAuthProvider({ children }: { children: React.ReactNode }
     const cachedToken = localStorage.getItem("customer_auth_token");
     const cachedUser = localStorage.getItem("customer_auth_user");
 
+    if (cachedToken && isJwtExpired(cachedToken)) {
+      // No global session to renew it with — a dead token must not keep the
+      // customer "signed in" to a dashboard whose every call will 401.
+      clearTenant();
+      setIsLoading(false);
+      return;
+    }
+
     if (cachedToken && cachedUser) {
       const payload = tenantOrgId ? decodeJwtPayload(cachedToken) : null;
       if (tenantOrgId && payload?.organizationId && payload.organizationId !== tenantOrgId) {
@@ -288,6 +316,52 @@ export function CustomerAuthProvider({ children }: { children: React.ReactNode }
     setIsLoading(false);
   };
 
+  // apiRequest's one-shot recovery for a customer call that came back 401
+  // (an expired or revoked tenant JWT mid-session). With a global session,
+  // exchange for a fresh tenant JWT for the outlet the request was made
+  // against; without one, drop the dead tenant token so guards route to
+  // sign-in instead of rendering failed queries as zeros.
+  useEffect(() => {
+    setCustomerUnauthorizedHandler(async () => {
+      const globalToken = localStorage.getItem("customer_global_session");
+      if (!globalToken || isJwtExpired(globalToken, 0)) {
+        // Both are dead: sign the customer out cleanly so every guard sends
+        // them to sign-in, rather than half-signed-in with failing queries.
+        if (globalToken) clearGlobal();
+        clearTenant();
+        return false;
+      }
+      const refAtStart = getTenantRef();
+      if (!refAtStart) return false;
+      try {
+        const res = await apiRequest<{ success: boolean; token: string; user: User }>(
+          "/api/customer-auth/enter-tenant",
+          { method: "POST", role: "customer-global" },
+        );
+        const refNow = getTenantRef();
+        // Navigated to another outlet meanwhile: this token is for the old
+        // one, and the slot now belongs to the new outlet's own exchange.
+        if (!refNow || refNow.company !== refAtStart.company || refNow.outlet !== refAtStart.outlet) {
+          return false;
+        }
+        if (res.success && res.token && res.user) {
+          persistTenant(res.token, res.user);
+          return true;
+        }
+        return false;
+      } catch (err) {
+        const status = (err as any).status;
+        if (status === 401) {
+          clearGlobal();
+          clearTenant();
+        }
+        return false;
+      }
+    });
+    return () => setCustomerUnauthorizedHandler(null);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   const login = async (email: string, password: string) => {
     const res = await apiRequest<{ success: boolean; token: string; account: GlobalAccount }>(
       "/api/customer-auth/login",
@@ -296,6 +370,11 @@ export function CustomerAuthProvider({ children }: { children: React.ReactNode }
     if (!res.success || !res.token || !res.account) {
       throw new Error("Invalid response payload from server.");
     }
+    // A new sign-in is a new identity: the cached tenant JWT may be expired,
+    // or belong to whoever used this device before. Keeping it meant
+    // ensureTenantSession saw "same outlet" and skipped the exchange, so
+    // signing in again never fixed a dead session.
+    clearTenant();
     persistGlobal(res.token, res.account);
   };
 
@@ -314,6 +393,7 @@ export function CustomerAuthProvider({ children }: { children: React.ReactNode }
       throw new Error(res.message || "Failed to register.");
     }
     if (res.token && res.account) {
+      clearTenant();
       persistGlobal(res.token, res.account);
     }
   };
@@ -329,6 +409,7 @@ export function CustomerAuthProvider({ children }: { children: React.ReactNode }
     if (!res.success || !res.token || !res.account) {
       throw new Error("Google sign-in failed.");
     }
+    clearTenant();
     persistGlobal(res.token, res.account);
     return { needsPhone: Boolean(res.needsPhone) };
   };

@@ -84,6 +84,13 @@ UserSchema.index(
   { organizationId: 1, customerAccountId: 1 },
   { unique: true, partialFilterExpression: { customerAccountId: { $type: "objectId" } } }
 );
+// "Every membership of this account", across all outlets — My Places,
+// profile/phone/verified sync, data export and account deletion all filter
+// on customerAccountId alone. The compound index above leads with
+// organizationId, so it can't serve those; without this they scan the whole
+// collection. Plain (not partial): a partial index is only usable when the
+// query repeats its filter expression, and these queries don't.
+UserSchema.index({ customerAccountId: 1 });
 // One business_admin membership per (org, admin account) — same partial-filter
 // reasoning as the customerAccountId index above. Global staff email
 // uniqueness is deliberately NOT enforced here: it lives on AdminAccount,

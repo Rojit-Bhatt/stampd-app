@@ -40,7 +40,7 @@ const secretMatches = (provided, stored) => {
 // not confirm that the id exists.
 const assertClaimSecret = (claim, claimSecret) => {
   if (!secretMatches(claimSecret, claim.claimSecret)) {
-    throw createHttpError("Claim not found.", 404);
+    throw createHttpError("Claim not found.", 404, "CLAIM_NOT_FOUND");
   }
 };
 
@@ -115,7 +115,7 @@ const getClaimStatus = async ({ pendingClaimId, organizationId, claimSecret }) =
   const claim = await PendingClaim.findOne({ _id: pendingClaimId, organizationId });
   if (!claim) {
     // Never leak cross-tenant existence.
-    throw createHttpError("Claim not found.", 404);
+    throw createHttpError("Claim not found.", 404, "CLAIM_NOT_FOUND");
   }
   // This read returns what the customer earned (points, bill, balance), so
   // it needs the same proof-of-scan as binding does.
@@ -135,12 +135,12 @@ const getClaimStatus = async ({ pendingClaimId, organizationId, claimSecret }) =
 // account, while they got "already used" and a zero balance.
 const linkPendingClaimToAccount = async ({ pendingClaimId, claimSecret, customerAccountId }) => {
   const claim = await PendingClaim.findOne({ _id: pendingClaimId });
-  if (!claim) throw createHttpError("Claim not found.", 404);
+  if (!claim) throw createHttpError("Claim not found.", 404, "CLAIM_NOT_FOUND");
   assertClaimSecret(claim, claimSecret);
   if (claim.fulfilled) throw createHttpError("This claim has already been used.", 400, "CLAIM_ALREADY_FULFILLED");
-  if (claim.expiresAt.getTime() <= Date.now()) throw createHttpError("This claim has expired.", 400);
+  if (claim.expiresAt.getTime() <= Date.now()) throw createHttpError("This claim has expired.", 400, "CLAIM_EXPIRED");
   if (claim.customerAccountId && claim.customerAccountId.toString() !== customerAccountId) {
-    throw createHttpError("This claim is already linked to a different account.", 409);
+    throw createHttpError("This claim is already linked to a different account.", 409, "CLAIM_OTHER_ACCOUNT");
   }
 
   if (!claim.customerAccountId) {
@@ -157,7 +157,7 @@ const linkPendingClaimToAccount = async ({ pendingClaimId, claimSecret, customer
 const fulfillPendingClaim = async ({ pendingClaimId, organizationId, customerAccountId, claimSecret }) => {
   const claim = await PendingClaim.findOne({ _id: pendingClaimId, organizationId });
   if (!claim) {
-    throw createHttpError("Claim not found.", 404);
+    throw createHttpError("Claim not found.", 404, "CLAIM_NOT_FOUND");
   }
   // Reachable by a benign race, not just a stale/replayed request: the
   // claim tab can be backgrounded (e.g. to open the emailed verify link),
@@ -167,10 +167,10 @@ const fulfillPendingClaim = async ({ pendingClaimId, organizationId, customerAcc
   // client tell "genuinely already used" apart from "already used BY ME,
   // successfully" and show success instead of an error for the latter.
   if (claim.fulfilled) throw createHttpError("This claim has already been used.", 400, "CLAIM_ALREADY_FULFILLED");
-  if (claim.expiresAt.getTime() <= Date.now()) throw createHttpError("This claim has expired.", 400);
+  if (claim.expiresAt.getTime() <= Date.now()) throw createHttpError("This claim has expired.", 400, "CLAIM_EXPIRED");
 
   if (claim.customerAccountId && claim.customerAccountId.toString() !== customerAccountId) {
-    throw createHttpError("This claim belongs to a different account.", 403);
+    throw createHttpError("This claim belongs to a different account.", 403, "CLAIM_OTHER_ACCOUNT");
   }
   if (!claim.customerAccountId) {
     // BINDING an unclaimed row — the same act linkPendingClaimToAccount
@@ -187,7 +187,7 @@ const fulfillPendingClaim = async ({ pendingClaimId, organizationId, customerAcc
   }
 
   const account = await CustomerAccount.findOne({ _id: customerAccountId });
-  if (!account) throw createHttpError("Account not found.", 404);
+  if (!account) throw createHttpError("Account not found.", 404, "ACCOUNT_NOT_FOUND");
 
   // Same phone gate as claimPoints — see there for why. Checked before the
   // award, not before binding above: a claim that fails here just stays
@@ -275,8 +275,15 @@ const autoFulfillForAccount = async (customerAccountId) => {
       });
       const org = await loadOrganizationOrThrow(claim.organizationId.toString());
       out.push({ organizationId: claim.organizationId.toString(), organizationName: org.name, ...result.data });
-    } catch (_err) {
-      // One tenant's edge case shouldn't block others.
+    } catch (err) {
+      // One tenant's edge case shouldn't block others — but log it: a claim
+      // that fails here is a paid bill whose points never landed, and a
+      // silent catch left no trace of why.
+      console.error(
+        `autoFulfillForAccount: claim ${claim._id} (org ${claim.organizationId}) not fulfilled:`,
+        err.code || "",
+        err.message
+      );
     }
   }
 

@@ -1,4 +1,5 @@
-const { rateLimit, MemoryStore } = require("express-rate-limit");
+const net = require("net");
+const { rateLimit, MemoryStore, ipKeyGenerator } = require("express-rate-limit");
 
 // Shared store (G14 — multi-instance readiness). REDIS_URL unset → every
 // limiter runs on the per-process MemoryStore and nothing outside this
@@ -47,9 +48,17 @@ const getStore = () => {
     return undefined;
   }
   try {
+    // express-rate-limit itself ships no Redis store (RedisStore lives in the
+    // separate rate-limit-redis package, which isn't installed). Check BEFORE
+    // opening a client: the old code connected first, then threw "RedisStore
+    // is not a constructor", leaving a live Redis connection nobody used and
+    // a limiter that silently ran on memory anyway.
+    const { RedisStore } = require("express-rate-limit");
+    if (typeof RedisStore !== "function") {
+      throw new Error("REDIS_URL is set but no Redis store adapter is installed (rate-limit-redis)");
+    }
     // eslint-disable-next-line global-require
     const { createClient } = require("redis");
-    const { RedisStore } = require("express-rate-limit");
     const client = createClient({ url: process.env.REDIS_URL });
     client.on("error", (err) => {
       // A Redis connection problem must never take the app down: fall back to
@@ -71,9 +80,54 @@ const getStore = () => {
   }
 };
 
-// Small wrapper that injects the (possibly shared) store without touching
-// every limiter's declaration below.
-const limiter = (opts) => rateLimit({ ...opts, store: getStore() });
+// Production traffic is browser -> Cloudflare -> Render's proxy -> Express,
+// so with `trust proxy` at one hop req.ip is a Cloudflare EDGE address,
+// shared by every customer routed through the same POP — one busy cafe could
+// exhaust registrationLimiter for all of them. Cloudflare puts the real
+// client in CF-Connecting-IP, but the origin is also reachable directly on
+// onrender.com, where that header is whatever the caller says. So it is
+// honoured only when the connecting address is itself a Cloudflare range.
+// Ranges: https://www.cloudflare.com/ips/ (fetched 2026-10-05).
+const CLOUDFLARE_RANGES = new net.BlockList();
+for (const cidr of [
+  "173.245.48.0/20", "103.21.244.0/22", "103.22.200.0/22", "103.31.4.0/22",
+  "141.101.64.0/18", "108.162.192.0/18", "190.93.240.0/20", "188.114.96.0/20",
+  "197.234.240.0/22", "198.41.128.0/17", "162.158.0.0/15", "104.16.0.0/13",
+  "104.24.0.0/14", "172.64.0.0/13", "131.0.72.0/22"
+]) {
+  const [addr, prefix] = cidr.split("/");
+  CLOUDFLARE_RANGES.addSubnet(addr, Number(prefix), "ipv4");
+}
+for (const cidr of [
+  "2400:cb00::/32", "2606:4700::/32", "2803:f800::/32", "2405:b500::/32",
+  "2405:8100::/32", "2a06:98c0::/29", "2c0f:f248::/32"
+]) {
+  const [addr, prefix] = cidr.split("/");
+  CLOUDFLARE_RANGES.addSubnet(addr, Number(prefix), "ipv6");
+}
+
+const isCloudflare = (ip) => {
+  if (!ip) return false;
+  const mapped = ip.startsWith("::ffff:") ? ip.slice(7) : ip;
+  const family = net.isIP(mapped);
+  if (!family) return false;
+  return CLOUDFLARE_RANGES.check(mapped, family === 4 ? "ipv4" : "ipv6");
+};
+
+// The address a limiter buckets on. ipKeyGenerator collapses an IPv6
+// address to its /56, express-rate-limit's own defence against a client
+// rotating through its IPv6 block.
+const clientKey = (req) => {
+  const forwarded = req.headers["cf-connecting-ip"];
+  if (typeof forwarded === "string" && net.isIP(forwarded.trim()) && isCloudflare(req.ip)) {
+    return ipKeyGenerator(forwarded.trim());
+  }
+  return ipKeyGenerator(req.ip || "");
+};
+
+// Small wrapper that injects the (possibly shared) store and the client key
+// without touching every limiter's declaration below.
+const limiter = (opts) => rateLimit({ keyGenerator: clientKey, ...opts, store: getStore() });
 
 // Login attempts: has to tolerate normal typo retries, so a looser window.
 const authLimiter = limiter({
@@ -203,4 +257,4 @@ const platformExportLimiter = limiter({
   handler: jsonHandler("Too many downloads. Please wait a few minutes."),
 });
 
-module.exports = { authLimiter, registrationLimiter, uploadLimiter, placesLimiter, pinLimiter, cspReportLimiter, exportLimiter, broadcastLimiter, platformExportLimiter };
+module.exports = { clientKey, authLimiter, registrationLimiter, uploadLimiter, placesLimiter, pinLimiter, cspReportLimiter, exportLimiter, broadcastLimiter, platformExportLimiter };
