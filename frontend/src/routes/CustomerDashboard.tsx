@@ -80,7 +80,14 @@ export default function CustomerDashboard() {
   const queryClient = useQueryClient();
   const { tenant, slug } = useTenant();
   const { show: showScanTip, dismiss: dismissScanTip } = useFirstVisitTip(`scan-hint:${slug}`);
-  const { data: points, isLoading: cardLoading } = usePointsBalance();
+  const {
+    data: points,
+    isLoading: cardLoading,
+    isError: cardError,
+    isFetching: cardFetching,
+    dataUpdatedAt: cardUpdatedAt,
+    refetch: refetchPoints,
+  } = usePointsBalance();
   const { data: catalog = [] } = useRewardCatalog();
   const { data: campaigns = [] } = usePublicCampaigns();
 
@@ -219,6 +226,11 @@ export default function CustomerDashboard() {
             expiresAt={points?.expiresAt ?? null}
             businessName={tenant?.name}
             isLoading={cardLoading}
+            isError={cardError}
+            hasData={points !== undefined}
+            isRefreshing={cardFetching && !cardLoading}
+            updatedAt={cardUpdatedAt}
+            onRefresh={() => refetchPoints()}
             tier={points?.tier ?? null}
           />
         </div>

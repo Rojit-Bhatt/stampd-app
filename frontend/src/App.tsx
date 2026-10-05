@@ -19,7 +19,17 @@ import { CustomerLayout } from './components/customer/CustomerLayout';
 import { GlobalCustomerLayout } from './components/customer/GlobalCustomerLayout';
 import { TenantSessionSync } from './components/customer/TenantSessionSync';
 
-const queryClient = new QueryClient();
+// staleTime is the throttle on react-query's refetch-on-visibility: with the
+// default 0, EVERY return to the tab (phone unlock, app switch, tab switch)
+// refetched every mounted query — /api/tenant, /api/account/me twice,
+// /api/points/catalog — against a single free-plan backend. 30s keeps data
+// fresh on any real return to the app while collapsing bursts. Mutations
+// still invalidate explicitly, and refetchInterval polls are unaffected.
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: { staleTime: 30_000 },
+  },
+});
 
 // Lazy load pages for route-based code splitting
 const BusinessLanding = lazy(() => import('./routes/BusinessLanding'));

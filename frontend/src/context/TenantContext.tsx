@@ -127,8 +127,9 @@ export function TenantProvider({ children }: { children: React.ReactNode }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [tenantKey]);
 
-  // A plain useQuery (no staleTime override) so it refetches on window focus
-  // and remount like the rest of the app's data hooks — branding/program/
+  // A plain useQuery (the app-wide 30s staleTime, see App.tsx) so it
+  // refetches on window focus and remount like the rest of the app's data
+  // hooks once that window has passed — branding/program/
   // contact/events an admin edits mid-session now reach an already-open
   // customer tab instead of requiring a hard reload.
   const {

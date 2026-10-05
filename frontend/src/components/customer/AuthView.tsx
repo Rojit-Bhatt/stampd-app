@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { Mail, Lock, User, Phone, Eye, EyeOff } from "lucide-react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -70,13 +70,25 @@ export function AuthView({ mode }: { mode: Mode }) {
     };
 
   const isLogin = mode === "login";
+
+  // ?next= brings the customer back to where sign-in interrupted them (the
+  // redeem page sends its own URL, QR token included). Only paths inside
+  // this same outlet are honoured — never an absolute or protocol-relative
+  // URL — so the param can't be used as an open redirect.
+  const [searchParams] = useSearchParams();
+  const outletRoot = tenantPath(companySlug, slug);
+  const nextParam = searchParams.get("next");
+  const afterAuth =
+    nextParam && nextParam.startsWith(`${outletRoot}/`) && !nextParam.startsWith("//")
+      ? nextParam
+      : tenantPath(companySlug, slug, "dashboard");
   const initial = (tenant?.name || "?").charAt(0).toUpperCase();
 
   useEffect(() => {
     if (user && user.role === "customer") {
-      navigate(tenantPath(companySlug, slug, "dashboard"));
+      navigate(afterAuth);
     }
-  }, [user, navigate, slug]);
+  }, [user, navigate, slug, afterAuth]);
 
   const loginForm = useForm<LoginFormValues>({
     resolver: zodResolver(loginSchema),
@@ -94,7 +106,7 @@ export function AuthView({ mode }: { mode: Mode }) {
       await login(data.email, data.password);
       await ensureTenantSession(`${companySlug}/${slug}`, tenant?.id ?? null);
       toast.success("Good to see you again!", { id: toastId });
-      navigate(tenantPath(companySlug, slug, "dashboard"));
+      navigate(afterAuth);
     } catch (err) {
       toast.error((err as Error).message || "Couldn't sign you in — try again.", { id: toastId });
     } finally {
@@ -115,7 +127,7 @@ export function AuthView({ mode }: { mode: Mode }) {
       });
       await ensureTenantSession(`${companySlug}/${slug}`, tenant?.id ?? null);
       toast.success("Welcome! You can verify your email later before redeeming.", { id: toastId });
-      navigate(tenantPath(companySlug, slug, "dashboard"));
+      navigate(afterAuth);
     } catch (err) {
       toast.error((err as Error).message || "Couldn't create your account — try again.", { id: toastId });
     } finally {
@@ -129,7 +141,7 @@ export function AuthView({ mode }: { mode: Mode }) {
       const { needsPhone } = await loginWithGoogle(credential);
       await ensureTenantSession(`${companySlug}/${slug}`, tenant?.id ?? null);
       if (needsPhone) setShowPhoneStep(true);
-      else navigate(tenantPath(companySlug, slug, "dashboard"));
+      else navigate(afterAuth);
     } catch (err) {
       toast.error((err as Error).message || "Google sign-in didn't work — try again.");
     }
@@ -387,7 +399,7 @@ export function AuthView({ mode }: { mode: Mode }) {
         </Link>
       </p>
 
-      {showPhoneStep && <PhoneStepModal onDone={() => navigate(tenantPath(companySlug, slug, "dashboard"))} />}
+      {showPhoneStep && <PhoneStepModal onDone={() => navigate(afterAuth)} />}
     </Shell>
   );
 }

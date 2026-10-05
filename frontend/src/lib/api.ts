@@ -61,9 +61,52 @@ export function decodeJwtPayload(token: string): Record<string, any> | null {
   }
 }
 
+// Display-only expiry check on a cached JWT, same caveat as decodeJwtPayload:
+// the server is the authority. This exists so the client stops REUSING a
+// token it can already see is dead — a tenant JWT lives 7 days, the global
+// session 14, and reusing an expired tenant JWT for those extra days made
+// every customer call 401: zero balance on the dashboard, "sign in again" on
+// every QR claim, and signing in again didn't help because the same dead
+// token was picked straight back up. A small skew treats "about to expire"
+// as expired, so a token doesn't die between this check and the request.
+export function isJwtExpired(token: string | null | undefined, skewSeconds = 30): boolean {
+  if (!token) return true;
+  const payload = decodeJwtPayload(token);
+  if (!payload) return true;
+  if (typeof payload.exp !== "number") return false;
+  return payload.exp * 1000 <= Date.now() + skewSeconds * 1000;
+}
+
+// One recovery attempt for a customer request the server rejected with 401.
+// CustomerAuthContext registers this: with a live global session it
+// re-exchanges for a fresh tenant JWT (resolving to true so the request is
+// retried once); otherwise it drops the dead tenant token and resolves false.
+// Concurrent 401s (a dashboard fires several queries at once) share one
+// exchange instead of each POSTing enter-tenant.
+let customerUnauthorizedHandler: (() => Promise<boolean>) | null = null;
+let customerRecovery: Promise<boolean> | null = null;
+
+export function setCustomerUnauthorizedHandler(handler: (() => Promise<boolean>) | null) {
+  customerUnauthorizedHandler = handler;
+}
+
+function recoverCustomerSession(): Promise<boolean> {
+  if (!customerUnauthorizedHandler) return Promise.resolve(false);
+  if (!customerRecovery) {
+    customerRecovery = customerUnauthorizedHandler()
+      .catch(() => false)
+      .finally(() => {
+        customerRecovery = null;
+      });
+  }
+  return customerRecovery;
+}
+
 interface RequestOptions extends Omit<RequestInit, "body"> {
   body?: any;
   role?: "admin" | "customer" | "platform" | "customer-global" | "company";
+  /** Internal: set on the single retry after a 401 recovery. */
+  _retried?: boolean;
 }
 
 export async function apiRequest<T = unknown>(
@@ -83,32 +126,38 @@ export async function apiRequest<T = unknown>(
     headers.set("X-Outlet-Slug", currentTenantRef.outlet);
   }
 
+  // Determine which token to send based on path or explicit role option
+  const effectiveRole =
+    options.role ||
+    (path.startsWith("/api/platform")
+      ? "platform"
+      : path.startsWith("/api/admin")
+        ? "admin"
+        : "customer");
+
+  // Whether this request carried a tenant JWT — the only kind of 401 the
+  // recovery below can do anything about.
+  let sentTenantToken = false;
+
   if (typeof window !== "undefined") {
-    // Determine which token to send based on path or explicit role option
-    const role =
-      options.role ||
-      (path.startsWith("/api/platform")
-        ? "platform"
-        : path.startsWith("/api/admin")
-          ? "admin"
-          : "customer");
     const tokenKey =
-      role === "platform"
+      effectiveRole === "platform"
         ? "platform_auth_token"
-        : role === "admin"
+        : effectiveRole === "admin"
           ? "admin_auth_token"
-          : role === "customer-global"
+          : effectiveRole === "customer-global"
             ? "customer_global_session"
-            : role === "company"
+            : effectiveRole === "company"
               ? "company_session"
               : "customer_auth_token";
     const token = localStorage.getItem(tokenKey);
     if (token) {
       headers.set("Authorization", `Bearer ${token}`);
+      sentTenantToken = tokenKey === "customer_auth_token";
     }
   }
 
-  const { body, role, ...restOptions } = options;
+  const { body, role, _retried, ...restOptions } = options;
 
   const config: RequestInit = {
     ...restOptions,
@@ -124,6 +173,21 @@ export async function apiRequest<T = unknown>(
   }
 
   const response = await fetch(url, config);
+
+  // A tenant-JWT request the server refused: recover the session once and
+  // retry, instead of letting the caller render a dead token as "0 points"
+  // or "sign in again". Only when a tenant JWT was actually sent (a wrong
+  // password on /api/customer-auth/login is a 401 too, and is a real
+  // answer), never for the global/admin/platform slots, and never twice.
+  // Auth endpoints (login, register, verify, reset) answer 401 for bad
+  // credentials whatever token rides along, so they are excluded outright.
+  const isAuthEndpoint = path.startsWith("/api/customer-auth/") || path.startsWith("/api/auth/");
+  if (response.status === 401 && sentTenantToken && !isAuthEndpoint && !_retried) {
+    const recovered = await recoverCustomerSession();
+    if (recovered) {
+      return apiRequest<T>(path, { ...options, _retried: true });
+    }
+  }
 
   if (!response.ok) {
     let errorMsg = "Something went wrong";

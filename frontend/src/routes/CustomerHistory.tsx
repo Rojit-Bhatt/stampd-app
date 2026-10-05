@@ -57,7 +57,7 @@ function rowSubtitle(txn: PointsTransaction): string {
 export default function CustomerHistory() {
   const m = useMotion();
   const { tenant } = useTenant();
-  const { data: points } = usePointsBalance();
+  const { data: points, isError: pointsError } = usePointsBalance();
   const { data: history = [], isLoading } = usePointsHistory();
   const [leaderboardWindow, setLeaderboardWindow] = useState<LeaderboardWindow>("all");
   const { data: leaderboard = [], isLoading: leaderboardLoading } = useLeaderboard(leaderboardWindow);
@@ -78,7 +78,7 @@ export default function CustomerHistory() {
           Balance
         </div>
         <div className="mt-1 font-numeral font-numeral-lg text-[48px] leading-none text-[var(--primary)]">
-          {formatPoints(points?.balance ?? 0)}
+          {pointsError ? "—" : formatPoints(points?.balance ?? 0)}
         </div>
       </div>
 
