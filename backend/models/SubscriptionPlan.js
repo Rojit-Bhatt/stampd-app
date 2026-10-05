@@ -25,6 +25,7 @@ const SubscriptionPlanSchema = new mongoose.Schema({
   createdAt: { type: Date, default: Date.now }
 });
 
-SubscriptionPlanSchema.index({ slug: 1 }, { unique: true });
+// slug's unique index is declared on the field (`unique: true`); a second
+// schema.index() for it only produced a "Duplicate schema index" warning.
 
 module.exports = mongoose.model("SubscriptionPlan", SubscriptionPlanSchema);

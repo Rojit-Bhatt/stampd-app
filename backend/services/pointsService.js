@@ -896,6 +896,8 @@ module.exports = {
   awardPointsInTransaction,
   loadOrganizationOrThrow,
   loadProgram,
+  // The DynamicQRToken TTL index must cover this (tests/model-indexes).
+  REDEEM_TOKEN_TTL_SECONDS,
   // Exported for reports, which must apply the same lazy expiry on read.
   isExpiredNow,
   effectiveBalanceCenti,

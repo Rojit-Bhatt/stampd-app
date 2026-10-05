@@ -22,6 +22,7 @@ const SubscriptionKeySchema = new mongoose.Schema({
   redeemedAt: { type: Date, default: null }
 });
 
-SubscriptionKeySchema.index({ code: 1 }, { unique: true });
+// code's unique index is declared on the field (`unique: true`); a second
+// schema.index() for it only produced a "Duplicate schema index" warning.
 
 module.exports = mongoose.model("SubscriptionKey", SubscriptionKeySchema);

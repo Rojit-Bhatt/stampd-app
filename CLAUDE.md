@@ -38,7 +38,7 @@ MongoDB via Mongoose in production (`MONGODB_URI` required, backend refuses to b
 
 The mock also does **not** enforce unique indexes, run TTL expiry, or apply `.lean()` semantics (lean is a pass-through), so duplicate-key, TTL and lean-defaults bugs only show up in production. `.lean()` skips schema defaults — only use it where every field read has a fallback; keep Organization/Company as full docs (they feed `resolveProgram`). `User.syncIndexes()`/`CustomerAccount.syncIndexes()` run at boot, so new indexes on those two build on deploy.
 
-Known open issues: `DynamicQRToken`'s TTL index (`expireAfterSeconds: 30`) deletes redeem tokens long before their 180s app-level window (fixing it needs a `collMod` on production); production has no `PUSH_VAPID_*` keys, so push subscriptions break on every restart.
+A changed `expireAfterSeconds` in a model never reaches an existing database (autoIndex keeps the old index) — migrate it at boot with `utils/ensureTtlIndex` (see `DynamicQRToken`, whose TTL must cover the 180s redeem window). Push notifications are intentionally unused in the web app; production has no `PUSH_VAPID_*` keys by design.
 
 ## Security posture
 

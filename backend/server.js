@@ -346,6 +346,7 @@ app.use((req, _res, next) => {
 // failures) only belong in the server log. Deliberate 4xx messages are
 // written for the customer and go out as-is.
 const { errorResponseBody } = require("./utils/errorResponse");
+const { ensureTtlIndex } = require("./utils/ensureTtlIndex");
 app.use((error, req, res, _next) => {
   const statusCode = error.statusCode || 500;
   // Mongoose network/validation/duplicate-key errors include driver internals;
@@ -395,6 +396,26 @@ const startServer = async () => {
     console.log("[db] Database indexes synchronized successfully.");
   } catch (err) {
     console.warn("[db] Index synchronization warning:", err.message);
+  }
+
+  // A changed TTL in a model never reaches an existing database on its own
+  // (utils/ensureTtlIndex). Real MongoDB only — the mock runs no TTL.
+  if (!USING_MOCK_DB) {
+    try {
+      const mongoose = require("mongoose");
+      const DynamicQRToken = require("./models/DynamicQRToken");
+      const result = await ensureTtlIndex(
+        DynamicQRToken.collection,
+        mongoose.connection.db,
+        { createdAt: 1 },
+        DynamicQRToken.QR_TOKEN_TTL_SECONDS
+      );
+      if (result.changed) {
+        console.log(`[db] QR token TTL ${result.from}s -> ${result.to}s (${result.method}).`);
+      }
+    } catch (err) {
+      console.warn("[db] QR token TTL migration warning:", err.message);
+    }
   }
 
   // Only seed demo data if explicitly requested OR if we are running in development with an in-memory mock database.
