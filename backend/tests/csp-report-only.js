@@ -183,7 +183,14 @@ async function main() {
     // server has already flushed the violation line above; anything it
     // logs afterwards lands on real stdout unprefixed (harmless noise).
     console.log = originalLog;
-    const structured = [...logs, ...serverLines].find((l) => l.includes('"type":"csp-violation"'));
+    // Pick THE script-src report's line by its blocked URI, not "the first
+    // csp-violation line": three reports are logged, split across two
+    // capture streams whose interleaving depends on timing, so "first" was
+    // sometimes the later frame-src report and the blockedUri/documentUri
+    // checks below failed on CI only.
+    const structured = [...logs, ...serverLines].find(
+      (l) => l.includes('"type":"csp-violation"') && l.includes("evil.example/stealer.js")
+    );
     process.stdout.write(`[debug] violation line: ${structured ? structured.slice(0, 300) : null}\n`);
     check("the violation is logged as a structured JSON line", Boolean(structured));
     let parsed = null;
