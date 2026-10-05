@@ -2,7 +2,7 @@ const express = require("express");
 const {
   register, login, googleAuth,
   verifyEmail, verifyOtp, resendVerification, forgotPassword, resetPassword,
-  getMe, completeProfile, updateProfile, updatePreferences, savePushSubscription, removePushSubscription, changePassword, enterTenant, getMyTenants,
+  getMe, completeProfile, updateProfile, updatePreferences, savePushSubscription, removePushSubscription, changePassword, signOutEverywhere, enterTenant, getMyTenants,
   uploadAvatarFile, uploadAvatar, deleteAvatar, getAvatar,
   exportData, deleteAccount
 } = require("../controllers/customerAccountController");
@@ -56,6 +56,10 @@ router.patch("/preferences", verifyGlobalSession, updatePreferences);
 router.post("/push-subscription", verifyGlobalSession, savePushSubscription);
 router.delete("/push-subscription", verifyGlobalSession, removePushSubscription);
 router.post("/change-password", authLimiter, verifyGlobalSession, changePassword);
+// Server-side revocation of every session and outlet JWT for the account
+// (customerAccountService.revokeAllSessions). Rate-limited like the other
+// credential operations.
+router.post("/sign-out-everywhere", authLimiter, verifyGlobalSession, signOutEverywhere);
 
 // Profile picture. Writes need the global session (the avatar belongs to the
 // CustomerAccount, not to any one outlet's membership); the read is public

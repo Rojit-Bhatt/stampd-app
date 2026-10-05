@@ -111,14 +111,37 @@ const formatAccountSummary = (account) => ({
   hasPassword: Boolean(account.password)
 });
 
-const formatGlobalSessionPayload = (account) => ({
+// Server-side "sign out everywhere". Bumping the account's credential
+// version kills every global session (verifyGlobalSession compares pv); the
+// membership rows' versions must move too, because each outlet JWT carries
+// its MEMBERSHIP row's version (verifyToken compares that) — bumping only
+// the account, as password change/reset used to, left every outlet JWT
+// alive for the rest of its 7 days.
+const revokeAllSessions = async (account) => {
+  account.passwordVersion = (account.passwordVersion || 0) + 1;
+  await account.save();
+  await User.updateMany({ customerAccountId: account._id }, { $inc: { passwordVersion: 1 } });
+};
+
+const signOutEverywhere = async ({ customerAccountId }) => {
+  const account = await CustomerAccount.findOne({ _id: customerAccountId });
+  if (!account) throw createHttpError("Account not found.", 404);
+  await revokeAllSessions(account);
+  return { success: true, message: "Signed out of all devices." };
+};
+
+// `at` carries an existing session's original sign-in time forward when this
+// is NOT a sign-in (complete-profile) — minting with a fresh `at` there
+// would let a client restart the GLOBAL_SESSION_MAX_AGE_DAYS cap at will.
+const formatGlobalSessionPayload = (account, { at } = {}) => ({
   success: true,
   // The pv claim binds the session to the row's current credential version
   // — legacy tokens decode to pv=0, matching every account's default, so
   // existing sessions survive until the next password change/reset.
   token: generateGlobalSessionToken({
     customerAccountId: account._id.toString(),
-    pv: typeof account.passwordVersion === "number" ? account.passwordVersion : 0
+    pv: typeof account.passwordVersion === "number" ? account.passwordVersion : 0,
+    at
   }),
   account: formatAccountSummary(account)
 });
@@ -625,10 +648,9 @@ const changeAccountPassword = async ({ customerAccountId, currentPassword, newPa
   // of identity to set one for the first time.
 
     account.password = await bcrypt.hash(newPassword, SALT_ROUNDS);
-  // Bump the credential version so every previously-issued session and
-  // tenant JWT (which embed the old pv) is rejected from the next request.
-  account.passwordVersion = (account.passwordVersion || 0) + 1;
-  await account.save();
+  // Every previously-issued session AND outlet JWT is rejected from the next
+  // request (see revokeAllSessions — outlet JWTs used to survive this).
+  await revokeAllSessions(account);
 
   // Alert: owner should know immediately if someone changed the password.
   sendEmail({
@@ -640,7 +662,7 @@ const changeAccountPassword = async ({ customerAccountId, currentPassword, newPa
   return { success: true, message: "Password updated." };
 };
 
-const completeProfile = async ({ customerAccountId, phone }) => {
+const completeProfile = async ({ customerAccountId, phone, authTime }) => {
   if (!phone || !phone.trim()) throw createHttpError("Phone number is required.", 400);
 
   const account = await CustomerAccount.findOne({ _id: customerAccountId });
@@ -652,7 +674,7 @@ const completeProfile = async ({ customerAccountId, phone }) => {
   // Propagate to every existing membership row.
   await User.updateMany({ customerAccountId }, { $set: { phone: account.phone } });
 
-  return formatGlobalSessionPayload(account);
+  return formatGlobalSessionPayload(account, { at: authTime });
 };
 
 const verifyAccountEmail = async ({ token }) => {
@@ -780,10 +802,8 @@ const resetPassword = async ({ token, password }) => {
   if (!account) throw createHttpError("Account not found.", 404);
 
   account.password = await bcrypt.hash(password, SALT_ROUNDS);
-  // Same credential-version kill as changeAccountPassword above: every
-  // issued session/global-token embedding the old pv dies on next use.
-  account.passwordVersion = (account.passwordVersion || 0) + 1;
-  await account.save();
+  // Same kill as changeAccountPassword above: every session and outlet JWT.
+  await revokeAllSessions(account);
   record.usedAt = new Date();
   await record.save();
 
@@ -1080,6 +1100,7 @@ module.exports = {
   savePushSubscription,
   removePushSubscription,
   changeAccountPassword,
+  signOutEverywhere,
   verifyAccountEmail,
   verifyCustomerOtp,
   resendVerification,

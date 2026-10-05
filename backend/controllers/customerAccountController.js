@@ -3,6 +3,7 @@ const {
   registerAccount, loginAccount, authenticateWithGoogle, getMe,
   verifyAccountEmail, verifyCustomerOtp, resendVerification, forgotPassword, resetPassword,
   completeProfile, updateAccountProfile, updatePreferences, savePushSubscription, removePushSubscription, changeAccountPassword,
+  signOutEverywhere,
   enterTenant, getMyTenants,
   setAvatar, removeAvatar, getAvatar, MAX_AVATAR_BYTES,
   exportAccountData, deleteCustomerAccount
@@ -94,7 +95,8 @@ const completeProfileController = async (req, res, next) => {
   try {
     const result = await completeProfile({
       customerAccountId: req.customerAccount.id,
-      phone: req.body.phone
+      phone: req.body.phone,
+      authTime: req.customerAccount.authTime
     });
     res.status(200).json(result);
   } catch (error) {
@@ -154,6 +156,18 @@ const removePushSubscriptionController = async (req, res, next) => {
   try {
     const { endpoint } = req.body;
     const result = await removePushSubscription({ customerAccountId: req.customerAccount.id, endpoint });
+    res.status(200).json(result);
+  } catch (error) {
+    next(error);
+  }
+};
+
+const signOutEverywhereController = async (req, res, next) => {
+  try {
+    const result = await signOutEverywhere({ customerAccountId: req.customerAccount.id });
+    // The session that made this call is revoked with the rest — don't hand
+    // it a renewed token on the way out.
+    res.removeHeader("X-Session-Token");
     res.status(200).json(result);
   } catch (error) {
     next(error);
@@ -331,6 +345,7 @@ module.exports = {
   savePushSubscription: savePushSubscriptionController,
   removePushSubscription: removePushSubscriptionController,
   changePassword: changePasswordController,
+  signOutEverywhere: signOutEverywhereController,
   deleteAccount: deleteAccountController,
   exportData: exportDataController,
   enterTenant: enterTenantController,
